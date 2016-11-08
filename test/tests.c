@@ -6,6 +6,11 @@
 
 int main(void)
 {
-  return 0;
+
+    json_object *obj = storj_bridge_get_info();
+
+    printf("%s\n", json_object_to_json_string(obj));
+
+    return 0;
 
 }

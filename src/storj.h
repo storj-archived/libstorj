@@ -6,4 +6,6 @@
 #include <libwebsockets.h>
 #include <json-c/json.h>
 
+struct json_object* storj_bridge_get_info();
+
 #endif /* STORJ_H */
