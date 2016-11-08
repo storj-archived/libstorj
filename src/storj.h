@@ -3,11 +3,20 @@
 
 #include <neon/ne_request.h>
 #include <nettle/aes.h>
+#include <neon/ne_string.h>
 #include <libwebsockets.h>
 #include <json-c/json.h>
 
-struct json_object* storj_bridge_get_info();
-struct json_object* storj_bridge_get_buckets();
+typedef struct storj_bridge_options {
+    char *proto;
+    char *host;
+    int port;
+    char *user;
+    char *pass;
+} storj_bridge_options;
+
+struct json_object* storj_bridge_get_info(storj_bridge_options *options);
+struct json_object* storj_bridge_get_buckets(storj_bridge_options *options);
 struct json_object* storj_bridge_create_bucket();
 struct json_object* storj_bridge_delete_bucket();
 struct json_object* storj_bridge_list_files();

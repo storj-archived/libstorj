@@ -1,11 +1,18 @@
 #include "storj.h"
 
-struct json_object* fetch_json(char *proto, char *host, int port, char *method, char *path)
+struct json_object* fetch_json(char *proto, char *host, int port, char *method, char *path, char *user, char *pass)
 {
     ne_session *sess = ne_session_create(proto, host, port);
     ne_ssl_trust_default_ca(sess);
 
     ne_request *req = ne_request_create(sess, method, path);
+
+    if (user && pass) {
+        char *user_pass = ne_concat(user, ":", pass, NULL);
+        char *user_pass_64 = ne_base64((unsigned char *)user_pass, strlen(user_pass));
+        char *auth_value = ne_concat("Basic ", user_pass_64, NULL);
+        ne_add_request_header(req, "Authorization", auth_value);
+    }
 
     json_object *obj;
 
@@ -14,8 +21,8 @@ struct json_object* fetch_json(char *proto, char *host, int port, char *method, 
         return obj;
     }
 
-    char *body = malloc(NE_BUFSIZ * 4);
-    char *buf = malloc(NE_BUFSIZ);
+    char *body = calloc(NE_BUFSIZ * 4, sizeof(char));
+    char *buf = calloc(NE_BUFSIZ, sizeof(char));
     ssize_t bytes = 0;
     ssize_t total = 0;
 
@@ -35,16 +42,20 @@ struct json_object* fetch_json(char *proto, char *host, int port, char *method, 
     return obj;
 }
 
-struct json_object* storj_bridge_get_info()
+struct json_object* storj_bridge_get_info(storj_bridge_options *options)
 {
-    json_object *obj = fetch_json("https", "api.storj.io", 443, "GET", "/");
+    json_object *obj = fetch_json(options->proto, options->host, options->port,
+                                  "GET", "/", NULL, NULL);
 
     return obj;
 }
 
-struct json_object* storj_bridge_get_buckets()
+struct json_object* storj_bridge_get_buckets(storj_bridge_options *options)
 {
+    json_object *obj = fetch_json(options->proto, options->host, options->port,
+                                  "GET", "/buckets", options->user, options->pass);
 
+    return obj;
 }
 
 struct json_object* storj_bridge_create_bucket()
