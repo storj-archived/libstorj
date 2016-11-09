@@ -3,7 +3,9 @@
 struct json_object* fetch_json(char *proto, char *host, int port, char *method, char *path, char *user, char *pass)
 {
     ne_session *sess = ne_session_create(proto, host, port);
-    ne_ssl_trust_default_ca(sess);
+    if (0 == strcmp(proto, "https")) {
+        ne_ssl_trust_default_ca(sess);
+    }
 
     ne_request *req = ne_request_create(sess, method, path);
 

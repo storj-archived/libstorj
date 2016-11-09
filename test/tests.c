@@ -7,32 +7,47 @@
 #include "../src/storj.h"
 
 #define INFO "{ \"info\": { \"title\": \"Storj Bridge\", \"version\": \"2.0.0\" } }"
+#define BUCKETS "{ \"buckets\": \"{}\"}"
 
-static int test_server(void * cls,
-                       struct MHD_Connection * connection,
-                       const char * url,
-                       const char * method,
-                       const char * version,
-                       const char * upload_data,
-                       size_t * upload_data_size,
-                       void ** ptr) {
+static int test_server(void *cls,
+                       struct MHD_Connection *connection,
+                       const char *url,
+                       const char *method,
+                       const char *version,
+                       const char *upload_data,
+                       size_t *upload_data_size,
+                       void **ptr) {
+
     static int dummy;
-    const char * page = cls;
-    struct MHD_Response * response;
+    const char *page = "Not Found";
+    struct MHD_Response *response;
     int ret;
+
+    char *pass;
+    char *user = MHD_basic_auth_get_username_password(connection, &pass);
 
     if (0 != strcmp(method, "GET")) {
         return MHD_NO;
     }
 
-    *ptr = NULL;
+    if (0 == strcmp(url, "/")) {
+        page = INFO;
+    }
+
+    if (user && 0 == strcmp(url, "/buckets")) {
+        if (0 == strcmp(user, "testuser@storj.io") &&
+            0 == strcmp(pass, "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04")) {
+            page = BUCKETS;
+        }
+    }
 
     response = MHD_create_response_from_buffer(strlen(page),
                                                (void*) page,
                                                MHD_RESPMEM_PERSISTENT);
-    ret = MHD_queue_response(connection,
-                             MHD_HTTP_OK,
-                             response);
+
+    *ptr = NULL;
+
+    ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
 
     MHD_destroy_response(response);
 
@@ -49,17 +64,17 @@ int main(void)
                          NULL,
                          NULL,
                          &test_server,
-                         INFO,
+                         NULL,
                          MHD_OPTION_END);
     if (d == NULL)
         return 1;
 
     struct storj_bridge_options options = {
-        "https",
-        "api.storj.io",
-        443,
+        "http",
+        "localhost",
+        8091,
         "testuser@storj.io",
-        "sha256hashofpassphrase"
+        "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
     };
 
     json_object *obj = storj_bridge_get_info(&options);
