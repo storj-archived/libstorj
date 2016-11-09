@@ -9,9 +9,6 @@ AS_IF([test "x$neon_found_headers" != "xyes"],
 AC_CHECK_HEADERS([nettle/aes.h], [nettle_found_headers=yes; break;])
 AS_IF([test "x$nettle_found_headers" != "xyes"],
         [AC_MSG_ERROR([Unable to find nettle headers.])])
-AC_CHECK_HEADERS([libwebsockets.h], [websockets_found_headers=yes; break;])
-AS_IF([test "x$websockets_found_headers" != "xyes"],
-        [AC_MSG_ERROR([Unable to find libwebsocket headers.])])
 AC_CHECK_HEADERS([json-c/json.h], [json_found_headers=yes; break;])
 AS_IF([test "x$json_found_headers" != "xyes"],
         [AC_MSG_ERROR([Unable to find json-c headers.])])
