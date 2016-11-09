@@ -19,8 +19,12 @@ static int test_server(void *cls,
                        void **ptr) {
 
     static int dummy;
-    const char *page = "Not Found";
     struct MHD_Response *response;
+
+
+    char *page = "Not Found";
+    int status_code = MHD_HTTP_NOT_FOUND;
+
     int ret;
 
     char *pass;
@@ -32,12 +36,18 @@ static int test_server(void *cls,
 
     if (0 == strcmp(url, "/")) {
         page = INFO;
+        status_code = MHD_HTTP_OK;
     }
 
-    if (user && 0 == strcmp(url, "/buckets")) {
-        if (0 == strcmp(user, "testuser@storj.io") &&
+    if (0 == strcmp(url, "/buckets")) {
+        if (user &&
+            0 == strcmp(user, "testuser@storj.io") &&
             0 == strcmp(pass, "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04")) {
             page = BUCKETS;
+            status_code = MHD_HTTP_OK;
+        } else {
+            status_code = MHD_HTTP_UNAUTHORIZED;
+            page = "Unauthorized";
         }
     }
 
@@ -47,7 +57,7 @@ static int test_server(void *cls,
 
     *ptr = NULL;
 
-    ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    ret = MHD_queue_response(connection, status_code, response);
 
     MHD_destroy_response(response);
 
