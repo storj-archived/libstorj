@@ -15,6 +15,8 @@ typedef struct storj_bridge_options {
     char *pass;
 } storj_bridge_options;
 
+typedef enum { false, true } boolean;
+
 struct json_object* storj_bridge_get_info(storj_bridge_options *options);
 struct json_object* storj_bridge_get_buckets(storj_bridge_options *options);
 struct json_object* storj_bridge_create_bucket();
