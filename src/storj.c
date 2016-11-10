@@ -1,8 +1,11 @@
 #include "storj.h"
 
-struct json_object* fetch_json(storj_bridge_options *options, char *method, char *path, boolean auth)
+struct json_object* fetch_json(storj_bridge_options *options, char *method,
+                               char *path, boolean auth)
 {
-    ne_session *sess = ne_session_create(options->proto, options->host, options->port);
+    ne_session *sess = ne_session_create(options->proto, options->host,
+                                         options->port);
+
     if (0 == strcmp(options->proto, "https")) {
         ne_ssl_trust_default_ca(sess);
     }
@@ -10,9 +13,14 @@ struct json_object* fetch_json(storj_bridge_options *options, char *method, char
     ne_request *req = ne_request_create(sess, method, path);
 
     if (auth && options->user && options->pass) {
+
         char *user_pass = ne_concat(options->user, ":", options->pass, NULL);
-        char *user_pass_64 = ne_base64((unsigned char *)user_pass, strlen(user_pass));
+
+        char *user_pass_64 = ne_base64((unsigned char *)user_pass,
+                                       strlen(user_pass));
+
         char *auth_value = ne_concat("Basic ", user_pass_64, NULL);
+
         ne_add_request_header(req, "Authorization", auth_value);
     }
 

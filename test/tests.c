@@ -6,8 +6,10 @@
 
 #include "../src/storj.h"
 
-#define INFO "{ \"info\": { \"title\": \"Storj Bridge\", \"version\": \"2.0.0\" } }"
-#define BUCKETS "{ \"buckets\": \"{}\"}"
+#define USER "testuser@storj.io"
+#define PASS "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
+#define INFO "{\"info\": {\"title\":\"Storj Bridge\",\"version\":\"2.0.0\"}}"
+#define BUCKETS "{\"buckets\":\"{}\"}"
 
 static int test_server(void *cls,
                        struct MHD_Connection *connection,
@@ -41,8 +43,8 @@ static int test_server(void *cls,
 
     if (0 == strcmp(url, "/buckets")) {
         if (user &&
-            0 == strcmp(user, "testuser@storj.io") &&
-            0 == strcmp(pass, "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04")) {
+            0 == strcmp(user, USER) &&
+            0 == strcmp(pass, PASS)) {
             page = BUCKETS;
             status_code = MHD_HTTP_OK;
         } else {
@@ -79,7 +81,7 @@ int main(void)
     if (d == NULL)
         return 1;
 
-    struct storj_bridge_options options = {
+    storj_bridge_options options = {
         "http",
         "localhost",
         8091,

@@ -7,7 +7,7 @@
 #include <libwebsockets.h>
 #include <json-c/json.h>
 
-typedef struct storj_bridge_options {
+typedef struct {
     char *proto;
     char *host;
     int port;
