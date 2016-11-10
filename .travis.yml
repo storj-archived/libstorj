@@ -15,7 +15,7 @@ before_script:
   - echo "deb http://security.ubuntu.com/ubuntu xenial-security multiverse" | sudo tee -a /etc/apt/sources.list
   - sudo apt-get update -qq
   - sudo apt-get install build-essential libtool autotools-dev automake libmicrohttpd-dev
-  - sudo apt-get install libneon27-gnutls-dev nettle-dev libjson-c-dev
+  - sudo apt-get install libneon27-gnutls-dev nettle-dev libjson-c-dev libuv1-dev
   - ./autogen.sh
 script:
   - ./configure

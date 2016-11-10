@@ -27,6 +27,11 @@ AC_CHECK_HEADERS([json-c/json.h], [json_found_headers=yes; break;])
 AS_IF([test "x$json_found_headers" != "xyes"],
         [AC_MSG_ERROR([Unable to find json-c headers.])])
 
+PKG_CHECK_MODULES([UV], [libuv >= 1.8.0],, [AC_MSG_ERROR([libuv1 1.8.0 or greater was not found.])])
+AC_CHECK_HEADERS([uv.h], [uv_found_headers=yes; break;])
+AS_IF([test "x$uv_found_headers" != "xyes"],
+        [AC_MSG_ERROR([Unable to find libuv headers.])])
+
 AC_CONFIG_FILES([Makefile src/Makefile test/Makefile])
 AC_CONFIG_FILES([libstorj.pc:libstorj.pc.in])
 

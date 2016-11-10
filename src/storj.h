@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <uv.h>
 
 typedef struct {
     char *proto;

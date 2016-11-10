@@ -25,7 +25,7 @@ apt-get install build-essential libtool autotools-dev automake libmicrohttpd-dev
 
 Dependencies:
 ```bash
-apt-get install libneon27-gnutls-dev nettle-dev libjson-c-dev
+apt-get install libneon27-gnutls-dev nettle-dev libjson-c-dev libuv1-dev
 ```
 
 ### OS X Dependencies (w/ homebrew):
@@ -37,5 +37,5 @@ brew install libtool automake libmicrohttpd
 
 Dependencies:
 ```bash
-brew install neon nettle json-c
+brew install neon nettle json-c libuv
 ```
