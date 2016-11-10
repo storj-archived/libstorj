@@ -1,0 +1,17 @@
+language: c
+os: linux
+dist: trusty
+sudo: true
+addons:
+compiler:
+  - clang
+  - gcc
+before_script:
+  - sudo apt-get update -qq
+  - sudo apt-get install build-essential libtool autotools-dev automake libmicrohttpd-dev
+  - sudo apt-get install libneon27-gnutls-dev nettle-dev libjson-c-dev
+  - ./autogen.sh
+script:
+  - ./configure
+  - make
+  - ./test/tests
