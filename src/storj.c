@@ -1,6 +1,6 @@
 #include "storj.h"
 
-struct json_object* fetch_json(storj_bridge_options *options, char *method,
+static struct json_object* fetch_json(storj_bridge_options *options, char *method,
                                char *path, boolean auth)
 {
     ne_session *sess = ne_session_create(options->proto, options->host,
