@@ -5,6 +5,7 @@
 #include <nettle/aes.h>
 #include <neon/ne_string.h>
 #include <json-c/json.h>
+#include <string.h>
 
 typedef struct {
     char *proto;
