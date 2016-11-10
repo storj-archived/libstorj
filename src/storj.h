@@ -4,7 +4,6 @@
 #include <neon/ne_request.h>
 #include <nettle/aes.h>
 #include <neon/ne_string.h>
-#include <libwebsockets.h>
 #include <json-c/json.h>
 
 typedef struct {
