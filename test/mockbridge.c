@@ -1,5 +1,40 @@
 #include "storjtests.h"
 
+char* get_response_string(json_object* obj, const char* key) {
+    struct json_object* value;
+    if (json_object_object_get_ex(obj, key, &value)) {
+        return (char *)json_object_get_string(value);
+    } else {
+        printf("Could not get string for key %s", key);
+        exit(1);
+    }
+}
+
+struct json_object* get_response_json(char* path) {
+    FILE *f = fopen(path, "r");
+    if (f == NULL) {
+        printf("Error reading %s", path);
+        exit(1);
+    }
+
+    fseek(f, 0, SEEK_END);
+    long fsize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    char *json_string = malloc(fsize + 1);
+
+    size_t len = fread(json_string, fsize, 1, f);
+    if (len == 0) {
+        printf("Error reading %s", path);
+        exit(1);
+    }
+
+    fclose(f);
+
+    json_string[fsize] = 0;
+    return json_tokener_parse(json_string);
+}
+
 int mock_bridge_server(void *cls,
                        struct MHD_Connection *connection,
                        const char *url,
@@ -12,6 +47,7 @@ int mock_bridge_server(void *cls,
     static int dummy;
     struct MHD_Response *response;
 
+    json_object *responses = get_response_json("test/mockbridge.json");
 
     char *page = "Not Found";
     int status_code = MHD_HTTP_NOT_FOUND;
@@ -26,7 +62,7 @@ int mock_bridge_server(void *cls,
     }
 
     if (0 == strcmp(url, "/")) {
-        page = INFO;
+        page = get_response_string(responses, "info");
         status_code = MHD_HTTP_OK;
     }
 
@@ -34,7 +70,7 @@ int mock_bridge_server(void *cls,
         if (user &&
             0 == strcmp(user, USER) &&
             0 == strcmp(pass, PASS)) {
-            page = BUCKETS;
+            page = get_response_string(responses, "buckets");
             status_code = MHD_HTTP_OK;
         } else {
             status_code = MHD_HTTP_UNAUTHORIZED;
