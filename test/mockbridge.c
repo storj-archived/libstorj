@@ -44,7 +44,6 @@ int mock_bridge_server(void *cls,
                        size_t *upload_data_size,
                        void **ptr) {
 
-    static int dummy;
     struct MHD_Response *response;
 
     json_object *responses = get_response_json("test/mockbridge.json");
