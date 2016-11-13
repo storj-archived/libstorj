@@ -6,7 +6,7 @@ static struct json_object* fetch_json(storj_bridge_options *options, char *metho
     ne_session *sess = ne_session_create(options->proto, options->host,
                                          options->port);
 
-    if (0 == strcmp(options->proto, "https")) {
+    if (0 == strncmp(options->proto, "https", 6)) {
         ne_ssl_trust_default_ca(sess);
     }
 
