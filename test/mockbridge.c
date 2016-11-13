@@ -1,6 +1,7 @@
 #include "storjtests.h"
 
-char *get_response_string(json_object *obj, const char *key) {
+char *get_response_string(json_object *obj, const char *key)
+{
     struct json_object* value;
     if (json_object_object_get_ex(obj, key, &value)) {
         return (char *)json_object_get_string(value);
@@ -10,7 +11,8 @@ char *get_response_string(json_object *obj, const char *key) {
     }
 }
 
-struct json_object *get_response_json(char *path) {
+struct json_object *get_response_json(char *path)
+{
     FILE *f = fopen(path, "r");
     if (f == NULL) {
         printf("Error reading %s", path);
@@ -42,7 +44,8 @@ int mock_bridge_server(void *cls,
                        const char *version,
                        const char *upload_data,
                        size_t *upload_data_size,
-                       void **ptr) {
+                       void **ptr)
+{
 
     struct MHD_Response *response;
 

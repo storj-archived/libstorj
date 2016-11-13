@@ -18,10 +18,13 @@ static void clean_up_neon(ne_session *s, ne_request *r)
 
 
 
-static struct json_object *fetch_json(storj_bridge_options_t *options, char *method,
-                               char *path, boolean auth)
+static struct json_object *fetch_json(storj_bridge_options_t *options,
+                                      char *method,
+                                      char *path,
+                                      boolean auth)
 {
-    ne_session *sess = ne_session_create(options->proto, options->host,
+    ne_session *sess = ne_session_create(options->proto,
+                                         options->host,
                                          options->port);
 
     if (0 == strcmp(options->proto, "https")) {
