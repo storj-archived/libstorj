@@ -27,6 +27,10 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
                                          options->host,
                                          options->port);
 
+    //
+    // TODO: error check the ne calls in this function
+    //
+
     if (0 == strcmp(options->proto, "https")) {
         ne_ssl_trust_default_ca(sess);
     }
@@ -54,14 +58,24 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
         return NULL;
     }
 
-    char *body = calloc(NE_BUFSIZ * 4, sizeof(char));
-    char *buf  = calloc(NE_BUFSIZ, sizeof(char));
+    // Note: NE_BUFSIZ is from ne_defs.h. Should be okay to use.
+    // TODO: Is it worth initializing body to something greater than buf?
+    //       What's the common case?
+    int body_sz = NE_BUFSIZ;
+    char *body  = malloc(NE_BUFSIZ);
+    char *buf   = malloc(NE_BUFSIZ);
+    // TODO error check the malloc
     ssize_t bytes = 0;
     ssize_t total = 0;
 
-    while ((bytes = ne_read_response_block(req, buf, NE_BUFSIZ)) > 0) {
-        if (total + bytes > sizeof(body)) {
-            body = (char *) realloc(body, total + bytes + 1);
+    while (bytes = ne_read_response_block(req, buf, NE_BUFSIZ)) {
+        if (bytes < 0) {
+                // TODO: error. careful with cleanup
+        }
+        if (total + bytes > body_sz) {
+            body_sz *= 2;
+            body = (char *) realloc(body, body_sz);
+            // TODO error check realloc call
         }
 
         memcpy(body + total, buf, bytes);
@@ -70,7 +84,13 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
 
     clean_up_neon(sess, req);
 
-    return json_tokener_parse(body);
+    json_object *j = json_tokener_parse(body);
+    // TODO: Error checking
+
+    free(body);
+    free(buf);
+
+    return j;
 }
 
 struct json_object *storj_bridge_get_info(storj_bridge_options_t *options)
