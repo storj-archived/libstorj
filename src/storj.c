@@ -1,5 +1,23 @@
 #include "storj.h"
 
+
+static void clean_up_neon(ne_session *s, ne_request *r)
+{
+    // Do this first...
+    ne_request_destroy(r);
+
+    // Do this anywa: ``Use of this function is entirely optional, but it must
+    // not be called if there is a request active using the session.''
+    ne_close_connection(s);
+
+    // Do this last: ``The session object must not be destroyed until after all
+    // associated request objects have been destroyed.''
+    ne_session_destroy(s);
+}
+
+
+
+
 static struct json_object *fetch_json(storj_bridge_options_t *options, char *method,
                                char *path, boolean auth)
 {
@@ -29,8 +47,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options, char *met
         printf("Request failed: %s\n", ne_get_error(sess));
         // FIXME: we should standardize how we want to write out errors.
         // And do we want to return an object here or bail?
-        // Also, we have a couple memory leaks if we return early here
-        // (req and sess)
+        clean_up_neon(sess, req);
         return NULL;
     }
 
@@ -48,7 +65,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options, char *met
         total += bytes;
     }
 
-    ne_request_destroy(req);
+    clean_up_neon(sess, req);
 
     return json_tokener_parse(body);
 }
