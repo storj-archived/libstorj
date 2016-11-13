@@ -29,6 +29,8 @@ static struct json_object *fetch_json(storj_bridge_options_t *options, char *met
         printf("Request failed: %s\n", ne_get_error(sess));
         // FIXME: we should standardize how we want to write out errors.
         // And do we want to return an object here or bail?
+        // Also, we have a couple memory leaks if we return early here
+        // (req and sess)
         return NULL;
     }
 
