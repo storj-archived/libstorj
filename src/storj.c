@@ -53,16 +53,12 @@ static struct json_object *fetch_json(storj_bridge_options_t *options, char *met
 
 struct json_object *storj_bridge_get_info(storj_bridge_options_t *options)
 {
-    json_object *obj = fetch_json(options, "GET", "/", false);
-
-    return obj;
+    return fetch_json(options, "GET", "/", false);
 }
 
 struct json_object *storj_bridge_get_buckets(storj_bridge_options_t *options)
 {
-    json_object *obj = fetch_json(options, "GET", "/buckets", true);
-
-    return obj;
+    return fetch_json(options, "GET", "/buckets", true);
 }
 
 struct json_object *storj_bridge_create_bucket()
