@@ -25,13 +25,11 @@ static struct json_object *fetch_json(storj_bridge_options_t *options, char *met
     }
     // FIXME: what if the above if-check fails?
 
-    json_object *obj;
-
     if (ne_begin_request(req) != NE_OK) {
         printf("Request failed: %s\n", ne_get_error(sess));
         // FIXME: we should standardize how we want to write out errors.
         // And do we want to return an object here or bail?
-        return obj;
+        return NULL;
     }
 
     char *body = calloc(NE_BUFSIZ * 4, sizeof(char));
@@ -50,9 +48,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options, char *met
 
     ne_request_destroy(req);
 
-    obj = json_tokener_parse(body);
-
-    return obj;
+    return json_tokener_parse(body);
 }
 
 struct json_object *storj_bridge_get_info(storj_bridge_options_t *options)
