@@ -15,7 +15,7 @@ int main(void)
         return 1;
     }
 
-    storj_bridge_options options = {
+    storj_bridge_options_t options = {
         .proto = "http",
         .host  = "localhost",
         .port  = 8091,

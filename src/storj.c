@@ -1,6 +1,6 @@
 #include "storj.h"
 
-static struct json_object *fetch_json(storj_bridge_options *options, char *method,
+static struct json_object *fetch_json(storj_bridge_options_t *options, char *method,
                                char *path, boolean auth)
 {
     ne_session *sess = ne_session_create(options->proto, options->host,
@@ -52,14 +52,14 @@ static struct json_object *fetch_json(storj_bridge_options *options, char *metho
     return obj;
 }
 
-struct json_object *storj_bridge_get_info(storj_bridge_options *options)
+struct json_object *storj_bridge_get_info(storj_bridge_options_t *options)
 {
     json_object *obj = fetch_json(options, "GET", "/", false);
 
     return obj;
 }
 
-struct json_object *storj_bridge_get_buckets(storj_bridge_options *options)
+struct json_object *storj_bridge_get_buckets(storj_bridge_options_t *options)
 {
     json_object *obj = fetch_json(options, "GET", "/buckets", true);
 
