@@ -41,7 +41,7 @@ static struct json_object *fetch_json(storj_bridge_options *options, char *metho
             body = (char *) realloc(body, total + bytes + 1);
         }
 
-        memcpy(&body[total], buf, bytes);
+        memcpy(body + total, buf, bytes);
         total += bytes;
     }
 
