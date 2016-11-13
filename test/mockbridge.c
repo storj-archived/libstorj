@@ -85,6 +85,11 @@ int mock_bridge_server(void *cls,
     *ptr = NULL;
 
     ret = MHD_queue_response(connection, status_code, response);
+    if (ret == MHD_NO) {
+        fprintf(stderr, "MHD_queue_response ERROR: Bad args were passed " \
+                        "(e.g. null value), or another error occurred" \
+                        "(e.g. reply was already sent)\n");
+    }
 
     MHD_destroy_response(response);
 
