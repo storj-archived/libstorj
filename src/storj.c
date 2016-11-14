@@ -59,22 +59,19 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
     }
 
     // Note: NE_BUFSIZ is from ne_defs.h. Should be okay to use.
-    // TODO: Is it worth initializing body to something greater than buf?
-    //       What's the common case?
     int body_sz = NE_BUFSIZ;
-    char *body  = malloc(NE_BUFSIZ);
-    char *buf   = malloc(NE_BUFSIZ);
-    // TODO error check the malloc
+    char *body  = calloc(NE_BUFSIZ * 4, sizeof(char));
+    char *buf   = calloc(NE_BUFSIZ, sizeof(char));
+    // TODO error check the calloc
     ssize_t bytes = 0;
     ssize_t total = 0;
 
     while (bytes = ne_read_response_block(req, buf, NE_BUFSIZ)) {
         if (bytes < 0) {
-                // TODO: error. careful with cleanup
+            // TODO: error. careful with cleanup
         }
-        if (total + bytes > body_sz) {
-            body_sz *= 2;
-            body = (char *) realloc(body, body_sz);
+        if (total + bytes + 1 > body_sz) {
+            body = (char *) realloc(body, total + bytes + 1);
             // TODO error check realloc call
         }
 
