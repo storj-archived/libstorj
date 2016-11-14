@@ -28,4 +28,6 @@ AS_IF([test "x$json_found_headers" != "xyes"],
         [AC_MSG_ERROR([Unable to find json-c headers.])])
 
 AC_CONFIG_FILES([Makefile src/Makefile test/Makefile])
+AC_CONFIG_FILES([libstorj.pc:libstorj.pc.in])
+
 AC_OUTPUT
