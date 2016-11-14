@@ -1,10 +1,35 @@
 #include "storj.h"
 
-static struct json_object* fetch_json(storj_bridge_options *options, char *method,
-                               char *path, boolean auth)
+
+static void clean_up_neon(ne_session *s, ne_request *r)
 {
-    ne_session *sess = ne_session_create(options->proto, options->host,
+    // Do this first...
+    ne_request_destroy(r);
+
+    // Do this anywa: ``Use of this function is entirely optional, but it must
+    // not be called if there is a request active using the session.''
+    ne_close_connection(s);
+
+    // Do this last: ``The session object must not be destroyed until after all
+    // associated request objects have been destroyed.''
+    ne_session_destroy(s);
+}
+
+
+
+
+static struct json_object *fetch_json(storj_bridge_options_t *options,
+                                      char *method,
+                                      char *path,
+                                      boolean auth)
+{
+    ne_session *sess = ne_session_create(options->proto,
+                                         options->host,
                                          options->port);
+
+    //
+    // TODO: error check the ne calls in this function
+    //
 
     if (0 == strcmp(options->proto, "https")) {
         ne_ssl_trust_default_ca(sess);
@@ -23,120 +48,132 @@ static struct json_object* fetch_json(storj_bridge_options *options, char *metho
 
         ne_add_request_header(req, "Authorization", auth_value);
     }
-
-    json_object *obj;
+    // FIXME: what if the above if-check fails?
 
     if (ne_begin_request(req) != NE_OK) {
         printf("Request failed: %s\n", ne_get_error(sess));
-        return obj;
+        // FIXME: we should standardize how we want to write out errors.
+        // And do we want to return an object here or bail?
+        clean_up_neon(sess, req);
+        return NULL;
     }
 
-    char *body = calloc(NE_BUFSIZ * 4, sizeof(char));
-    char *buf = calloc(NE_BUFSIZ, sizeof(char));
+    // Note: NE_BUFSIZ is from ne_defs.h. Should be okay to use.
+    // TODO: Is it worth initializing body to something greater than buf?
+    //       What's the common case?
+    int body_sz = NE_BUFSIZ;
+    char *body  = malloc(NE_BUFSIZ);
+    char *buf   = malloc(NE_BUFSIZ);
+    // TODO error check the malloc
     ssize_t bytes = 0;
     ssize_t total = 0;
 
-    while ((bytes = ne_read_response_block(req, buf, NE_BUFSIZ)) > 0) {
-        if (total + bytes > sizeof(body)) {
-            body = (char *) realloc(body, total + bytes + 1);
+    while (bytes = ne_read_response_block(req, buf, NE_BUFSIZ)) {
+        if (bytes < 0) {
+                // TODO: error. careful with cleanup
+        }
+        if (total + bytes > body_sz) {
+            body_sz *= 2;
+            body = (char *) realloc(body, body_sz);
+            // TODO error check realloc call
         }
 
-        memcpy(&body[total], buf, bytes);
+        memcpy(body + total, buf, bytes);
         total += bytes;
     }
 
-    ne_request_destroy(req);
+    clean_up_neon(sess, req);
 
-    obj = json_tokener_parse(body);
+    json_object *j = json_tokener_parse(body);
+    // TODO: Error checking
 
-    return obj;
+    free(body);
+    free(buf);
+
+    return j;
 }
 
-struct json_object* storj_bridge_get_info(storj_bridge_options *options)
+struct json_object *storj_bridge_get_info(storj_bridge_options_t *options)
 {
-    json_object *obj = fetch_json(options, "GET", "/", false);
-
-    return obj;
+    return fetch_json(options, "GET", "/", false);
 }
 
-struct json_object* storj_bridge_get_buckets(storj_bridge_options *options)
+struct json_object *storj_bridge_get_buckets(storj_bridge_options_t *options)
 {
-    json_object *obj = fetch_json(options, "GET", "/buckets", true);
-
-    return obj;
+    return fetch_json(options, "GET", "/buckets", true);
 }
 
-struct json_object* storj_bridge_create_bucket()
-{
-
-}
-
-struct json_object* storj_bridge_delete_bucket()
+struct json_object *storj_bridge_create_bucket()
 {
 
 }
 
-struct json_object* storj_bridge_list_files()
+struct json_object *storj_bridge_delete_bucket()
 {
 
 }
 
-struct json_object* storj_bridge_create_bucket_token()
+struct json_object *storj_bridge_list_files()
 {
 
 }
 
-struct json_object* storj_bridge_delete_file()
+struct json_object *storj_bridge_create_bucket_token()
 {
 
 }
 
-struct json_object* storj_bridge_create_frame()
+struct json_object *storj_bridge_delete_file()
 {
 
 }
 
-struct json_object* storj_bridge_get_frames()
+struct json_object *storj_bridge_create_frame()
 {
 
 }
 
-struct json_object* storj_bridge_get_file_info()
+struct json_object *storj_bridge_get_frames()
 {
 
 }
 
-struct json_object* storj_bridge_get_frame()
+struct json_object *storj_bridge_get_file_info()
 {
 
 }
 
-struct json_object* storj_bridge_delete_frame()
+struct json_object *storj_bridge_get_frame()
 {
 
 }
 
-struct json_object* storj_bridge_add_shard_to_frame()
+struct json_object *storj_bridge_delete_frame()
 {
 
 }
 
-struct json_object* storj_bridge_replicate_file()
+struct json_object *storj_bridge_add_shard_to_frame()
 {
 
 }
 
-struct json_object* storj_bridge_store_file()
+struct json_object *storj_bridge_replicate_file()
 {
 
 }
 
-struct json_object* storj_bridge_get_file_pointers()
+struct json_object *storj_bridge_store_file()
 {
 
 }
 
-struct json_object* storj_bridge_resolve_file()
+struct json_object *storj_bridge_get_file_pointers()
+{
+
+}
+
+struct json_object *storj_bridge_resolve_file()
 {
 
 }

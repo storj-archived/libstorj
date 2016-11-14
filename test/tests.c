@@ -11,15 +11,16 @@ int main(void)
                          &mock_bridge_server,
                          NULL,
                          MHD_OPTION_END);
-    if (d == NULL)
+    if (d == NULL) {
         return 1;
+    }
 
-    storj_bridge_options options = {
-        "http",
-        "localhost",
-        8091,
-        "testuser@storj.io",
-        "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
+    storj_bridge_options_t options = {
+        .proto = "http",
+        .host  = "localhost",
+        .port  = 8091,
+        .user  = "testuser@storj.io",
+        .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
     };
 
     json_object *obj = storj_bridge_get_info(&options);
