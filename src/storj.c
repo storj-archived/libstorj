@@ -70,7 +70,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
         if (bytes < 0) {
             // TODO: error. careful with cleanup
         }
-        if (total + bytes + 1 > body_sz) {
+        if (total + bytes + 1 > sizeof(body)) {
             body = (char *) realloc(body, total + bytes + 1);
             // TODO error check realloc call
         }
