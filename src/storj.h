@@ -18,8 +18,14 @@ typedef struct {
     char *pass;
 } storj_bridge_options_t;
 
+typedef struct storj_env {
+    storj_bridge_options_t *bridge_options;
+    uv_loop_t *loop;
+} storj_env_t;
+
 typedef enum { false, true } boolean;
 
+storj_env_t *storj_init_env(storj_bridge_options_t *options);
 struct json_object *storj_bridge_get_info(storj_bridge_options_t *options);
 struct json_object *storj_bridge_get_buckets(storj_bridge_options_t *options);
 struct json_object *storj_bridge_create_bucket();

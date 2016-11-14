@@ -23,6 +23,8 @@ int main(void)
         .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
     };
 
+    storj_env_t *env = storj_init_env(&options);
+
     json_object *obj = storj_bridge_get_info(&options);
 
     printf("%s\n", json_object_to_json_string(obj));
