@@ -1,6 +1,8 @@
 Storj C
 =======
 
+[![Build Status](https://travis-ci.org/Storj/libstorj-c.svg?branch=master)](https://travis-ci.org/Storj/libstorj-c)
+
 ## Build
 
 ```bash
