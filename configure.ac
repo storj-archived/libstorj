@@ -9,7 +9,7 @@ if test -z "$PKG_CONFIG"; then
    AC_MSG_ERROR([pkg-config not found. pkg-config is required to check for some dependencies.])
 fi
 
-PKG_CHECK_MODULES([NEON], [neon >= 0.30.1],, [AC_MSG_ERROR([libneon 0.30.1 or greater was not found.])])
+PKG_CHECK_MODULES([NEON], [neon >= 0.30.0],, [AC_MSG_ERROR([libneon 0.30.0 or greater was not found.])])
 AC_CHECK_HEADERS([neon/ne_request.h], [neon_found_headers=yes; break;])
 AS_IF([test "x$neon_found_headers" != "xyes"],
             [AC_MSG_ERROR([Unable to find neon headers.])])
