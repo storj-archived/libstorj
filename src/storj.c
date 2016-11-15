@@ -93,14 +93,29 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
 
 struct storj_env *storj_init_env(storj_bridge_options_t *options)
 {
-    uv_loop_t *loop = uv_default_loop();
-    uv_run(loop, UV_RUN_DEFAULT);
+    uv_loop_t *loop = malloc(sizeof(uv_loop_t));
+    if (uv_loop_init(loop)) {
+        return NULL;
+    }
+    if (uv_run(loop, UV_RUN_DEFAULT)) {
+        return NULL;
+    }
 
     storj_env_t *env = malloc(sizeof(storj_env_t));
     env->bridge_options = options;
     env->loop = loop;
 
     return env;
+}
+
+int storj_close_env(storj_env_t *env)
+{
+    int status = uv_loop_close(env->loop);
+    if (status == UV_EBUSY) {
+        return status;
+    }
+
+    return 0;
 }
 
 struct json_object *storj_bridge_get_info(storj_bridge_options_t *options)

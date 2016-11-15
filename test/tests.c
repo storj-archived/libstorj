@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "storjtests.h"
 
 int main(void)
@@ -24,6 +25,7 @@ int main(void)
     };
 
     storj_env_t *env = storj_init_env(&options);
+    assert(env != NULL);
 
     json_object *obj = storj_bridge_get_info(&options);
 
