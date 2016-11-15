@@ -59,7 +59,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
     }
 
     // Note: NE_BUFSIZ is from ne_defs.h. Should be okay to use.
-    int body_sz = NE_BUFSIZ;
+    int body_sz = NE_BUFSIZ * 4;
     char *body  = calloc(NE_BUFSIZ * 4, sizeof(char));
     char *buf   = calloc(NE_BUFSIZ, sizeof(char));
     // TODO error check the calloc
@@ -70,8 +70,9 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
         if (bytes < 0) {
             // TODO: error. careful with cleanup
         }
-        if (total + bytes + 1 > sizeof(body)) {
-            body = (char *) realloc(body, total + bytes + 1);
+        if (total + bytes + 1 > body_sz) {
+            body_sz += bytes + 1;
+            body = (char *) realloc(body, body_sz);
             // TODO error check realloc call
         }
 
