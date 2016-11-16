@@ -157,77 +157,98 @@ int storj_bridge_get_buckets(storj_env_t *env, uv_after_work_cb cb)
     return 0;
 }
 
-struct json_object *storj_bridge_create_bucket()
+int storj_bridge_create_bucket(storj_env_t *env, char *name,
+                               uv_after_work_cb cb)
+{
+    struct json_object *body = json_object_new_object();
+    json_object *name_string = json_object_new_string(name);
+    json_object_object_add(body, "name", name_string);
+
+    uv_work_t *work = malloc(sizeof(uv_work_t));
+    assert(work != NULL);
+
+    json_request_t *req = malloc(sizeof(json_request_t));
+    assert(work != NULL);
+
+    req->body = body;
+    req->options = env->bridge_options;
+    req->method = "POST";
+    req->path = "/buckets";
+    req->auth = true;
+
+    work->data = req;
+
+    uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+
+    return 0;
+}
+
+int storj_bridge_delete_bucket(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_delete_bucket()
+int storj_bridge_list_files(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_list_files()
+int storj_bridge_create_bucket_token(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_create_bucket_token()
+int storj_bridge_delete_file(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_delete_file()
+int storj_bridge_create_frame(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_create_frame()
+int storj_bridge_get_frames(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_get_frames()
+int storj_bridge_get_file_info(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_get_file_info()
+int storj_bridge_get_frame(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_get_frame()
+int storj_bridge_delete_frame(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_delete_frame()
+int storj_bridge_add_shard_to_frame(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_add_shard_to_frame()
+int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_replicate_file()
+int storj_bridge_store_file(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_store_file()
+int storj_bridge_get_file_pointers(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }
 
-struct json_object *storj_bridge_get_file_pointers()
-{
-
-}
-
-struct json_object *storj_bridge_resolve_file()
+int storj_bridge_resolve_file(storj_env_t *env, uv_after_work_cb cb)
 {
 
 }

@@ -43,6 +43,9 @@ int main(void)
     status = storj_bridge_get_buckets(env, callback);
     assert(status == 0);
 
+    status = storj_bridge_create_bucket(env, "backups", callback);
+    assert(status == 0);
+
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return -1;
