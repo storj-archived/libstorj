@@ -59,24 +59,38 @@ int mock_bridge_server(void *cls,
     char *pass;
     char *user = MHD_basic_auth_get_username_password(connection, &pass);
 
-    if (0 != strcmp(method, "GET")) {
-        return MHD_NO;
-    }
-
-    if (0 == strcmp(url, "/")) {
-        page = get_response_string(responses, "info");
-        status_code = MHD_HTTP_OK;
-    }
-
-    if (0 == strcmp(url, "/buckets")) {
-        if (user &&
-            0 == strcmp(user, USER) &&
-            0 == strcmp(pass, PASS)) {
-            page = get_response_string(responses, "buckets");
+    if (0 == strcmp(method, "GET")) {
+        if (0 == strcmp(url, "/")) {
+            page = get_response_string(responses, "info");
             status_code = MHD_HTTP_OK;
-        } else {
-            status_code = MHD_HTTP_UNAUTHORIZED;
-            page = "Unauthorized";
+        }
+
+        if (0 == strcmp(url, "/buckets")) {
+            if (user &&
+                0 == strcmp(user, USER) &&
+                0 == strcmp(pass, PASS)) {
+                page = get_response_string(responses, "getbuckets");
+                status_code = MHD_HTTP_OK;
+            } else {
+                status_code = MHD_HTTP_UNAUTHORIZED;
+                page = "Unauthorized";
+            }
+        }
+    } else if (0 == strcmp(method, "POST")) {
+
+        if (0 == strcmp(url, "/buckets")) {
+            if (user &&
+                0 == strcmp(user, USER) &&
+                0 == strcmp(pass, PASS)) {
+
+                // TODO check post body
+
+                page = get_response_string(responses, "putbuckets");
+                status_code = MHD_HTTP_OK;
+            } else {
+                status_code = MHD_HTTP_UNAUTHORIZED;
+                page = "Unauthorized";
+            }
         }
     }
 

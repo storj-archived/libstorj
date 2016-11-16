@@ -17,6 +17,7 @@ static void clean_up_neon(ne_session *s, ne_request *r)
 static struct json_object *fetch_json(storj_bridge_options_t *options,
                                       char *method,
                                       char *path,
+                                      struct json_object *request_body,
                                       boolean_t auth)
 {
     ne_session *sess = ne_session_create(options->proto,
@@ -33,6 +34,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
 
     ne_request *req = ne_request_create(sess, method, path);
 
+    // include authentication headers if info is provided
     if (auth && options->user && options->pass) {
 
         char *user_pass = ne_concat(options->user, ":", options->pass, NULL);
@@ -44,7 +46,13 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
 
         ne_add_request_header(req, "Authorization", auth_value);
     }
-    // FIXME: what if the above if-check fails?
+
+    // include body if request body json is provided
+    if (request_body) {
+        const char *req_buf = json_object_to_json_string(request_body);
+        ne_add_request_header(req, "Content-Type", "application/json");
+        ne_set_request_body_buffer(req, req_buf, strlen(req_buf));
+    }
 
     if (ne_begin_request(req) != NE_OK) {
         printf("Request failed: %s\n", ne_get_error(sess));
@@ -90,7 +98,11 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
 static void json_request_worker(uv_work_t *work)
 {
     json_request_t *req = work->data;
-    req->response = fetch_json(req->options, req->method, req->path, req->auth);
+    req->response = fetch_json(req->options,
+                               req->method,
+                               req->path,
+                               req->body,
+                               req->auth);
 }
 
 struct storj_env *storj_init_env(storj_bridge_options_t *options)

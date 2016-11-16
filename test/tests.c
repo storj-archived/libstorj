@@ -4,7 +4,7 @@
 void callback(uv_work_t *work_req, int status)
 {
     json_request_t *req = work_req->data;
-    printf("%s\n", json_object_to_json_string(req->response));
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
 }
 
 int main(void)

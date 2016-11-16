@@ -1833,7 +1833,58 @@
       }
     }
   },
-  "buckets": {
-    "buckets": {}
+  "getbuckets": [
+    {
+      "user": "braydon@storj.io",
+      "encryptionKey": "",
+      "publicPermissions": [ ],
+      "created": "2016-10-12T14:40:21.259Z",
+      "name": "test",
+      "pubkeys": [
+        "02d592ab63c105781d501e1d85744699119c2fee2d69082df3d9b8c08257055964"
+      ],
+      "status": "Active",
+      "transfer": 0,
+      "storage": 0,
+      "id": "e3eca45f4d294132c07b49f4"
+    }, {
+      "user": "braydon@storj.io",
+      "encryptionKey": "",
+      "publicPermissions": [ ],
+      "created": "2016-10-12T15:36:40.012Z",
+      "name": "test2",
+      "pubkeys": [
+        "02d592ab63c105781d501e1d85744699119c2fee2d69082df3d9b8c08257055964"
+      ],
+      "status": "Active",
+      "transfer": 0,
+      "storage": 0,
+      "id": "ef466257f5e10aa4755d411a"
+    }, {
+      "user": "braydon@storj.io",
+      "encryptionKey": "",
+      "publicPermissions": [ ],
+      "created": "2016-11-08T02:14:18.628Z",
+      "name": "Bucket-5919ed",
+      "pubkeys": [
+        "02d592ab63c105781d501e1d85744699119c2fee2d69082df3d9b8c08257055964"
+      ],
+      "status": "Active",
+      "transfer": 0,
+      "storage": 0,
+      "id": "eaf27b3a4daec36fb45f8b57"
+    }
+  ],
+  "putbuckets": {
+    "user": "braydon@storj.io",
+    "encryptionKey": "",
+    "publicPermissions": [ ],
+    "created": "2016-11-16T19:39:11.605Z",
+    "name": "backups",
+    "pubkeys": [ ],
+    "status": "Active",
+    "transfer": 0,
+    "storage": 0,
+    "id": "0f1810b4bb5b6472352ec486"
   }
 }
