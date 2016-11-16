@@ -1,6 +1,5 @@
 #include "storj.h"
 
-
 static void clean_up_neon(ne_session *s, ne_request *r)
 {
     // Do this first...
@@ -15,13 +14,10 @@ static void clean_up_neon(ne_session *s, ne_request *r)
     ne_session_destroy(s);
 }
 
-
-
-
 static struct json_object *fetch_json(storj_bridge_options_t *options,
                                       char *method,
                                       char *path,
-                                      boolean auth)
+                                      boolean_t auth)
 {
     ne_session *sess = ne_session_create(options->proto,
                                          options->host,
@@ -91,13 +87,16 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
     return j;
 }
 
+static void json_request_worker(uv_work_t *work)
+{
+    json_request_t *req = work->data;
+    req->response = fetch_json(req->options, req->method, req->path, req->auth);
+}
+
 struct storj_env *storj_init_env(storj_bridge_options_t *options)
 {
     uv_loop_t *loop = malloc(sizeof(uv_loop_t));
     if (uv_loop_init(loop)) {
-        return NULL;
-    }
-    if (uv_run(loop, UV_RUN_DEFAULT)) {
         return NULL;
     }
 
@@ -118,14 +117,44 @@ int storj_close_env(storj_env_t *env)
     return 0;
 }
 
-struct json_object *storj_bridge_get_info(storj_bridge_options_t *options)
+int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb)
 {
-    return fetch_json(options, "GET", "/", false);
+    uv_work_t *work = malloc(sizeof(uv_work_t));
+    assert(work != NULL);
+
+    json_request_t *req = malloc(sizeof(json_request_t));
+    assert(work != NULL);
+
+    req->options = env->bridge_options;
+    req->method = "GET";
+    req->path = "/";
+    req->auth = false;
+
+    work->data = req;
+
+    uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+
+    return 0;
 }
 
-struct json_object *storj_bridge_get_buckets(storj_bridge_options_t *options)
+int storj_bridge_get_buckets(storj_env_t *env, uv_after_work_cb cb)
 {
-    return fetch_json(options, "GET", "/buckets", true);
+    uv_work_t *work = malloc(sizeof(uv_work_t));
+    assert(work != NULL);
+
+    json_request_t *req = malloc(sizeof(json_request_t));
+    assert(work != NULL);
+
+    req->options = env->bridge_options;
+    req->method = "GET";
+    req->path = "/buckets";
+    req->auth = true;
+
+    work->data = req;
+
+    uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+
+    return 0;
 }
 
 struct json_object *storj_bridge_create_bucket()

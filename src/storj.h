@@ -1,6 +1,7 @@
 #ifndef STORJ_H
 #define STORJ_H
 
+#include <assert.h>
 #include <neon/ne_request.h>
 #include <nettle/aes.h>
 #include <neon/ne_string.h>
@@ -21,13 +22,22 @@ typedef struct {
 typedef struct storj_env {
     storj_bridge_options_t *bridge_options;
     uv_loop_t *loop;
+    int64_t loop_counter;
 } storj_env_t;
 
-typedef enum { false, true } boolean;
+typedef enum { false, true } boolean_t;
+
+typedef struct {
+    storj_bridge_options_t *options;
+    char *method;
+    char *path;
+    boolean_t auth;
+    struct json_object *response;
+} json_request_t;
 
 storj_env_t *storj_init_env(storj_bridge_options_t *options);
-struct json_object *storj_bridge_get_info(storj_bridge_options_t *options);
-struct json_object *storj_bridge_get_buckets(storj_bridge_options_t *options);
+int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_get_buckets(storj_env_t *env, uv_after_work_cb cb);
 struct json_object *storj_bridge_create_bucket();
 struct json_object *storj_bridge_delete_bucket();
 struct json_object *storj_bridge_list_files();
