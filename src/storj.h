@@ -35,6 +35,24 @@ typedef struct {
     struct json_object *response;
 } json_request_t;
 
+
+typedef enum {BUCKET_PUSH, BUCKET_PULL} storj_bucket_op_t;
+static const char *BUCKET_OP[] = { "PUSH", "PULL" };
+
+typedef struct {
+} storj_shard_tree;
+
+typedef struct {
+} storj_shard_challenges;
+
+typedef struct {
+    int index;
+    char *hash;
+    uint64_t size;
+    storj_shard_tree tree;
+    storj_shard_challenges challenges;
+} storj_shard_t;
+
 storj_env_t *storj_init_env(storj_bridge_options_t *options);
 
 int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb);
@@ -45,32 +63,48 @@ int storj_bridge_create_bucket(storj_env_t *env,
                                char *name,
                                uv_after_work_cb cb);
 
-int storj_bridge_delete_bucket(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_delete_bucket(storj_env_t *env, char *id, uv_after_work_cb cb);
 
-int storj_bridge_list_files(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_list_files(storj_env_t *env, char *id, uv_after_work_cb cb);
 
-int storj_bridge_create_bucket_token(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_create_bucket_token(storj_env_t *env,
+                                     char *id,
+                                     storj_bucket_op_t operation,
+                                     uv_after_work_cb cb);
 
-int storj_bridge_delete_file(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_delete_file(storj_env_t *env,
+                             char *bucket_id,
+                             char *file_id,
+                             uv_after_work_cb cb);
 
 int storj_bridge_create_frame(storj_env_t *env, uv_after_work_cb cb);
 
 int storj_bridge_get_frames(storj_env_t *env, uv_after_work_cb cb);
 
-int storj_bridge_get_file_info(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_get_frame(storj_env_t *env,
+                           char *frame_id,
+                           uv_after_work_cb cb);
 
-int storj_bridge_get_frame(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_delete_frame(storj_env_t *env,
+                              char *frame_id,
+                              uv_after_work_cb cb);
 
-int storj_bridge_delete_frame(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_add_shard_to_frame(storj_env_t *env,
+                                    char *frame_id,
+                                    storj_shard_t *shard,
+                                    uv_after_work_cb cb);
 
-int storj_bridge_add_shard_to_frame(storj_env_t *env, uv_after_work_cb cb);
-
-int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_get_file_info(storj_env_t *env,
+                               char *bucket_id,
+                               char *file_id,
+                               uv_after_work_cb cb);
 
 int storj_bridge_store_file(storj_env_t *env, uv_after_work_cb cb);
 
 int storj_bridge_get_file_pointers(storj_env_t *env, uv_after_work_cb cb);
 
 int storj_bridge_resolve_file(storj_env_t *env, uv_after_work_cb cb);
+
+int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
 
 #endif /* STORJ_H */

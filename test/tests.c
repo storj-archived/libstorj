@@ -51,6 +51,12 @@ int main(void)
         return -1;
     }
 
+    // close event loop
+    status = uv_loop_close(env->loop);
+    if (status == UV_EBUSY) {
+        return -1;
+    }
+
     // shutdown test server
     MHD_stop_daemon(d);
 
