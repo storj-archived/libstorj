@@ -22,7 +22,6 @@ typedef struct {
 typedef struct storj_env {
     storj_bridge_options_t *bridge_options;
     uv_loop_t *loop;
-    int64_t loop_counter;
 } storj_env_t;
 
 typedef enum { false, true } boolean_t;
