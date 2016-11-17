@@ -20,9 +20,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
                                       struct json_object *request_body,
                                       storj_boolean_t auth)
 {
-    ne_session *sess = ne_session_create(options->proto,
-                                         options->host,
-                                         options->port);
+    ne_session *sess = ne_session_create(options->proto, options->host, options->port);
 
     //
     // TODO: error check the ne calls in this function
@@ -39,8 +37,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
 
         char *user_pass = ne_concat(options->user, ":", options->pass, NULL);
 
-        char *user_pass_64 = ne_base64((unsigned char *)user_pass,
-                                       strlen(user_pass));
+        char *user_pass_64 = ne_base64((unsigned char *)user_pass, strlen(user_pass));
 
         char *auth_value = ne_concat("Basic ", user_pass_64, NULL);
 
@@ -98,11 +95,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
 static void json_request_worker(uv_work_t *work)
 {
     json_request_t *req = work->data;
-    req->response = fetch_json(req->options,
-                               req->method,
-                               req->path,
-                               req->body,
-                               req->auth);
+    req->response = fetch_json(req->options, req->method, req->path, req->body, req->auth);
 }
 
 static uv_work_t *uv_work_new()
@@ -162,11 +155,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options)
 
 int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb)
 {
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                            "GET",
-                                            "/",
-                                            NULL,
-                                            false);
+    uv_work_t *work = json_request_work_new(env->bridge_options,"GET", "/", NULL, false);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 
@@ -175,11 +164,7 @@ int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb)
 int storj_bridge_get_buckets(storj_env_t *env, uv_after_work_cb cb)
 {
 
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                       "GET",
-                                       "/buckets",
-                                       NULL,
-                                       true);
+    uv_work_t *work = json_request_work_new(env->bridge_options, "GET", "/buckets", NULL, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -192,23 +177,16 @@ int storj_bridge_create_bucket(storj_env_t *env,
     json_object *name_string = json_object_new_string(name);
     json_object_object_add(body, "name", name_string);
 
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                            "POST",
-                                            "/buckets",
-                                            body,
-                                            true);
+    uv_work_t *work = json_request_work_new(env->bridge_options, "POST", "/buckets", body, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
 int storj_bridge_delete_bucket(storj_env_t *env, char *id, uv_after_work_cb cb)
 {
+    char *path = ne_concat("/buckets/", id, NULL);
 
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                            "DELETE",
-                                            ne_concat("/buckets/", id, NULL),
-                                            NULL,
-                                            true);
+    uv_work_t *work = json_request_work_new(env->bridge_options, "DELETE", path, NULL, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -216,12 +194,9 @@ int storj_bridge_delete_bucket(storj_env_t *env, char *id, uv_after_work_cb cb)
 int storj_bridge_list_files(storj_env_t *env, char *id, uv_after_work_cb cb)
 {
 
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                       "GET",
-                                       ne_concat("/buckets/", id,
-                                                 "/files", NULL),
-                                       NULL,
-                                       true);
+    char *path = ne_concat("/buckets/", id, "/files", NULL);
+
+    uv_work_t *work = json_request_work_new(env->bridge_options, "GET", path, NULL, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -235,14 +210,9 @@ int storj_bridge_create_bucket_token(storj_env_t *env,
     json_object *op_string = json_object_new_string(BUCKET_OP[operation]);
     json_object_object_add(body, "operation", op_string);
 
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                            "POST",
-                                            ne_concat("/buckets/",
-                                                      bucket_id,
-                                                      "/tokens",
-                                                      NULL),
-                                            body,
-                                            true);
+    char *path = ne_concat("/buckets/", bucket_id, "/tokens", NULL);
+
+    uv_work_t *work = json_request_work_new(env->bridge_options, "POST", path, body, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -252,37 +222,23 @@ int storj_bridge_delete_file(storj_env_t *env,
                              char *file_id,
                              uv_after_work_cb cb)
 {
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                            "DELETE",
-                                            ne_concat("/buckets/",
-                                                      bucket_id,
-                                                      "/files/",
-                                                      file_id,
-                                                      NULL),
-                                            NULL,
-                                            true);
+    char *path = ne_concat("/buckets/", bucket_id, "/files/", file_id, NULL);
+
+    uv_work_t *work = json_request_work_new(env->bridge_options, "DELETE", path, NULL, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
 int storj_bridge_create_frame(storj_env_t *env, uv_after_work_cb cb)
 {
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                            "POST",
-                                            "/frames",
-                                            NULL,
-                                            true);
+    uv_work_t *work = json_request_work_new(env->bridge_options, "POST", "/frames", NULL, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
 int storj_bridge_get_frames(storj_env_t *env, uv_after_work_cb cb)
 {
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                            "GET",
-                                            "/frames",
-                                            NULL,
-                                            true);
+    uv_work_t *work = json_request_work_new(env->bridge_options, "GET", "/frames", NULL, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -291,13 +247,9 @@ int storj_bridge_get_frame(storj_env_t *env,
                            char *frame_id,
                            uv_after_work_cb cb)
 {
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                            "GET",
-                                            ne_concat("/frames/",
-                                                      frame_id,
-                                                      NULL),
-                                            NULL,
-                                            true);
+    char *path = ne_concat("/frames/", frame_id, NULL);
+
+    uv_work_t *work = json_request_work_new(env->bridge_options, "GET", path, NULL, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 
@@ -308,13 +260,9 @@ int storj_bridge_delete_frame(storj_env_t *env,
                               uv_after_work_cb cb)
 {
 
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                            "DELETE",
-                                            ne_concat("/frames/",
-                                                      frame_id,
-                                                      NULL),
-                                            NULL,
-                                            true);
+    char *path = ne_concat("/frames/", frame_id, NULL);
+
+    uv_work_t *work = json_request_work_new(env->bridge_options, "DELETE", path, NULL, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -332,16 +280,10 @@ int storj_bridge_get_file_info(storj_env_t *env,
                                char *file_id,
                                uv_after_work_cb cb)
 {
-    uv_work_t *work = json_request_work_new(env->bridge_options,
-                                       "GET",
-                                       ne_concat("/buckets/",
-                                                 bucket_id,
-                                                 "/files/",
-                                                 file_id,
-                                                 "/info",
-                                                 NULL),
-                                       NULL,
-                                       true);
+
+    char *path = ne_concat("/buckets/", bucket_id, "/files/", file_id, "/info", NULL);
+
+    uv_work_t *work = json_request_work_new(env->bridge_options, "GET", path, NULL, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
