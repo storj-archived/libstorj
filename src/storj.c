@@ -227,7 +227,7 @@ int storj_bridge_list_files(storj_env_t *env, char *id, uv_after_work_cb cb)
 }
 
 int storj_bridge_create_bucket_token(storj_env_t *env,
-                                     char *id,
+                                     char *bucket_id,
                                      storj_bucket_op_t operation,
                                      uv_after_work_cb cb)
 {
@@ -237,8 +237,10 @@ int storj_bridge_create_bucket_token(storj_env_t *env,
 
     uv_work_t *work = json_request_work_new(env->bridge_options,
                                             "POST",
-                                            ne_concat("/buckets/", id,
-                                                      "/tokens", NULL),
+                                            ne_concat("/buckets/",
+                                                      bucket_id,
+                                                      "/tokens",
+                                                      NULL),
                                             body,
                                             true);
 

@@ -1835,7 +1835,7 @@
   },
   "getbuckets": [
     {
-      "user": "braydon@storj.io",
+      "user": "user@sample.com",
       "encryptionKey": "",
       "publicPermissions": [ ],
       "created": "2016-10-12T14:40:21.259Z",
@@ -1848,7 +1848,7 @@
       "storage": 0,
       "id": "e3eca45f4d294132c07b49f4"
     }, {
-      "user": "braydon@storj.io",
+      "user": "user@sample.com",
       "encryptionKey": "",
       "publicPermissions": [ ],
       "created": "2016-10-12T15:36:40.012Z",
@@ -1861,7 +1861,7 @@
       "storage": 0,
       "id": "ef466257f5e10aa4755d411a"
     }, {
-      "user": "braydon@storj.io",
+      "user": "user@sample.com",
       "encryptionKey": "",
       "publicPermissions": [ ],
       "created": "2016-11-08T02:14:18.628Z",
@@ -1876,7 +1876,7 @@
     }
   ],
   "putbuckets": {
-    "user": "braydon@storj.io",
+    "user": "user@sample.com",
     "encryptionKey": "",
     "publicPermissions": [ ],
     "created": "2016-11-16T19:39:11.605Z",
@@ -1886,5 +1886,43 @@
     "transfer": 0,
     "storage": 0,
     "id": "0f1810b4bb5b6472352ec486"
+  },
+  "listfiles": [
+    {
+      "bucket": "0cf572e48da78e9af943a771",
+      "mimetype": "video/mp4",
+      "filename": "TheMeaningOfLifeAndEverything.mp4",
+      "frame": "d4af71ab00e15b0c1a7b6ab2",
+      "size": 3193765382,
+      "id": "f18b5ca437b1ca3daa14969f"
+    },
+    {
+      "bucket": "ceafaedb399610639bdfc2d7",
+      "mimetype": "video/ogg",
+      "filename": "TheMeaningOfLifeAndEverything.ogv",
+      "frame": "563026f766ec4aaaa372366f",
+      "size": 442719839,
+      "id": "85fb0ed00de1196dc22e0f6d"
+    }
+  ],
+  "createbuckettoken": {
+    "bucket": "845f106ddfc234054eee274a",
+    "operation": "PULL",
+    "expires": "2016-11-17T17:10:53.528Z",
+    "token": "a264e12611ad93b1777e82065f86cfcf088967dba2f15559cea5e140d5339a0e",
+    "id": "c89535457d462136215f7f75b3408d9d5d2f38031c1366781990681fd238bfe3",
+    "encryptionKey": ""
+  },
+  "deletefile": {
+  },
+  "createframe": {
+  },
+  "getframes": {
+  },
+  "getframe": {
+  },
+  "deleteframe": {
+  },
+  "fileinfo": {
   }
 }

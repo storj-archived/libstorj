@@ -68,7 +68,7 @@ int storj_bridge_delete_bucket(storj_env_t *env, char *id, uv_after_work_cb cb);
 int storj_bridge_list_files(storj_env_t *env, char *id, uv_after_work_cb cb);
 
 int storj_bridge_create_bucket_token(storj_env_t *env,
-                                     char *id,
+                                     char *bucket_id,
                                      storj_bucket_op_t operation,
                                      uv_after_work_cb cb);
 

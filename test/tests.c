@@ -35,31 +35,85 @@ int main(void)
     storj_env_t *env = storj_init_env(&options);
     assert(env != NULL);
 
-    // queue a few api requests
+
     int status;
+
+    // get general api info
     status = storj_bridge_get_info(env, callback);
     assert(status == 0);
 
+    // get buckets
     status = storj_bridge_get_buckets(env, callback);
     assert(status == 0);
 
+    // create a new bucket with a name
     status = storj_bridge_create_bucket(env, "backups", callback);
     assert(status == 0);
+
+    char *bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e";
+
+    // delete a bucket
+    // TODO check for successful status code, response has object
+    status = storj_bridge_delete_bucket(env, bucket_id, callback);
+    assert(status == 0);
+
+    // list files in a bucket
+    status = storj_bridge_list_files(env, bucket_id, callback);
+    assert(status == 0);
+
+    // create bucket tokens
+    status = storj_bridge_create_bucket_token(env,
+                                              bucket_id,
+                                              BUCKET_PUSH,
+                                              callback);
+    assert(status == 0);
+
+    char *file_id = "998960317b6725a3f8080c2b26875b0d8fe5731c";
+
+    // delete a file in a bucket
+    status = storj_bridge_delete_file(env,
+                                      bucket_id,
+                                      file_id,
+                                      callback);
+    assert(status == 0);
+
+    // create a file frame
+    status = storj_bridge_create_frame(env, callback);
+    assert(status == 0);
+
+    // get frames
+    status = storj_bridge_get_frames(env, callback);
+    assert(status == 0);
+
+    char *frame_id = ""; // TODO
+
+    // get frame
+    status = storj_bridge_get_frame(env, frame_id, callback);
+    assert(status == 0);
+
+    // delete frame
+    status = storj_bridge_delete_frame(env, frame_id, callback);
+    assert(status == 0);
+
+    // TODO add shard to frame
+
+    // get file information
+    status = storj_bridge_get_file_info(env, bucket_id, file_id, callback);
+    assert(status == 0);
+
 
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return -1;
     }
 
-    // close event loop
+    // shutdown
     status = uv_loop_close(env->loop);
     if (status == UV_EBUSY) {
         return -1;
     }
 
-    // shutdown test server
     MHD_stop_daemon(d);
 
     return 0;
-
 }
