@@ -24,13 +24,13 @@ typedef struct storj_env {
     uv_loop_t *loop;
 } storj_env_t;
 
-typedef enum { false, true } boolean_t;
+typedef enum { false, true } storj_boolean_t;
 
 typedef struct {
     storj_bridge_options_t *options;
     char *method;
     char *path;
-    boolean_t auth;
+    storj_boolean_t auth;
     struct json_object *body;
     struct json_object *response;
 } json_request_t;

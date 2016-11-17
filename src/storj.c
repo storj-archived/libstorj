@@ -18,7 +18,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
                                       char *method,
                                       char *path,
                                       struct json_object *request_body,
-                                      boolean_t auth)
+                                      storj_boolean_t auth)
 {
     ne_session *sess = ne_session_create(options->proto,
                                          options->host,
@@ -117,7 +117,7 @@ static json_request_t *json_request_new(
     char *method,
     char *path,
     struct json_object *request_body,
-    boolean_t auth)
+    storj_boolean_t auth)
 {
     json_request_t *req = malloc(sizeof(json_request_t));
     assert(req != NULL);
@@ -137,7 +137,7 @@ static uv_work_t *json_request_work_new(
     char *method,
     char *path,
     struct json_object *request_body,
-    boolean_t auth)
+    storj_boolean_t auth)
 {
     uv_work_t *work = uv_work_new();
 
