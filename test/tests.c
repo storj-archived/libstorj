@@ -31,6 +31,16 @@ int main(void)
         .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
     };
 
+    // setup bridge options to point to mock server
+    storj_upload_opts_t upload_opts = {
+        .file_concurrency = 1,
+        .shard_concurrency  = 3,
+        .redundancy  = 1,
+        .bucket_id  = "368be0816766b28fd5f43af5ba0fc54ab1be516e",
+        .filepath  = "/Users/alexleitner/Desktop/Keyboard.commands",
+        .key_pass = "password"
+    };
+
     // initialize event loop and environment
     storj_env_t *env = storj_init_env(&options);
     assert(env != NULL);
@@ -99,6 +109,10 @@ int main(void)
 
     // get file information
     status = storj_bridge_get_file_info(env, bucket_id, file_id, callback);
+    assert(status == 0);
+
+    // upload file
+    status = storj_bridge_store_file(env, &upload_opts, NULL);
     assert(status == 0);
 
 

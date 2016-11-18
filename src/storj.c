@@ -34,11 +34,8 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
 
     // include authentication headers if info is provided
     if (auth && options->user && options->pass) {
-
         char *user_pass = ne_concat(options->user, ":", options->pass, NULL);
-
         char *user_pass_64 = ne_base64((unsigned char *)user_pass, strlen(user_pass));
-
         char *auth_value = ne_concat("Basic ", user_pass_64, NULL);
 
         ne_add_request_header(req, "Authorization", auth_value);
@@ -47,6 +44,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
     // include body if request body json is provided
     if (request_body) {
         const char *req_buf = json_object_to_json_string(request_body);
+
         ne_add_request_header(req, "Content-Type", "application/json");
         ne_set_request_body_buffer(req, req_buf, strlen(req_buf));
     }
@@ -71,6 +69,7 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
         if (bytes < 0) {
             // TODO: error. careful with cleanup
         }
+
         if (total + bytes + 1 > body_sz) {
             body_sz += bytes + 1;
             body = (char *) realloc(body, body_sz);
@@ -122,7 +121,6 @@ static json_request_t *json_request_new(
     req->auth = auth;
 
     return req;
-
 }
 
 static uv_work_t *json_request_work_new(
@@ -278,10 +276,33 @@ int storj_bridge_get_file_pointers(storj_env_t *env, uv_after_work_cb cb)
 }
 
 /* Higher level methods */
-
-int storj_bridge_store_file(storj_env_t *env, uv_after_work_cb cb)
+int check_file(storj_env_t *env, char *filepath, void *callback)
 {
-    (void) 0;
+    int r = 0;
+    uv_fs_t *stat_req = malloc(sizeof(uv_fs_t));
+
+    r = uv_fs_stat(env->loop, stat_req, filepath, callback);
+    if (r < 0) {
+        const char *msg = uv_strerror(r);
+        printf("\nuv_fs_stat on %s: %s\n", filepath, msg);
+        return 0;
+    }
+
+    int size = (stat_req->statbuf.st_size);
+
+    if (callback == NULL) {
+        free(stat_req);
+    }
+
+    return size;
+}
+
+int storj_bridge_store_file(storj_env_t *env, storj_upload_opts_t *opts, uv_after_work_cb cb)
+{
+    int size = check_file(env, opts->filepath, NULL);
+
+    printf("%d", size);
+    return 0;
 }
 
 int storj_bridge_resolve_file(storj_env_t *env, uv_after_work_cb cb)

@@ -53,6 +53,15 @@ typedef struct {
     storj_shard_challenges challenges;
 } storj_shard_t;
 
+typedef struct {
+    int file_concurrency;
+    int shard_concurrency;
+    int redundancy;
+    char *bucket_id;
+    char *filepath;
+    char *key_pass;
+} storj_upload_opts_t;
+
 storj_env_t *storj_init_env(storj_bridge_options_t *options);
 
 int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb);
@@ -99,7 +108,11 @@ int storj_bridge_get_file_info(storj_env_t *env,
                                char *file_id,
                                uv_after_work_cb cb);
 
-int storj_bridge_store_file(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_store_file(storj_env_t *env,
+                            storj_upload_opts_t *opts,
+                            uv_after_work_cb cb);
+
+int check_file(storj_env_t *env, char *filepath, void *callback);
 
 int storj_bridge_get_file_pointers(storj_env_t *env, uv_after_work_cb cb);
 
