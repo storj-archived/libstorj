@@ -299,6 +299,7 @@ int check_file(storj_env_t *env, char *filepath, void *callback)
 
 int storj_bridge_store_file(storj_env_t *env, storj_upload_opts_t *opts, uv_after_work_cb cb)
 {
+    
     int size = check_file(env, opts->filepath, NULL);
 
     printf("%d", size);
