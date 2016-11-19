@@ -85,7 +85,7 @@ int main(void)
     status = storj_bridge_get_frames(env, callback);
     assert(status == 0);
 
-    char *frame_id = ""; // TODO
+    char *frame_id = "d4af71ab00e15b0c1a7b6ab2";
 
     // get frame
     status = storj_bridge_get_frame(env, frame_id, callback);
@@ -100,7 +100,6 @@ int main(void)
     // get file information
     status = storj_bridge_get_file_info(env, bucket_id, file_id, callback);
     assert(status == 0);
-
 
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {

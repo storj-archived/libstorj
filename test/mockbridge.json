@@ -1887,6 +1887,7 @@
     "storage": 0,
     "id": "0f1810b4bb5b6472352ec486"
   },
+  "deletebucket": null,
   "listfiles": [
     {
       "bucket": "0cf572e48da78e9af943a771",
@@ -1913,16 +1914,168 @@
     "id": "c89535457d462136215f7f75b3408d9d5d2f38031c1366781990681fd238bfe3",
     "encryptionKey": ""
   },
-  "deletefile": {
-  },
+  "deletefile": null,
   "createframe": {
+    "user": "user@sample.com",
+    "shards": [],
+    "size": 0,
+    "locked": false,
+    "created": "2016-11-19T00:12:51.009Z",
+    "id": "d6367831f7f1b117ffdd0015"
   },
-  "getframes": {
-  },
+  "getframes": [
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "8dfcb59090a55a8b1c5f5fc2",
+        "4343dfc37e3bcb93435fd696",
+        "7e72c40a22f0e41afc474dd1"
+      ],
+      "size": 3193765382,
+      "locked": true,
+      "created": "2016-10-12T14:43:24.303Z",
+      "id": "52b8cc8dfd47bb057d8c8a17"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "6af4213990fb563d190ffa87",
+        "884e2f3f7f84a0db5ded21a0",
+        "b024c25ab483335a6ac08d9c"
+      ],
+      "size": 2919235584,
+      "locked": false,
+      "created": "2016-10-12T15:16:44.908Z",
+      "id": "6e7039165071cbba36c9a607"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "41705e9bef3090fcab3eb67a",
+        "beb028dd7e2ec91b3785d9db",
+        "5f2b47f5baa028102fa8d4e5"
+      ],
+      "size": 3193765382,
+      "locked": false,
+      "created": "2016-10-12T15:26:59.353Z",
+      "id": "57fe564313aa0801ebf0e52e"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "a7445e1c62edb9c0da7c2019",
+        "991d6b8e81c14f1757c59c37",
+        "5839eab4ad22548a19953b95"
+      ],
+      "size": 3327983110,
+      "locked": true,
+      "created": "2016-10-12T15:36:59.923Z",
+      "id": "45369a5132dc69a3a1e625ca"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "99e4c92f0e392755ce82ed4c",
+        "79bb3eb93ca6a79c21068c92",
+        "ff96e85dc8c115191259f3a5"
+      ],
+      "size": 3327983110,
+      "locked": true,
+      "created": "2016-10-12T20:34:06.699Z",
+      "id": "85161efd8b7b631dab7844e4"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "d21534cf0dc5488f6a00b7a0",
+        "28be6ce035527799e446ec38",
+        "d221f90bf445bfa4a813cdeb"
+      ],
+      "size": 83886080,
+      "locked": false,
+      "created": "2016-10-26T18:22:31.033Z",
+      "id": "f28ca760e1a2d5a5d4dbaecf"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "cbea29ab2618cb036f3b4d63"
+      ],
+      "size": 442719839,
+      "locked": true,
+      "created": "2016-10-26T18:56:26.566Z",
+      "id": "b719da4f46dd29fa51b428f5"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "2aad5e61eea4ba6d8ab4b5f7"
+      ],
+      "size": 3193765382,
+      "locked": true,
+      "created": "2016-11-08T02:15:15.356Z",
+      "id": "9089eba7e52a0c44480773af"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "f850c72c904073bf934a83fe"
+      ],
+      "size": 134235,
+      "locked": true,
+      "created": "2016-11-17T17:59:58.684Z",
+      "id": "80aa76ef9222cac3b5ee1fdf"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [],
+      "size": 0,
+      "locked": false,
+      "created": "2016-11-19T00:12:51.009Z",
+      "id": "70bd54bddb2f98f2445be75f"
+    }
+  ],
   "getframe": {
+    "user": "user@sample.com",
+    "shards": [
+      "b3c7cf3d61ec90e0e588253b",
+      "bf56de167e9503c275db06b2",
+      "d3e9d2c8f1809a8f70d6c288",
+      "4a321d3a013c8ed0a8d5ece1",
+      "5e20d3b6105d43590ccdd0c7",
+      "6b891bdbbe3643074e66333e",
+      "0d047a4a003b05f16f97ef48",
+      "40eb217b5a0a3a47990854e5",
+      "f0c466b0116d9ceb349e29e1",
+      "d62dbbdbe33885e5f45b81c1",
+      "ddde362481b8629a90e9ac53",
+      "c90ccb6af4510060dfb7bcb4",
+      "634312e65d1cb0a58779a486",
+      "6c066b7737c0871dc2b597f4",
+      "587adbd61a4788997781aedc",
+      "7bc73bfd4763ad24d7c52713",
+      "7ba26ef19918d2494671bcf4",
+      "0bcc3a2410cdb3fe85176a88",
+      "d496d13eccc99a06546af4d3",
+      "828a9eb075248ffc21c481b0",
+      "8f73805462697f132a740cf4",
+      "ecb971ec1926df2e668b36fb",
+      "cf814028c3fefe3268707d29",
+      "14c7c12622f963fb47b9a82d",
+      "b9897acc54699d42500741ac"
+    ],
+    "size": 3193765382,
+    "locked": true,
+    "created": "2016-10-12T14:43:24.303Z",
+    "id": "192f90792f42875a7533340b"
   },
-  "deleteframe": {
-  },
-  "fileinfo": {
+  "deleteframe": null,
+  "getfileinfo": {
+    "bucket": "8177a4ff1bf5672b2aa79f21",
+    "mimetype": "video/ogg",
+    "filename": "TheMeaningOfLifeAndEverything.ogv",
+    "frame": "2f2133b1d23e0bc4123f96de",
+    "size": 3193765382,
+    "id": "4f6b68174dd6eb8e0fcdfed7"
   }
 }

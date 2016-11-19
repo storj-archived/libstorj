@@ -37,6 +37,18 @@ struct json_object *get_response_json(char *path)
     return json_tokener_parse(json_string);
 }
 
+storj_boolean_t check_auth(char *user, char *pass, int *status_code, char *page)
+{
+    if (user && 0 == strcmp(user, USER) && 0 == strcmp(pass, PASS)) {
+        return true;
+    }
+
+    *status_code = MHD_HTTP_UNAUTHORIZED;
+    page = "Unauthorized";
+
+    return false;
+}
+
 int mock_bridge_server(void *cls,
                        struct MHD_Connection *connection,
                        const char *url,
@@ -63,33 +75,73 @@ int mock_bridge_server(void *cls,
         if (0 == strcmp(url, "/")) {
             page = get_response_string(responses, "info");
             status_code = MHD_HTTP_OK;
-        }
-
-        if (0 == strcmp(url, "/buckets")) {
-            if (user &&
-                0 == strcmp(user, USER) &&
-                0 == strcmp(pass, PASS)) {
+        } else if (0 == strcmp(url, "/buckets")) {
+            if (check_auth(user, pass, &status_code, page)) {
                 page = get_response_string(responses, "getbuckets");
                 status_code = MHD_HTTP_OK;
-            } else {
-                status_code = MHD_HTTP_UNAUTHORIZED;
-                page = "Unauthorized";
+            }
+        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5ba0fc54ab1be516e/files")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                page = get_response_string(responses, "listfiles");
+                status_code = MHD_HTTP_OK;
+            }
+        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5ba0fc54ab1be516e/files/998960317b6725a3f8080c2b26875b0d8fe5731c/info")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                page = get_response_string(responses, "getfileinfo");
+                status_code = MHD_HTTP_OK;
+            }
+        } else if (0 == strcmp(url, "/frames")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                page = get_response_string(responses, "getframes");
+                status_code = MHD_HTTP_OK;
+            }
+        } else if (0 == strcmp(url, "/frame/d4af71ab00e15b0c1a7b6ab2")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                page = get_response_string(responses, "getframe");
+                status_code = MHD_HTTP_OK;
             }
         }
+
     } else if (0 == strcmp(method, "POST")) {
 
         if (0 == strcmp(url, "/buckets")) {
-            if (user &&
-                0 == strcmp(user, USER) &&
-                0 == strcmp(pass, PASS)) {
-
+            if (check_auth(user, pass, &status_code, page)) {
                 // TODO check post body
-
                 page = get_response_string(responses, "putbuckets");
                 status_code = MHD_HTTP_OK;
-            } else {
-                status_code = MHD_HTTP_UNAUTHORIZED;
-                page = "Unauthorized";
+            }
+        } else if (0 == strcmp(url, "/frames")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                // TODO check post body
+                page = get_response_string(responses, "createframe");
+                status_code = MHD_HTTP_OK;
+            }
+        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5ba0fc54ab1be516e/tokens")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                // TODO check post body
+                page = get_response_string(responses, "createbuckettoken");
+                status_code = MHD_HTTP_OK;
+            }
+        }
+
+    } else if (0 == strcmp(method, "DELETE")) {
+        if (0 == strcmp(url, "/bucket/368be0816766b28fd5f43af5ba0fc54ab1be516e")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                // TODO check post body
+                // there is no response body
+                status_code = MHD_HTTP_OK;
+            }
+        } else if (0 == strcmp(url, "/bucket/368be0816766b28fd5f43af5ba0fc54ab1be516e/files/998960317b6725a3f8080c2b26875b0d8fe5731c")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                // TODO check post body
+                // there is no response body
+                status_code = MHD_HTTP_OK;
+            }
+        } else if (0 == strcmp(url, "/frame/d4af71ab00e15b0c1a7b6ab2")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                // TODO check post body
+                page = get_response_string(responses, "deleteframe");
+                status_code = MHD_HTTP_OK;
             }
         }
     }
