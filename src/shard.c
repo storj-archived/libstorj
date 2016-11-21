@@ -16,7 +16,7 @@ unsigned long long determine_shard_size(storj_upload_opts_t *opts, int accumulat
       // Certify the number of concurrency * shardSize doesn't exceed freemem
       while (
         hops > 0 &&
-        (1073741824 / shardSize(hops) <= opts->shard_concurrency) //TODO: Get memory size
+        (1073741824 / shardSize(hops) <= opts->shard_concurrency) //TODO: Get memory size.
       ) {
         hops = hops - 1 <= 0 ? 0 : hops - 1;
       }
