@@ -276,33 +276,12 @@ int storj_bridge_get_file_pointers(storj_env_t *env, uv_after_work_cb cb)
 }
 
 /* Higher level methods */
-int check_file(storj_env_t *env, char *filepath, void *callback)
-{
-    int r = 0;
-    uv_fs_t *stat_req = malloc(sizeof(uv_fs_t));
-
-    r = uv_fs_stat(env->loop, stat_req, filepath, callback);
-    if (r < 0) {
-        const char *msg = uv_strerror(r);
-        printf("\nuv_fs_stat on %s: %s\n", filepath, msg);
-        return 0;
-    }
-
-    int size = (stat_req->statbuf.st_size);
-
-    if (callback == NULL) {
-        free(stat_req);
-    }
-
-    return size;
-}
-
 int storj_bridge_store_file(storj_env_t *env, storj_upload_opts_t *opts, uv_after_work_cb cb)
 {
-    
-    int size = check_file(env, opts->filepath, NULL);
 
-    printf("%d", size);
+    opts->file_size = check_file(env, opts->filepath, NULL); // Expect to be up to 10tb
+    opts->shard_size = determine_shard_size(&opts, NULL);
+    opts->shard_num = ceil((double)opts->file_size / opts->shard_size);
     return 0;
 }
 

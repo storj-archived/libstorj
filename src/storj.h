@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <uv.h>
+#include <math.h>
 
 typedef struct {
     char *proto;
@@ -57,6 +58,9 @@ typedef struct {
     int file_concurrency;
     int shard_concurrency;
     int redundancy;
+    int shard_num;
+    unsigned long long file_size;
+    unsigned long long shard_size;
     char *bucket_id;
     char *filepath;
     char *key_pass;
@@ -112,12 +116,17 @@ int storj_bridge_store_file(storj_env_t *env,
                             storj_upload_opts_t *opts,
                             uv_after_work_cb cb);
 
-int check_file(storj_env_t *env, char *filepath, void *callback);
-
 int storj_bridge_get_file_pointers(storj_env_t *env, uv_after_work_cb cb);
 
 int storj_bridge_resolve_file(storj_env_t *env, uv_after_work_cb cb);
 
 int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
+
+unsigned long long check_file(storj_env_t *env, char *filepath, void *callback);
+
+/* Shard size */
+unsigned long long determine_shard_size(storj_upload_opts_t *opts,
+                                        int accumulator);
+unsigned long long shardSize(int hops);
 
 #endif /* STORJ_H */
