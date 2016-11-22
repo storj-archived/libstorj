@@ -130,11 +130,12 @@ int storj_bridge_resolve_file(storj_env_t *env, uv_after_work_cb cb);
 
 int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
 
-unsigned long long check_file(storj_env_t *env, char *filepath, void *callback);
+unsigned long long check_file(storj_env_t *env, char *filepath);
+int sha256_of_str(char *str, int str_len, uint8_t *digest);
 
-/* Shard size */
 unsigned long long determine_shard_size(storj_upload_opts_t *opts,
                                         int accumulator);
+
 unsigned long long shardSize(int hops);
 int calculate_file_id(char *bucket, char *file_name, char **buff);
 
