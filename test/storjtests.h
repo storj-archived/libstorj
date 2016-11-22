@@ -13,3 +13,5 @@ int mock_bridge_server(void *cls,
                        const char *upload_data,
                        size_t *upload_data_size,
                        void **ptr);
+
+int create_test_file(char *file);

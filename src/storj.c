@@ -296,15 +296,6 @@ int storj_bridge_get_file_pointers(storj_env_t *env, uv_after_work_cb cb)
 }
 
 /* Higher level methods */
-int storj_bridge_store_file(storj_env_t *env, storj_upload_opts_t *opts, uv_after_work_cb cb)
-{
-
-    opts->file_size = check_file(env, opts->filepath, NULL); // Expect to be up to 10tb
-    opts->shard_size = determine_shard_size(&opts, NULL);
-    opts->shard_num = ceil((double)opts->file_size / opts->shard_size);
-    return 0;
-}
-
 int storj_bridge_resolve_file(storj_env_t *env, uv_after_work_cb cb)
 {
     (void) 0;

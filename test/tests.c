@@ -1,7 +1,7 @@
 #include <assert.h>
 #include "storjtests.h"
 
-void callback(uv_work_t *work_req, int status)
+void req_callback(uv_work_t *work_req, int status)
 {
     json_request_t *req = work_req->data;
     printf("%s\n\n\n", json_object_to_json_string(req->response));
@@ -9,6 +9,15 @@ void callback(uv_work_t *work_req, int status)
 
 int main(void)
 {
+    char const *folder = getenv("TMPDIR");
+
+    if (folder == 0) {
+        printf("You need to set $TMPDIR before running.");
+        exit(0);
+    }
+    char *file = strcat(folder, "samplefile.txt");
+    create_test_file(file);
+
     // spin up test server
     struct MHD_Daemon *d;
     d = MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION,
@@ -49,33 +58,33 @@ int main(void)
     int status;
 
     // get general api info
-    status = storj_bridge_get_info(env, callback);
+    status = storj_bridge_get_info(env, req_callback);
     assert(status == 0);
 
     // get buckets
-    status = storj_bridge_get_buckets(env, callback);
+    status = storj_bridge_get_buckets(env, req_callback);
     assert(status == 0);
 
     // create a new bucket with a name
-    status = storj_bridge_create_bucket(env, "backups", callback);
+    status = storj_bridge_create_bucket(env, "backups", req_callback);
     assert(status == 0);
 
     char *bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e";
 
     // delete a bucket
     // TODO check for successful status code, response has object
-    status = storj_bridge_delete_bucket(env, bucket_id, callback);
+    status = storj_bridge_delete_bucket(env, bucket_id, req_callback);
     assert(status == 0);
 
     // list files in a bucket
-    status = storj_bridge_list_files(env, bucket_id, callback);
+    status = storj_bridge_list_files(env, bucket_id, req_callback);
     assert(status == 0);
 
     // create bucket tokens
     status = storj_bridge_create_bucket_token(env,
                                               bucket_id,
                                               BUCKET_PUSH,
-                                              callback);
+                                              req_callback);
     assert(status == 0);
 
     char *file_id = "998960317b6725a3f8080c2b26875b0d8fe5731c";
@@ -84,35 +93,35 @@ int main(void)
     status = storj_bridge_delete_file(env,
                                       bucket_id,
                                       file_id,
-                                      callback);
+                                      req_callback);
     assert(status == 0);
 
     // create a file frame
-    status = storj_bridge_create_frame(env, callback);
+    status = storj_bridge_create_frame(env, req_callback);
     assert(status == 0);
 
     // get frames
-    status = storj_bridge_get_frames(env, callback);
+    status = storj_bridge_get_frames(env, req_callback);
     assert(status == 0);
 
     char *frame_id = "d4af71ab00e15b0c1a7b6ab2";
 
     // get frame
-    status = storj_bridge_get_frame(env, frame_id, callback);
+    status = storj_bridge_get_frame(env, frame_id, req_callback);
     assert(status == 0);
 
     // delete frame
-    status = storj_bridge_delete_frame(env, frame_id, callback);
+    status = storj_bridge_delete_frame(env, frame_id, req_callback);
     assert(status == 0);
 
     // TODO add shard to frame
 
     // get file information
-    status = storj_bridge_get_file_info(env, bucket_id, file_id, callback);
+    status = storj_bridge_get_file_info(env, bucket_id, file_id, req_callback);
     assert(status == 0);
 
     // upload file
-    status = storj_bridge_store_file(env, &upload_opts, NULL);
+    status = storj_bridge_store_file(env, &upload_opts);
     assert(status == 0);
 
     // run all queued events
@@ -127,6 +136,15 @@ int main(void)
     }
 
     MHD_stop_daemon(d);
+
+    return 0;
+}
+
+int create_test_file(char *file) {
+    FILE *fp;
+    fp = fopen(file, "w+");
+    fprintf(fp, "Sample file...\n");
+    fclose(fp);
 
     return 0;
 }

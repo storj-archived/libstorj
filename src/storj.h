@@ -66,6 +66,11 @@ typedef struct {
     char *key_pass;
 } storj_upload_opts_t;
 
+typedef struct {
+    storj_env_t env;
+    storj_upload_opts_t opts;
+} upload_work_data;
+
 storj_env_t *storj_init_env(storj_bridge_options_t *options);
 
 int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb);
@@ -113,8 +118,7 @@ int storj_bridge_get_file_info(storj_env_t *env,
                                uv_after_work_cb cb);
 
 int storj_bridge_store_file(storj_env_t *env,
-                            storj_upload_opts_t *opts,
-                            uv_after_work_cb cb);
+                            storj_upload_opts_t *opts);
 
 int storj_bridge_get_file_pointers(storj_env_t *env, uv_after_work_cb cb);
 
