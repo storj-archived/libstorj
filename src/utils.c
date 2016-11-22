@@ -4,6 +4,8 @@ int hex2str(unsigned length, uint8_t *data, char *buffer)
 {
     unsigned i;
 
+    memset(buffer, '\0', length*2 + 1);
+
     for (i = 0; i<length; i++) {
         sprintf(&buffer[i*2], "%02x ", data[i]);
     }
@@ -32,7 +34,7 @@ unsigned long long check_file(storj_env_t *env, char *filepath, void *callback)
     return size;
 }
 
-char *calculate_file_id(char *bucket, char *file_name)
+int calculate_file_id(char *bucket, char *file_name, char **buffer)
 {
     struct sha256_ctx ctx;
 
@@ -51,8 +53,11 @@ char *calculate_file_id(char *bucket, char *file_name)
 
     char buff[SHA256_DIGEST_SIZE*2+1];
     buff[SHA256_DIGEST_SIZE*2] = '\0';
+    memset(buff, '\0', SHA256_DIGEST_SIZE*2+1);
 
     hex2str(SHA256_DIGEST_SIZE, digest, buff);
 
-    return buff;
+    memcpy(*buffer, buff, SHA256_DIGEST_SIZE*2);
+
+    return 0;
 }

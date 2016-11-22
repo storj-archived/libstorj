@@ -136,6 +136,6 @@ unsigned long long check_file(storj_env_t *env, char *filepath, void *callback);
 unsigned long long determine_shard_size(storj_upload_opts_t *opts,
                                         int accumulator);
 unsigned long long shardSize(int hops);
-char *calculate_file_id(char *bucket, char *file_name);
+int calculate_file_id(char *bucket, char *file_name, char **buff);
 
 #endif /* STORJ_H */
