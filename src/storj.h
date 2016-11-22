@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <neon/ne_request.h>
 #include <nettle/aes.h>
+#include <nettle/ripemd160.h>
+#include <nettle/sha.h>
 #include <neon/ne_string.h>
 #include <json-c/json.h>
 #include <stdlib.h>
@@ -62,14 +64,16 @@ typedef struct {
     unsigned long long file_size;
     unsigned long long shard_size;
     char *bucket_id;
-    char *filepath;
+    char *file_path;
+    char *file_id;
+    char *file_name;
     char *key_pass;
 } storj_upload_opts_t;
 
 typedef struct {
     storj_env_t env;
     storj_upload_opts_t opts;
-} upload_work_data;
+} storj_upload_work_data_t;
 
 storj_env_t *storj_init_env(storj_bridge_options_t *options);
 
@@ -132,5 +136,6 @@ unsigned long long check_file(storj_env_t *env, char *filepath, void *callback);
 unsigned long long determine_shard_size(storj_upload_opts_t *opts,
                                         int accumulator);
 unsigned long long shardSize(int hops);
+char *calculate_file_id(char *bucket, char *file_name);
 
 #endif /* STORJ_H */
