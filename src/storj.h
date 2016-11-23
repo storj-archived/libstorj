@@ -73,6 +73,8 @@ typedef struct {
 typedef struct {
     storj_env_t env;
     storj_upload_opts_t opts;
+    uv_fs_t *open_req;
+    uv_fs_t *read_req;
 } storj_upload_work_data_t;
 
 storj_env_t *storj_init_env(storj_bridge_options_t *options);
@@ -131,12 +133,20 @@ int storj_bridge_resolve_file(storj_env_t *env, uv_after_work_cb cb);
 int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
 
 unsigned long long check_file(storj_env_t *env, char *filepath);
+
 int sha256_of_str(char *str, int str_len, uint8_t *digest);
 
 unsigned long long determine_shard_size(storj_upload_opts_t *opts,
                                         int accumulator);
 
 unsigned long long shardSize(int hops);
+
 int calculate_file_id(char *bucket, char *file_name, char **buff);
+
+void open_cb(uv_fs_t*);
+
+void read_cb(uv_fs_t*);
+
+void close_cb(uv_fs_t*);
 
 #endif /* STORJ_H */

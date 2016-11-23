@@ -22,7 +22,7 @@ unsigned long long check_file(storj_env_t *env, char *filepath)
     if (r < 0) {
         const char *msg = uv_strerror(r);
         printf("\nuv_fs_stat on %s: %s\n", filepath, msg);
-        return 0;
+        return -1;
     }
 
     long long size = (stat_req->statbuf.st_size);
