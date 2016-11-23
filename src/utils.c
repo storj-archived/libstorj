@@ -22,7 +22,7 @@ unsigned long long check_file(storj_env_t *env, char *filepath)
     if (r < 0) {
         const char *msg = uv_strerror(r);
         printf("\nuv_fs_stat on %s: %s\n", filepath, msg);
-        return -1;
+        return 0;
     }
 
     long long size = (stat_req->statbuf.st_size);
@@ -63,7 +63,7 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
 
     //Copy the result into buffer
     memcpy(*buffer, ripemd160_str, 12);
-    
+
     return 0;
 }
 

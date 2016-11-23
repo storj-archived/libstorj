@@ -46,7 +46,7 @@ int main(void)
         .shard_concurrency  = 3,
         .redundancy  = 1,
         .bucket_id  = "368be0816766b28fd5f43af5ba0fc54ab1be516e",
-        .file_path  = "/Users/alexleitner/Desktop/logo.txt",
+        .file_path  = "/Users/alexleitner/Desktop/logo.tx",
         .key_pass = "password"
     };
 

@@ -106,7 +106,10 @@ static void begin_upload_work(uv_work_t *work)
     if (opts->file_name[0] == '/') opts->file_name++;
 
     opts->file_size = check_file(env, opts->file_path); // Expect to be up to 10tb
-    if (opts->file_size < 1) printf("Invalid file"); //cleanup
+    if (opts->file_size < 1) {
+        printf("Invalid file");
+        return; //cleanup
+    }
 
     opts->shard_size = determine_shard_size(&opts, NULL);
     opts->shard_num = ceil((double)opts->file_size / opts->shard_size);
