@@ -62,8 +62,8 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
     hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest, ripemd160_str);
 
     //Copy the result into buffer
-    memcpy(*buffer, ripemd160_str, RIPEMD160_DIGEST_SIZE*2);
-
+    memcpy(*buffer, ripemd160_str, 12);
+    
     return 0;
 }
 

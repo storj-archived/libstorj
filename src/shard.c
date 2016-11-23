@@ -1,7 +1,5 @@
 #include "storj.h"
 
-#define SHARD_MULTIPLES_BACK 5
-
 unsigned long long determine_shard_size(storj_upload_opts_t *opts, int accumulator)
 {
     accumulator = accumulator ? accumulator : 0;

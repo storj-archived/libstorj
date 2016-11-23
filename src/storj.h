@@ -14,6 +14,9 @@
 #include <uv.h>
 #include <math.h>
 
+#define FILE_ID_SIZE 12
+#define SHARD_MULTIPLES_BACK 5
+
 typedef struct {
     char *proto;
     char *host;
