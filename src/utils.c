@@ -67,6 +67,12 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
     return 0;
 }
 
+int generate_deterministic_key(char **mnemonic)
+{
+
+    return 0;
+}
+
 int sha256_of_str(char *str, int str_len, uint8_t *digest)
 {
     struct sha256_ctx ctx;

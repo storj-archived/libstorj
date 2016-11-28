@@ -63,6 +63,12 @@ void read_cb(uv_fs_t* read_req) {
     /* 7. Report the contents of the buffer */
     printf("***************\n%s\n****************\n", read_req->bufsml->base);
 
+    // TODO: encrypt file
+
+    // TODO: Shard file
+
+    // TODO: upload file
+
     free(read_req->bufsml->base);
 
     /* 6. Setup close request */
@@ -132,19 +138,21 @@ static void begin_upload_work(uv_work_t *work)
         free(open_req);
         exit(0);
     }
-
-
-
-    // encrypt file
-
-    // Shard file
-
-    // upload file
-
 }
 
 int storj_bridge_store_file(storj_env_t *env, storj_upload_opts_t *opts)
 {
+    // TODO: Check options and env
+    if (opts->file_concurrency < 1) {
+        printf("\nFile Concurrency (%i) can't be less than 1", opts->file_concurrency);
+        return -1;
+    }
+
+    if (opts->redundancy >= 12 || opts->redundancy < 0) {
+        printf("\nRedundancy value (%i) is invalid", opts->redundancy);
+        return -1;
+    }
+
     uv_work_t *work = uv_work_new();
 
     storj_upload_work_data_t *work_data = malloc(sizeof(storj_upload_work_data_t));
