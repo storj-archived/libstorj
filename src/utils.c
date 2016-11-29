@@ -73,7 +73,7 @@ int generate_deterministic_key(char **mnemonic)
     return 0;
 }
 
-int sha256_of_str(char *str, int str_len, uint8_t *digest)
+int sha256_of_str(uint8_t *str, int str_len, uint8_t *digest)
 {
     struct sha256_ctx ctx;
     sha256_init(&ctx);
@@ -83,7 +83,7 @@ int sha256_of_str(char *str, int str_len, uint8_t *digest)
     return 0;
 }
 
-int ripemd160_of_str(char *str, int str_len, uint8_t *digest)
+int ripemd160_of_str(uint8_t *str, int str_len, uint8_t *digest)
 {
     struct ripemd160_ctx ctx;
     ripemd160_init(&ctx);
@@ -91,4 +91,37 @@ int ripemd160_of_str(char *str, int str_len, uint8_t *digest)
     ripemd160_digest(&ctx, RIPEMD160_DIGEST_SIZE, digest);
 
     return 0;
+}
+
+void pbkdf2_hmac_sha512 (
+    unsigned key_length,
+    const uint8_t *key,
+    unsigned iterations,
+    unsigned salt_length, const uint8_t *salt,
+    unsigned length, uint8_t *dst)
+{
+    struct hmac_sha512_ctx sha512ctx;
+
+    hmac_sha512_set_key (&sha512ctx, key_length, key);
+    PBKDF2 (&sha512ctx, hmac_sha512_update, hmac_sha512_digest,
+    SHA512_DIGEST_SIZE, iterations, salt_length, salt, length, dst);
+}
+
+void random_buffer(uint8_t *buf, size_t len)
+{
+static FILE *frand = NULL;
+#ifdef _WIN32
+	srand((unsigned)time(NULL));
+	size_t i;
+	for (i = 0; i < len; i++) {
+		buf[i] = rand() % 0xFF;
+	}
+#else
+	if (!frand) {
+		frand = fopen("/dev/urandom", "r");
+	}
+	size_t len_read = fread(buf, 1, len, frand);
+	(void)len_read;
+	assert(len_read == len);
+#endif
 }

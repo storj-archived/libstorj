@@ -5,6 +5,8 @@
 #include <neon/ne_request.h>
 #include <nettle/aes.h>
 #include <nettle/ripemd160.h>
+#include <nettle/hmac.h>
+#include <nettle/pbkdf2.h>
 #include <nettle/sha.h>
 #include <neon/ne_string.h>
 #include <json-c/json.h>
@@ -13,6 +15,10 @@
 #include <string.h>
 #include <uv.h>
 #include <math.h>
+
+#ifdef _WIN32
+#include <time.h>
+#endif
 
 #define FILE_ID_SIZE 12
 #define SHARD_MULTIPLES_BACK 5
@@ -137,7 +143,9 @@ int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
 
 unsigned long long check_file(storj_env_t *env, char *filepath);
 
-int sha256_of_str(char *str, int str_len, uint8_t *digest);
+int sha256_of_str(uint8_t *str, int str_len, uint8_t *digest);
+
+int ripemd160_of_str(uint8_t *str, int str_len, uint8_t *digest);
 
 unsigned long long determine_shard_size(storj_upload_opts_t *opts,
                                         int accumulator);

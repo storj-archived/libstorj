@@ -124,6 +124,12 @@ int main(void)
     status = storj_bridge_store_file(env, &upload_opts);
     assert(status == 0);
 
+    int stren = 128;
+    char *mnemonic = calloc(250, sizeof(char));
+    status = mnemonic_generate(stren, &mnemonic);
+    printf("\nmnemonic: %s\n", mnemonic);
+    free(mnemonic);
+
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return -1;
