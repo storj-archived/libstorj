@@ -149,6 +149,14 @@ int sha256_of_str(uint8_t *str, int str_len, uint8_t *digest);
 
 int ripemd160_of_str(uint8_t *str, int str_len, uint8_t *digest);
 
+void pbkdf2_hmac_sha512(unsigned key_length,
+                        const uint8_t *key,
+                        unsigned iterations,
+                        unsigned salt_length, const uint8_t *salt,
+                        unsigned length, uint8_t *dst);
+
+void random_buffer(uint8_t *buf, size_t len);
+
 unsigned long long determine_shard_size(storj_upload_opts_t *opts,
                                         int accumulator);
 
