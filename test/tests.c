@@ -9,6 +9,88 @@ int create_test_file(char *file) {
     return 0;
 }
 
+void check_bridge_get_info(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    struct json_object* value;
+    int success = json_object_object_get_ex(req->response, "info", &value);
+    assert(success == 1); // true
+}
+
+void check_get_buckets(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
+void check_create_bucket(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
+void check_delete_bucket(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
+void check_list_files(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
+void check_bucket_tokens(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
+void check_delete_file(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
+void check_create_frame(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
+void check_get_frames(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
+void check_get_frame(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
+void check_delete_frame(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
+void check_file_info(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
+void check_upload_file(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    printf("%s\n\n\n", json_object_to_json_string(req->response));
+}
+
 int test_api()
 {
 
@@ -38,33 +120,14 @@ int test_api()
     int status;
 
     // get general api info
-    void check_bridge_get_info(uv_work_t *work_req, int status)
-    {
-        assert(status == 0);
-        json_request_t *req = work_req->data;
-
-        struct json_object* value;
-        int success = json_object_object_get_ex(req->response, "info", &value);
-        assert(success == 1); // true
-    }
     status = storj_bridge_get_info(env, check_bridge_get_info);
     assert(status == 0);
 
     // get buckets
-    void check_get_buckets(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_get_buckets(env, check_get_buckets);
     assert(status == 0);
 
     // create a new bucket with a name
-    void check_create_bucket(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_create_bucket(env, "backups", check_create_bucket);
     assert(status == 0);
 
@@ -72,29 +135,14 @@ int test_api()
 
     // delete a bucket
     // TODO check for successful status code, response has object
-    void check_delete_bucket(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_delete_bucket(env, bucket_id, check_delete_bucket);
     assert(status == 0);
 
     // list files in a bucket
-    void check_list_files(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_list_files(env, bucket_id, check_list_files);
     assert(status == 0);
 
     // create bucket tokens
-    void check_bucket_tokens(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_create_bucket_token(env,
                                               bucket_id,
                                               BUCKET_PUSH,
@@ -104,11 +152,6 @@ int test_api()
     char *file_id = "998960317b6725a3f8080c2b26875b0d8fe5731c";
 
     // delete a file in a bucket
-    void check_delete_file(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_delete_file(env,
                                       bucket_id,
                                       file_id,
@@ -116,51 +159,26 @@ int test_api()
     assert(status == 0);
 
     // create a file frame
-    void check_create_frame(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_create_frame(env, check_create_frame);
     assert(status == 0);
 
     // get frames
-    void check_get_frames(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_get_frames(env, check_get_frames);
     assert(status == 0);
 
     char *frame_id = "d4af71ab00e15b0c1a7b6ab2";
 
     // get frame
-    void check_get_frame(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_get_frame(env, frame_id, check_get_frame);
     assert(status == 0);
 
     // delete frame
-    void check_delete_frame(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_delete_frame(env, frame_id, check_delete_frame);
     assert(status == 0);
 
     // TODO add shard to frame
 
     // get file information
-    void check_file_info(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_get_file_info(env, bucket_id,
                                         file_id, check_file_info);
     assert(status == 0);
@@ -175,11 +193,6 @@ int test_api()
         .key_pass = "password"
     };
 
-    void check_upload_file(uv_work_t *work_req, int status)
-    {
-        json_request_t *req = work_req->data;
-        printf("%s\n\n\n", json_object_to_json_string(req->response));
-    }
     status = storj_bridge_store_file(env, &upload_opts);
     assert(status == 0);
 
