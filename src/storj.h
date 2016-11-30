@@ -145,9 +145,9 @@ int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
 
 unsigned long long check_file(storj_env_t *env, char *filepath);
 
-int sha256_of_str(uint8_t *str, int str_len, uint8_t *digest);
+int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest);
 
-int ripemd160_of_str(uint8_t *str, int str_len, uint8_t *digest);
+int ripemd160_of_str(const uint8_t *str, int str_len, uint8_t *digest);
 
 void pbkdf2_hmac_sha512(unsigned key_length,
                         const uint8_t *key,
