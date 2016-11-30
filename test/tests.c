@@ -284,10 +284,10 @@ int main(void)
     assert(status == 0);
 
     status = test_mnemonic_check();
-    assert(status = 0);
+    assert(status == 0);
 
     status = test_mnemonic_generate();
-    assert(status = 0);
+    assert(status == 0);
 
     printf("PASSED ALL TESTS\n");
 
