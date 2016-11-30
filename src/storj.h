@@ -20,6 +20,8 @@
 #include <time.h>
 #endif
 
+#define ERROR 0
+#define OK 1
 #define FILE_ID_SIZE 12
 #define SHARD_MULTIPLES_BACK 5
 

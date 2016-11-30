@@ -32,7 +32,7 @@ apt-get install libneon27-gnutls-dev nettle-dev libjson-c-dev libuv1-dev
 
 Development tools:
 ```bash
-brew install libtool automake libmicrohttpd
+brew install libtool automake libmicrohttpd check
 ```
 
 Dependencies:

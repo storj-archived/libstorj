@@ -38,7 +38,7 @@ const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len);
 int mnemonic_check(const char *mnemonic);
 
 // passphrase must be at most 256 characters or code may crash
-void mnemonic_to_seed(const char *mnemonic, const char *passphrase, uint8_t seed[512 / 8]);
+int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer);
 
 const char * const *mnemonic_wordlist(void);
 

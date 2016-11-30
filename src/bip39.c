@@ -28,7 +28,7 @@
 int mnemonic_generate(int strength, char **buffer)
 {
 	if (strength % 32 || strength < 128 || strength > 256) {
-		return 1;
+		return ERROR;
 	}
 	uint8_t data[32];
 	random_buffer(data, 32);
@@ -39,7 +39,7 @@ int mnemonic_generate(int strength, char **buffer)
 const uint16_t *mnemonic_generate_indexes(int strength)
 {
 	if (strength % 32 || strength < 128 || strength > 256) {
-		return 1;
+		return ERROR;
 	}
 	uint8_t data[32];
 	random_buffer(data, 32);
@@ -49,7 +49,7 @@ const uint16_t *mnemonic_generate_indexes(int strength)
 int mnemonic_from_data(const uint8_t *data, int len, char **buffer)
 {
 	if (len % 4 || len < 16 || len > 32) {
-		return 1;
+		return ERROR;
 	}
 
 	uint8_t bits[32 + 1];
@@ -79,7 +79,7 @@ int mnemonic_from_data(const uint8_t *data, int len, char **buffer)
 
 	strcpy(*buffer, mnemo);
 
-	return 0;
+	return OK;
 }
 
 const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len)
@@ -112,10 +112,11 @@ const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len)
 	return mnemo;
 }
 
+// if doesn't return 1 then it failed.
 int mnemonic_check(const char *mnemonic)
 {
 	if (!mnemonic) {
-		return 0;
+		return ERROR;
 	}
 
 	uint32_t i, n;
@@ -130,7 +131,7 @@ int mnemonic_check(const char *mnemonic)
 	n++;
 	// check number of words
 	if (n != 12 && n != 18 && n != 24) {
-		return 0;
+		return ERROR;
 	}
 
 	char current_word[10];
@@ -142,7 +143,7 @@ int mnemonic_check(const char *mnemonic)
 		j = 0;
 		while (mnemonic[i] != ' ' && mnemonic[i] != 0) {
 			if (j >= sizeof(current_word) - 1) {
-				return 0;
+				return ERROR;
 			}
 			current_word[j] = mnemonic[i];
 			i++; j++;
@@ -152,7 +153,7 @@ int mnemonic_check(const char *mnemonic)
 		k = 0;
 		for (;;) {
 			if (!wordlist[k]) { // word not found
-				return 0;
+				return ERROR;
 			}
 			if (strcmp(current_word, wordlist[k]) == 0) { // word found on index k
 				for (ki = 0; ki < 11; ki++) {
@@ -167,7 +168,7 @@ int mnemonic_check(const char *mnemonic)
 		}
 	}
 	if (bi != n * 11) {
-		return 0;
+		return ERROR;
 	}
 	bits[32] = bits[n * 4 / 3];
 	sha256_of_str(bits, n * 4 / 3, bits);
@@ -180,12 +181,13 @@ int mnemonic_check(const char *mnemonic)
 	if (n == 24) {
 		return bits[0] == bits[32]; // compare 8 bits
 	}
-	return 0;
+	return ERROR;
 }
 
 // passphrase must be at most 256 characters or code may crash
-void mnemonic_to_seed(const char *mnemonic, const char *passphrase, uint8_t seed[512 / 8])
+int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer)
 {
+	uint8_t seed[512 / 8];
 	int passphraselen = strlen(passphrase);
 	uint8_t salt[8 + 256];
 	memcpy(salt, "mnemonic", 8);
@@ -196,6 +198,11 @@ void mnemonic_to_seed(const char *mnemonic, const char *passphrase, uint8_t seed
 	    BIP39_PBKDF2_ROUNDS,
 	    strlen(salt), salt,
 	    512 / 8, seed);
+
+	// TODO: Use memcpy
+	strcpy(*buffer, seed);
+
+	return OK;
 }
 
 const char * const *mnemonic_wordlist(void)

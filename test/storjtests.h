@@ -1,5 +1,7 @@
 #include <microhttpd.h>
 #include <assert.h>
+#include <check.h>
+
 #include "../src/storj.h"
 
 #define USER "testuser@storj.io"
