@@ -20,7 +20,7 @@ To run tests:
 
 Development tools:
 ```bash
-apt-get install build-essential libtool autotools-dev automake libmicrohttpd-dev check
+apt-get install build-essential libtool autotools-dev automake libmicrohttpd-dev
 ```
 
 Dependencies:
@@ -32,7 +32,7 @@ apt-get install libneon27-gnutls-dev nettle-dev libjson-c-dev libuv1-dev
 
 Development tools:
 ```bash
-brew install libtool automake libmicrohttpd check
+brew install libtool automake libmicrohttpd
 ```
 
 Dependencies:
