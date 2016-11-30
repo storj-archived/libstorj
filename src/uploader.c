@@ -20,85 +20,6 @@ void uploader_callback(uv_work_t *work, int status)
     printf("File ID: %s\n", opts->file_id);
 }
 
-void open_cb(uv_fs_t* open_req) {
-    int err = 0;
-    if (open_req->result < 0) {
-        const char *msg = uv_strerror(open_req->result);
-        printf("\nuv_fs_open callback: %s\n", msg);
-    }
-
-    storj_upload_work_data_t *work_data = open_req->data;
-    storj_upload_opts_t *opts = &work_data->opts;
-    storj_env_t *env = &work_data->env;
-
-    /* 3. Create buffer and initialize it */
-    char *buf = calloc(opts->file_size, sizeof(char));
-    uv_buf_t iov = uv_buf_init(buf, opts->file_size);
-
-    /* 4. Setup read request */
-    uv_fs_t *read_req = malloc(sizeof(uv_fs_t));
-    work_data->read_req = read_req;
-    read_req->data = work_data;
-
-    /* 5. Read from the file into the buffer */
-    err = uv_fs_read(env->loop, read_req, open_req->result, &iov, 1, 0, read_cb);
-    if (err < 0) {
-        const char *msg = uv_strerror(err);
-        printf("\nuv_fs_read %s: %s\n", opts->file_name, msg);
-    }
-}
-
-void read_cb(uv_fs_t* read_req) {
-    printf("In read callback");
-    int err = 0;
-    if (read_req->result < 0) {
-        const char *msg = uv_strerror(read_req->result);
-        printf("\nuv_fs_read callback: %s\n", msg);
-    }
-
-    storj_upload_work_data_t *work_data = read_req->data;
-    storj_upload_opts_t *opts = &work_data->opts;
-    storj_env_t *env = &work_data->env;
-
-    /* 7. Report the contents of the buffer */
-    printf("***************\n%s\n****************\n", read_req->bufsml->base);
-
-    // TODO: encrypt file
-
-    // TODO: Shard file
-
-    // TODO: upload file
-
-    free(read_req->bufsml->base);
-
-    /* 6. Setup close request */
-    uv_fs_t *close_req = malloc(sizeof(uv_fs_t));
-    close_req->data = work_data;
-
-    /* 8. Close the file descriptor */
-    err = uv_fs_close(env->loop, close_req, work_data->open_req->result, close_cb);
-    if (err < 0) {
-        const char *msg = uv_strerror(err);
-        printf("\nuv_fs_close %s: %s\n", opts->file_name, msg);
-    }
-}
-
-void close_cb(uv_fs_t* close_req) {
-    int err = 0;
-    if (close_req->result < 0) {
-        const char *msg = uv_strerror(close_req->result);
-        printf("\nuv_fs_close callback: %s\n", msg);
-    }
-
-    storj_upload_work_data_t *work_data = close_req->data;
-
-    /* 9. Cleanup all requests and context */
-    uv_fs_req_cleanup(work_data->open_req);
-    uv_fs_req_cleanup(work_data->read_req);
-    uv_fs_req_cleanup(work_data);
-    free(work_data);
-}
-
 static void begin_upload_work(uv_work_t *work)
 {
     int err;
@@ -127,17 +48,26 @@ static void begin_upload_work(uv_work_t *work)
     opts->file_id[FILE_ID_SIZE] = 0;
 
     // Load file
-    uv_fs_t *open_req = malloc(sizeof(uv_fs_t));
-    work_data->open_req  = open_req;
-    open_req->data = work_data;
+    FILE *fp;
+    char c[1000];
+    fp = fopen(opts->file_path, "r");
 
-    err = uv_fs_open(env->loop, open_req, opts->file_path, O_RDONLY, S_IRUSR, open_cb);
-    if (err < 0) {
-        const char *msg = uv_strerror(err);
-        printf("\nuv_fs_open on %s: %s\n", opts->file_path, msg);
-        free(open_req);
-        exit(0);
+    if (fp == NULL) {
+        fprintf(stderr, "Can't open file: %s\n", opts->file_path);
+        return;
     }
+    fscanf(fp,"%[^\n]", c);
+
+    printf("Data from the file:\n%s\n\n", c);
+    // TODO: encrypt file
+
+    // TODO: Shard file
+
+    // TODO: upload file
+
+    fclose(fp);
+
+
 }
 
 int storj_bridge_store_file(storj_env_t *env, storj_upload_opts_t *opts)

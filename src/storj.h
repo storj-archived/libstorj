@@ -156,10 +156,4 @@ unsigned long long shardSize(int hops);
 
 int calculate_file_id(char *bucket, char *file_name, char **buff);
 
-void open_cb(uv_fs_t*);
-
-void read_cb(uv_fs_t*);
-
-void close_cb(uv_fs_t*);
-
 #endif /* STORJ_H */
