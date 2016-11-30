@@ -20,7 +20,7 @@ To run tests:
 
 Development tools:
 ```bash
-apt-get install build-essential libtool autotools-dev automake libmicrohttpd-dev
+apt-get install build-essential libtool autotools-dev automake libmicrohttpd-dev check
 ```
 
 Dependencies:

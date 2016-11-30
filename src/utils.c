@@ -73,7 +73,7 @@ int generate_deterministic_key(char **mnemonic)
     return 0;
 }
 
-int sha256_of_str(uint8_t *str, int str_len, uint8_t *digest)
+int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest)
 {
     struct sha256_ctx ctx;
     sha256_init(&ctx);
@@ -83,7 +83,7 @@ int sha256_of_str(uint8_t *str, int str_len, uint8_t *digest)
     return 0;
 }
 
-int ripemd160_of_str(uint8_t *str, int str_len, uint8_t *digest)
+int ripemd160_of_str(const uint8_t *str, int str_len, uint8_t *digest)
 {
     struct ripemd160_ctx ctx;
     ripemd160_init(&ctx);

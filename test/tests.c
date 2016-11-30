@@ -19,7 +19,7 @@ START_TEST(api)
 {
 
     // Make sure we have a tmp folder
-    char const *folder = getenv("TMPDIR");
+    char *folder = getenv("TMPDIR");
 
     if (folder == 0) {
         printf("You need to set $TMPDIR before running.");
