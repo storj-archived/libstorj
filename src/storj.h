@@ -106,48 +106,144 @@ storj_env_t *storj_init_env(storj_bridge_options_t *options);
  * response is available in the first argument to the callback function.
  *
  * @param[in] env The storj environment struct
- * @param[out] cb A function called with response when complete
+ * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb);
 
+/**
+ * @brief List available buckets for a user.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_get_buckets(storj_env_t *env, uv_after_work_cb cb);
 
+/**
+ * @brief Create a bucket.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_create_bucket(storj_env_t *env,
                                char *name,
                                uv_after_work_cb cb);
 
+/**
+ * @brief Delete a bucket.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_delete_bucket(storj_env_t *env, char *id, uv_after_work_cb cb);
 
+/**
+ * @brief Get a list of all files in a bucket.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_list_files(storj_env_t *env, char *id, uv_after_work_cb cb);
 
+/**
+ * @brief Create a PUSH or PULL bucket token.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_create_bucket_token(storj_env_t *env,
                                      char *bucket_id,
                                      storj_bucket_op_t operation,
                                      uv_after_work_cb cb);
 
+/**
+ * @brief Get pointers with locations to file shards.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int storj_bridge_get_file_pointers(storj_env_t *env,
+                                   char *bucket_id,
+                                   char *file_id,
+                                   uv_after_work_cb cb);
+
+/**
+ * @brief Delete a file in a bucket.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_delete_file(storj_env_t *env,
                              char *bucket_id,
                              char *file_id,
                              uv_after_work_cb cb);
 
+/**
+ * @brief Create a file frame
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_create_frame(storj_env_t *env, uv_after_work_cb cb);
 
+/**
+ * @brief List available file frames
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_get_frames(storj_env_t *env, uv_after_work_cb cb);
 
+/**
+ * @brief Get information for a file frame
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_get_frame(storj_env_t *env,
                            char *frame_id,
                            uv_after_work_cb cb);
 
+/**
+ * @brief Delete a file frame
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_delete_frame(storj_env_t *env,
                               char *frame_id,
                               uv_after_work_cb cb);
 
+/**
+ * @brief Add a shard to a frame
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_add_shard_to_frame(storj_env_t *env,
                                     char *frame_id,
                                     storj_shard_t *shard,
                                     uv_after_work_cb cb);
 
+/**
+ * @brief Get metadata for a file
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_get_file_info(storj_env_t *env,
                                char *bucket_id,
                                char *file_id,
@@ -155,8 +251,6 @@ int storj_bridge_get_file_info(storj_env_t *env,
 
 int storj_bridge_store_file(storj_env_t *env,
                             storj_upload_opts_t *opts);
-
-int storj_bridge_get_file_pointers(storj_env_t *env, uv_after_work_cb cb);
 
 int storj_bridge_resolve_file(storj_env_t *env, uv_after_work_cb cb);
 

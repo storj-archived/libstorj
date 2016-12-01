@@ -2077,5 +2077,91 @@
     "frame": "2f2133b1d23e0bc4123f96de",
     "size": 3193765382,
     "id": "4f6b68174dd6eb8e0fcdfed7"
-  }
+  },
+  "getfilepointers": [
+    {
+      "token": "de8e83dcf41789d66f2855259f35b729c9834eeb",
+      "hash": "49ce4429f4cf35b3e7ddc05e233bf70fcb9eaced",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 9200,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976750
+      },
+      "operation": "PULL",
+      "size": 16777216
+    },
+    {
+      "token": "bc1b9cc047fc805fe756b08789f5db4ec37dc11e",
+      "hash": "a9e016f2bf64184f3d0191b5c9b20cf19271fe9b",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 9200,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "size": 16777216
+    },
+    {
+      "token": "f63d4f4d7ca0c3e4bca5c9dcd4a1c3be212f137e",
+      "hash": "4b61ae9c4249bb8a3e86839ef92f93fb5fafc602",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 9100,
+        "nodeID": "fe1d29e063197502b070c70782242485b276cd5c",
+        "lastSeen": 1480963976882
+      },
+      "operation": "PULL",
+      "size": 16777216
+    },
+    {
+      "token": "cc02fb5c9687c397fd1ead5a2e71239dcffb0f4c",
+      "hash": "bdc5b0d17e71ea10280d00ea6ec4d61562737f0d",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 9300,
+        "nodeID": "2f3b918a3bbe74608806c215ec341449ab9998ec",
+        "lastSeen": 1480963976950
+      },
+      "operation": "PULL",
+      "size": 16777216
+    },
+    {
+      "token": "2d9ae13d317209c1523b80716f186f887a4c7d3a",
+      "hash": "1e2a939084f6d16f590a121ce5818d62ca6265db",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 9000,
+        "nodeID": "15a02aed7a92e593d03d6cd1f43c0ab504131296",
+        "lastSeen": 1480963977022
+      },
+      "operation": "PULL",
+      "size": 16777216
+    },
+    {
+      "token": "382827e71429823a4aafedbe839b4efee9d5f68b",
+      "hash": "8f8e70c3c07d73cc6e411627a18a0db85a020551",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 9000,
+        "nodeID": "15a02aed7a92e593d03d6cd1f43c0ab504131296",
+        "lastSeen": 1480963977087
+      },
+      "operation": "PULL",
+      "size": 16777216
+    }
+  ]
 }
