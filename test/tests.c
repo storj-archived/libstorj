@@ -189,8 +189,8 @@ int test_api()
     char *folder = getenv("TMPDIR");
 
     if (folder == 0) {
-        printf("You need to set $TMPDIR before running.");
-        exit(0);
+        printf("You need to set $TMPDIR before running.\n");
+        exit(1);
     }
     char *file = strcat(folder, "samplefile.txt");
     create_test_file(file);
@@ -286,12 +286,6 @@ int test_api()
 
     status = storj_bridge_store_file(env, &upload_opts);
     assert(status == 0);
-
-    int stren = 128;
-    char *mnemonic = calloc(250, sizeof(char));
-    status = mnemonic_generate(stren, &mnemonic);
-    printf("\nmnemonic: %s\n", mnemonic);
-    free(mnemonic);
 
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
@@ -404,6 +398,8 @@ int test_mnemonic_check()
         m++;
     }
 
+    printf("PASS mnemonic_check\n");
+
     return 0;
 }
 
@@ -418,6 +414,8 @@ int test_mnemonic_generate()
     status = mnemonic_check(mnemonic);
     assert(1 == status);
     free(mnemonic);
+
+    printf("PASS mnemonic_generate\n");
 
     return 0;
 }
