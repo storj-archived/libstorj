@@ -13,15 +13,9 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
     uint8_t sha256_digest[SHA256_DIGEST_SIZE];
     sha256_of_str(name, name_len, sha256_digest);
 
-    // Convert ripemd160 hex to character array
-    char sha256_str[SHA256_DIGEST_SIZE*2+1];
-    sha256_str[SHA256_DIGEST_SIZE*2] = '\0';
-    memset(sha256_str, '\0', SHA256_DIGEST_SIZE*2+1);
-    hex2str(SHA256_DIGEST_SIZE, sha256_digest, sha256_str);
-
     // Get the ripemd160 of the sha256
     uint8_t ripemd160_digest[RIPEMD160_DIGEST_SIZE];
-    ripemd160_of_str(sha256_str, SHA256_DIGEST_SIZE*2, ripemd160_digest);
+    ripemd160_of_str(sha256_digest, SHA256_DIGEST_SIZE, ripemd160_digest);
 
     // Convert ripemd160 hex to character array
     char ripemd160_str[RIPEMD160_DIGEST_SIZE*2+1];

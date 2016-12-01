@@ -458,18 +458,22 @@ int test_calculate_file_id()
     char *file_id = calloc(12, sizeof(char));
     char *expected_file_id = "d24611e05728";
 
-    int status = calculate_file_id(bucket_id, file_name, &file_id);
-    assert(status == 1);
+    calculate_file_id(bucket_id, file_name, &file_id);
 
-    printf("expected file_id: %s\n", expected_file_id);
-    printf("actual file_id:   %s\n", file_id);
-    assert(strcmp(file_id, expected_file_id) == 0);
+    int check = strcmp(file_id, expected_file_id);
+    if (check != 0) {
+        printf("expected file_id: %s\n", expected_file_id);
+        printf("actual file_id:   %s\n", file_id);
+
+        free(file_id);
+        return ERROR;
+    }
 
     printf("PASS test_calculate_file_id\n");
 
     free(file_id);
 
-    return 0;
+    return OK;
 }
 
 
@@ -509,7 +513,7 @@ int main(void)
     assert(status == 0);
 
     status = test_calculate_file_id();
-    assert(status == 0);
+    assert(status == 1);
 
     // status = test_generate_seed();
     // assert(status == 0);
