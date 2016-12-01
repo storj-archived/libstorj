@@ -49,19 +49,20 @@ static void begin_upload_work(uv_work_t *work)
 
     // Load file
     FILE *fp;
-    char c[1000];
+    char buffer[4001];
+    memset(buffer, '\0', 4001);
     fp = fopen(opts->file_path, "r");
+    size_t bytesRead = 0;
 
-    if (fp == NULL) {
-        fprintf(stderr, "Can't open file: %s\n", opts->file_path);
-        return;
+    if (fp != NULL) {
+      // read up to sizeof(buffer) bytes
+      while ((bytesRead = fread(buffer, 1, 4000, fp)) > 0) {
+        printf("buffer: %s\n", buffer);
+
+        // TODO: Encrypt buffer and write to file
+        memset(buffer, '\0', 4001);
+      }
     }
-    fscanf(fp,"%[^\n]", c);
-
-    printf("Data from the file:\n%s\n\n", c);
-    // TODO: encrypt file
-
-    // TODO: Shard file
 
     // TODO: upload file
 
