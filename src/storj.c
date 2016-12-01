@@ -158,7 +158,6 @@ int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb)
                                             NULL, false);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
-
 }
 
 int storj_bridge_get_buckets(storj_env_t *env, uv_after_work_cb cb)

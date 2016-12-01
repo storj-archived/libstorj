@@ -1,3 +1,10 @@
+/**
+ * @file storj.h
+ * @brief Storj library.
+ *
+ * Implements functionality to upload and download files from the Storj
+ * distributed network.
+ */
 #ifndef STORJ_H
 #define STORJ_H
 
@@ -90,6 +97,17 @@ typedef struct {
 
 storj_env_t *storj_init_env(storj_bridge_options_t *options);
 
+/**
+ * @brief Get Storj bridge API information.
+ *
+ * This function will get general information about the storj bridge api.
+ * The network i/o is performed in a thread pool with a libuv loop, and the
+ * response is available in the first argument to the callback function.
+ *
+ * @param[in] env The storj environment struct
+ * @param[out] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb);
 
 int storj_bridge_get_buckets(storj_env_t *env, uv_after_work_cb cb);
