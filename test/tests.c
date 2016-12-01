@@ -459,7 +459,7 @@ int test_generate_seed()
     return OK;
 }
 
-int test_generate_bucket_id()
+int test_generate_bucket_key()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *bucket_id = "0123456789ab0123456789ab";
@@ -470,7 +470,7 @@ int test_generate_bucket_id()
 
     int check = strcmp(expected_bucket_key, bucket_key);
     if (check != 0) {
-        fail("generate_bucket_id");
+        fail("test_generate_bucket_key");
         printf("\texpected bucket_key: %s\n", expected_bucket_key);
         printf("\tactual bucket_key:   %s\n", bucket_key);
 
@@ -479,7 +479,7 @@ int test_generate_bucket_id()
     }
 
     free(bucket_key);
-    pass("generate_bucket_id");
+    pass("test_generate_bucket_key");
 
     return OK;
 }
@@ -554,7 +554,7 @@ int main(void)
     status -= test_generate_seed();
     ++tests_ran;
 
-    status -= test_generate_bucket_id();
+    status -= test_generate_bucket_key();
     ++tests_ran;
 
     printf(KGRN "PASSED: %i\n" RESET, abs(status));

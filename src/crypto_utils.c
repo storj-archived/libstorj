@@ -41,11 +41,14 @@ int generate_bucket_key(char *mnemonic, char *bucketId, char **bucket_key)
 int get_deterministic_key(char *seed, char *id, char **buffer)
 {
     int input_len = strlen(seed) + strlen(id);
-    char sha512input[input_len];
+    char *sha512input = calloc(input_len, sizeof(char));
 
     // Combine key and id
-    memset(sha512input, '\0', input_len);
-    sprintf(sha512input, "%s%s", seed, id);
+    memcpy(sha512input, seed, strlen(seed));
+    memcpy(sha512input + strlen(seed), id, strlen(id));
+
+    printf("sha512input: %s\n", sha512input);
+
 
     // Sha512 of key+id
     uint8_t sha512_digest[SHA512_DIGEST_SIZE];
@@ -58,7 +61,7 @@ int get_deterministic_key(char *seed, char *id, char **buffer)
     hex2str(SHA512_DIGEST_SIZE, sha512_digest, sha512_str);
 
     //First 64 bytes of sha512
-    memcpy(*buffer, sha512_digest, 64);
+    memcpy(*buffer, sha512_str, 64);
     return OK;
 }
 
