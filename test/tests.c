@@ -397,7 +397,7 @@ int test_mnemonic_check()
 
     printf("PASS mnemonic_check\n");
 
-    return 0;
+    return OK;
 }
 
 
@@ -406,32 +406,45 @@ int test_mnemonic_generate()
     int status;
     int stren = 128;
     char *mnemonic = calloc(250, sizeof(char));
-    status = mnemonic_generate(stren, &mnemonic);
-    assert(0 != status);
+    mnemonic_generate(stren, &mnemonic);
     status = mnemonic_check(mnemonic);
-    assert(1 == status);
+
+    if (status != 1) {
+        printf("FAIL mnemonic_generate\n");
+        printf("\texpected mnemonic check: %i\n", 0);
+        printf("\tactual mnemonic check:   %i\n", status);
+        free(mnemonic);
+        return ERROR;
+    }
     free(mnemonic);
 
     printf("PASS mnemonic_generate\n");
 
-    return 0;
+    return OK;
 }
 
 int test_generate_seed()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *seed = calloc(128, sizeof(char));
+    char *expected_seed = "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4";
 
-    int status = mnemonic_to_seed(mnemonic, "", &seed);
-    assert(status == 1);
+    mnemonic_to_seed(mnemonic, "", &seed);
 
-    printf("Seed: %s\n", seed);
-    assert(memcmp(seed, "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4", 128) == 0);
+    int check = memcmp(seed, expected_seed, 128);
+    if (check != 0) {
+        printf("FAIL test_generate_seed\n");
+        printf("\texpected seed: %s\n", expected_seed);
+        printf("\tactual seed:   %s\n", seed);
+
+        free(seed);
+        return ERROR;
+    }
 
     free(seed);
     printf("PASS test_generate_seed\n");
 
-    return 0;
+    return OK;
 }
 
 int test_generate_bucket_id()
@@ -439,16 +452,24 @@ int test_generate_bucket_id()
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *bucket_id = "0123456789ab0123456789ab";
     char *bucket_key = calloc(64, sizeof(char));
-    int status = generate_bucket_key(mnemonic, bucket_id, &bucket_key);
+    char *expected_bucket_key = "b2464469e364834ad21e24c64f637c39083af5067693605c84e259447644f6f6";
 
-    printf("bucket_key: %s\n", bucket_key);
-    assert(status == 1);
-    assert(strcmp(bucket_key, "b2464469e364834ad21e24c64f637c39083af5067693605c84e259447644f6f6") == 0);
+    generate_bucket_key(mnemonic, bucket_id, &bucket_key);
+
+    int check = strcmp(expected_bucket_key, bucket_key);
+    if (check != 0) {
+        printf("FAIL generate_bucket_id\n");
+        printf("\texpected bucket_key: %s\n", expected_bucket_key);
+        printf("\tactual bucket_key:   %s\n", bucket_key);
+
+        free(bucket_key);
+        return ERROR;
+    }
 
     free(bucket_key);
     printf("PASS generate_bucket_id\n");
 
-    return 0;
+    return OK;
 }
 
 int test_calculate_file_id()
@@ -462,8 +483,9 @@ int test_calculate_file_id()
 
     int check = strcmp(file_id, expected_file_id);
     if (check != 0) {
-        printf("expected file_id: %s\n", expected_file_id);
-        printf("actual file_id:   %s\n", file_id);
+        printf("FAIL test_calculate_file_id\n");
+        printf("\texpected file_id: %s\n", expected_file_id);
+        printf("\tactual file_id:   %s\n", file_id);
 
         free(file_id);
         return ERROR;
@@ -507,19 +529,19 @@ int main(void)
     assert(status == 0);
 
     status = test_mnemonic_check();
-    assert(status == 0);
+    assert(status == 1);
 
     status = test_mnemonic_generate();
-    assert(status == 0);
+    assert(status == 1);
 
     status = test_calculate_file_id();
     assert(status == 1);
 
-    // status = test_generate_seed();
-    // assert(status == 0);
-    //
-    // status = test_generate_bucket_id();
-    // assert(status == 0);
+    status = test_generate_seed();
+    assert(status == 1);
+
+    status = test_generate_bucket_id();
+    assert(status == 1);
 
     printf("PASSED ALL TESTS\n");
 
