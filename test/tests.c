@@ -312,6 +312,8 @@ int test_mnemonic_check()
         assert(r == 0);
         m++;
     }
+
+    return 0;
 }
 
 
