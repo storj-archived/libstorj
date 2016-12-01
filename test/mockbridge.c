@@ -125,22 +125,21 @@ int mock_bridge_server(void *cls,
         }
 
     } else if (0 == strcmp(method, "DELETE")) {
-        if (0 == strcmp(url, "/bucket/368be0816766b28fd5f43af5ba0fc54ab1be516e")) {
+        if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5ba0fc54ab1be516e")) {
             if (check_auth(user, pass, &status_code, page)) {
                 // TODO check post body
                 // there is no response body
                 status_code = MHD_HTTP_OK;
             }
-        } else if (0 == strcmp(url, "/bucket/368be0816766b28fd5f43af5ba0fc54ab1be516e/files/998960317b6725a3f8080c2b26875b0d8fe5731c")) {
+        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5ba0fc54ab1be516e/files/998960317b6725a3f8080c2b26875b0d8fe5731c")) {
             if (check_auth(user, pass, &status_code, page)) {
                 // TODO check post body
                 // there is no response body
                 status_code = MHD_HTTP_OK;
             }
-        } else if (0 == strcmp(url, "/frame/d4af71ab00e15b0c1a7b6ab2")) {
+        } else if (0 == strcmp(url, "/frames/d4af71ab00e15b0c1a7b6ab2")) {
             if (check_auth(user, pass, &status_code, page)) {
                 // TODO check post body
-                page = get_response_string(responses, "deleteframe");
                 status_code = MHD_HTTP_OK;
             }
         }

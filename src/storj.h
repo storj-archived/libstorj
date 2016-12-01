@@ -54,6 +54,7 @@ typedef struct {
     storj_boolean_t auth;
     struct json_object *body;
     struct json_object *response;
+    int status_code;
 } json_request_t;
 
 

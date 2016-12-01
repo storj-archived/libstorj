@@ -53,8 +53,7 @@ void check_delete_bucket(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
     assert(req->response == NULL);
-
-    // TODO check status code
+    assert(req->status_code == 200);
 
     printf("PASS storj_bridge_delete_bucket\n");
 }
@@ -100,8 +99,7 @@ void check_delete_file(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
     assert(req->response == NULL);
-
-    // TODO check status code
+    assert(req->status_code == 200);
 
     printf("PASS storj_bridge_delete_file\n");
 }
@@ -160,8 +158,7 @@ void check_delete_frame(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
     assert(req->response == NULL);
-
-    // TODO check status code
+    assert(req->status_code == 200);
 
     printf("PASS storj_bridge_delete_frame\n");
 }
