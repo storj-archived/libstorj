@@ -417,6 +417,41 @@ int test_mnemonic_generate()
     return 0;
 }
 
+int test_generate_seed()
+{
+    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+    char *seed = calloc(128, sizeof(char));
+
+    int status = mnemonic_to_seed(mnemonic, "", &seed);
+    assert(status == 1);
+
+    printf("Seed: %s\n", seed);
+
+    assert(strcmp(seed, "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4") == 0);
+
+    free(seed);
+    printf("PASS test_generate_seed\n");
+
+    return 0;
+}
+
+int test_generate_bucket_id()
+{
+    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+    char *bucket_id = "0123456789ab0123456789ab";
+    char *bucket_key = calloc(64, sizeof(char));
+    int status = generate_bucket_key(mnemonic, bucket_id, &bucket_key);
+
+    printf("bucket_key: %s\n", bucket_key);
+    assert(status == 1);
+    assert(strcmp(bucket_key, "b2464469e364834ad21e24c64f637c39083af5067693605c84e259447644f6f6") == 0);
+
+    free(bucket_key);
+    printf("PASS generate_bucket_id\n");
+
+    return 0;
+}
+
 // Test Server
 struct MHD_Daemon *start_test_server()
 {
@@ -450,6 +485,12 @@ int main(void)
     assert(status == 0);
 
     status = test_mnemonic_generate();
+    assert(status == 0);
+
+    status = test_generate_seed();
+    assert(status == 0);
+
+    status = test_generate_bucket_id();
     assert(status == 0);
 
     printf("PASSED ALL TESTS\n");

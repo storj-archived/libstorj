@@ -187,9 +187,9 @@ int mnemonic_check(const char *mnemonic)
 // passphrase must be at most 256 characters or code may crash
 int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer)
 {
-    uint8_t seed[512 / 8];
+    uint8_t *seed = calloc(512 / 8, sizeof(char));
     int passphraselen = strlen(passphrase);
-    uint8_t salt[8 + 256];
+    uint8_t *salt = calloc(8 + 256, sizeof(char));
     memcpy(salt, "mnemonic", 8);
     memcpy(salt + 8, passphrase, passphraselen);
     pbkdf2_hmac_sha512 (
@@ -199,8 +199,15 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer
         strlen(salt), salt,
         512 / 8, seed);
 
+    char *sha512_str = calloc(SHA512_DIGEST_SIZE*2+1, sizeof(char));
+    hex2str(SHA512_DIGEST_SIZE, seed, sha512_str);
+
     // TODO: Use memcpy
-    strcpy(*buffer, seed);
+    strcpy(*buffer, sha512_str);
+
+    free(seed);
+    free(salt);
+    free(sha512_str);
 
     return OK;
 }

@@ -47,7 +47,13 @@ static void begin_upload_work(uv_work_t *work)
     opts->file_id = file_id_buff;
     opts->file_id[FILE_ID_SIZE] = 0;
 
-    // Load file
+
+    // Encrypt file
+    // struct aes256_ctx *ctx;
+    // aes256_set_encrypt_key(ctx, const uint8_t *key);
+    // aes256_encrypt(ctx, size_t length, uint8_t *dst, const uint8_t *src);
+
+    // Load encrypted file
     FILE *fp;
     char buffer[4001];
     memset(buffer, '\0', 4001);
