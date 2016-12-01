@@ -1,9 +1,20 @@
 #include "storjtests.h"
 
+void fail(char *msg)
+{
+    printf(KRED "FAIL" RESET " %s\n", msg);
+}
+
+void pass(char *msg)
+{
+    printf(KGRN "PASS" RESET " %s\n", msg);
+}
+
+
 int create_test_file(char *file) {
     FILE *fp;
     fp = fopen(file, "w+");
-    fprintf(fp, "Sample file...\n");
+    fprintf(fp, "Sample file...");
     fclose(fp);
 
     return 0;
@@ -17,7 +28,7 @@ void check_bridge_get_info(uv_work_t *work_req, int status)
     struct json_object* value;
     int success = json_object_object_get_ex(req->response, "info", &value);
     assert(success == 1);
-    printf("PASS storj_bridge_get_info\n");
+    pass("storj_bridge_get_info");
 }
 
 void check_get_buckets(uv_work_t *work_req, int status)
@@ -30,7 +41,7 @@ void check_get_buckets(uv_work_t *work_req, int status)
     struct json_object* value;
     int success = json_object_object_get_ex(bucket, "id", &value);
     assert(success == 1);
-    printf("PASS storj_bridge_get_buckets\n");
+    pass("storj_bridge_get_buckets");
 }
 
 void check_create_bucket(uv_work_t *work_req, int status)
@@ -45,7 +56,7 @@ void check_create_bucket(uv_work_t *work_req, int status)
 
     const char* name = json_object_get_string(value);
     assert(strcmp(name, "backups") == 0);
-    printf("PASS storj_bridge_create_bucket\n");
+    pass("storj_bridge_create_bucket");
 }
 
 void check_delete_bucket(uv_work_t *work_req, int status)
@@ -55,7 +66,7 @@ void check_delete_bucket(uv_work_t *work_req, int status)
     assert(req->response == NULL);
     assert(req->status_code == 200);
 
-    printf("PASS storj_bridge_delete_bucket\n");
+    pass("storj_bridge_delete_bucket");
 }
 
 void check_list_files(uv_work_t *work_req, int status)
@@ -72,7 +83,7 @@ void check_list_files(uv_work_t *work_req, int status)
     const char* id = json_object_get_string(value);
     assert(strcmp(id, "f18b5ca437b1ca3daa14969f") == 0);
 
-    printf("PASS storj_bridge_list_files\n");
+    pass("storj_bridge_list_files");
 }
 
 void check_bucket_tokens(uv_work_t *work_req, int status)
@@ -91,7 +102,7 @@ void check_bucket_tokens(uv_work_t *work_req, int status)
 
     assert(strcmp(token, t) == 0);
 
-    printf("PASS storj_bridge_create_bucket_token\n");
+    pass("storj_bridge_create_bucket_token");
 }
 
 void check_delete_file(uv_work_t *work_req, int status)
@@ -101,7 +112,7 @@ void check_delete_file(uv_work_t *work_req, int status)
     assert(req->response == NULL);
     assert(req->status_code == 200);
 
-    printf("PASS storj_bridge_delete_file\n");
+    pass("storj_bridge_delete_file");
 }
 
 void check_create_frame(uv_work_t *work_req, int status)
@@ -117,7 +128,7 @@ void check_create_frame(uv_work_t *work_req, int status)
     const char* id = json_object_get_string(value);
 
     assert(strcmp(id, "d6367831f7f1b117ffdd0015") == 0);
-    printf("PASS storj_bridge_create_frame\n");
+    pass("storj_bridge_create_frame");
 }
 
 void check_get_frames(uv_work_t *work_req, int status)
@@ -134,7 +145,7 @@ void check_get_frames(uv_work_t *work_req, int status)
     const char* id = json_object_get_string(value);
     assert(strcmp(id, "52b8cc8dfd47bb057d8c8a17") == 0);
 
-    printf("PASS storj_bridge_get_frames\n");
+    pass("storj_bridge_get_frames");
 }
 
 void check_get_frame(uv_work_t *work_req, int status)
@@ -150,7 +161,7 @@ void check_get_frame(uv_work_t *work_req, int status)
     const char* id = json_object_get_string(value);
 
     assert(strcmp(id, "192f90792f42875a7533340b") == 0);
-    printf("PASS storj_bridge_get_frame\n");
+    pass("storj_bridge_get_frame");
 }
 
 void check_delete_frame(uv_work_t *work_req, int status)
@@ -160,7 +171,7 @@ void check_delete_frame(uv_work_t *work_req, int status)
     assert(req->response == NULL);
     assert(req->status_code == 200);
 
-    printf("PASS storj_bridge_delete_frame\n");
+    pass("storj_bridge_delete_frame");
 }
 
 void check_file_info(uv_work_t *work_req, int status)
@@ -176,7 +187,7 @@ void check_file_info(uv_work_t *work_req, int status)
     const char* mimetype = json_object_get_string(value);
 
     assert(strcmp(mimetype, "video/ogg") == 0);
-    printf("PASS storj_bridge_get_file_info\n");
+    pass("storj_bridge_get_file_info");
 }
 
 int test_api()
@@ -295,7 +306,7 @@ int test_api()
         // Error
     }
 
-    return 0;
+    return OK;
 }
 
 
@@ -395,7 +406,7 @@ int test_mnemonic_check()
         m++;
     }
 
-    printf("PASS mnemonic_check\n");
+    pass("mnemonic_check");
 
     return OK;
 }
@@ -410,7 +421,7 @@ int test_mnemonic_generate()
     status = mnemonic_check(mnemonic);
 
     if (status != 1) {
-        printf("FAIL mnemonic_generate\n");
+        fail("test_mnemonic_generate");
         printf("\texpected mnemonic check: %i\n", 0);
         printf("\tactual mnemonic check:   %i\n", status);
         free(mnemonic);
@@ -418,7 +429,7 @@ int test_mnemonic_generate()
     }
     free(mnemonic);
 
-    printf("PASS mnemonic_generate\n");
+    pass("test_mnemonic_check");
 
     return OK;
 }
@@ -431,9 +442,10 @@ int test_generate_seed()
 
     mnemonic_to_seed(mnemonic, "", &seed);
 
+    // TODO: Fix the return value of seed so we can use strcmp
     int check = memcmp(seed, expected_seed, 128);
     if (check != 0) {
-        printf("FAIL test_generate_seed\n");
+        fail("test_generate_seed");
         printf("\texpected seed: %s\n", expected_seed);
         printf("\tactual seed:   %s\n", seed);
 
@@ -442,7 +454,7 @@ int test_generate_seed()
     }
 
     free(seed);
-    printf("PASS test_generate_seed\n");
+    pass("test_generate_seed");
 
     return OK;
 }
@@ -458,7 +470,7 @@ int test_generate_bucket_id()
 
     int check = strcmp(expected_bucket_key, bucket_key);
     if (check != 0) {
-        printf("FAIL generate_bucket_id\n");
+        fail("generate_bucket_id");
         printf("\texpected bucket_key: %s\n", expected_bucket_key);
         printf("\tactual bucket_key:   %s\n", bucket_key);
 
@@ -467,7 +479,7 @@ int test_generate_bucket_id()
     }
 
     free(bucket_key);
-    printf("PASS generate_bucket_id\n");
+    pass("generate_bucket_id");
 
     return OK;
 }
@@ -483,7 +495,7 @@ int test_calculate_file_id()
 
     int check = strcmp(file_id, expected_file_id);
     if (check != 0) {
-        printf("FAIL test_calculate_file_id\n");
+        fail("test_calculate_file_id");
         printf("\texpected file_id: %s\n", expected_file_id);
         printf("\tactual file_id:   %s\n", file_id);
 
@@ -491,7 +503,7 @@ int test_calculate_file_id()
         return ERROR;
     }
 
-    printf("PASS test_calculate_file_id\n");
+    pass("test_calculate_file_id");
 
     free(file_id);
 
@@ -524,26 +536,31 @@ int main(void)
         return 0;
     };
 
-    int status;
-    status = test_api();
-    assert(status == 0);
+    int tests_ran = 0;
 
-    status = test_mnemonic_check();
-    assert(status == 1);
+    int status = 0;
+    status -= test_api();
+    ++tests_ran;
 
-    status = test_mnemonic_generate();
-    assert(status == 1);
+    status -= test_mnemonic_check();
+    ++tests_ran;
 
-    status = test_calculate_file_id();
-    assert(status == 1);
+    status -= test_mnemonic_generate();
+    ++tests_ran;
 
-    status = test_generate_seed();
-    assert(status == 1);
+    status -= test_calculate_file_id();
+    ++tests_ran;
 
-    status = test_generate_bucket_id();
-    assert(status == 1);
+    status -= test_generate_seed();
+    ++tests_ran;
 
-    printf("PASSED ALL TESTS\n");
+    status -= test_generate_bucket_id();
+    ++tests_ran;
+
+    printf(KGRN "PASSED: %i\n" RESET, abs(status));
+    printf(KRED "FAILED: %i\n" RESET, (tests_ran + status) );
+    printf("TOTAL: %i\n", (tests_ran));
+
 
     // Shutdown test server
     MHD_stop_daemon(d);
