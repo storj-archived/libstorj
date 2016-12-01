@@ -1,11 +1,5 @@
 #include "storjtests.h"
 
-void req_callback(uv_work_t *work_req, int status)
-{
-    json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
-}
-
 int create_test_file(char *file) {
     FILE *fp;
     fp = fopen(file, "w+");
@@ -15,6 +9,176 @@ int create_test_file(char *file) {
     return 0;
 }
 
+void check_bridge_get_info(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    struct json_object* value;
+    int success = json_object_object_get_ex(req->response, "info", &value);
+    assert(success == 1);
+    printf("PASS storj_bridge_get_info\n");
+}
+
+void check_get_buckets(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+    assert(json_object_is_type(req->response, json_type_array) == 1);
+
+    struct json_object *bucket = json_object_array_get_idx(req->response, 0);
+    struct json_object* value;
+    int success = json_object_object_get_ex(bucket, "id", &value);
+    assert(success == 1);
+    printf("PASS storj_bridge_get_buckets\n");
+}
+
+void check_create_bucket(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    struct json_object* value;
+    int success = json_object_object_get_ex(req->response, "name", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* name = json_object_get_string(value);
+    assert(strcmp(name, "backups") == 0);
+    printf("PASS storj_bridge_create_bucket\n");
+}
+
+void check_delete_bucket(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+    assert(req->response == NULL);
+    assert(req->status_code == 200);
+
+    printf("PASS storj_bridge_delete_bucket\n");
+}
+
+void check_list_files(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    struct json_object *file = json_object_array_get_idx(req->response, 0);
+    struct json_object *value;
+    int success = json_object_object_get_ex(file, "id", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* id = json_object_get_string(value);
+    assert(strcmp(id, "f18b5ca437b1ca3daa14969f") == 0);
+
+    printf("PASS storj_bridge_list_files\n");
+}
+
+void check_bucket_tokens(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    struct json_object *value;
+    int success = json_object_object_get_ex(req->response, "token", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* token = json_object_get_string(value);
+
+    char *t = "a264e12611ad93b1777e82065f86cfcf088967dba2f15559cea5e140d5339a0e";
+
+    assert(strcmp(token, t) == 0);
+
+    printf("PASS storj_bridge_create_bucket_token\n");
+}
+
+void check_delete_file(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+    assert(req->response == NULL);
+    assert(req->status_code == 200);
+
+    printf("PASS storj_bridge_delete_file\n");
+}
+
+void check_create_frame(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    struct json_object *value;
+    int success = json_object_object_get_ex(req->response, "id", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* id = json_object_get_string(value);
+
+    assert(strcmp(id, "d6367831f7f1b117ffdd0015") == 0);
+    printf("PASS storj_bridge_create_frame\n");
+}
+
+void check_get_frames(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    struct json_object *file = json_object_array_get_idx(req->response, 0);
+    struct json_object *value;
+    int success = json_object_object_get_ex(file, "id", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* id = json_object_get_string(value);
+    assert(strcmp(id, "52b8cc8dfd47bb057d8c8a17") == 0);
+
+    printf("PASS storj_bridge_get_frames\n");
+}
+
+void check_get_frame(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    struct json_object *value;
+    int success = json_object_object_get_ex(req->response, "id", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* id = json_object_get_string(value);
+
+    assert(strcmp(id, "192f90792f42875a7533340b") == 0);
+    printf("PASS storj_bridge_get_frame\n");
+}
+
+void check_delete_frame(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+    assert(req->response == NULL);
+    assert(req->status_code == 200);
+
+    printf("PASS storj_bridge_delete_frame\n");
+}
+
+void check_file_info(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    struct json_object *value;
+    int success = json_object_object_get_ex(req->response, "mimetype", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* mimetype = json_object_get_string(value);
+
+    assert(strcmp(mimetype, "video/ogg") == 0);
+    printf("PASS storj_bridge_get_file_info\n");
+}
+
 int test_api()
 {
 
@@ -22,8 +186,8 @@ int test_api()
     char *folder = getenv("TMPDIR");
 
     if (folder == 0) {
-        printf("You need to set $TMPDIR before running.");
-        exit(0);
+        printf("You need to set $TMPDIR before running.\n");
+        exit(1);
     }
     char *file = strcat(folder, "samplefile.txt");
     create_test_file(file);
@@ -37,7 +201,77 @@ int test_api()
         .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
     };
 
-    // setup bridge options to point to mock server
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&options);
+    assert(env != NULL);
+
+    int status;
+
+    // get general api info
+    status = storj_bridge_get_info(env, check_bridge_get_info);
+    assert(status == 0);
+
+    // get buckets
+    status = storj_bridge_get_buckets(env, check_get_buckets);
+    assert(status == 0);
+
+    // create a new bucket with a name
+    status = storj_bridge_create_bucket(env, "backups", check_create_bucket);
+    assert(status == 0);
+
+    char *bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e";
+
+    // delete a bucket
+    // TODO check for successful status code, response has object
+    status = storj_bridge_delete_bucket(env, bucket_id, check_delete_bucket);
+    assert(status == 0);
+
+    // list files in a bucket
+    status = storj_bridge_list_files(env, bucket_id, check_list_files);
+    assert(status == 0);
+
+    // create bucket tokens
+    status = storj_bridge_create_bucket_token(env,
+                                              bucket_id,
+                                              BUCKET_PUSH,
+                                              check_bucket_tokens);
+    assert(status == 0);
+
+    char *file_id = "998960317b6725a3f8080c2b26875b0d8fe5731c";
+
+    // delete a file in a bucket
+    status = storj_bridge_delete_file(env,
+                                      bucket_id,
+                                      file_id,
+                                      check_delete_file);
+    assert(status == 0);
+
+    // create a file frame
+    status = storj_bridge_create_frame(env, check_create_frame);
+    assert(status == 0);
+
+    // get frames
+    status = storj_bridge_get_frames(env, check_get_frames);
+    assert(status == 0);
+
+    char *frame_id = "d4af71ab00e15b0c1a7b6ab2";
+
+    // get frame
+    status = storj_bridge_get_frame(env, frame_id, check_get_frame);
+    assert(status == 0);
+
+    // delete frame
+    status = storj_bridge_delete_frame(env, frame_id, check_delete_frame);
+    assert(status == 0);
+
+    // TODO add shard to frame
+
+    // get file information
+    status = storj_bridge_get_file_info(env, bucket_id,
+                                        file_id, check_file_info);
+    assert(status == 0);
+
+    // upload file
     storj_upload_opts_t upload_opts = {
         .file_concurrency = 1,
         .shard_concurrency  = 3,
@@ -47,85 +281,8 @@ int test_api()
         .key_pass = "password"
     };
 
-    // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&options);
-    assert(env != NULL);
-
-
-    int status;
-
-    // get general api info
-    status = storj_bridge_get_info(env, req_callback);
-    assert(status == 0);
-
-    // get buckets
-    status = storj_bridge_get_buckets(env, req_callback);
-    assert(status == 0);
-
-    // create a new bucket with a name
-    status = storj_bridge_create_bucket(env, "backups", req_callback);
-    assert(status == 0);
-
-    char *bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e";
-
-    // delete a bucket
-    // TODO check for successful status code, response has object
-    status = storj_bridge_delete_bucket(env, bucket_id, req_callback);
-    assert(status == 0);
-
-    // list files in a bucket
-    status = storj_bridge_list_files(env, bucket_id, req_callback);
-    assert(status == 0);
-
-    // create bucket tokens
-    status = storj_bridge_create_bucket_token(env,
-                                              bucket_id,
-                                              BUCKET_PUSH,
-                                              req_callback);
-    assert(status == 0);
-
-    char *file_id = "998960317b6725a3f8080c2b26875b0d8fe5731c";
-
-    // delete a file in a bucket
-    status = storj_bridge_delete_file(env,
-                                      bucket_id,
-                                      file_id,
-                                      req_callback);
-    assert(status == 0);
-
-    // create a file frame
-    status = storj_bridge_create_frame(env, req_callback);
-    assert(status == 0);
-
-    // get frames
-    status = storj_bridge_get_frames(env, req_callback);
-    assert(status == 0);
-
-    char *frame_id = "d4af71ab00e15b0c1a7b6ab2";
-
-    // get frame
-    status = storj_bridge_get_frame(env, frame_id, req_callback);
-    assert(status == 0);
-
-    // delete frame
-    status = storj_bridge_delete_frame(env, frame_id, req_callback);
-    assert(status == 0);
-
-    // TODO add shard to frame
-
-    // get file information
-    status = storj_bridge_get_file_info(env, bucket_id, file_id, req_callback);
-    assert(status == 0);
-
-    // upload file
     status = storj_bridge_store_file(env, &upload_opts);
     assert(status == 0);
-
-    int stren = 128;
-    char *mnemonic = calloc(250, sizeof(char));
-    status = mnemonic_generate(stren, &mnemonic);
-    printf("\nmnemonic: %s\n", mnemonic);
-    free(mnemonic);
 
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
@@ -237,6 +394,10 @@ int test_mnemonic_check()
         assert(r == 0);
         m++;
     }
+
+    printf("PASS mnemonic_check\n");
+
+    return 0;
 }
 
 
@@ -250,6 +411,8 @@ int test_mnemonic_generate()
     status = mnemonic_check(mnemonic);
     assert(1 == status);
     free(mnemonic);
+
+    printf("PASS mnemonic_generate\n");
 
     return 0;
 }

@@ -18,7 +18,8 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
                                       char *method,
                                       char *path,
                                       struct json_object *request_body,
-                                      storj_boolean_t auth)
+                                      storj_boolean_t auth,
+                                      int **status_code)
 {
     ne_session *sess = ne_session_create(options->proto, options->host,
                                          options->port);
@@ -58,6 +59,9 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
         return NULL;
     }
 
+    // set the status code
+    *status_code = ne_get_status(req)->code;
+
     // Note: NE_BUFSIZ is from ne_defs.h. Should be okay to use.
     int body_sz = NE_BUFSIZ * 4;
     char *body  = calloc(NE_BUFSIZ * 4, sizeof(char));
@@ -95,8 +99,10 @@ static struct json_object *fetch_json(storj_bridge_options_t *options,
 static void json_request_worker(uv_work_t *work)
 {
     json_request_t *req = work->data;
+    int *status_code;
     req->response = fetch_json(req->options, req->method, req->path, req->body,
-                               req->auth);
+                               req->auth, &status_code);
+    req->status_code = status_code;
 }
 
 static uv_work_t *uv_work_new()
@@ -158,7 +164,6 @@ int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb)
                                             NULL, false);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
-
 }
 
 int storj_bridge_get_buckets(storj_env_t *env, uv_after_work_cb cb)

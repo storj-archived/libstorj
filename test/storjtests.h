@@ -1,6 +1,5 @@
 #include <microhttpd.h>
 #include <assert.h>
-#include <check.h>
 
 #include "../src/storj.h"
 #include "../src/bip39.h"
