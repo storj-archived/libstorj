@@ -12,12 +12,6 @@ void uploader_callback(uv_work_t *work, int status)
     storj_upload_work_data_t *work_data = work->data;
     storj_env_t *env = &work_data->env;
     storj_upload_opts_t *opts = &work_data->opts;
-
-    printf("File name: %s\n", opts->file_name);
-    printf("File size: %llu\n", opts->file_size);
-    printf("Shard size: %llu\n", opts->shard_size);
-    printf("Shard num: %i\n", opts->shard_num);
-    printf("File ID: %s\n", opts->file_id);
 }
 
 static void begin_upload_work(uv_work_t *work)

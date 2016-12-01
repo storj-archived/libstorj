@@ -32,7 +32,7 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
     //Copy the result into buffer
     memcpy(*buffer, ripemd160_str, 12);
 
-    return 0;
+    return OK;
 }
 
 int generate_bucket_key(char *mnemonic, char *bucketId, char **bucket_key)

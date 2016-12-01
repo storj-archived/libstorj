@@ -426,8 +426,7 @@ int test_generate_seed()
     assert(status == 1);
 
     printf("Seed: %s\n", seed);
-
-    assert(strcmp(seed, "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4") == 0);
+    assert(memcmp(seed, "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4", 128) == 0);
 
     free(seed);
     printf("PASS test_generate_seed\n");
@@ -451,6 +450,28 @@ int test_generate_bucket_id()
 
     return 0;
 }
+
+int test_calculate_file_id()
+{
+    char *bucket_id = "d8ed2411545c65be0760e0db";
+    char *file_name = "samplefile.txt";
+    char *file_id = calloc(12, sizeof(char));
+    char *expected_file_id = "d24611e05728";
+
+    int status = calculate_file_id(bucket_id, file_name, &file_id);
+    assert(status == 1);
+
+    printf("expected file_id: %s\n", expected_file_id);
+    printf("actual file_id:   %s\n", file_id);
+    assert(strcmp(file_id, expected_file_id) == 0);
+
+    printf("PASS test_calculate_file_id\n");
+
+    free(file_id);
+
+    return 0;
+}
+
 
 // Test Server
 struct MHD_Daemon *start_test_server()
@@ -487,11 +508,14 @@ int main(void)
     status = test_mnemonic_generate();
     assert(status == 0);
 
-    status = test_generate_seed();
+    status = test_calculate_file_id();
     assert(status == 0);
 
-    status = test_generate_bucket_id();
-    assert(status == 0);
+    // status = test_generate_seed();
+    // assert(status == 0);
+    //
+    // status = test_generate_bucket_id();
+    // assert(status == 0);
 
     printf("PASSED ALL TESTS\n");
 
