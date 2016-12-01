@@ -95,7 +95,7 @@ int mock_bridge_server(void *cls,
                 page = get_response_string(responses, "getframes");
                 status_code = MHD_HTTP_OK;
             }
-        } else if (0 == strcmp(url, "/frame/d4af71ab00e15b0c1a7b6ab2")) {
+        } else if (0 == strcmp(url, "/frames/d4af71ab00e15b0c1a7b6ab2")) {
             if (check_auth(user, pass, &status_code, page)) {
                 page = get_response_string(responses, "getframe");
                 status_code = MHD_HTTP_OK;

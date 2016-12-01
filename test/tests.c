@@ -16,79 +16,170 @@ void check_bridge_get_info(uv_work_t *work_req, int status)
 
     struct json_object* value;
     int success = json_object_object_get_ex(req->response, "info", &value);
-    assert(success == 1); // true
+    assert(success == 1);
+    printf("PASS storj_bridge_get_info\n");
 }
 
 void check_get_buckets(uv_work_t *work_req, int status)
 {
+    assert(status == 0);
     json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
+    assert(json_object_is_type(req->response, json_type_array) == 1);
+
+    struct json_object *bucket = json_object_array_get_idx(req->response, 0);
+    struct json_object* value;
+    int success = json_object_object_get_ex(bucket, "id", &value);
+    assert(success == 1);
+    printf("PASS storj_bridge_get_buckets\n");
 }
 
 void check_create_bucket(uv_work_t *work_req, int status)
 {
+    assert(status == 0);
     json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
+
+    struct json_object* value;
+    int success = json_object_object_get_ex(req->response, "name", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* name = json_object_get_string(value);
+    assert(strcmp(name, "backups") == 0);
+    printf("PASS storj_bridge_create_bucket\n");
 }
 
 void check_delete_bucket(uv_work_t *work_req, int status)
 {
+    assert(status == 0);
     json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
+    assert(req->response == NULL);
+
+    // TODO check status code
+
+    printf("PASS storj_bridge_delete_bucket\n");
 }
 
 void check_list_files(uv_work_t *work_req, int status)
 {
+    assert(status == 0);
     json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
+
+    struct json_object *file = json_object_array_get_idx(req->response, 0);
+    struct json_object *value;
+    int success = json_object_object_get_ex(file, "id", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* id = json_object_get_string(value);
+    assert(strcmp(id, "f18b5ca437b1ca3daa14969f") == 0);
+
+    printf("PASS storj_bridge_list_files\n");
 }
 
 void check_bucket_tokens(uv_work_t *work_req, int status)
 {
+    assert(status == 0);
     json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
+
+    struct json_object *value;
+    int success = json_object_object_get_ex(req->response, "token", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* token = json_object_get_string(value);
+
+    char *t = "a264e12611ad93b1777e82065f86cfcf088967dba2f15559cea5e140d5339a0e";
+
+    assert(strcmp(token, t) == 0);
+
+    printf("PASS storj_bridge_create_bucket_token\n");
 }
 
 void check_delete_file(uv_work_t *work_req, int status)
 {
+    assert(status == 0);
     json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
+    assert(req->response == NULL);
+
+    // TODO check status code
+
+    printf("PASS storj_bridge_delete_file\n");
 }
 
 void check_create_frame(uv_work_t *work_req, int status)
 {
+    assert(status == 0);
     json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
+
+    struct json_object *value;
+    int success = json_object_object_get_ex(req->response, "id", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* id = json_object_get_string(value);
+
+    assert(strcmp(id, "d6367831f7f1b117ffdd0015") == 0);
+    printf("PASS storj_bridge_create_frame\n");
 }
 
 void check_get_frames(uv_work_t *work_req, int status)
 {
+    assert(status == 0);
     json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
+
+    struct json_object *file = json_object_array_get_idx(req->response, 0);
+    struct json_object *value;
+    int success = json_object_object_get_ex(file, "id", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* id = json_object_get_string(value);
+    assert(strcmp(id, "52b8cc8dfd47bb057d8c8a17") == 0);
+
+    printf("PASS storj_bridge_get_frames\n");
 }
 
 void check_get_frame(uv_work_t *work_req, int status)
 {
+    assert(status == 0);
     json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
+
+    struct json_object *value;
+    int success = json_object_object_get_ex(req->response, "id", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* id = json_object_get_string(value);
+
+    assert(strcmp(id, "192f90792f42875a7533340b") == 0);
+    printf("PASS storj_bridge_get_frame\n");
 }
 
 void check_delete_frame(uv_work_t *work_req, int status)
 {
+    assert(status == 0);
     json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
+    assert(req->response == NULL);
+
+    // TODO check status code
+
+    printf("PASS storj_bridge_delete_frame\n");
 }
 
 void check_file_info(uv_work_t *work_req, int status)
 {
+    assert(status == 0);
     json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
-}
 
-void check_upload_file(uv_work_t *work_req, int status)
-{
-    json_request_t *req = work_req->data;
-    printf("%s\n\n\n", json_object_to_json_string(req->response));
+    struct json_object *value;
+    int success = json_object_object_get_ex(req->response, "mimetype", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* mimetype = json_object_get_string(value);
+
+    assert(strcmp(mimetype, "video/ogg") == 0);
+    printf("PASS storj_bridge_get_file_info\n");
 }
 
 int test_api()
