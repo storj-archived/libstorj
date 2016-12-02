@@ -184,11 +184,16 @@ int mnemonic_check(const char *mnemonic)
     return ERROR;
 }
 
-// passphrase must be at most 256 characters or code may crash
 int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer)
 {
-    uint8_t *seed = calloc(512 / 8, sizeof(char));
     int passphraselen = strlen(passphrase);
+
+    // We can't exceed a password of 256 bytes
+    if (passphraselen > 256) {
+        passphraselen = 256;
+    }
+
+    uint8_t *seed = calloc(512 / 8, sizeof(char));
     uint8_t *salt = calloc(8 + 256, sizeof(char));
     memcpy(salt, "mnemonic", 8);
     memcpy(salt + 8, passphrase, passphraselen);

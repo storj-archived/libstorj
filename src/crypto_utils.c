@@ -59,10 +59,11 @@ int get_deterministic_key(char *seed, int seed_len, char *id, char **buffer)
     memcpy(sha512input + seed_len, id, strlen(id));
     sha512input[input_len] = '\0';
 
+    // Convert input to hexdata
     uint8_t *sha512input_as_hex = calloc(input_len/2, sizeof(char));
     str2hex(input_len, sha512input, sha512input_as_hex);
 
-    // Sha512 of key+id
+    // Sha512 of hexdata
     uint8_t sha512_digest[SHA512_DIGEST_SIZE];
     sha512_of_str(sha512input_as_hex, input_len/2, sha512_digest);
 

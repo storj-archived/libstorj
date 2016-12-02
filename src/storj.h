@@ -181,8 +181,49 @@ unsigned long long determine_shard_size(storj_upload_opts_t *opts,
 
 unsigned long long shardSize(int hops);
 
-int calculate_file_id(char *bucket, char *file_name, char **buff);
+/**
+ * @brief Calculate file id by sha256ripemd160
+ *
+ * @param[in] bucket Character array of bucket id
+ * @param[in] file_name Character array of file name
+ * @param[out] buffer 12 byte character array that is the file's id
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int calculate_file_id(char *bucket, char *file_name, char **buffer);
 
+/**
+ * @brief Generate a bucket's key
+ *
+ * @param[in] Character array of the mnemonic
+ * @param[in] bucket_id Character array of bucket id
+ * @param[out] bucket_key 64 byte character array that is the bucket's key
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int generate_bucket_key(char *mnemonic, char *bucket_id, char **bucket_key);
+
+/**
+ * @brief Generate a file's key
+ *
+ * @param[in] Character array of the mnemonic
+ * @param[in] bucket_id Character array of bucket id
+ * @param[in] file_id Character array of file id
+ * @param[out] file_key 64 byte character array that is the bucket's key
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int generate_file_key(char *mnemonic,
+                      char *bucket_id,
+                      char *file_id,
+                      char **file_key);
+
+/**
+ * @brief Calculate deterministic key by getting sha512 of seed + id
+ *
+ * @param[in] Character array of the seed
+ * @param[in] seed_len Integer value of length of seed
+ * @param[in] id Character array id
+ * @param[out] buffer 64 byte character array of the deterministic key
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int get_deterministic_key(char *seed, int seed_len, char *id, char **buffer);
 
 #endif /* STORJ_H */
