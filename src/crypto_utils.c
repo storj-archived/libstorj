@@ -29,12 +29,18 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
     return OK;
 }
 
-int generate_bucket_key(char *mnemonic, char *bucketId, char **bucket_key)
+int generate_bucket_key(char *mnemonic, char *bucket_id, char **bucket_key)
 {
     char *seed = calloc(128, sizeof(char));
     mnemonic_to_seed(mnemonic, "", &seed);
-    get_deterministic_key(seed, bucketId, bucket_key);
+    get_deterministic_key(seed, bucket_id, bucket_key);
     free(seed);
+    return OK;
+}
+
+int generate_file_key(char *mnemonic, char *bucket_id, char *file_id, char **file_key)
+{
+
     return OK;
 }
 

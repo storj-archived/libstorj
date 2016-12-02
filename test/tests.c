@@ -2,12 +2,12 @@
 
 void fail(char *msg)
 {
-    printf(KRED "FAIL" RESET " %s\n", msg);
+    printf("\t" KRED "FAIL" RESET " %s\n", msg);
 }
 
 void pass(char *msg)
 {
-    printf(KGRN "PASS" RESET " %s\n", msg);
+    printf("\t" KGRN "PASS" RESET " %s\n", msg);
 }
 
 
@@ -422,8 +422,8 @@ int test_mnemonic_generate()
 
     if (status != 1) {
         fail("test_mnemonic_generate");
-        printf("\texpected mnemonic check: %i\n", 0);
-        printf("\tactual mnemonic check:   %i\n", status);
+        printf("\t\texpected mnemonic check: %i\n", 0);
+        printf("\t\tactual mnemonic check:   %i\n", status);
         free(mnemonic);
         return ERROR;
     }
@@ -446,8 +446,8 @@ int test_generate_seed()
     int check = memcmp(seed, expected_seed, 128);
     if (check != 0) {
         fail("test_generate_seed");
-        printf("\texpected seed: %s\n", expected_seed);
-        printf("\tactual seed:   %s\n", seed);
+        printf("\t\texpected seed: %s\n", expected_seed);
+        printf("\t\tactual seed:   %s\n", seed);
 
         free(seed);
         return ERROR;
@@ -468,12 +468,12 @@ int test_generate_bucket_key()
 
     generate_bucket_key(mnemonic, bucket_id, &bucket_key);
     bucket_key[64] = '\0';
-    
+
     int check = strcmp(expected_bucket_key, bucket_key);
     if (check != 0) {
         fail("test_generate_bucket_key");
-        printf("\texpected bucket_key: %s\n", expected_bucket_key);
-        printf("\tactual bucket_key:   %s\n", bucket_key);
+        printf("\t\texpected bucket_key: %s\n", expected_bucket_key);
+        printf("\t\tactual bucket_key:   %s\n", bucket_key);
 
         free(bucket_key);
         return ERROR;
@@ -497,8 +497,8 @@ int test_calculate_file_id()
     int check = strcmp(file_id, expected_file_id);
     if (check != 0) {
         fail("test_calculate_file_id");
-        printf("\texpected file_id: %s\n", expected_file_id);
-        printf("\tactual file_id:   %s\n", file_id);
+        printf("\t\texpected file_id: %s\n", expected_file_id);
+        printf("\t\tactual file_id:   %s\n", file_id);
 
         free(file_id);
         return ERROR;
@@ -540,25 +540,28 @@ int main(void)
     int tests_ran = 0;
 
     int status = 0;
+    printf("Test Suite: API\n");
     status -= test_api();
     ++tests_ran;
+    printf("\n");
 
+    printf("Test Suite: BIP39\n");
     status -= test_mnemonic_check();
     ++tests_ran;
-
     status -= test_mnemonic_generate();
     ++tests_ran;
-
-    status -= test_calculate_file_id();
-    ++tests_ran;
-
     status -= test_generate_seed();
     ++tests_ran;
+    printf("\n");
 
+    printf("Test Suite: Crypto\n");
+    status -= test_calculate_file_id();
+    ++tests_ran;
     status -= test_generate_bucket_key();
     ++tests_ran;
+    printf("\n");
 
-    printf(KGRN "PASSED: %i\n" RESET, abs(status));
+    printf(KGRN "\nPASSED: %i\n" RESET, abs(status));
     printf(KRED "FAILED: %i\n" RESET, (tests_ran + status) );
     printf("TOTAL: %i\n", (tests_ran));
 
