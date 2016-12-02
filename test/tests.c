@@ -468,7 +468,7 @@ int test_generate_bucket_key()
 
     generate_bucket_key(mnemonic, bucket_id, &bucket_key);
     bucket_key[64] = '\0';
-
+    
     int check = strcmp(expected_bucket_key, bucket_key);
     if (check != 0) {
         fail("test_generate_bucket_key");

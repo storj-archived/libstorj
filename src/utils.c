@@ -17,10 +17,10 @@ int str2hex(unsigned length, char *data, uint8_t *buffer)
 {
     unsigned i;
 
-    memset(buffer, '\0', length*2 + 1);
+    memset(buffer, '\0', length/2 + 1);
 
     for (i = 0; i<length; i++) {
-        sprintf(&buffer[i*2], "%02x ", data[i]);
+        sscanf(data + (i*2), "%2x", buffer + i);
     }
 
     return 0;
