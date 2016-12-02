@@ -67,6 +67,7 @@ static void begin_upload_work(uv_work_t *work)
     // TODO: upload file
 
     fclose(fp);
+    free(file_id_buff);
 
 
 }

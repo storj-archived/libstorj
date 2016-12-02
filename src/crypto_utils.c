@@ -59,12 +59,12 @@ int get_deterministic_key(char *seed, int seed_len, char *id, char **buffer)
     memcpy(sha512input + seed_len, id, strlen(id));
     sha512input[input_len] = '\0';
 
-    uint8_t *hexcasted = calloc(input_len/2, sizeof(char));
-    str2hex(input_len, sha512input, hexcasted);
+    uint8_t *sha512input_as_hex = calloc(input_len/2, sizeof(char));
+    str2hex(input_len, sha512input, sha512input_as_hex);
 
     // Sha512 of key+id
     uint8_t sha512_digest[SHA512_DIGEST_SIZE];
-    sha512_of_str(hexcasted, input_len/2, sha512_digest);
+    sha512_of_str(sha512input_as_hex, input_len/2, sha512_digest);
 
     // Convert Sha512 hex to character array
     char *sha512_str = calloc(SHA512_DIGEST_SIZE*2, sizeof(char));
@@ -74,6 +74,8 @@ int get_deterministic_key(char *seed, int seed_len, char *id, char **buffer)
     memcpy(*buffer, sha512_str, 64);
 
     free(sha512_str);
+    free(sha512input);
+    free(sha512input_as_hex);
     return OK;
 }
 

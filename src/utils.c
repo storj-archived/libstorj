@@ -10,7 +10,7 @@ int hex2str(unsigned length, uint8_t *data, char *buffer)
         sprintf(&buffer[i*2], "%02x ", data[i]);
     }
 
-    return 0;
+    return OK;
 }
 
 int str2hex(unsigned length, char *data, uint8_t *buffer)
@@ -23,7 +23,7 @@ int str2hex(unsigned length, char *data, uint8_t *buffer)
         sscanf(data + (i*2), "%2x", buffer + i);
     }
 
-    return 0;
+    return OK;
 }
 
 
@@ -36,6 +36,7 @@ unsigned long long check_file(storj_env_t *env, char *filepath)
     if (r < 0) {
         const char *msg = uv_strerror(r);
         printf("\nuv_fs_stat on %s: %s\n", filepath, msg);
+        free(stat_req);
         return 0;
     }
 
