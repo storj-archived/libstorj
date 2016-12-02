@@ -485,6 +485,38 @@ int test_generate_bucket_key()
     return OK;
 }
 
+int test_generate_file_key()
+{
+    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+    char *bucket_id = "0123456789ab0123456789ab";
+    char *file_name = "samplefile.txt";
+    char *file_id = calloc(12, sizeof(char));
+    char *file_key = calloc(64, sizeof(char));
+    char *expected_file_key = "";
+
+    calculate_file_id(bucket_id, file_name, &file_id);
+    file_id[12] = '\0';
+    generate_file_key(mnemonic, bucket_id, file_id, &file_key);
+    file_key[64] = '\0';
+
+    int check = strcmp(expected_file_key, file_key);
+    if (check != 0) {
+        fail("test_generate_file_key");
+        printf("\t\texpected file_key: %s\n", expected_file_key);
+        printf("\t\tactual file_key:   %s\n", file_key);
+
+        free(file_key);
+        free(file_id);
+        return ERROR;
+    }
+
+    free(file_key);
+    free(file_id);
+    pass("test_generate_file_key");
+
+    return OK;
+}
+
 int test_calculate_file_id()
 {
     char *bucket_id = "d8ed2411545c65be0760e0db";
@@ -558,6 +590,8 @@ int main(void)
     status -= test_calculate_file_id();
     ++tests_ran;
     status -= test_generate_bucket_key();
+    ++tests_ran;
+    status -= test_generate_file_key();
     ++tests_ran;
     printf("\n");
 

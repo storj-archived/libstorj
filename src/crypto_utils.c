@@ -33,33 +33,38 @@ int generate_bucket_key(char *mnemonic, char *bucket_id, char **bucket_key)
 {
     char *seed = calloc(128, sizeof(char));
     mnemonic_to_seed(mnemonic, "", &seed);
-    get_deterministic_key(seed, bucket_id, bucket_key);
+    seed[128] = '\0';
+    get_deterministic_key(seed, 128, bucket_id, bucket_key);
     free(seed);
     return OK;
 }
 
 int generate_file_key(char *mnemonic, char *bucket_id, char *file_id, char **file_key)
 {
-
+    char *bucket_key = calloc(64, sizeof(char));
+    generate_bucket_key(mnemonic, bucket_id, &bucket_key);
+    bucket_key[64] = '\0';
+    get_deterministic_key(bucket_key, 64, file_id, file_key);
+    free(bucket_key);
     return OK;
 }
 
-int get_deterministic_key(char *seed, char *id, char **buffer)
+int get_deterministic_key(char *seed, int seed_len, char *id, char **buffer)
 {
-    int input_len = (SHA512_DIGEST_SIZE * 2) + strlen(id);
+    int input_len = seed_len + strlen(id);
     char *sha512input = calloc(input_len, sizeof(char));
 
     // Combine key and id
-    memcpy(sha512input, seed, (SHA512_DIGEST_SIZE * 2));
-    memcpy(sha512input + (SHA512_DIGEST_SIZE * 2), id, strlen(id));
+    memcpy(sha512input, seed, seed_len);
+    memcpy(sha512input + seed_len, id, strlen(id));
     sha512input[input_len] = '\0';
 
-    uint8_t *butts = calloc(input_len/2, sizeof(char));
-    str2hex(input_len, sha512input, butts);
+    uint8_t *hexcasted = calloc(input_len/2, sizeof(char));
+    str2hex(input_len, sha512input, hexcasted);
 
     // Sha512 of key+id
     uint8_t sha512_digest[SHA512_DIGEST_SIZE];
-    sha512_of_str(butts, input_len/2, sha512_digest);
+    sha512_of_str(hexcasted, input_len/2, sha512_digest);
 
     // Convert Sha512 hex to character array
     char *sha512_str = calloc(SHA512_DIGEST_SIZE*2, sizeof(char));

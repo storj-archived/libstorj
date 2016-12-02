@@ -183,6 +183,6 @@ unsigned long long shardSize(int hops);
 
 int calculate_file_id(char *bucket, char *file_name, char **buff);
 
-int get_deterministic_key(char *seed, char *bucket_id, char **buffer);
+int get_deterministic_key(char *seed, int seed_len, char *id, char **buffer);
 
 #endif /* STORJ_H */
