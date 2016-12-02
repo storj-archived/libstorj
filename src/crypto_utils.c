@@ -60,7 +60,7 @@ int get_deterministic_key(char *seed, int seed_len, char *id, char **buffer)
     sha512input[input_len] = '\0';
 
     // Convert input to hexdata
-    uint8_t *sha512input_as_hex = calloc(input_len/2, sizeof(char));
+    uint8_t *sha512input_as_hex = calloc(input_len, sizeof(char));
     str2hex(input_len, sha512input, sha512input_as_hex);
 
     // Sha512 of hexdata

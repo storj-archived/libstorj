@@ -19,7 +19,7 @@ int str2hex(unsigned length, char *data, uint8_t *buffer)
 
     memset(buffer, '\0', length/2 + 1);
 
-    for (i = 0; i<length; i++) {
+    for (i = 0; i<(length/2); i++) {
         sscanf(data + (i*2), "%2x", buffer + i);
     }
 
