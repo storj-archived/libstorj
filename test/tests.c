@@ -441,8 +441,8 @@ int test_generate_seed()
     char *expected_seed = "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4";
 
     mnemonic_to_seed(mnemonic, "", &seed);
+    seed[128] = '\0';
 
-    // TODO: Fix the return value of seed so we can use strcmp
     int check = memcmp(seed, expected_seed, 128);
     if (check != 0) {
         fail("test_generate_seed");
@@ -467,6 +467,7 @@ int test_generate_bucket_key()
     char *expected_bucket_key = "b2464469e364834ad21e24c64f637c39083af5067693605c84e259447644f6f6";
 
     generate_bucket_key(mnemonic, bucket_id, &bucket_key);
+    bucket_key[64] = '\0';
 
     int check = strcmp(expected_bucket_key, bucket_key);
     if (check != 0) {

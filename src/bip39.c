@@ -192,6 +192,7 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer
     uint8_t *salt = calloc(8 + 256, sizeof(char));
     memcpy(salt, "mnemonic", 8);
     memcpy(salt + 8, passphrase, passphraselen);
+
     pbkdf2_hmac_sha512 (
         strlen(mnemonic),
         mnemonic,
@@ -199,11 +200,11 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer
         strlen(salt), salt,
         512 / 8, seed);
 
-    char *sha512_str = calloc(SHA512_DIGEST_SIZE*2+1, sizeof(char));
+    char *sha512_str = calloc(SHA512_DIGEST_SIZE*2, sizeof(char));
     hex2str(SHA512_DIGEST_SIZE, seed, sha512_str);
+    sha512_str[SHA512_DIGEST_SIZE*2] = '\0';
 
-    // TODO: Use memcpy
-    strcpy(*buffer, sha512_str);
+    memcpy(*buffer, sha512_str, SHA512_DIGEST_SIZE*2);
 
     free(seed);
     free(salt);

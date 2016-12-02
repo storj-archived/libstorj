@@ -13,6 +13,20 @@ int hex2str(unsigned length, uint8_t *data, char *buffer)
     return 0;
 }
 
+int str2hex(unsigned length, char *data, uint8_t *buffer)
+{
+    unsigned i;
+
+    memset(buffer, '\0', length*2 + 1);
+
+    for (i = 0; i<length; i++) {
+        sprintf(&buffer[i*2], "%02x ", data[i]);
+    }
+
+    return 0;
+}
+
+
 unsigned long long check_file(storj_env_t *env, char *filepath)
 {
     int r = 0;
