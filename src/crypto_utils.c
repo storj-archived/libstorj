@@ -74,9 +74,6 @@ int get_deterministic_key(char *seed, int seed_len, char *id, char **buffer)
     //First 64 bytes of sha512
     memcpy(*buffer, sha512_str, 64);
 
-    free(sha512_str);
-    free(sha512input);
-    free(sha512input_as_hex);
     return OK;
 }
 
