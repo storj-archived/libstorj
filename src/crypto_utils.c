@@ -24,7 +24,7 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
     hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest, ripemd160_str);
 
     //Copy the result into buffer
-    memcpy(*buffer, ripemd160_str, 12);
+    memcpy(*buffer, ripemd160_str, FILE_ID_SIZE);
 
     return OK;
 }
@@ -49,14 +49,14 @@ int generate_file_key(char *mnemonic, char *bucket_id, char *file_id, char **fil
     return OK;
 }
 
-int get_deterministic_key(char *seed, int seed_len, char *id, char **buffer)
+int get_deterministic_key(char *key, int key_len, char *id, char **buffer)
 {
-    int input_len = seed_len + strlen(id);
+    int input_len = key_len + strlen(id);
     char *sha512input = calloc(input_len, sizeof(char));
 
     // Combine key and id
-    memcpy(sha512input, seed, seed_len);
-    memcpy(sha512input + seed_len, id, strlen(id));
+    memcpy(sha512input, key, key_len);
+    memcpy(sha512input + key_len, id, strlen(id));
     sha512input[input_len] = '\0';
 
     // Convert input to hexdata

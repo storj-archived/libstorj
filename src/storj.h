@@ -29,7 +29,7 @@
 
 #define ERROR 0
 #define OK 1
-#define FILE_ID_SIZE 12
+#define FILE_ID_SIZE 24
 #define SHARD_MULTIPLES_BACK 5
 
 typedef struct {
@@ -216,14 +216,14 @@ int generate_file_key(char *mnemonic,
                       char **file_key);
 
 /**
- * @brief Calculate deterministic key by getting sha512 of seed + id
+ * @brief Calculate deterministic key by getting sha512 of key + id
  *
- * @param[in] Character array of the seed
- * @param[in] seed_len Integer value of length of seed
+ * @param[in] Character array of the key
+ * @param[in] key_len Integer value of length of key
  * @param[in] id Character array id
  * @param[out] buffer 64 byte character array of the deterministic key
  * @return A non-zero error value on failure and 0 on success.
  */
-int get_deterministic_key(char *seed, int seed_len, char *id, char **buffer);
+int get_deterministic_key(char *key, int key_len, char *id, char **buffer);
 
 #endif /* STORJ_H */

@@ -490,12 +490,12 @@ int test_generate_file_key()
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *bucket_id = "0123456789ab0123456789ab";
     char *file_name = "samplefile.txt";
-    char *file_id = calloc(12, sizeof(char));
+    char *file_id = calloc(24, sizeof(char));
     char *file_key = calloc(64, sizeof(char));
-    char *expected_file_key = "";
+    char *expected_file_key = "fe5fe4dcc5cb094666957d135341283d1af766cfe3174b75e15935ef5387c533";
 
     calculate_file_id(bucket_id, file_name, &file_id);
-    file_id[12] = '\0';
+    file_id[FILE_ID_SIZE] = '\0';
     generate_file_key(mnemonic, bucket_id, file_id, &file_key);
     file_key[64] = '\0';
 
@@ -519,10 +519,10 @@ int test_generate_file_key()
 
 int test_calculate_file_id()
 {
-    char *bucket_id = "d8ed2411545c65be0760e0db";
+    char *bucket_id = "0123456789ab0123456789ab";
     char *file_name = "samplefile.txt";
-    char *file_id = calloc(12, sizeof(char));
-    char *expected_file_id = "d24611e05728";
+    char *file_id = calloc(24, sizeof(char));
+    char *expected_file_id = "852b6c9a0ba914a31e301a4b";
 
     calculate_file_id(bucket_id, file_name, &file_id);
 
