@@ -128,6 +128,18 @@ void check_file_pointers(uv_work_t *work_req, int status)
     pass("storj_bridge_get_file_pointers");
 }
 
+void check_resolve_file_progress(double progress)
+{
+    // TODO assersions
+}
+
+void check_resolve_file(int status)
+{
+    assert(status == 0);
+
+    pass("storj_bridge_resolve_file");
+}
+
 void check_delete_file(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -308,6 +320,13 @@ int test_api()
     // get file pointers
     status = storj_bridge_get_file_pointers(env, bucket_id,
                                             file_id, check_file_pointers);
+    assert(status == 0);
+
+    // resolve file
+    char *dst_path = strcat(folder, "TheMeaningOfLifeAndEverything.ogv");
+    status = storj_bridge_resolve_file(env, bucket_id, file_id, dst_path,
+                                       check_resolve_file_progress,
+                                       check_resolve_file);
     assert(status == 0);
 
 

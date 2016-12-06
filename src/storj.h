@@ -9,13 +9,11 @@
 #define STORJ_H
 
 #include <assert.h>
-#include <neon/ne_request.h>
 #include <nettle/aes.h>
 #include <nettle/ripemd160.h>
 #include <nettle/hmac.h>
 #include <nettle/pbkdf2.h>
 #include <nettle/sha.h>
-#include <neon/ne_string.h>
 #include <json-c/json.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -32,6 +30,7 @@
 #define FILE_ID_SIZE 24
 #define DETERMINISTIC_KEY_SIZE 64
 #define SHARD_MULTIPLES_BACK 5
+#define STORJ_DEFAULT_DOWNLOAD_CONCURRENCY 4
 
 typedef struct {
     char *proto;
@@ -58,7 +57,6 @@ typedef struct {
     int status_code;
 } json_request_t;
 
-
 typedef enum {BUCKET_PUSH, BUCKET_PULL} storj_bucket_op_t;
 static const char *BUCKET_OP[] = { "PUSH", "PULL" };
 
@@ -75,6 +73,47 @@ typedef struct {
     storj_shard_tree tree;
     storj_shard_challenges challenges;
 } storj_shard_t;
+
+typedef void (*storj_progress_cb)(double progress);
+typedef void (*storj_finished_cb)(int status);
+
+typedef struct {
+    char *token;
+    char *hash;
+    uint64_t size;
+    char *farmer_address;
+    int farmer_port;
+    int status;
+} storj_pointer_t;
+
+typedef struct {
+    uint64_t total_bytes;
+    uint64_t downloaded_bytes;
+    storj_env_t *env;
+    char *file_id;
+    char *bucket_id;
+    char *dst_path;
+    storj_progress_cb progress_cb;
+    storj_finished_cb finished_cb;
+    int total_shards;
+    int completed_shards;
+    int resolving_shards;
+    storj_pointer_t *pointers;
+    int total_pointers;
+    storj_boolean_t pointers_completed;
+    int status;
+} storj_download_state_t;
+
+typedef struct {
+    storj_bridge_options_t *options;
+    char *method;
+    char *path;
+    storj_boolean_t auth;
+    struct json_object *body;
+    struct json_object *response;
+    storj_download_state_t *state;
+    int status_code;
+} json_request_download_t;
 
 typedef struct {
     int file_concurrency;
@@ -255,7 +294,20 @@ int storj_bridge_get_file_info(storj_env_t *env,
 int storj_bridge_store_file(storj_env_t *env,
                             storj_upload_opts_t *opts);
 
-int storj_bridge_resolve_file(storj_env_t *env, uv_after_work_cb cb);
+/**
+ * @brief Download a file
+ *
+ * @param[in] bucket_id Character array of bucket id
+ * @param[in] file_id Character array of file id
+ * @param[in] dst_path Character array the file destination path
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int storj_bridge_resolve_file(storj_env_t *env,
+                              char *bucket_id,
+                              char *file_id,
+                              char *dst_path,
+                              storj_progress_cb progress_cb,
+                              storj_finished_cb finished_cb);
 
 int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
 
