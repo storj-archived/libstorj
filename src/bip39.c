@@ -193,7 +193,7 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer
         passphraselen = 256;
     }
 
-    uint8_t *seed = calloc(512 / 8, sizeof(char));
+    uint8_t *seed = calloc(SHA512_DIGEST_SIZE + 1, sizeof(char));
     uint8_t *salt = calloc(8 + 256, sizeof(char));
     memcpy(salt, "mnemonic", 8);
     memcpy(salt + 8, passphrase, passphraselen);
@@ -203,9 +203,11 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer
         mnemonic,
         BIP39_PBKDF2_ROUNDS,
         strlen(salt), salt,
-        512 / 8, seed);
+        SHA512_DIGEST_SIZE, seed);
 
-    char *sha512_str = calloc(SHA512_DIGEST_SIZE*2, sizeof(char));
+    char sha512_str[SHA512_DIGEST_SIZE*2 + 1];
+    memset(sha512_str, '\0', SHA512_DIGEST_SIZE*2 + 1);
+
     hex2str(SHA512_DIGEST_SIZE, seed, sha512_str);
     sha512_str[SHA512_DIGEST_SIZE*2] = '\0';
 
@@ -213,7 +215,6 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer
 
     free(seed);
     free(salt);
-    free(sha512_str);
 
     return OK;
 }

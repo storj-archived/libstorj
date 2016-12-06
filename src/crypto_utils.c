@@ -19,7 +19,6 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
 
     // Convert ripemd160 hex to character array
     char ripemd160_str[RIPEMD160_DIGEST_SIZE*2+1];
-    ripemd160_str[RIPEMD160_DIGEST_SIZE*2] = '\0';
     memset(ripemd160_str, '\0', RIPEMD160_DIGEST_SIZE*2+1);
     hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest, ripemd160_str);
 
@@ -31,7 +30,7 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
 
 int generate_bucket_key(char *mnemonic, char *bucket_id, char **bucket_key)
 {
-    char *seed = calloc(128, sizeof(char));
+    char *seed = calloc(128 + 1, sizeof(char));
     mnemonic_to_seed(mnemonic, "", &seed);
     seed[128] = '\0';
     get_deterministic_key(seed, 128, bucket_id, bucket_key);
@@ -41,7 +40,7 @@ int generate_bucket_key(char *mnemonic, char *bucket_id, char **bucket_key)
 
 int generate_file_key(char *mnemonic, char *bucket_id, char *file_id, char **file_key)
 {
-    char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE, sizeof(char));
+    char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     generate_bucket_key(mnemonic, bucket_id, &bucket_key);
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
     get_deterministic_key(bucket_key, 64, file_id, file_key);
@@ -52,7 +51,7 @@ int generate_file_key(char *mnemonic, char *bucket_id, char *file_id, char **fil
 int get_deterministic_key(char *key, int key_len, char *id, char **buffer)
 {
     int input_len = key_len + strlen(id);
-    char *sha512input = calloc(input_len, sizeof(char));
+    char *sha512input = calloc(input_len + 1, sizeof(char));
 
     // Combine key and id
     memcpy(sha512input, key, key_len);
@@ -60,15 +59,17 @@ int get_deterministic_key(char *key, int key_len, char *id, char **buffer)
     sha512input[input_len] = '\0';
 
     // Convert input to hexdata
-    uint8_t *sha512input_as_hex = calloc(input_len, sizeof(char));
-    str2hex(input_len, sha512input, sha512input_as_hex);
+    uint8_t sha512input_as_hex[input_len/2 + 1];
+    memset(sha512input_as_hex, '\0', input_len/2 + 1);
+    str2hex(input_len/2, sha512input, sha512input_as_hex);
 
     // Sha512 of hexdata
     uint8_t sha512_digest[SHA512_DIGEST_SIZE];
     sha512_of_str(sha512input_as_hex, input_len/2, sha512_digest);
 
     // Convert Sha512 hex to character array
-    char *sha512_str = calloc(SHA512_DIGEST_SIZE*2, sizeof(char));
+    char sha512_str[SHA512_DIGEST_SIZE*2+1];
+    memset(sha512_str, '\0', RIPEMD160_DIGEST_SIZE*2+1);
     hex2str(SHA512_DIGEST_SIZE, sha512_digest, sha512_str);
 
     //First 64 bytes of sha512

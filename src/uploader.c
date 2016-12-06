@@ -36,14 +36,14 @@ static void begin_upload_work(uv_work_t *work)
     opts->shard_num = ceil((double)opts->file_size / opts->shard_size);
 
     // Calculate deterministic file id
-    char *file_id_buff = malloc(FILE_ID_SIZE);
+    char *file_id_buff = malloc(FILE_ID_SIZE + 1);
     calculate_file_id(opts->bucket_id, opts->file_name, &file_id_buff);
     opts->file_id = file_id_buff;
     opts->file_id[FILE_ID_SIZE] = '\0';
 
     // Generate encryption key
-    char *file_id = calloc(FILE_ID_SIZE, sizeof(char));
-    char *file_key = calloc(DETERMINISTIC_KEY_SIZE, sizeof(char));
+    char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
+    char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
 
     calculate_file_id(opts->bucket_id, opts->file_name, &file_id);
     file_id[FILE_ID_SIZE] = '\0';
@@ -61,38 +61,38 @@ static void begin_upload_work(uv_work_t *work)
 
     // Encrypt file
     struct aes256_ctx ctx;
-    uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_SIZE/2, sizeof(char));
-    str2hex(DETERMINISTIC_KEY_SIZE, file_key, file_key_as_hex);
+    uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_SIZE/2 + 1, sizeof(char));
+    str2hex(DETERMINISTIC_KEY_SIZE/2, file_key, file_key_as_hex);
     aes256_set_encrypt_key(&ctx, file_key_as_hex);
 
     // Load original file and tmp file
-    FILE *original_file;
-    FILE *encrypted_file;
-    original_file = fopen(opts->file_path, "r");
-    encrypted_file = fopen(opts->tmp_path, "w+");
+    // FILE *original_file;
+    // FILE *encrypted_file;
+    // original_file = fopen(opts->file_path, "r");
+    // encrypted_file = fopen(opts->tmp_path, "w+");
 
-    size_t bytesRead = 0;
-    int i = 0;
-    char buffer[512];
-    memset(buffer, '\0', sizeof(buffer));
+    // size_t bytesRead = 0;
+    // int i = 0;
+    // char buffer[512];
+    // memset(buffer, '\0', sizeof(buffer));
 
-    // Read bytes of the original file, encrypt them, and write to the tmp file
-    if (original_file != NULL) {
-      // read up to sizeof(buffer) bytes
-      while ((bytesRead = fread(buffer, 1, sizeof(buffer), original_file)) > 0) {
-        aes256_encrypt(&ctx, sizeof(buffer), buffer, buffer);
-        fputs(buffer, encrypted_file);
-        memset(buffer, '\0', sizeof(buffer));
-        i++;
-      }
-    }
+    // // Read bytes of the original file, encrypt them, and write to the tmp file
+    // if (original_file != NULL) {
+    //   // read up to sizeof(buffer) bytes
+    //   while ((bytesRead = fread(buffer, 1, sizeof(buffer), original_file)) > 0) {
+    //     aes256_encrypt(&ctx, sizeof(buffer), buffer, buffer);
+    //     fputs(buffer, encrypted_file);
+    //     memset(buffer, '\0', sizeof(buffer));
+    //     i++;
+    //   }
+    // }
 
-    // TODO: upload file
+    // // TODO: upload file
 
-    fclose(original_file);
-    fclose(encrypted_file);
+    // fclose(original_file);
+    // fclose(encrypted_file);
 
-    unlink(encrypted_file);
+    // unlink(encrypted_file);
     free(file_id);
     free(file_id_buff);
 
