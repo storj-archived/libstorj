@@ -445,7 +445,7 @@ int test_mnemonic_generate()
 int test_generate_seed()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-    char *seed = calloc(128, sizeof(char));
+    char *seed = calloc(128 + 1, sizeof(char));
     char *expected_seed = "5eb00bbddcf069084889a8ab9155568165f5c453ccb85e70811aaed6f6da5fc19a5ac40b389cd370d086206dec8aa6c43daea6690f20ad3d8d48b2d2ce9e38e4";
 
     mnemonic_to_seed(mnemonic, "", &seed);
@@ -471,13 +471,13 @@ int test_generate_bucket_key()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *bucket_id = "0123456789ab0123456789ab";
-    char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE, sizeof(char));
+    char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     char *expected_bucket_key = "b2464469e364834ad21e24c64f637c39083af5067693605c84e259447644f6f6";
 
     generate_bucket_key(mnemonic, bucket_id, &bucket_key);
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
-    int check = strcmp(expected_bucket_key, bucket_key);
+    int check = memcmp(expected_bucket_key, bucket_key, DETERMINISTIC_KEY_SIZE);
     if (check != 0) {
         fail("test_generate_bucket_key");
         printf("\t\texpected bucket_key: %s\n", expected_bucket_key);
@@ -498,14 +498,14 @@ int test_generate_file_key()
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *bucket_id = "0123456789ab0123456789ab";
     char *file_name = "samplefile.txt";
-    char *file_id = calloc(24, sizeof(char));
-    char *file_key = calloc(64, sizeof(char));
+    char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
+    char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     char *expected_file_key = "fe5fe4dcc5cb094666957d135341283d1af766cfe3174b75e15935ef5387c533";
 
     calculate_file_id(bucket_id, file_name, &file_id);
     file_id[FILE_ID_SIZE] = '\0';
     generate_file_key(mnemonic, bucket_id, file_id, &file_key);
-    file_key[64] = '\0';
+    file_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
     int check = strcmp(expected_file_key, file_key);
     if (check != 0) {
@@ -529,12 +529,12 @@ int test_calculate_file_id()
 {
     char *bucket_id = "0123456789ab0123456789ab";
     char *file_name = "samplefile.txt";
-    char *file_id = calloc(24, sizeof(char));
+    char *file_id = calloc(24 + 1, sizeof(char));
     char *expected_file_id = "852b6c9a0ba914a31e301a4b";
 
     calculate_file_id(bucket_id, file_name, &file_id);
 
-    int check = strcmp(file_id, expected_file_id);
+    int check = memcmp(file_id, expected_file_id, 24);
     if (check != 0) {
         fail("test_calculate_file_id");
         printf("\t\texpected file_id: %s\n", expected_file_id);
@@ -585,23 +585,23 @@ int main(void)
     ++tests_ran;
     printf("\n");
 
-    // printf("Test Suite: BIP39\n");
-    // status -= test_mnemonic_check();
-    // ++tests_ran;
-    // status -= test_mnemonic_generate();
-    // ++tests_ran;
-    // status -= test_generate_seed();
-    // ++tests_ran;
-    // printf("\n");
+    printf("Test Suite: BIP39\n");
+    status -= test_mnemonic_check();
+    ++tests_ran;
+    status -= test_mnemonic_generate();
+    ++tests_ran;
+    status -= test_generate_seed();
+    ++tests_ran;
+    printf("\n");
 
-    // printf("Test Suite: Crypto\n");
-    // status -= test_calculate_file_id();
-    // ++tests_ran;
-    // status -= test_generate_bucket_key();
-    // ++tests_ran;
-    // status -= test_generate_file_key();
-    // ++tests_ran;
-    // printf("\n");
+    printf("Test Suite: Crypto\n");
+    status -= test_calculate_file_id();
+    ++tests_ran;
+    status -= test_generate_bucket_key();
+    ++tests_ran;
+    status -= test_generate_file_key();
+    ++tests_ran;
+    printf("\n");
 
     int num_failed = tests_ran + status;
     printf(KGRN "\nPASSED: %i" RESET, abs(status));

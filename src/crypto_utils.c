@@ -61,7 +61,7 @@ int get_deterministic_key(char *key, int key_len, char *id, char **buffer)
     // Convert input to hexdata
     uint8_t sha512input_as_hex[input_len/2 + 1];
     memset(sha512input_as_hex, '\0', input_len/2 + 1);
-    str2hex(input_len/2, sha512input, sha512input_as_hex);
+    str2hex(input_len, sha512input, sha512input_as_hex);
 
     // Sha512 of hexdata
     uint8_t sha512_digest[SHA512_DIGEST_SIZE];
