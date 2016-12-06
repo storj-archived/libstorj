@@ -28,18 +28,18 @@ static void begin_upload_work(uv_work_t *work)
 
     opts->file_size = check_file(env, opts->file_path); // Expect to be up to 10tb
     if (opts->file_size < 1) {
-        printf("Invalid file");
+        printf("Invalid file: %s\n", opts->file_path);
         return; //cleanup
     }
 
-    opts->shard_size = determine_shard_size(&opts, NULL);
+    opts->shard_size = determine_shard_size(opts, 0);
     opts->shard_num = ceil((double)opts->file_size / opts->shard_size);
 
     // Calculate deterministic file id
     char *file_id_buff = malloc(FILE_ID_SIZE);
     calculate_file_id(opts->bucket_id, opts->file_name, &file_id_buff);
     opts->file_id = file_id_buff;
-    opts->file_id[FILE_ID_SIZE] = 0;
+    opts->file_id[FILE_ID_SIZE] = '\0';
 
 
     // Encrypt file
