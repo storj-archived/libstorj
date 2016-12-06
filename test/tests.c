@@ -14,7 +14,7 @@ void pass(char *msg)
 int create_test_file(char *file) {
     FILE *fp;
     fp = fopen(file, "w+");
-    
+
     if (fp == NULL) {
         printf(KRED "Could not create Sample file: %s\n" RESET, file);
         exit(0);
@@ -110,6 +110,22 @@ void check_bucket_tokens(uv_work_t *work_req, int status)
     assert(strcmp(token, t) == 0);
 
     pass("storj_bridge_create_bucket_token");
+}
+
+void check_file_pointers(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+    assert(req->response);
+
+    assert(json_object_is_type(req->response, json_type_array) == 1);
+
+    struct json_object *bucket = json_object_array_get_idx(req->response, 0);
+    struct json_object* value;
+    int success = json_object_object_get_ex(bucket, "farmer", &value);
+    assert(success == 1);
+
+    pass("storj_bridge_get_file_pointers");
 }
 
 void check_delete_file(uv_work_t *work_req, int status)
@@ -289,6 +305,12 @@ int test_api()
                                         file_id, check_file_info);
     assert(status == 0);
 
+    // get file pointers
+    status = storj_bridge_get_file_pointers(env, bucket_id,
+                                            file_id, check_file_pointers);
+    assert(status == 0);
+
+
     // upload file
     storj_upload_opts_t upload_opts = {
         .file_concurrency = 1,
@@ -300,8 +322,7 @@ int test_api()
         .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
     };
 
-    status = storj_bridge_store_file(env, &upload_opts);
-    assert(status == 0);
+    // TODO store file test
 
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
@@ -609,7 +630,6 @@ int main(void)
         printf(KRED " FAILED: %i" RESET, num_failed);
     }
     printf(" TOTAL: %i\n", (tests_ran));
-
 
     // Shutdown test server
     MHD_stop_daemon(d);

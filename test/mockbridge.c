@@ -90,6 +90,11 @@ int mock_bridge_server(void *cls,
                 page = get_response_string(responses, "getfileinfo");
                 status_code = MHD_HTTP_OK;
             }
+        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5ba0fc54ab1be516e/files/998960317b6725a3f8080c2b26875b0d8fe5731c")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                page = get_response_string(responses, "getfilepointers");
+                status_code = MHD_HTTP_OK;
+            }
         } else if (0 == strcmp(url, "/frames")) {
             if (check_auth(user, pass, &status_code, page)) {
                 page = get_response_string(responses, "getframes");
