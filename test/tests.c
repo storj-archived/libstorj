@@ -14,7 +14,7 @@ void pass(char *msg)
 int create_test_file(char *file) {
     FILE *fp;
     fp = fopen(file, "w+");
-    fprintf(fp, "Sample file...");
+    fprintf(fp, "It's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\nIt's in that place where I put that thing that time\n");
     fclose(fp);
 
     return 0;
@@ -285,11 +285,12 @@ int test_api()
     // upload file
     storj_upload_opts_t upload_opts = {
         .file_concurrency = 1,
-        .shard_concurrency  = 3,
-        .redundancy  = 1,
-        .bucket_id  = "368be0816766b28fd5f43af5ba0fc54ab1be516e",
-        .file_path  = file,
-        .key_pass = "password"
+        .shard_concurrency = 3,
+        .redundancy = 1,
+        .bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e",
+        .file_path = file,
+        .key_pass = "password",
+        .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
     };
 
     status = storj_bridge_store_file(env, &upload_opts);
@@ -463,11 +464,11 @@ int test_generate_bucket_key()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *bucket_id = "0123456789ab0123456789ab";
-    char *bucket_key = calloc(64, sizeof(char));
+    char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE, sizeof(char));
     char *expected_bucket_key = "b2464469e364834ad21e24c64f637c39083af5067693605c84e259447644f6f6";
 
     generate_bucket_key(mnemonic, bucket_id, &bucket_key);
-    bucket_key[64] = '\0';
+    bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
     int check = strcmp(expected_bucket_key, bucket_key);
     if (check != 0) {
@@ -595,9 +596,12 @@ int main(void)
     ++tests_ran;
     printf("\n");
 
-    printf(KGRN "\nPASSED: %i\n" RESET, abs(status));
-    printf(KRED "FAILED: %i\n" RESET, (tests_ran + status) );
-    printf("TOTAL: %i\n", (tests_ran));
+    int num_failed = tests_ran + status;
+    printf(KGRN "\nPASSED: %i" RESET, abs(status));
+    if (num_failed > 0) {
+        printf(KRED " FAILED: %i" RESET, num_failed);
+    }
+    printf(" TOTAL: %i\n", (tests_ran));
 
 
     // Shutdown test server
