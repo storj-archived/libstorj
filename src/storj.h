@@ -30,6 +30,7 @@
 #define ERROR 0
 #define OK 1
 #define FILE_ID_SIZE 24
+#define DETERMINISTIC_KEY_SIZE 64
 #define SHARD_MULTIPLES_BACK 5
 
 typedef struct {
@@ -84,9 +85,11 @@ typedef struct {
     unsigned long long shard_size;
     char *bucket_id;
     char *file_path;
+    char *tmp_path;
     char *file_id;
     char *file_name;
     char *key_pass;
+    char *mnemonic;
 } storj_upload_opts_t;
 
 typedef struct {

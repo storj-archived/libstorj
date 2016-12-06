@@ -41,9 +41,9 @@ int generate_bucket_key(char *mnemonic, char *bucket_id, char **bucket_key)
 
 int generate_file_key(char *mnemonic, char *bucket_id, char *file_id, char **file_key)
 {
-    char *bucket_key = calloc(64, sizeof(char));
+    char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE, sizeof(char));
     generate_bucket_key(mnemonic, bucket_id, &bucket_key);
-    bucket_key[64] = '\0';
+    bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
     get_deterministic_key(bucket_key, 64, file_id, file_key);
     free(bucket_key);
     return OK;
@@ -72,7 +72,7 @@ int get_deterministic_key(char *key, int key_len, char *id, char **buffer)
     hex2str(SHA512_DIGEST_SIZE, sha512_digest, sha512_str);
 
     //First 64 bytes of sha512
-    memcpy(*buffer, sha512_str, 64);
+    memcpy(*buffer, sha512_str, DETERMINISTIC_KEY_SIZE);
 
     return OK;
 }

@@ -41,32 +41,59 @@ static void begin_upload_work(uv_work_t *work)
     opts->file_id = file_id_buff;
     opts->file_id[FILE_ID_SIZE] = '\0';
 
+    // Generate encryption key
+    char *file_id = calloc(FILE_ID_SIZE, sizeof(char));
+    char *file_key = calloc(DETERMINISTIC_KEY_SIZE, sizeof(char));
+
+    calculate_file_id(opts->bucket_id, opts->file_name, &file_id);
+    file_id[FILE_ID_SIZE] = '\0';
+    opts->file_id = file_id;
+    generate_file_key(opts->mnemonic, opts->bucket_id, file_id, &file_key);
+    file_key[DETERMINISTIC_KEY_SIZE] = '\0';
+
+    // Set tmp file
+    int tmp_len = strlen(opts->file_path) + strlen(".crypt");
+    char tmp_path[tmp_len];
+    memset(tmp_path, '\0', tmp_len);
+    strcpy(tmp_path, opts->file_path);
+    strcat(tmp_path, ".crypt");
+    opts->tmp_path = tmp_path;
 
     // Encrypt file
-    // struct aes256_ctx *ctx;
-    // aes256_set_encrypt_key(ctx, const uint8_t *key);
-    // aes256_encrypt(ctx, size_t length, uint8_t *dst, const uint8_t *src);
+    struct aes256_ctx ctx;
+    uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_SIZE/2, sizeof(char));
+    str2hex(DETERMINISTIC_KEY_SIZE, file_key, file_key_as_hex);
+    aes256_set_encrypt_key(&ctx, file_key_as_hex);
 
-    // Load encrypted file
-    FILE *fp;
-    char buffer[4001];
-    memset(buffer, '\0', 4001);
-    fp = fopen(opts->file_path, "r");
+    // Load original file and tmp file
+    FILE *original_file;
+    FILE *encrypted_file;
+    original_file = fopen(opts->file_path, "r");
+    encrypted_file = fopen(opts->tmp_path, "w+");
+
     size_t bytesRead = 0;
+    int i = 0;
+    char buffer[512];
+    memset(buffer, '\0', sizeof(buffer));
 
-    if (fp != NULL) {
+    // Read bytes of the original file, encrypt them, and write to the tmp file
+    if (original_file != NULL) {
       // read up to sizeof(buffer) bytes
-      while ((bytesRead = fread(buffer, 1, 4000, fp)) > 0) {
-        printf("buffer: %s\n", buffer);
-
-        // TODO: Encrypt buffer and write to file
-        memset(buffer, '\0', 4001);
+      while ((bytesRead = fread(buffer, 1, sizeof(buffer), original_file)) > 0) {
+        aes256_encrypt(&ctx, sizeof(buffer), buffer, buffer);
+        fputs(buffer, encrypted_file);
+        memset(buffer, '\0', sizeof(buffer));
+        i++;
       }
     }
 
     // TODO: upload file
 
-    fclose(fp);
+    fclose(original_file);
+    fclose(encrypted_file);
+
+    unlink(encrypted_file);
+    free(file_id);
     free(file_id_buff);
 
 
