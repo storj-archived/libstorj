@@ -592,10 +592,10 @@ int test_calculate_file_id()
 }
 
 
-// Test Server
+// Test Bridge Server
 struct MHD_Daemon *start_test_server()
 {
-    // spin up test server
+    // spin up test bridge server
     return MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION,
                             8091,
                             NULL,
@@ -605,17 +605,33 @@ struct MHD_Daemon *start_test_server()
                             MHD_OPTION_END);
 }
 
+// Test Farmer
+struct MHD_Daemon *start_farmer_server()
+{
+    // spin up farmer test shard server
+    return MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION,
+                            8092,
+                            NULL,
+                            NULL,
+                            &mock_farmer_shard_server,
+                            NULL,
+                            MHD_OPTION_END);
+}
+
 
 
 
 int main(void)
 {
-    // spin up test server
+    // spin up test bridge server
     struct MHD_Daemon *d = start_test_server();
     if (d == NULL) {
         printf("Could not start test server.\n");
         return 0;
     };
+
+    // spin up test farmer server
+    struct MHD_Daemon *f = start_farmer_server();
 
     int tests_ran = 0;
 
@@ -650,8 +666,9 @@ int main(void)
     }
     printf(" TOTAL: %i\n", (tests_ran));
 
-    // Shutdown test server
+    // Shutdown test servers
     MHD_stop_daemon(d);
+    MHD_stop_daemon(f);
 
     return 0;
 }

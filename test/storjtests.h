@@ -20,4 +20,13 @@ int mock_bridge_server(void *cls,
                        size_t *upload_data_size,
                        void **ptr);
 
+int mock_farmer_shard_server(void *cls,
+                             struct MHD_Connection *connection,
+                             const char *url,
+                             const char *method,
+                             const char *version,
+                             const char *upload_data,
+                             size_t *upload_data_size,
+                             void **ptr);
+
 int create_test_file(char *file);
