@@ -88,6 +88,15 @@ typedef struct {
     int farmer_port;
 } storj_pointer_t;
 
+typedef enum {
+    POINTER_ERROR = -1,
+    POINTER_CREATED = 0,
+    POINTER_BEING_DOWNLOADED = 1,
+    POINTER_DOWNLOADED = 2,
+    POINTER_BEING_WRITTEN = 3,
+    POINTER_WRITTEN = 4
+} storj_pointer_status_t;
+
 typedef struct {
     uint64_t total_bytes;
     uint64_t downloaded_bytes;

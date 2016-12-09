@@ -190,14 +190,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
             state->pointers[j].token = token;
             state->pointers[j].shard_hash = hash;
             state->pointers[j].size = size;
-            // TODO enum types for pointer status:
-            // -1: error states (less than zero)
-            //  0: created
-            //  1: being downloaded
-            //  2: downloaded
-            //  3: being written
-            //  4: written
-            state->pointers[j].status = 0;
+            state->pointers[j].status = POINTER_CREATED;
             state->pointers[j].index = index;
             state->pointers[j].farmer_address = address;
             state->pointers[j].farmer_port = port;
@@ -304,13 +297,13 @@ static void after_request_shard(uv_work_t *work, int status)
     if (req->status_code != 200) {
         // TODO do not set state->error_status and retry the shard download
         req->state->error_status = -1;
-        req->state->pointers[req->pointer_index].status = -1;
+        req->state->pointers[req->pointer_index].status = POINTER_ERROR;
         return;
     }
 
     // TODO update downloaded bytes
 
-    req->state->pointers[req->pointer_index].status = 2;
+    req->state->pointers[req->pointer_index].status = POINTER_DOWNLOADED;
     req->state->pointers[req->pointer_index].shard_data = req->shard_data;
 
     queue_next_work(req->state);
@@ -328,7 +321,7 @@ static int queue_request_shards(storj_download_state_t *state)
 
         storj_pointer_t *pointer = &state->pointers[i];
 
-        if (pointer->status <= 0) {
+        if (pointer->status <= POINTER_CREATED) {
             shard_request_download_t *req = malloc(sizeof(shard_request_download_t));
             assert(req != NULL);
 
@@ -352,7 +345,7 @@ static int queue_request_shards(storj_download_state_t *state)
             work->data = req;
 
             state->resolving_shards += 1;
-            pointer->status = 1;
+            pointer->status = POINTER_BEING_DOWNLOADED;
 
             uv_queue_work(state->env->loop, (uv_work_t*) work,
                           request_shard, after_request_shard);
@@ -389,7 +382,7 @@ static void after_write_shard(uv_work_t *work, int status)
         req->state->error_status = req->status_code;
     } else {
         // write success
-        req->state->pointers[req->pointer_index].status = 4;
+        req->state->pointers[req->pointer_index].status = POINTER_WRITTEN;
 
         req->state->completed_shards += 1;
 
@@ -411,11 +404,11 @@ static void queue_write_next_shard(storj_download_state_t *state)
     while (!state->writing && i < state->total_pointers) {
         storj_pointer_t *pointer = &state->pointers[i];
 
-        if (pointer->status < 2) {
+        if (pointer->status < POINTER_DOWNLOADED) {
             break;
         }
 
-        if (pointer->status == 2) {
+        if (pointer->status == POINTER_DOWNLOADED) {
             uv_work_t *work = malloc(sizeof(uv_work_t));
             assert(work != NULL);
 
@@ -430,7 +423,7 @@ static void queue_write_next_shard(storj_download_state_t *state)
             work->data = req;
 
             state->writing = true;
-            pointer->status = 3;
+            pointer->status = POINTER_BEING_WRITTEN;
 
             uv_queue_work(state->env->loop, (uv_work_t*) work,
                           write_shard, after_write_shard);
