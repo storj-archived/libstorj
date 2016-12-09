@@ -388,8 +388,8 @@ int test_api()
     };
 
     // TODO store file test
-    // status = storj_bridge_store_file(env, &upload_opts);
-    // assert(status == 0);
+    status = storj_bridge_store_file(env, &upload_opts);
+    assert(status == 0);
 
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
@@ -685,8 +685,8 @@ int main(void)
 
     int status = 0;
     printf("Test Suite: API\n");
-    status -= test_api();
-    ++tests_ran;
+    // status -= test_api();
+    // ++tests_ran;
     printf("\n");
 
     printf("Test Suite: BIP39\n");
