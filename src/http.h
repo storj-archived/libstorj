@@ -26,6 +26,7 @@ int fetch_shard(char *proto,
                 char *shard_hash,
                 ssize_t shard_total_bytes,
                 char *shard_data,
+                char *token,
                 int **status_code);
 
 /**
@@ -44,6 +45,7 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
                                char *path,
                                struct json_object *request_body,
                                storj_boolean_t auth,
+                               char *token,
                                int **status_code);
 
 

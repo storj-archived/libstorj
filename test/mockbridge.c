@@ -145,10 +145,9 @@ int mock_bridge_server(void *cls,
             if (check_auth(user, pass, &status_code, page)) {
                 // TODO check post body
                 page = get_response_string(responses, "createbuckettoken");
-                status_code = MHD_HTTP_OK;
+                status_code = 201;
             }
         }
-
     } else if (0 == strcmp(method, "DELETE")) {
         if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5ba0fc54ab1be516e")) {
             if (check_auth(user, pass, &status_code, page)) {

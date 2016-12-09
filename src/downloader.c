@@ -6,13 +6,100 @@
 // TODO move to a header file for downloader
 static void queue_next_work(storj_download_state_t *state);
 
+static request_token(uv_work_t *work)
+{
+    token_request_download_t *req = work->data;
+
+    char *path = ne_concat("/buckets/", req->bucket_id, "/tokens", NULL);
+
+    struct json_object *body = json_object_new_object();
+    json_object *op_string = json_object_new_string(BUCKET_OP[BUCKET_PULL]);
+    json_object_object_add(body, "operation", op_string);
+
+    int *status_code;
+    struct json_object *response = fetch_json(req->options,
+                                              "POST",
+                                              path,
+                                              body,
+                                              true,
+                                              NULL,
+                                              &status_code);
+
+    struct json_object *token_value;
+    if (!json_object_object_get_ex(response, "token", &token_value)) {
+        //TODO error
+    }
+
+    if (!json_object_is_type(token_value, json_type_string) == 1) {
+        // TODO error
+    }
+
+    req->token = (char *)json_object_get_string(token_value);
+    req->status_code = status_code;
+
+    free(token_value);
+    free(response);
+    free(body);
+}
+
+static after_request_token(uv_work_t *work, int status)
+{
+
+    token_request_download_t *req = work->data;
+
+    req->state->requesting_token = false;
+
+    // TODO check status
+
+    if (req->status_code == 201) {
+        req->state->token = req->token;
+    } else {
+        // TODO retry logic
+        req->state->error_status = 1;
+    }
+
+    queue_next_work(req->state);
+
+    free(req);
+    free(work);
+}
+
+static int queue_request_bucket_token(storj_download_state_t *state)
+{
+    if (state->requesting_token) {
+        return 0;
+    }
+
+    uv_work_t *work = malloc(sizeof(uv_work_t));
+    assert(work != NULL);
+
+    token_request_download_t *req = malloc(sizeof(token_request_download_t));
+    assert(req != NULL);
+
+    req->options = state->env->bridge_options;
+    req->bucket_id = state->bucket_id;
+
+    req->state = state;
+
+    work->data = req;
+
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               request_token, after_request_token);
+
+    // TODO check status
+    state->requesting_token = true;
+
+    return status;
+
+}
+
 static void request_pointers(uv_work_t *work)
 {
     json_request_download_t *req = work->data;
 
     int *status_code;
     req->response = fetch_json(req->options, req->method, req->path, req->body,
-                               req->auth, &status_code);
+                               req->auth, req->token, &status_code);
 
     // TODO clear integer from pointer warning
     req->status_code = status_code;
@@ -127,6 +214,9 @@ static void after_request_pointers(uv_work_t *work, int status)
 
     req->state->requesting_pointers = false;
 
+    // expired token
+    req->state->token = NULL;
+
     // TODO error enum types for below
 
     if (status != 0)  {
@@ -170,6 +260,7 @@ static int queue_request_pointers(storj_download_state_t *state)
     req->path = path;
     req->body = NULL;
     req->auth = true;
+    req->token = state->token;
 
     req->state = state;
 
@@ -193,7 +284,7 @@ static void request_shard(uv_work_t *work)
 
     if (fetch_shard(req->farmer_proto, req->farmer_host, req->farmer_port,
                     req->shard_hash, req->shard_total_bytes,
-                    req->shard_data, &status_code)) {
+                    req->shard_data, req->token, &status_code)) {
 
         // TODO enum error types
         req->status_code = -1;
@@ -246,6 +337,7 @@ static int queue_request_shards(storj_download_state_t *state)
             req->farmer_port = pointer->farmer_port;
             req->shard_hash = pointer->shard_hash;
             req->shard_total_bytes = pointer->size;
+            req->token = pointer->token;
 
             // TODO assert max bytes for shard
             req->shard_data = calloc(pointer->size, sizeof(char));
@@ -380,7 +472,11 @@ static void queue_next_work(storj_download_state_t *state)
         return;
     }
 
-    if (!state->pointers_completed) {
+    if (!state->token && !state->pointers_completed) {
+        queue_request_bucket_token(state);
+    }
+
+    if (state->token && !state->pointers_completed) {
         queue_request_pointers(state);
     }
 
@@ -413,6 +509,8 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->requesting_pointers = false;
     state->error_status = 0;
     state->writing = false;
+    state->token = NULL;
+    state->requesting_token = false;
 
     // start download
     queue_next_work(state);

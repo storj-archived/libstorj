@@ -106,7 +106,18 @@ typedef struct {
     storj_boolean_t requesting_pointers;
     int error_status;
     storj_boolean_t writing;
+    char *token;
+    storj_boolean_t requesting_token;
 } storj_download_state_t;
+
+typedef struct {
+    storj_bridge_options_t *options;
+    char *token;
+    char *bucket_id;
+    /* state should not be modified in worker threads */
+    storj_download_state_t *state;
+    int status_code;
+} token_request_download_t;
 
 typedef struct {
     char **shard_data;
@@ -124,6 +135,7 @@ typedef struct {
     int farmer_port;
     char *shard_hash;
     unsigned int pointer_index;
+    char *token;
     ssize_t shard_total_bytes;
     char *shard_data;
     /* state should not be modified in worker threads */
@@ -136,6 +148,7 @@ typedef struct {
     char *method;
     char *path;
     storj_boolean_t auth;
+    char *token;
     struct json_object *body;
     struct json_object *response;
     /* state should not be modified in worker threads */

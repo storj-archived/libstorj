@@ -6,7 +6,7 @@ static void json_request_worker(uv_work_t *work)
     json_request_t *req = work->data;
     int *status_code;
     req->response = fetch_json(req->options, req->method, req->path, req->body,
-                               req->auth, &status_code);
+                               req->auth, NULL, &status_code);
     req->status_code = status_code;
 }
 

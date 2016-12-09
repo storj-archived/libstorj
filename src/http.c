@@ -20,13 +20,17 @@ int fetch_shard(char *proto,
                 char *shard_hash,
                 ssize_t shard_total_bytes,
                 char *shard_data,
+                char *token,
                 int **status_code)
 {
     // TODO make sure that shard_data has correct number of bytes allocated
 
     ne_session *sess = ne_session_create(proto, host, port);
 
-    char *path = ne_concat("/shards/", shard_hash, NULL);
+    char query_args[80];
+    ne_snprintf(query_args, 80, "?token=%s", token);
+
+    char *path = ne_concat("/shards/", shard_hash, query_args, NULL);
 
     ne_request *req = ne_request_create(sess, "GET", path);
 
@@ -77,6 +81,7 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
                                char *path,
                                struct json_object *request_body,
                                storj_boolean_t auth,
+                               char *token,
                                int **status_code)
 {
 
@@ -100,6 +105,10 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
         char *auth_value = ne_concat("Basic ", user_pass_64, NULL);
 
         ne_add_request_header(req, "Authorization", auth_value);
+    }
+
+    if (token) {
+        ne_add_request_header(req, "X-Token", token);
     }
 
     // include body if request body json is provided
