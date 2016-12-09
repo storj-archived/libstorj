@@ -382,18 +382,22 @@ int storj_bridge_resolve_file(storj_env_t *env,
 
     // setup download state
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+    state->total_bytes = 0;
+    state->downloaded_bytes = 0;
     state->env = env;
-    state->error_status = 0;
-    state->destination = destination;
-    state->bucket_id = bucket_id;
     state->file_id = file_id;
+    state->bucket_id = bucket_id;
+    state->destination = destination;
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
     state->total_shards = 0;
     state->completed_shards = 0;
+    state->resolving_shards = 0;
     state->total_pointers = 0;
-    state->writing = false;
+    state->pointers_completed = false;
     state->requesting_pointers = false;
+    state->error_status = 0;
+    state->writing = false;
 
     // start download
     queue_next_work(state);
