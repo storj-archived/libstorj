@@ -141,6 +141,9 @@ static void after_request_pointers(uv_work_t *work, int status)
     }
 
     queue_next_work(req->state);
+
+    free(work->data);
+    free(work);
 }
 
 static int queue_request_pointers(storj_download_state_t *state)
@@ -220,6 +223,9 @@ static void after_request_shard(uv_work_t *work, int status)
     req->state->pointers[req->pointer_index].shard_data = req->shard_data;
 
     queue_next_work(req->state);
+
+    free(work->data);
+    free(work);
 }
 
 static int queue_request_shards(storj_download_state_t *state)
@@ -301,6 +307,9 @@ static void after_write_shard(uv_work_t *work, int status)
     }
 
     queue_next_work(req->state);
+
+    free(work->data);
+    free(work);
 }
 
 static void queue_write_next_shard(storj_download_state_t *state)
@@ -347,6 +356,9 @@ static void queue_next_work(storj_download_state_t *state)
     if (state->error_status != 0) {
         // TODO make sure that finished_cb is not called multiple times
         state->finished_cb(state->error_status, state->destination);
+
+        free(state->pointers);
+        free(state);
         return;
     }
 
@@ -362,6 +374,9 @@ static void queue_next_work(storj_download_state_t *state)
         state->completed_shards == state->total_shards) {
 
         state->finished_cb(0, state->destination);
+
+        free(state->pointers);
+        free(state);
         return;
     }
 

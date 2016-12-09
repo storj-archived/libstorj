@@ -83,7 +83,7 @@ int mock_farmer_shard_server(void *cls,
 
     response = MHD_create_response_from_buffer(strlen(page),
                                                (void *) page,
-                                               MHD_RESPMEM_PERSISTENT);
+                                               MHD_RESPMEM_MUST_FREE);
 
     *ptr = NULL;
 

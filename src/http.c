@@ -66,6 +66,9 @@ int fetch_shard(char *proto,
         return -1;
     }
 
+    clean_up_neon(sess, req);
+    free(buf);
+
     return 0;
 }
 

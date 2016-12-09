@@ -36,6 +36,9 @@ void check_bridge_get_info(uv_work_t *work_req, int status)
     int success = json_object_object_get_ex(req->response, "info", &value);
     assert(success == 1);
     pass("storj_bridge_get_info");
+
+    free(req);
+    free(work_req);
 }
 
 void check_get_buckets(uv_work_t *work_req, int status)
@@ -49,6 +52,9 @@ void check_get_buckets(uv_work_t *work_req, int status)
     int success = json_object_object_get_ex(bucket, "id", &value);
     assert(success == 1);
     pass("storj_bridge_get_buckets");
+
+    free(req);
+    free(work_req);
 }
 
 void check_create_bucket(uv_work_t *work_req, int status)
@@ -64,6 +70,9 @@ void check_create_bucket(uv_work_t *work_req, int status)
     const char* name = json_object_get_string(value);
     assert(strcmp(name, "backups") == 0);
     pass("storj_bridge_create_bucket");
+
+    free(req);
+    free(work_req);
 }
 
 void check_delete_bucket(uv_work_t *work_req, int status)
@@ -74,6 +83,9 @@ void check_delete_bucket(uv_work_t *work_req, int status)
     assert(req->status_code == 200);
 
     pass("storj_bridge_delete_bucket");
+
+    free(req);
+    free(work_req);
 }
 
 void check_list_files(uv_work_t *work_req, int status)
@@ -91,6 +103,9 @@ void check_list_files(uv_work_t *work_req, int status)
     assert(strcmp(id, "f18b5ca437b1ca3daa14969f") == 0);
 
     pass("storj_bridge_list_files");
+
+    free(req);
+    free(work_req);
 }
 
 void check_bucket_tokens(uv_work_t *work_req, int status)
@@ -110,6 +125,9 @@ void check_bucket_tokens(uv_work_t *work_req, int status)
     assert(strcmp(token, t) == 0);
 
     pass("storj_bridge_create_bucket_token");
+
+    free(req);
+    free(work_req);
 }
 
 void check_file_pointers(uv_work_t *work_req, int status)
@@ -126,6 +144,9 @@ void check_file_pointers(uv_work_t *work_req, int status)
     assert(success == 1);
 
     pass("storj_bridge_get_file_pointers");
+
+    free(req);
+    free(work_req);
 }
 
 void check_resolve_file_progress(double progress)
@@ -149,6 +170,9 @@ void check_delete_file(uv_work_t *work_req, int status)
     assert(req->status_code == 200);
 
     pass("storj_bridge_delete_file");
+
+    free(req);
+    free(work_req);
 }
 
 void check_create_frame(uv_work_t *work_req, int status)
@@ -165,6 +189,9 @@ void check_create_frame(uv_work_t *work_req, int status)
 
     assert(strcmp(id, "d6367831f7f1b117ffdd0015") == 0);
     pass("storj_bridge_create_frame");
+
+    free(req);
+    free(work_req);
 }
 
 void check_get_frames(uv_work_t *work_req, int status)
@@ -182,6 +209,9 @@ void check_get_frames(uv_work_t *work_req, int status)
     assert(strcmp(id, "52b8cc8dfd47bb057d8c8a17") == 0);
 
     pass("storj_bridge_get_frames");
+
+    free(req);
+    free(work_req);
 }
 
 void check_get_frame(uv_work_t *work_req, int status)
@@ -198,6 +228,9 @@ void check_get_frame(uv_work_t *work_req, int status)
 
     assert(strcmp(id, "192f90792f42875a7533340b") == 0);
     pass("storj_bridge_get_frame");
+
+    free(req);
+    free(work_req);
 }
 
 void check_delete_frame(uv_work_t *work_req, int status)
@@ -208,6 +241,9 @@ void check_delete_frame(uv_work_t *work_req, int status)
     assert(req->status_code == 200);
 
     pass("storj_bridge_delete_frame");
+
+    free(req);
+    free(work_req);
 }
 
 void check_file_info(uv_work_t *work_req, int status)
@@ -224,6 +260,9 @@ void check_file_info(uv_work_t *work_req, int status)
 
     assert(strcmp(mimetype, "video/ogg") == 0);
     pass("storj_bridge_get_file_info");
+
+    free(req);
+    free(work_req);
 }
 
 int test_api()

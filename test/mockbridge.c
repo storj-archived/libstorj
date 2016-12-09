@@ -34,7 +34,12 @@ struct json_object *get_response_json(char *path)
     fclose(f);
 
     json_string[fsize] = 0;
-    return json_tokener_parse(json_string);
+
+    struct json_object *j = json_tokener_parse(json_string);
+
+    free(json_string);
+
+    return j;
 }
 
 storj_boolean_t check_auth(char *user, char *pass, int *status_code, char *page)
@@ -179,6 +184,8 @@ int mock_bridge_server(void *cls,
     }
 
     MHD_destroy_response(response);
+
+    free(responses);
 
     return ret;
 }
