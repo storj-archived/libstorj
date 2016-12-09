@@ -30,7 +30,7 @@
 #define FILE_ID_SIZE 24
 #define DETERMINISTIC_KEY_SIZE 64
 #define SHARD_MULTIPLES_BACK 5
-#define STORJ_DEFAULT_DOWNLOAD_CONCURRENCY 4
+#define STORJ_DOWNLOAD_CONCURRENCY 4
 
 typedef struct {
     char *proto;
@@ -75,15 +75,17 @@ typedef struct {
 } storj_shard_t;
 
 typedef void (*storj_progress_cb)(double progress);
-typedef void (*storj_finished_cb)(int status);
+typedef void (*storj_finished_cb)(int status, FILE *fd);
 
 typedef struct {
     char *token;
-    char *hash;
+    char *shard_hash;
+    char **shard_data;
+    unsigned int index;
+    int status;
     uint64_t size;
     char *farmer_address;
     int farmer_port;
-    int status;
 } storj_pointer_t;
 
 typedef struct {
@@ -92,17 +94,42 @@ typedef struct {
     storj_env_t *env;
     char *file_id;
     char *bucket_id;
-    char *dst_path;
+    FILE *destination;
     storj_progress_cb progress_cb;
     storj_finished_cb finished_cb;
-    int total_shards;
-    int completed_shards;
-    int resolving_shards;
+    unsigned int total_shards;
+    unsigned int completed_shards;
+    unsigned int resolving_shards;
     storj_pointer_t *pointers;
-    int total_pointers;
+    unsigned int total_pointers;
     storj_boolean_t pointers_completed;
-    int status;
+    storj_boolean_t requesting_pointers;
+    int error_status;
+    storj_boolean_t writing;
 } storj_download_state_t;
+
+typedef struct {
+    char **shard_data;
+    ssize_t shard_total_bytes;
+    int status_code;
+    FILE *destination;
+    unsigned int pointer_index;
+    /* state should not be modified in worker threads */
+    storj_download_state_t *state;
+} shard_request_write_t;
+
+typedef struct {
+    char *farmer_proto;
+    char *farmer_host;
+    int farmer_port;
+    char *shard_hash;
+    unsigned int pointer_index;
+    ssize_t shard_total_bytes;
+    char *shard_data;
+    /* state should not be modified in worker threads */
+    storj_download_state_t *state;
+    int status_code;
+} shard_request_download_t;
 
 typedef struct {
     storj_bridge_options_t *options;
@@ -111,6 +138,7 @@ typedef struct {
     storj_boolean_t auth;
     struct json_object *body;
     struct json_object *response;
+    /* state should not be modified in worker threads */
     storj_download_state_t *state;
     int status_code;
 } json_request_download_t;
@@ -299,13 +327,13 @@ int storj_bridge_store_file(storj_env_t *env,
  *
  * @param[in] bucket_id Character array of bucket id
  * @param[in] file_id Character array of file id
- * @param[in] dst_path Character array the file destination path
+ * @param[out] destination A file descriptor of the destination
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_resolve_file(storj_env_t *env,
                               char *bucket_id,
                               char *file_id,
-                              char *dst_path,
+                              FILE *destination,
                               storj_progress_cb progress_cb,
                               storj_finished_cb finished_cb);
 

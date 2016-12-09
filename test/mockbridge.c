@@ -97,13 +97,13 @@ int mock_bridge_server(void *cls,
                                                                MHD_GET_ARGUMENT_KIND,
                                                                "skip");
                 if (!skip || 0 == strcmp(skip, "0")) {
-                    page = get_response_string(responses, "getfilepointers");
+                    page = get_response_string(responses, "getfilepointers-0");
                     status_code = MHD_HTTP_OK;
                 } else if (0 == strcmp(skip, "6")) {
-                    page = get_response_string(responses, "getfilepointers");
+                    page = get_response_string(responses, "getfilepointers-1");
                     status_code = MHD_HTTP_OK;
                 } else if (0 == strcmp(skip, "12")) {
-                    page = get_response_string(responses, "getfilepointers");
+                    page = get_response_string(responses, "getfilepointers-2");
                     status_code = MHD_HTTP_OK;
                 } else {
                     page = "[]";

@@ -133,8 +133,9 @@ void check_resolve_file_progress(double progress)
     // TODO assersions
 }
 
-void check_resolve_file(int status)
+void check_resolve_file(int status, FILE *fd)
 {
+    fclose(fd);
     assert(status == 0);
 
     pass("storj_bridge_resolve_file");
@@ -232,10 +233,12 @@ int test_api()
     char *folder = getenv("TMPDIR");
 
     if (folder == 0) {
-        printf("You need to set $TMPDIR before running.\n");
+        printf("You need to set $TMPDIR before running. (e.g. export TMPDIR=/tmp/)\n");
         exit(1);
     }
-    char *file = strcat(folder, "samplefile.txt");
+    char *file = calloc(strlen(folder) + 14 + 1, sizeof(char));
+    strcpy(file, folder);
+    strcat(file, "samplefile.txt");
     create_test_file(file);
 
     // setup bridge options to point to mock server
@@ -323,8 +326,12 @@ int test_api()
     assert(status == 0);
 
     // resolve file
-    char *dst_path = strcat(folder, "TheMeaningOfLifeAndEverything.ogv");
-    status = storj_bridge_resolve_file(env, bucket_id, file_id, dst_path,
+    char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
+    strcpy(download_file, folder);
+    strcat(download_file, "storj-test-download.data");
+    FILE *download_fp = fopen(download_file, "w+");
+
+    status = storj_bridge_resolve_file(env, bucket_id, file_id, download_fp,
                                        check_resolve_file_progress,
                                        check_resolve_file);
     assert(status == 0);

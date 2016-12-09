@@ -12,6 +12,23 @@
 #include <neon/ne_string.h>
 
 /**
+ * @brief Make a HTTP request for a shard
+ *
+ * @param[in] host The farmer host
+ * @param[in] port The farmer port
+ * @param[in] shard_hash The hash of the shard to retrieve
+ * @param[out] out Target for shard data
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int fetch_shard(char *proto,
+                char *host,
+                int port,
+                char *shard_hash,
+                ssize_t shard_total_bytes,
+                char *shard_data,
+                int **status_code);
+
+/**
  * @brief Make a JSON HTTP request
  *
  * @param[in] options The storj bridge options

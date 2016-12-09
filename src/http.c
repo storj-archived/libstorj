@@ -1,5 +1,7 @@
 #include "http.h"
 
+// TODO error check the calloc and realloc calls
+
 static void clean_up_neon(ne_session *s, ne_request *r)
 {
     // Destroy the request
@@ -12,17 +14,61 @@ static void clean_up_neon(ne_session *s, ne_request *r)
     ne_session_destroy(s);
 }
 
-/**
- * @brief Get Storj bridge API information.
- *
- * This function will get general information about the storj bridge api.
- * The network i/o is performed in a thread pool with a libuv loop, and the
- * response is available in the first argument to the callback function.
- *
- * @param[in] env The storj environment struct
- * @param[in] cb A function called with response when complete
- * @return A non-zero error value on failure and 0 on success.
- */
+int fetch_shard(char *proto,
+                char *host,
+                int port,
+                char *shard_hash,
+                ssize_t shard_total_bytes,
+                char *shard_data,
+                int **status_code)
+{
+    // TODO make sure that shard_data has correct number of bytes allocated
+
+    ne_session *sess = ne_session_create(proto, host, port);
+
+    char *path = ne_concat("/shards/", shard_hash, NULL);
+
+    ne_request *req = ne_request_create(sess, "GET", path);
+
+    if (0 == strcmp(proto, "https")) {
+        ne_ssl_trust_default_ca(sess);
+    }
+
+    if (ne_begin_request(req) != NE_OK) {
+        clean_up_neon(sess, req);
+        // TODO enum error types: REQUEST_FAILURE
+        return -1;
+    }
+
+    *status_code = ne_get_status(req)->code;
+
+    char *buf = calloc(NE_BUFSIZ, sizeof(char));
+
+    ssize_t bytes = 0;
+    ssize_t total = 0;
+
+    while ((bytes = ne_read_response_block(req, buf, NE_BUFSIZ)) > 0) {
+        if (total + bytes > shard_total_bytes) {
+            // TODO error enum types: SHARD_INTEGRITY
+            return -1;
+        }
+
+        memcpy(shard_data + total, buf, bytes);
+        total += bytes;
+    }
+
+    if (bytes == 0) {
+        ne_end_request(req);
+    }
+
+    if (total != shard_total_bytes) {
+        // TODO error enum types: SHARD_INTEGRITY
+        return -1;
+    }
+
+    return 0;
+}
+
 struct json_object *fetch_json(storj_bridge_options_t *options,
                                char *method,
                                char *path,
@@ -30,12 +76,13 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
                                storj_boolean_t auth,
                                int **status_code)
 {
+
+    // TODO: reuse an existing session and socket to the bridge
+
     ne_session *sess = ne_session_create(options->proto, options->host,
                                          options->port);
 
-    //
     // TODO: error check the ne calls in this function
-    //
 
     if (0 == strcmp(options->proto, "https")) {
         ne_ssl_trust_default_ca(sess);
@@ -71,11 +118,10 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
     // set the status code
     *status_code = ne_get_status(req)->code;
 
-    // Note: NE_BUFSIZ is from ne_defs.h. Should be okay to use.
     int body_sz = NE_BUFSIZ * 4;
-    char *body  = calloc(NE_BUFSIZ * 4, sizeof(char));
-    char *buf   = calloc(NE_BUFSIZ, sizeof(char));
-    // TODO error check the calloc
+    char *body = calloc(NE_BUFSIZ * 4, sizeof(char));
+    char *buf = calloc(NE_BUFSIZ, sizeof(char));
+
     ssize_t bytes = 0;
     ssize_t total = 0;
 
@@ -87,7 +133,6 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
         if (total + bytes + 1 > body_sz) {
             body_sz += bytes + 1;
             body = (char *) realloc(body, body_sz);
-            // TODO error check realloc call
         }
 
         memcpy(body + total, buf, bytes);
