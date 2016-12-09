@@ -7,11 +7,52 @@ static uv_work_t *uv_work_new()
     return work;
 }
 
+static request_token(uv_work_t *work)
+{
+    storj_upload_work_data_t *work_data = work->data;
+    storj_upload_opts_t *opts = &work_data->opts;
+    storj_env_t *env = &work_data->env;
+
+    char *path = ne_concat("/buckets/", opts->bucket_id, "/tokens", NULL);
+
+    struct json_object *body = json_object_new_object();
+    json_object *op_string = json_object_new_string(BUCKET_OP[BUCKET_PUSH]);
+    json_object_object_add(body, "operation", op_string);
+
+    int *status_code;
+    struct json_object *response = fetch_json(env->bridge_options,
+                                              "POST",
+                                              path,
+                                              body,
+                                              true,
+                                              NULL,
+                                              &status_code);
+
+    struct json_object *token_value;
+    if (!json_object_object_get_ex(response, "token", &token_value)) {
+        //TODO error
+    }
+
+    if (!json_object_is_type(token_value, json_type_string) == 1) {
+        // TODO error
+    }
+
+    opts->token = (char *)json_object_get_string(token_value);
+    opts->token_status_code = status_code;
+
+    free(token_value);
+    free(response);
+    free(body);
+}
+
 void uploader_callback(uv_work_t *work, int status)
 {
     storj_upload_work_data_t *work_data = work->data;
     storj_env_t *env = &work_data->env;
     storj_upload_opts_t *opts = &work_data->opts;
+
+    printf("Token status Code: %d\n", opts->token_status_code);
+    printf("Token: %s\n", opts->token);
 }
 
 static void begin_upload_work(uv_work_t *work)
@@ -64,6 +105,9 @@ static void begin_upload_work(uv_work_t *work)
     uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_SIZE/2 + 1, sizeof(char));
     str2hex(DETERMINISTIC_KEY_SIZE/2, file_key, file_key_as_hex);
     aes256_set_encrypt_key(&ctx, file_key_as_hex);
+
+
+    request_token(work);
 
     // Load original file and tmp file
     // FILE *original_file;

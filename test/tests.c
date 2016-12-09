@@ -388,6 +388,8 @@ int test_api()
     };
 
     // TODO store file test
+    // status = storj_bridge_store_file(env, &upload_opts);
+    // assert(status == 0);
 
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {

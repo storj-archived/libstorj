@@ -179,6 +179,8 @@ typedef struct {
     char *file_name;
     char *key_pass;
     char *mnemonic;
+    char *token;
+    int token_status_code;
 } storj_upload_opts_t;
 
 typedef struct {
