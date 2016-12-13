@@ -184,7 +184,8 @@ int mock_bridge_server(void *cls,
 
     MHD_destroy_response(response);
 
-    free(responses);
+    // Free the json_object
+    json_object_put(responses);
 
     return ret;
 }

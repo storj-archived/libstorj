@@ -11,7 +11,6 @@ static request_token(uv_work_t *work)
 {
     storj_upload_work_data_t *work_data = work->data;
     storj_upload_opts_t *opts = &work_data->opts;
-    storj_env_t *env = &work_data->env;
 
     char *path = ne_concat("/buckets/", opts->bucket_id, "/tokens", NULL);
 
@@ -40,15 +39,16 @@ static request_token(uv_work_t *work)
     opts->token = (char *)json_object_get_string(token_value);
     opts->token_status_code = status_code;
 
-    free(token_value);
-    free(response);
-    free(body);
+    // Free the json
+    // json_object_put(response);
+    // json_object_put(token_value);
+    // json_object_put(body);
+    // json_object_put(op_string);
 }
 
 void uploader_callback(uv_work_t *work, int status)
 {
     storj_upload_work_data_t *work_data = work->data;
-    storj_env_t *env = &work_data->env;
     storj_upload_opts_t *opts = &work_data->opts;
 
     printf("Token status Code: %d\n", opts->token_status_code);
@@ -104,22 +104,21 @@ static void begin_upload_work(uv_work_t *work)
     struct aes256_ctx ctx;
     uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_SIZE/2 + 1, sizeof(char));
     str2hex(DETERMINISTIC_KEY_SIZE/2, file_key, file_key_as_hex);
-    aes256_set_encrypt_key(&ctx, file_key_as_hex);
+    aes256_set_decrypt_key(&ctx, file_key_as_hex);
 
-
-    request_token(work);
+    request_token(work_data);
 
     // Load original file and tmp file
     // FILE *original_file;
     // FILE *encrypted_file;
     // original_file = fopen(opts->file_path, "r");
     // encrypted_file = fopen(opts->tmp_path, "w+");
-
+    //
     // size_t bytesRead = 0;
     // int i = 0;
     // char buffer[512];
     // memset(buffer, '\0', sizeof(buffer));
-
+    //
     // // Read bytes of the original file, encrypt them, and write to the tmp file
     // if (original_file != NULL) {
     //   // read up to sizeof(buffer) bytes
@@ -130,12 +129,12 @@ static void begin_upload_work(uv_work_t *work)
     //     i++;
     //   }
     // }
-
+    //
     // // TODO: upload file
-
+    //
     // fclose(original_file);
     // fclose(encrypted_file);
-
+    //
     // unlink(encrypted_file);
     free(file_id);
     free(file_id_buff);
