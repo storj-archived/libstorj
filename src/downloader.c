@@ -481,7 +481,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
                               char *file_id,
                               FILE *destination,
                               storj_progress_cb progress_cb,
-                              storj_finished_cb finished_cb)
+                              storj_finished_download_cb finished_cb)
 {
 
     // setup download state

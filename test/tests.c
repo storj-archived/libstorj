@@ -167,9 +167,14 @@ void check_store_file_progress(double progress)
     // TODO assersions
 }
 
-void check_store_file(int status)
+void check_store_file(char *status)
 {
-    assert(status == 0);
+    if (status == NULL) {
+        pass("storj_bridge_store_file");
+    } else {
+        fail("storj_bridge_store_file");
+        printf("\t\tERROR:   %s\n", status);
+    }
 }
 
 void check_delete_file(uv_work_t *work_req, int status)
@@ -304,7 +309,7 @@ int test_api()
     assert(env != NULL);
 
     int status;
-    //
+
     // // get general api info
     // status = storj_bridge_get_info(env, check_bridge_get_info);
     // assert(status == 0);
@@ -403,7 +408,8 @@ int test_api()
     status = storj_bridge_store_file(env, &upload_opts,
                                      check_store_file_progress,
                                      check_store_file);
-                                     
+    assert(status == 0);
+
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         // Error

@@ -75,8 +75,8 @@ typedef struct {
 } storj_shard_t;
 
 typedef void (*storj_progress_cb)(double progress);
-typedef void (*storj_finished_cb)(int status, FILE *fd);
-typedef void (*storj_finished_upload_cb)(int status);
+typedef void (*storj_finished_download_cb)(int status, FILE *fd);
+typedef void (*storj_finished_upload_cb)(char *msg);
 
 typedef struct {
     char *token;
@@ -106,7 +106,7 @@ typedef struct {
     char *bucket_id;
     FILE *destination;
     storj_progress_cb progress_cb;
-    storj_finished_cb finished_cb;
+    storj_finished_download_cb finished_cb;
     uint32_t total_shards;
     uint32_t completed_shards;
     uint32_t resolving_shards;
@@ -121,25 +121,34 @@ typedef struct {
 } storj_download_state_t;
 
 typedef struct {
+    int code;
+    char *message;
+} storj_error_t;
+
+typedef struct {
     uint32_t file_concurrency;
     uint32_t shard_concurrency;
     uint64_t total_bytes;
     uint64_t uploaded_bytes;
     storj_env_t *env;
-    char *file_id;
+    char file_id[FILE_ID_SIZE];
     char *file_name;
     char *file_path;
+    char file_key[DETERMINISTIC_KEY_SIZE];
     uint64_t file_size;
     char *bucket_id;
+    char *bucket_key;
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;
     uint32_t total_shards;
+    uint64_t shard_size;
     uint32_t completed_shards;
-    int error_status;
+    storj_error_t *error;
     storj_boolean_t writing;
     char *token;
     storj_boolean_t requesting_token;
     storj_boolean_t final_callback_called;
+    char *mnemonic;
 } storj_upload_state_t;
 
 typedef struct {
@@ -368,7 +377,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
                               char *file_id,
                               FILE *destination,
                               storj_progress_cb progress_cb,
-                              storj_finished_cb finished_cb);
+                              storj_finished_download_cb finished_cb);
 
 int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
 

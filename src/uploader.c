@@ -1,60 +1,18 @@
 #include "storj.h"
 
-// static uv_work_t *uv_work_new()
-// {
-//     uv_work_t *work = malloc(sizeof(uv_work_t));
-//     assert(work != NULL);
-//     return work;
-// }
-//
-// static request_token(uv_work_t *work)
-// {
-//     storj_upload_work_data_t *work_data = work->data;
-//     storj_upload_opts_t *opts = &work_data->opts;
-//
-//     char *path = ne_concat("/buckets/", opts->bucket_id, "/tokens", NULL);
-//
-//     struct json_object *body = json_object_new_object();
-//     json_object *op_string = json_object_new_string(BUCKET_OP[BUCKET_PUSH]);
-//     json_object_object_add(body, "operation", op_string);
-//
-//     int *status_code;
-//     struct json_object *response = fetch_json(env->bridge_options,
-//                                               "POST",
-//                                               path,
-//                                               body,
-//                                               true,
-//                                               NULL,
-//                                               &status_code);
-//
-//     struct json_object *token_value;
-//     if (!json_object_object_get_ex(response, "token", &token_value)) {
-//         //TODO error
-//     }
-//
-//     if (!json_object_is_type(token_value, json_type_string) == 1) {
-//         // TODO error
-//     }
-//
-//     opts->token = (char *)json_object_get_string(token_value);
-//     opts->token_status_code = status_code;
-//
-//     // Free the json
-//     // json_object_put(response);
-//     // json_object_put(token_value);
-//     // json_object_put(body);
-//     // json_object_put(op_string);
-// }
-//
-// void uploader_callback(uv_work_t *work, int status)
-// {
-//     storj_upload_work_data_t *work_data = work->data;
-//     storj_upload_opts_t *opts = &work_data->opts;
-//
-//     printf("Token status Code: %d\n", opts->token_status_code);
-//     printf("Token: %s\n", opts->token);
-// }
-//
+static uv_work_t *uv_work_new()
+{
+    uv_work_t *work = malloc(sizeof(uv_work_t));
+    assert(work != NULL);
+    return work;
+}
+
+static void handle_error(storj_upload_state_t *state) {
+    char *error_message = state->error->message;
+    state->finished_cb(error_message);
+    free(state);
+}
+
 // static void begin_upload_work(uv_work_t *work)
 // {
 //     int err;
@@ -62,28 +20,10 @@
 //     storj_upload_work_data_t *work_data = work->data;
 //     storj_env_t *env = &work_data->env;
 //     storj_upload_opts_t *opts = &work_data->opts;
+// Set File Name
+
 //
-//
-//
-//
-//     opts->shard_size = determine_shard_size(opts, 0);
-//     opts->shard_num = ceil((double)opts->file_size / opts->shard_size);
-//
-//     // Calculate deterministic file id
-//     char *file_id_buff = malloc(FILE_ID_SIZE + 1);
-//     calculate_file_id(opts->bucket_id, opts->file_name, &file_id_buff);
-//     opts->file_id = file_id_buff;
-//     opts->file_id[FILE_ID_SIZE] = '\0';
-//
-//     // Generate encryption key
-//     char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
-//     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-//
-//     calculate_file_id(opts->bucket_id, opts->file_name, &file_id);
-//     file_id[FILE_ID_SIZE] = '\0';
-//     opts->file_id = file_id;
-//     generate_file_key(opts->mnemonic, opts->bucket_id, file_id, &file_key);
-//     file_key[DETERMINISTIC_KEY_SIZE] = '\0';
+
 //
 //     // Set tmp file
 //     int tmp_len = strlen(opts->file_path) + strlen(".crypt");
@@ -144,9 +84,9 @@
 static void queue_next_work(storj_upload_state_t *state)
 {
     // report any errors
-    if (state->error_status != 0) {
+    if (state->error->code != 0) {
         // TODO make sure that finished_cb is not called multiple times
-        state->finished_cb(state->error_status);
+        handle_error(state->error);
         state->final_callback_called = true;
 
         free(state);
@@ -182,6 +122,62 @@ static void queue_next_work(storj_upload_state_t *state)
     // queue_request_shards(state);
 }
 
+static void begin_work_queue(uv_work_t *work) {
+    printf("Got to begin_work_queue\n");
+
+    storj_upload_state_t *state = work->data;
+
+    printf("file_size: %llu\n", state->file_size);
+    printf("file_name: %s\n", state->file_name);
+    printf("file_id: %s\n", state->file_id);
+    printf("shard_size: %llu\n",  state->shard_size);
+    printf("total_shards: %d\n", state->total_shards);
+
+    state->finished_cb(NULL);
+    free(state);
+    free(work);
+}
+
+
+
+static void prepare_upload_state(uv_work_t *work) {
+
+    storj_upload_state_t *state = work->data;
+
+    if (!state) {
+        printf("Where did my state go?\n");
+    }
+
+    state->file_name = strrchr(state->file_path, '/');
+    // Remove '/' from the front if exists by pushing the pointer up
+    if (state->file_name[0] == '/') state->file_name++;
+
+    // Get the file size
+    state->file_size = check_file(state->env, state->file_path); // Expect to be up to 10tb
+    if (state->file_size < 1) {
+        state->error->message = "Invalid File.";
+        return handle_error(state->error);
+    }
+
+    // Set Shard calculations
+    state->shard_size = determine_shard_size(state, 0);
+    state->total_shards = ceil((double)state->file_size / state->shard_size);
+
+    // Generate encryption key && Calculate deterministic file id
+    char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
+    char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+
+    calculate_file_id(state->bucket_id, state->file_name, &file_id);
+    memcpy(state->file_id, file_id, FILE_ID_SIZE);
+    state->file_id[FILE_ID_SIZE] = '\0';
+    generate_file_key(state->mnemonic, state->bucket_id, file_id, &file_key);
+    memcpy(state->file_key, file_key, DETERMINISTIC_KEY_SIZE);
+    file_key[DETERMINISTIC_KEY_SIZE] = '\0';
+
+    free(file_id);
+    free(file_key);
+}
+
 int storj_bridge_store_file(storj_env_t *env,
                             storj_upload_opts_t *opts,
                             storj_progress_cb progress_cb,
@@ -212,24 +208,14 @@ int storj_bridge_store_file(storj_env_t *env,
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
     state->total_shards = 0;
-    state->error_status = 0;
     state->writing = false;
     state->token = NULL;
     state->requesting_token = false;
     state->final_callback_called = false;
+    state->mnemonic = opts->mnemonic;
 
-    // Set File Name
-    state->file_name = strrchr(state->file_path, '/');
-    // Remove '/' from the front if exists by pushing the pointer up
-    if (state->file_name[0] == '/') state->file_name++;
+    uv_work_t *work = uv_work_new();
+    work->data = state;
 
-    // Get the file size
-    state->file_size = check_file(env, state->file_path); // Expect to be up to 10tb
-    if (state->file_size < 1) {
-        printf("Invalid file: %s\n", state->file_path);
-        return ERROR; //cleanup
-    }
-
-    // start download
-    queue_next_work(state);
+    return uv_queue_work(env->loop, (uv_work_t*) work, prepare_upload_state, begin_work_queue);
 }
