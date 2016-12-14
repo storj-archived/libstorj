@@ -162,6 +162,16 @@ void check_resolve_file(int status, FILE *fd)
     pass("storj_bridge_resolve_file");
 }
 
+void check_store_file_progress(double progress)
+{
+    // TODO assersions
+}
+
+void check_store_file(int status)
+{
+    assert(status == 0);
+}
+
 void check_delete_file(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -294,7 +304,7 @@ int test_api()
     assert(env != NULL);
 
     int status;
-    // 
+    //
     // // get general api info
     // status = storj_bridge_get_info(env, check_bridge_get_info);
     // assert(status == 0);
@@ -383,7 +393,6 @@ int test_api()
     storj_upload_opts_t upload_opts = {
         .file_concurrency = 1,
         .shard_concurrency = 3,
-        .redundancy = 1,
         .bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e",
         .file_path = file,
         .key_pass = "password",
@@ -391,9 +400,10 @@ int test_api()
     };
 
     // TODO store file test
-    status = storj_bridge_store_file(env, &upload_opts);
-    assert(status == 0);
-
+    status = storj_bridge_store_file(env, &upload_opts,
+                                     check_store_file_progress,
+                                     check_store_file);
+                                     
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         // Error

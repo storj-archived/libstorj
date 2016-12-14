@@ -27,7 +27,7 @@ int str2hex(unsigned length, char *data, uint8_t *buffer)
 }
 
 
-unsigned long long check_file(storj_env_t *env, char *filepath)
+uint64_t check_file(storj_env_t *env, char *filepath)
 {
     int r = 0;
     uv_fs_t *stat_req = malloc(sizeof(uv_fs_t));

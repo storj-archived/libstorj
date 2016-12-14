@@ -76,12 +76,13 @@ typedef struct {
 
 typedef void (*storj_progress_cb)(double progress);
 typedef void (*storj_finished_cb)(int status, FILE *fd);
+typedef void (*storj_finished_upload_cb)(int status);
 
 typedef struct {
     char *token;
     char *shard_hash;
     char **shard_data;
-    unsigned int index;
+    uint32_t index;
     int status;
     uint64_t size;
     char *farmer_address;
@@ -106,11 +107,11 @@ typedef struct {
     FILE *destination;
     storj_progress_cb progress_cb;
     storj_finished_cb finished_cb;
-    unsigned int total_shards;
-    unsigned int completed_shards;
-    unsigned int resolving_shards;
+    uint32_t total_shards;
+    uint32_t completed_shards;
+    uint32_t resolving_shards;
     storj_pointer_t *pointers;
-    unsigned int total_pointers;
+    uint32_t total_pointers;
     storj_boolean_t pointers_completed;
     storj_boolean_t requesting_pointers;
     int error_status;
@@ -118,6 +119,37 @@ typedef struct {
     char *token;
     storj_boolean_t requesting_token;
 } storj_download_state_t;
+
+typedef struct {
+    uint32_t file_concurrency;
+    uint32_t shard_concurrency;
+    uint64_t total_bytes;
+    uint64_t uploaded_bytes;
+    storj_env_t *env;
+    char *file_id;
+    char *file_name;
+    char *file_path;
+    uint64_t file_size;
+    char *bucket_id;
+    storj_progress_cb progress_cb;
+    storj_finished_upload_cb finished_cb;
+    uint32_t total_shards;
+    uint32_t completed_shards;
+    int error_status;
+    storj_boolean_t writing;
+    char *token;
+    storj_boolean_t requesting_token;
+    storj_boolean_t final_callback_called;
+} storj_upload_state_t;
+
+typedef struct {
+    int file_concurrency;
+    int shard_concurrency;
+    char *bucket_id;
+    char *file_path;
+    char *key_pass;
+    char *mnemonic;
+} storj_upload_opts_t;
 
 typedef struct {
     storj_bridge_options_t *options;
@@ -133,7 +165,7 @@ typedef struct {
     ssize_t shard_total_bytes;
     int status_code;
     FILE *destination;
-    unsigned int pointer_index;
+    uint32_t pointer_index;
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
 } shard_request_write_t;
@@ -143,7 +175,7 @@ typedef struct {
     char *farmer_host;
     int farmer_port;
     char *shard_hash;
-    unsigned int pointer_index;
+    uint32_t pointer_index;
     char *token;
     ssize_t shard_total_bytes;
     char *shard_data;
@@ -164,31 +196,6 @@ typedef struct {
     storj_download_state_t *state;
     int status_code;
 } json_request_download_t;
-
-typedef struct {
-    int file_concurrency;
-    int shard_concurrency;
-    int redundancy;
-    int shard_num;
-    unsigned long long file_size;
-    unsigned long long shard_size;
-    char *bucket_id;
-    char *file_path;
-    char *tmp_path;
-    char *file_id;
-    char *file_name;
-    char *key_pass;
-    char *mnemonic;
-    char *token;
-    int token_status_code;
-} storj_upload_opts_t;
-
-typedef struct {
-    storj_env_t env;
-    storj_upload_opts_t opts;
-    uv_fs_t *open_req;
-    uv_fs_t *read_req;
-} storj_upload_work_data_t;
 
 storj_env_t *storj_init_env(storj_bridge_options_t *options);
 
@@ -344,7 +351,9 @@ int storj_bridge_get_file_info(storj_env_t *env,
                                uv_after_work_cb cb);
 
 int storj_bridge_store_file(storj_env_t *env,
-                            storj_upload_opts_t *opts);
+                           storj_upload_opts_t *opts,
+                           storj_progress_cb progress_cb,
+                           storj_finished_upload_cb finished_cb);
 
 /**
  * @brief Download a file
@@ -363,7 +372,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
 
 int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
 
-unsigned long long check_file(storj_env_t *env, char *filepath);
+uint64_t check_file(storj_env_t *env, char *filepath);
 
 int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest);
 
@@ -377,10 +386,10 @@ void pbkdf2_hmac_sha512(unsigned key_length,
 
 void random_buffer(uint8_t *buf, size_t len);
 
-unsigned long long determine_shard_size(storj_upload_opts_t *opts,
+uint64_t determine_shard_size(storj_upload_state_t *state,
                                         int accumulator);
 
-unsigned long long shardSize(int hops);
+uint64_t shardSize(int hops);
 
 /**
  * @brief Calculate file id by sha256ripemd160

@@ -101,7 +101,7 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
     // include authentication headers if info is provided
     if (auth && options->user && options->pass) {
         char *user_pass = ne_concat(options->user, ":", options->pass, NULL);
-        char *user_pass_64 = ne_base64((unsigned char *)user_pass, strlen(user_pass));
+        char *user_pass_64 = ne_base64((uint8_t *)user_pass, strlen(user_pass));
         char *auth_value = ne_concat("Basic ", user_pass_64, NULL);
 
         ne_add_request_header(req, "Authorization", auth_value);

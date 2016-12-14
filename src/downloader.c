@@ -155,7 +155,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
             if (!json_object_object_get_ex(pointer, "index", &index_value)) {
                 // TODO error
             }
-            unsigned int index = json_object_get_int(index_value);
+            uint32_t index = json_object_get_int(index_value);
 
             struct json_object* farmer_value;
             if (!json_object_object_get_ex(pointer, "farmer", &farmer_value)) {
@@ -174,7 +174,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
             if (!json_object_object_get_ex(farmer_value, "port", &port_value)) {
                 // TODO error
             }
-            unsigned int port = json_object_get_int(port_value);
+            uint32_t port = json_object_get_int(port_value);
 
             free(token_value);
             free(hash_value);
