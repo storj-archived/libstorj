@@ -167,12 +167,13 @@ static void prepare_upload_state(uv_work_t *work) {
     char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
 
+
     calculate_file_id(state->bucket_id, state->file_name, &file_id);
     memcpy(state->file_id, file_id, FILE_ID_SIZE);
     state->file_id[FILE_ID_SIZE] = '\0';
-    generate_file_key(state->mnemonic, state->bucket_id, file_id, &file_key);
+    generate_file_key(state->mnemonic, state->bucket_id, state->file_id, &file_key);
     memcpy(state->file_key, file_key, DETERMINISTIC_KEY_SIZE);
-    file_key[DETERMINISTIC_KEY_SIZE] = '\0';
+    state->file_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
     free(file_id);
     free(file_key);

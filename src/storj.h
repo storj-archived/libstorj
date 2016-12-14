@@ -131,10 +131,10 @@ typedef struct {
     uint64_t total_bytes;
     uint64_t uploaded_bytes;
     storj_env_t *env;
-    char file_id[FILE_ID_SIZE];
+    char file_id[FILE_ID_SIZE+1];
     char *file_name;
     char *file_path;
-    char file_key[DETERMINISTIC_KEY_SIZE];
+    char file_key[DETERMINISTIC_KEY_SIZE+1];
     uint64_t file_size;
     char *bucket_id;
     char *bucket_key;

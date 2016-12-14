@@ -290,9 +290,12 @@ int test_api()
         printf("You need to set $TMPDIR before running. (e.g. export TMPDIR=/tmp/)\n");
         exit(1);
     }
-    char *file = calloc(strlen(folder) + 14 + 1, sizeof(char));
+    char *file_name = "samplefile.txt";
+    int len = strlen(folder) + strlen(file_name);
+    char *file = calloc(len + 1, sizeof(char));
     strcpy(file, folder);
-    strcat(file, "samplefile.txt");
+    strcat(file, file_name);
+    file[len] = '\0';
     create_test_file(file);
 
     // setup bridge options to point to mock server
