@@ -8,12 +8,12 @@ static void queue_next_work(storj_download_state_t *state);
 
 static request_token(uv_work_t *work)
 {
-    token_request_download_t *req = work->data;
+    token_request_token_t *req = work->data;
 
     char *path = ne_concat("/buckets/", req->bucket_id, "/tokens", NULL);
 
     struct json_object *body = json_object_new_object();
-    json_object *op_string = json_object_new_string(BUCKET_OP[BUCKET_PULL]);
+    json_object *op_string = json_object_new_string(req->bucket_op);
     json_object_object_add(body, "operation", op_string);
 
     int *status_code;
@@ -45,7 +45,7 @@ static request_token(uv_work_t *work)
 static after_request_token(uv_work_t *work, int status)
 {
 
-    token_request_download_t *req = work->data;
+    token_request_token_t *req = work->data;
 
     req->state->requesting_token = false;
 
@@ -73,14 +73,13 @@ static int queue_request_bucket_token(storj_download_state_t *state)
     uv_work_t *work = malloc(sizeof(uv_work_t));
     assert(work != NULL);
 
-    token_request_download_t *req = malloc(sizeof(token_request_download_t));
+    token_request_token_t *req = malloc(sizeof(token_request_token_t));
     assert(req != NULL);
 
     req->options = state->env->bridge_options;
     req->bucket_id = state->bucket_id;
-
+    req->bucket_op = BUCKET_OP[BUCKET_PULL];
     req->state = state;
-
     work->data = req;
 
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,

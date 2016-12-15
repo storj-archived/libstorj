@@ -60,7 +60,11 @@ typedef struct {
     int status_code;
 } json_request_t;
 
-typedef enum {BUCKET_PUSH, BUCKET_PULL} storj_bucket_op_t;
+typedef enum {
+    BUCKET_PUSH,
+    BUCKET_PULL
+} storj_bucket_op_t;
+
 static const char *BUCKET_OP[] = { "PUSH", "PULL" };
 
 typedef struct {
@@ -168,10 +172,11 @@ typedef struct {
     storj_bridge_options_t *options;
     char *token;
     char *bucket_id;
+    char *bucket_op;
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
     int status_code;
-} token_request_download_t;
+} token_request_token_t;
 
 typedef struct {
     char **shard_data;

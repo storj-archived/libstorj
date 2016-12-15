@@ -1,5 +1,7 @@
 #include "storj.h"
 
+static void queue_next_work(storj_upload_state_t *state);
+
 static uv_work_t *uv_work_new()
 {
     uv_work_t *work = malloc(sizeof(uv_work_t));
@@ -53,8 +55,92 @@ static uv_work_t *uv_work_new()
 //
 //
 
+static after_request_token(uv_work_t *work, int status)
+{
 
+    token_request_token_t *req = work->data;
 
+    req->state->requesting_token = false;
+
+    // TODO check status
+
+    if (req->status_code == 201) {
+        req->state->token = req->token;
+    } else {
+        // TODO retry logic
+        req->state->error_status = 1;
+    }
+
+    queue_next_work(req->state);
+
+    free(req);
+    free(work);
+}
+
+static request_token(uv_work_t *work)
+{
+    token_request_token_t *req = work->data;
+
+    char *path = ne_concat("/buckets/", req->bucket_id, "/tokens", NULL);
+
+    struct json_object *body = json_object_new_object();
+    json_object *op_string = json_object_new_string(req->bucket_op);
+    json_object_object_add(body, "operation", op_string);
+
+    int *status_code;
+    struct json_object *response = fetch_json(req->options,
+                                              "POST",
+                                              path,
+                                              body,
+                                              true,
+                                              NULL,
+                                              &status_code);
+
+    struct json_object *token_value;
+    if (!json_object_object_get_ex(response, "token", &token_value)) {
+        //TODO error
+    }
+
+    if (!json_object_is_type(token_value, json_type_string) == 1) {
+        // TODO error
+    }
+
+    req->token = (char *)json_object_get_string(token_value);
+    req->status_code = status_code;
+
+    printf("token: %s\n", req->token);
+    printf("status_code: %d\n", req->status_code);
+
+    json_object_put(response);
+    json_object_put(body);
+}
+
+static int queue_request_bucket_token(storj_upload_state_t *state)
+{
+    if (state->requesting_token == true) {
+        return;
+    }
+
+    uv_work_t *work = uv_work_new();
+
+    token_request_token_t *req = malloc(sizeof(token_request_token_t));
+    assert(req != NULL);
+
+    req->options = state->env->bridge_options;
+    req->bucket_id = state->bucket_id;
+    req->bucket_op = BUCKET_OP[BUCKET_PUSH];
+    req->state = state;
+    work->data = req;
+
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               request_token, after_request_token);
+
+    // TODO check status
+    state->requesting_token = true;
+
+    return status;
+
+}
 
 static void queue_next_work(storj_upload_state_t *state)
 {
@@ -68,34 +154,25 @@ static void queue_next_work(storj_upload_state_t *state)
         return;
     }
 
-    printf("file_size: %llu\n", state->file_size);
-    printf("file_name: %s\n", state->file_name);
-    printf("file_id: %s\n", state->file_id);
-    printf("shard_size: %llu\n",  state->shard_size);
-    printf("total_shards: %d\n", state->total_shards);
-    printf("tmp_path: %s\n", state->tmp_path);
-
     // queue_write_next_shard(state);
     //
     // // report progress of download
     // if (state->total_bytes > 0 && state->uploaded_bytes > 0) {
     //     state->progress_cb(state->uploaded_bytes / state->total_bytes);
     // }
-    //
-    // // report download complete
-    // if (state->pointers_completed &&
-    //     state->completed_shards == state->total_shards) {
-    //
-    //     state->finished_cb(0, state->destination);
-    //
-    //     free(state->pointers);
-    //     free(state);
-    //     return;
-    // }
 
-    // if (!state->token) {
-    //     queue_request_bucket_token(state);
-    // }
+    // report upload complete
+    if (state->completed_shards == state->total_shards) {
+
+        state->finished_cb(0);
+
+        free(state);
+        return;
+    }
+
+    if (!state->token) {
+        queue_request_bucket_token(state);
+    }
 
     // if (state->token && !state->pointers_completed) {
     //     queue_request_pointers(state);
@@ -122,8 +199,6 @@ static void prepare_upload_state(uv_work_t *work) {
         return;
     }
 
-
-    //
     if (strchr(PATH_SEPARATOR, state->file_path)) {
         state->file_name = strrchr(state->file_path, PATH_SEPARATOR);
         // Remove '/' from the front if exists by pushing the pointer up
@@ -131,7 +206,6 @@ static void prepare_upload_state(uv_work_t *work) {
     } else {
         state->file_name = state->file_path;
     }
-
 
     // Get the file size
     state->file_size = check_file(state->env, state->file_path); // Expect to be up to 10tb
@@ -196,6 +270,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
     state->total_shards = 0;
+    state->completed_shards = 0;
     state->writing = false;
     state->token = NULL;
     state->requesting_token = false;
