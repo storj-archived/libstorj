@@ -23,6 +23,9 @@
 
 #ifdef _WIN32
 #include <time.h>
+#define PATH_SEPARATOR "\\"
+#else
+#define PATH_SEPARATOR "/"
 #endif
 
 #define ERROR 0
@@ -76,7 +79,7 @@ typedef struct {
 
 typedef void (*storj_progress_cb)(double progress);
 typedef void (*storj_finished_download_cb)(int status, FILE *fd);
-typedef void (*storj_finished_upload_cb)(char *msg);
+typedef void (*storj_finished_upload_cb)(int error_code);
 
 typedef struct {
     char *token;
@@ -143,12 +146,13 @@ typedef struct {
     uint32_t total_shards;
     uint64_t shard_size;
     uint32_t completed_shards;
-    storj_error_t *error;
+    int error_code;
     storj_boolean_t writing;
     char *token;
     storj_boolean_t requesting_token;
     storj_boolean_t final_callback_called;
     char *mnemonic;
+    char *tmp_path;
 } storj_upload_state_t;
 
 typedef struct {

@@ -35,7 +35,6 @@ uint64_t check_file(storj_env_t *env, char *filepath)
     r = uv_fs_stat(env->loop, stat_req, filepath, NULL);
     if (r < 0) {
         const char *msg = uv_strerror(r);
-        printf("\nuv_fs_stat on %s: %s\n", filepath, msg);
         free(stat_req);
         return 0;
     }

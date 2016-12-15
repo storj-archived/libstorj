@@ -167,13 +167,13 @@ void check_store_file_progress(double progress)
     // TODO assersions
 }
 
-void check_store_file(char *status)
+void check_store_file(int error_code)
 {
-    if (status == NULL) {
+    if (error_code == 0) {
         pass("storj_bridge_store_file");
     } else {
         fail("storj_bridge_store_file");
-        printf("\t\tERROR:   %s\n", status);
+        printf("\t\tERROR CODE:   %d\n", error_code);
     }
 }
 
