@@ -81,7 +81,9 @@ static request_token(uv_work_t *work)
 {
     token_request_token_t *req = work->data;
 
-    char *path = ne_concat("/buckets/", req->bucket_id, "/tokens", NULL);
+    int path_len = strlen(req->bucket_id) + 17;
+    char *path = calloc(path_len + 1, sizeof(char));
+    sprintf(path, "%s%s%s%c", "/buckets/", req->bucket_id, "/tokens", '\0');
 
     struct json_object *body = json_object_new_object();
     json_object *op_string = json_object_new_string(req->bucket_op);
@@ -110,7 +112,11 @@ static request_token(uv_work_t *work)
 
     printf("token: %s\n", req->token);
     printf("status_code: %d\n", req->status_code);
+    printf("bucket_op: %s\n", req->bucket_op);
+    printf("bucket_id: %s\n", req->bucket_id);
+    printf("path: %s\n", path);
 
+    free(path);
     json_object_put(response);
     json_object_put(body);
 }
@@ -147,9 +153,8 @@ static void queue_next_work(storj_upload_state_t *state)
     // report any errors
     if (state->error_code != 0) {
         // TODO make sure that finished_cb is not called multiple times
-        state->finished_cb(state->error_code);
         state->final_callback_called = true;
-
+        state->finished_cb(state->error_code);
         free(state);
         return;
     }
@@ -163,9 +168,8 @@ static void queue_next_work(storj_upload_state_t *state)
 
     // report upload complete
     if (state->completed_shards == state->total_shards) {
-
+        state->final_callback_called = true;
         state->finished_cb(0);
-
         free(state);
         return;
     }
@@ -179,9 +183,11 @@ static void queue_next_work(storj_upload_state_t *state)
     // }
     //
     // queue_request_shards(state);
+    state->completed_shards = 1;
 }
 
-static void begin_work_queue(uv_work_t *work) {
+static void begin_work_queue(uv_work_t *work)
+{
     storj_upload_state_t *state = work->data;
 
     queue_next_work(state);
@@ -190,14 +196,9 @@ static void begin_work_queue(uv_work_t *work) {
 }
 
 
-static void prepare_upload_state(uv_work_t *work) {
-
+static void prepare_upload_state(uv_work_t *work)
+{
     storj_upload_state_t *state = work->data;
-
-    if (!state) {
-        printf("Where did my state go?\n");
-        return;
-    }
 
     if (strchr(PATH_SEPARATOR, state->file_path)) {
         state->file_name = strrchr(state->file_path, PATH_SEPARATOR);
@@ -236,6 +237,7 @@ static void prepare_upload_state(uv_work_t *work) {
     strcat(tmp_path, ".crypt");
     state->tmp_path = tmp_path;
 
+    free(tmp_path);
     free(file_id);
     free(file_key);
 }

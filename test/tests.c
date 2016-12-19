@@ -300,11 +300,11 @@ int test_api()
 
     // setup bridge options to point to mock server
     storj_bridge_options_t options = {
-        .proto = "http",
-        .host  = "localhost",
-        .port  = 8091,
-        .user  = "testuser@storj.io",
-        .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
+        .proto = "https",
+        .host  = "api.storj.io",
+        .port  = 443,
+        .user  = "wixupanijo@zainmax.net",
+        .pass  = "password"
     };
 
     // initialize event loop and environment
@@ -316,7 +316,7 @@ int test_api()
     // // get general api info
     // status = storj_bridge_get_info(env, check_bridge_get_info);
     // assert(status == 0);
-    //
+
     // // get buckets
     // status = storj_bridge_get_buckets(env, check_get_buckets);
     // assert(status == 0);
@@ -381,7 +381,7 @@ int test_api()
     // status = storj_bridge_get_file_pointers(env, bucket_id,
     //                                         file_id, check_file_pointers);
     // assert(status == 0);
-    //
+
     // // resolve file
     // char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
     // strcpy(download_file, folder);
@@ -401,7 +401,7 @@ int test_api()
     storj_upload_opts_t upload_opts = {
         .file_concurrency = 1,
         .shard_concurrency = 3,
-        .bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e",
+        .bucket_id = "0d3902057a8a98467dcd6db2",
         .file_path = file,
         .key_pass = "password",
         .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
@@ -423,6 +423,11 @@ int test_api()
     if (status == UV_EBUSY) {
         // Error
     }
+
+
+    free(file);
+    free(env->loop);
+    free(env);
 
     return OK;
 }
