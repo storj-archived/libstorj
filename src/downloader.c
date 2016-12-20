@@ -47,18 +47,18 @@ static after_request_token(uv_work_t *work, int status)
 
     token_request_token_t *req = work->data;
 
-    req->state->requesting_token = false;
+    req->download_state->requesting_token = false;
 
     // TODO check status
 
     if (req->status_code == 201) {
-        req->state->token = req->token;
+        req->download_state->token = req->token;
     } else {
         // TODO retry logic
-        req->state->error_status = 1;
+        req->download_state->error_status = 1;
     }
 
-    queue_next_work(req->state);
+    queue_next_work(req->download_state);
 
     free(req);
     free(work);
@@ -79,7 +79,7 @@ static int queue_request_bucket_token(storj_download_state_t *state)
     req->options = state->env->bridge_options;
     req->bucket_id = state->bucket_id;
     req->bucket_op = BUCKET_OP[BUCKET_PULL];
-    req->state = state;
+    req->download_state = state;
     work->data = req;
 
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,

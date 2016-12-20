@@ -1,6 +1,9 @@
 #include "storj.h"
 
 static void queue_next_work(storj_upload_state_t *state);
+static int queue_request_bucket_token(storj_upload_state_t *state);
+static after_request_token(uv_work_t *work, int status);
+static request_token(uv_work_t *work);
 
 static uv_work_t *uv_work_new()
 {
@@ -57,21 +60,26 @@ static uv_work_t *uv_work_new()
 
 static after_request_token(uv_work_t *work, int status)
 {
-
     token_request_token_t *req = work->data;
 
-    req->state->requesting_token = false;
+    req->upload_state->token_request_count += 1;
 
-    // TODO check status
+    printf("token: %s\n", req->token);
+    printf("status_code: %d\n", req->status_code);
+    printf("bucket_op: %s\n", req->bucket_op);
+    printf("bucket_id: %s\n", req->bucket_id);
 
-    if (req->status_code == 201) {
-        req->state->token = req->token;
+    // Check if we got a statu
+    if (req->status_code == 201 && req->token) {
+        req->upload_state->requesting_token = false;
+        req->upload_state->token = req->token;
+    } else if (req->upload_state->token_request_count == 6) {
+        req->upload_state->error_code = 1;
     } else {
-        // TODO retry logic
-        req->state->error_status = 1;
+        queue_request_bucket_token(req->upload_state);
     }
 
-    queue_next_work(req->state);
+    queue_next_work(req->upload_state);
 
     free(req);
     free(work);
@@ -100,7 +108,7 @@ static request_token(uv_work_t *work)
 
     struct json_object *token_value;
     if (!json_object_object_get_ex(response, "token", &token_value)) {
-        //TODO error
+        //TODO Log that we failed to get a token
     }
 
     if (!json_object_is_type(token_value, json_type_string) == 1) {
@@ -110,12 +118,6 @@ static request_token(uv_work_t *work)
     req->token = (char *)json_object_get_string(token_value);
     req->status_code = status_code;
 
-    printf("token: %s\n", req->token);
-    printf("status_code: %d\n", req->status_code);
-    printf("bucket_op: %s\n", req->bucket_op);
-    printf("bucket_id: %s\n", req->bucket_id);
-    printf("path: %s\n", path);
-
     free(path);
     json_object_put(response);
     json_object_put(body);
@@ -123,10 +125,6 @@ static request_token(uv_work_t *work)
 
 static int queue_request_bucket_token(storj_upload_state_t *state)
 {
-    if (state->requesting_token == true) {
-        return;
-    }
-
     uv_work_t *work = uv_work_new();
 
     token_request_token_t *req = malloc(sizeof(token_request_token_t));
@@ -135,7 +133,7 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
     req->options = state->env->bridge_options;
     req->bucket_id = state->bucket_id;
     req->bucket_op = BUCKET_OP[BUCKET_PUSH];
-    req->state = state;
+    req->upload_state = state;
     work->data = req;
 
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
@@ -145,7 +143,6 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
     state->requesting_token = true;
 
     return status;
-
 }
 
 static void queue_next_work(storj_upload_state_t *state)
@@ -161,7 +158,7 @@ static void queue_next_work(storj_upload_state_t *state)
 
     // queue_write_next_shard(state);
     //
-    // // report progress of download
+    // // report progress of upload
     // if (state->total_bytes > 0 && state->uploaded_bytes > 0) {
     //     state->progress_cb(state->uploaded_bytes / state->total_bytes);
     // }
@@ -174,7 +171,7 @@ static void queue_next_work(storj_upload_state_t *state)
         return;
     }
 
-    if (!state->token) {
+    if (!state->token && state->requesting_token != true) {
         queue_request_bucket_token(state);
     }
 
@@ -183,7 +180,6 @@ static void queue_next_work(storj_upload_state_t *state)
     // }
     //
     // queue_request_shards(state);
-    state->completed_shards = 1;
 }
 
 static void begin_work_queue(uv_work_t *work)
@@ -261,7 +257,7 @@ int storj_bridge_store_file(storj_env_t *env,
         opts->shard_concurrency = 3;
     }
 
-    // setup download state
+    // setup upload state
     storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
     state->file_concurrency = opts->file_concurrency;
     state->shard_concurrency = opts->shard_concurrency;
@@ -279,6 +275,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->final_callback_called = false;
     state->mnemonic = opts->mnemonic;
     state->error_code = 0;
+    state->token_request_count = 0;
 
     uv_work_t *work = uv_work_new();
     work->data = state;

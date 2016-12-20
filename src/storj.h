@@ -157,6 +157,7 @@ typedef struct {
     storj_boolean_t final_callback_called;
     char *mnemonic;
     char *tmp_path;
+    int token_request_count;
 } storj_upload_state_t;
 
 typedef struct {
@@ -174,7 +175,8 @@ typedef struct {
     char *bucket_id;
     char *bucket_op;
     /* state should not be modified in worker threads */
-    storj_download_state_t *state;
+    storj_download_state_t *download_state;
+    storj_upload_state_t *upload_state;
     int status_code;
 } token_request_token_t;
 

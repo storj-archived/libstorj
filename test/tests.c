@@ -300,11 +300,11 @@ int test_api()
 
     // setup bridge options to point to mock server
     storj_bridge_options_t options = {
-        .proto = "https",
-        .host  = "api.storj.io",
-        .port  = 443,
-        .user  = "wixupanijo@zainmax.net",
-        .pass  = "password"
+        .proto = "http",
+        .host  = "localhost",
+        .port  = 8091,
+        .user  = "testuser@storj.io",
+        .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
     };
 
     // initialize event loop and environment
@@ -313,88 +313,88 @@ int test_api()
 
     int status;
 
-    // // get general api info
-    // status = storj_bridge_get_info(env, check_bridge_get_info);
-    // assert(status == 0);
+    // get general api info
+    status = storj_bridge_get_info(env, check_bridge_get_info);
+    assert(status == 0);
 
-    // // get buckets
-    // status = storj_bridge_get_buckets(env, check_get_buckets);
-    // assert(status == 0);
-    //
-    // // create a new bucket with a name
-    // status = storj_bridge_create_bucket(env, "backups", check_create_bucket);
-    // assert(status == 0);
-    //
-    // char *bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e";
-    //
-    // // delete a bucket
-    // // TODO check for successful status code, response has object
-    // status = storj_bridge_delete_bucket(env, bucket_id, check_delete_bucket);
-    // assert(status == 0);
-    //
-    // // list files in a bucket
-    // status = storj_bridge_list_files(env, bucket_id, check_list_files);
-    // assert(status == 0);
-    //
-    // // create bucket tokens
-    // status = storj_bridge_create_bucket_token(env,
-    //                                           bucket_id,
-    //                                           BUCKET_PUSH,
-    //                                           check_bucket_tokens);
-    // assert(status == 0);
-    //
-    // char *file_id = "998960317b6725a3f8080c2b26875b0d8fe5731c";
-    //
-    // // delete a file in a bucket
-    // status = storj_bridge_delete_file(env,
-    //                                   bucket_id,
-    //                                   file_id,
-    //                                   check_delete_file);
-    // assert(status == 0);
-    //
-    // // create a file frame
-    // status = storj_bridge_create_frame(env, check_create_frame);
-    // assert(status == 0);
-    //
-    // // get frames
-    // status = storj_bridge_get_frames(env, check_get_frames);
-    // assert(status == 0);
-    //
-    // char *frame_id = "d4af71ab00e15b0c1a7b6ab2";
-    //
-    // // get frame
-    // status = storj_bridge_get_frame(env, frame_id, check_get_frame);
-    // assert(status == 0);
-    //
-    // // delete frame
-    // status = storj_bridge_delete_frame(env, frame_id, check_delete_frame);
-    // assert(status == 0);
-    //
-    // // TODO add shard to frame
-    //
-    // // get file information
-    // status = storj_bridge_get_file_info(env, bucket_id,
-    //                                     file_id, check_file_info);
-    // assert(status == 0);
-    //
-    // // get file pointers
-    // status = storj_bridge_get_file_pointers(env, bucket_id,
-    //                                         file_id, check_file_pointers);
-    // assert(status == 0);
+    // get buckets
+    status = storj_bridge_get_buckets(env, check_get_buckets);
+    assert(status == 0);
 
-    // // resolve file
-    // char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
-    // strcpy(download_file, folder);
-    // strcat(download_file, "storj-test-download.data");
-    // FILE *download_fp = fopen(download_file, "w+");
-    //
-    // status = storj_bridge_resolve_file(env, bucket_id, file_id, download_fp,
-    //                                    check_resolve_file_progress,
-    //                                    check_resolve_file);
-    //
-    // free(download_file);
-    //
-    // assert(status == 0);
+    // create a new bucket with a name
+    status = storj_bridge_create_bucket(env, "backups", check_create_bucket);
+    assert(status == 0);
+
+    char *bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e";
+
+    // delete a bucket
+    // TODO check for successful status code, response has object
+    status = storj_bridge_delete_bucket(env, bucket_id, check_delete_bucket);
+    assert(status == 0);
+
+    // list files in a bucket
+    status = storj_bridge_list_files(env, bucket_id, check_list_files);
+    assert(status == 0);
+
+    // create bucket tokens
+    status = storj_bridge_create_bucket_token(env,
+                                              bucket_id,
+                                              BUCKET_PUSH,
+                                              check_bucket_tokens);
+    assert(status == 0);
+
+    char *file_id = "998960317b6725a3f8080c2b26875b0d8fe5731c";
+
+    // delete a file in a bucket
+    status = storj_bridge_delete_file(env,
+                                      bucket_id,
+                                      file_id,
+                                      check_delete_file);
+    assert(status == 0);
+
+    // create a file frame
+    status = storj_bridge_create_frame(env, check_create_frame);
+    assert(status == 0);
+
+    // get frames
+    status = storj_bridge_get_frames(env, check_get_frames);
+    assert(status == 0);
+
+    char *frame_id = "d4af71ab00e15b0c1a7b6ab2";
+
+    // get frame
+    status = storj_bridge_get_frame(env, frame_id, check_get_frame);
+    assert(status == 0);
+
+    // delete frame
+    status = storj_bridge_delete_frame(env, frame_id, check_delete_frame);
+    assert(status == 0);
+
+    // TODO add shard to frame
+
+    // get file information
+    status = storj_bridge_get_file_info(env, bucket_id,
+                                        file_id, check_file_info);
+    assert(status == 0);
+
+    // get file pointers
+    status = storj_bridge_get_file_pointers(env, bucket_id,
+                                            file_id, check_file_pointers);
+    assert(status == 0);
+
+    // resolve file
+    char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
+    strcpy(download_file, folder);
+    strcat(download_file, "storj-test-download.data");
+    FILE *download_fp = fopen(download_file, "w+");
+
+    status = storj_bridge_resolve_file(env, bucket_id, file_id, download_fp,
+                                       check_resolve_file_progress,
+                                       check_resolve_file);
+
+    free(download_file);
+
+    assert(status == 0);
 
 
     // upload file
