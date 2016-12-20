@@ -58,6 +58,56 @@ static uv_work_t *uv_work_new()
 //
 //
 
+static after_encrypt_file(uv_work_t *work)
+{
+    encrypt_file_meta_t *meta = work->data;
+
+    printf("We done encrypting now boys\n");
+    meta->upload_state->encrypting_file = false;
+    meta->upload_state->tmp_path = meta->tmp_path;
+
+    free(meta);
+    free(work);
+}
+
+static encrypt_file(uv_work_t *work)
+{
+    encrypt_file_meta_t *meta = work->data;
+
+    // Set tmp file
+    int tmp_len = strlen(meta->file_path) + strlen(".crypt");
+    char *tmp_path = calloc(tmp_len + 1, sizeof(char));
+    strcpy(tmp_path, meta->file_path);
+    strcat(tmp_path, ".crypt");
+    meta->tmp_path = tmp_path;
+
+    printf("We encrypting now boys\n");
+    free(tmp_path);
+}
+
+static int queue_encrypt_file(storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+
+    encrypt_file_meta_t *meta = malloc(sizeof(encrypt_file_meta_t));
+    assert(meta != NULL);
+
+    meta->file_id = state->file_id;
+    meta->file_key = state->file_key;
+    meta->file_name = state->file_name;
+    meta->file_path = state->file_path;
+    meta->upload_state = state;
+    work->data = meta;
+
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               encrypt_file, after_encrypt_file);
+
+    // TODO check status
+    state->encrypting_file = true;
+
+    return status;
+}
+
 static after_request_token(uv_work_t *work, int status)
 {
     token_request_token_t *req = work->data;
@@ -69,7 +119,7 @@ static after_request_token(uv_work_t *work, int status)
     printf("bucket_op: %s\n", req->bucket_op);
     printf("bucket_id: %s\n", req->bucket_id);
 
-    // Check if we got a statu
+    // Check if we got a 201 status and token
     if (req->status_code == 201 && req->token) {
         req->upload_state->requesting_token = false;
         req->upload_state->token = req->token;
@@ -156,8 +206,6 @@ static void queue_next_work(storj_upload_state_t *state)
         return;
     }
 
-    // queue_write_next_shard(state);
-    //
     // // report progress of upload
     // if (state->total_bytes > 0 && state->uploaded_bytes > 0) {
     //     state->progress_cb(state->uploaded_bytes / state->total_bytes);
@@ -175,11 +223,9 @@ static void queue_next_work(storj_upload_state_t *state)
         queue_request_bucket_token(state);
     }
 
-    // if (state->token && !state->pointers_completed) {
-    //     queue_request_pointers(state);
-    // }
-    //
-    // queue_request_shards(state);
+    if (!state->tmp_path && state->encrypting_file == false) {
+        queue_encrypt_file(state);
+    }
 }
 
 static void begin_work_queue(uv_work_t *work)
@@ -226,14 +272,6 @@ static void prepare_upload_state(uv_work_t *work)
     memcpy(state->file_key, file_key, DETERMINISTIC_KEY_SIZE);
     state->file_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
-    // Set tmp file
-    int tmp_len = strlen(state->file_path) + strlen(".crypt");
-    char *tmp_path = calloc(tmp_len + 1, sizeof(char));
-    strcpy(tmp_path, state->file_path);
-    strcat(tmp_path, ".crypt");
-    state->tmp_path = tmp_path;
-
-    free(tmp_path);
     free(file_id);
     free(file_key);
 }
@@ -275,6 +313,8 @@ int storj_bridge_store_file(storj_env_t *env,
     state->final_callback_called = false;
     state->mnemonic = opts->mnemonic;
     state->error_code = 0;
+
+    // TODO: find a way to default at 0
     state->token_request_count = 0;
 
     uv_work_t *work = uv_work_new();

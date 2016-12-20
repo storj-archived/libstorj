@@ -133,32 +133,42 @@ typedef struct {
 } storj_error_t;
 
 typedef struct {
+    storj_env_t *env;
     uint32_t file_concurrency;
     uint32_t shard_concurrency;
-    uint64_t total_bytes;
-    uint64_t uploaded_bytes;
-    storj_env_t *env;
     char file_id[FILE_ID_SIZE+1];
     char *file_name;
     char *file_path;
     char file_key[DETERMINISTIC_KEY_SIZE+1];
     uint64_t file_size;
+    char *tmp_path;
     char *bucket_id;
     char *bucket_key;
-    storj_progress_cb progress_cb;
-    storj_finished_upload_cb finished_cb;
+    uint32_t completed_shards;
     uint32_t total_shards;
     uint64_t shard_size;
-    uint32_t completed_shards;
-    int error_code;
+    uint64_t total_bytes;
+    uint64_t uploaded_bytes;
     storj_boolean_t writing;
+    storj_boolean_t encrypting_file;
     char *token;
     storj_boolean_t requesting_token;
-    storj_boolean_t final_callback_called;
-    char *mnemonic;
-    char *tmp_path;
     int token_request_count;
+    storj_boolean_t final_callback_called;
+    storj_progress_cb progress_cb;
+    storj_finished_upload_cb finished_cb;
+    char *mnemonic;
+    int error_code;
 } storj_upload_state_t;
+
+typedef struct {
+   char *file_id;
+   char *file_key;
+   char *file_path;
+   char *file_name;
+   char *tmp_path;
+   storj_upload_state_t *upload_state;
+} encrypt_file_meta_t;
 
 typedef struct {
     int file_concurrency;
