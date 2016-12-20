@@ -10,6 +10,7 @@
 
 #include <assert.h>
 #include <nettle/aes.h>
+#include <nettle/ctr.h>
 #include <nettle/ripemd160.h>
 #include <nettle/hmac.h>
 #include <nettle/pbkdf2.h>
@@ -32,6 +33,7 @@
 #define OK 1
 #define FILE_ID_SIZE 24
 #define DETERMINISTIC_KEY_SIZE 64
+#define DETERMINISTIC_KEY_HEX_SIZE 32
 #define SHARD_MULTIPLES_BACK 5
 #define STORJ_DOWNLOAD_CONCURRENCY 4
 
@@ -167,6 +169,7 @@ typedef struct {
    char *file_path;
    char *file_name;
    char *tmp_path;
+   uint64_t file_size;
    storj_upload_state_t *upload_state;
 } encrypt_file_meta_t;
 

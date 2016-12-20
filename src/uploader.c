@@ -12,52 +12,6 @@ static uv_work_t *uv_work_new()
     return work;
 }
 
-//
-//     // Encrypt file
-//     struct aes256_ctx ctx;
-//     uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_SIZE/2 + 1, sizeof(char));
-//     str2hex(DETERMINISTIC_KEY_SIZE/2, file_key, file_key_as_hex);
-//     aes256_set_decrypt_key(&ctx, file_key_as_hex);
-//
-//     request_token(work_data);
-//
-//     // Load original file and tmp file
-//     // FILE *original_file;
-//     // FILE *encrypted_file;
-//     // original_file = fopen(opts->file_path, "r");
-//     // encrypted_file = fopen(opts->tmp_path, "w+");
-//     //
-//     // size_t bytesRead = 0;
-//     // int i = 0;
-//     // char buffer[512];
-//     // memset(buffer, '\0', sizeof(buffer));
-//     //
-//     // // Read bytes of the original file, encrypt them, and write to the tmp file
-//     // if (original_file != NULL) {
-//     //   // read up to sizeof(buffer) bytes
-//     //   while ((bytesRead = fread(buffer, 1, sizeof(buffer), original_file)) > 0) {
-//     //     aes256_encrypt(&ctx, sizeof(buffer), buffer, buffer);
-//     //     fputs(buffer, encrypted_file);
-//     //     memset(buffer, '\0', sizeof(buffer));
-//     //     i++;
-//     //   }
-//     // }
-//     //
-//     // // TODO: upload file
-//     //
-//     // fclose(original_file);
-//     // fclose(encrypted_file);
-//     //
-//     // unlink(encrypted_file);
-//     free(file_id);
-//     free(file_id_buff);
-//
-//
-// }
-//
-//
-//
-
 static after_encrypt_file(uv_work_t *work)
 {
     encrypt_file_meta_t *meta = work->data;
@@ -74,6 +28,8 @@ static encrypt_file(uv_work_t *work)
 {
     encrypt_file_meta_t *meta = work->data;
 
+    printf("We encrypting now boys\n");
+
     // Set tmp file
     int tmp_len = strlen(meta->file_path) + strlen(".crypt");
     char *tmp_path = calloc(tmp_len + 1, sizeof(char));
@@ -81,7 +37,46 @@ static encrypt_file(uv_work_t *work)
     strcat(tmp_path, ".crypt");
     meta->tmp_path = tmp_path;
 
-    printf("We encrypting now boys\n");
+    // Convert file key to hex
+    uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_HEX_SIZE + 1, sizeof(char));
+    str2hex(DETERMINISTIC_KEY_HEX_SIZE, meta->file_key, file_key_as_hex);
+
+    // Encrypt file
+    struct aes256_ctx ctx;
+
+    // Load original file and tmp file
+    FILE *original_file;
+    FILE *encrypted_file;
+    original_file = fopen(meta->file_path, "r");
+    encrypted_file = fopen(meta->tmp_path, "w+");
+
+    char input_buff[17];
+    char output_buff[500];
+    memset(output_buff, '\0', 500);
+    memset(input_buff, '\0', 17);
+
+    if (original_file) {
+        size_t bytesRead = 0;
+        // read up to sizeof(buffer) bytes
+        while ((bytesRead = fread(input_buff, 1, 16, original_file)) > 0) {
+            ctr_crypt(&ctx,
+                      &aes256_encrypt,
+                      AES_BLOCK_SIZE,
+                      file_key_as_hex,
+                      bytesRead,
+                      output_buff,
+                      input_buff);
+
+            fputs(output_buff, encrypted_file);
+            memset(input_buff, '\0', 17);
+            memset(output_buff, '\0', 500);
+        }
+    }
+
+    fclose(original_file);
+    fclose(encrypted_file);
+
+    free(file_key_as_hex);
     free(tmp_path);
 }
 
@@ -96,6 +91,7 @@ static int queue_encrypt_file(storj_upload_state_t *state)
     meta->file_key = state->file_key;
     meta->file_name = state->file_name;
     meta->file_path = state->file_path;
+    meta->file_size = state->file_size;
     meta->upload_state = state;
     work->data = meta;
 
@@ -219,11 +215,11 @@ static void queue_next_work(storj_upload_state_t *state)
         return;
     }
 
-    if (!state->token && state->requesting_token != true) {
+    if (!state->token && !state->requesting_token) {
         queue_request_bucket_token(state);
     }
 
-    if (!state->tmp_path && state->encrypting_file == false) {
+    if (!state->tmp_path && !state->encrypting_file) {
         queue_encrypt_file(state);
     }
 }
@@ -313,6 +309,8 @@ int storj_bridge_store_file(storj_env_t *env,
     state->final_callback_called = false;
     state->mnemonic = opts->mnemonic;
     state->error_code = 0;
+    state->tmp_path = NULL;
+    state->encrypting_file = false;
 
     // TODO: find a way to default at 0
     state->token_request_count = 0;
