@@ -45,8 +45,8 @@ static encrypt_file(uv_work_t *work)
     str2hex(FILE_ID_HEX_SIZE, meta->file_id, file_id_as_hex);
 
     // Encrypt file
-    struct aes256_ctx ctx;
-    aes256_set_encrypt_key(&ctx, file_key_as_hex);
+    struct aes256_ctx *ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
+    aes256_set_encrypt_key(ctx, file_key_as_hex);
 
     // Load original file and tmp file
     FILE *original_file;
@@ -61,6 +61,8 @@ static encrypt_file(uv_work_t *work)
     char cphr_txt[512 + 1];
     char buff[512 + 1];
 
+    char *ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
+
     memset(clr_txt, '\0', 513);
     memset(cphr_txt, '\0', 513);
     memset(buff, '\0', 513);
@@ -72,18 +74,21 @@ static encrypt_file(uv_work_t *work)
         size_t bytesRead = 0;
         // read up to sizeof(buffer) bytes
         while ((bytesRead = fread(clr_txt, 1, AES_BLOCK_SIZE * 30, original_file)) > 0) {
-            ctr_crypt(&ctx,
+            memcpy(ctr, file_id_as_hex, AES_BLOCK_SIZE);
+            ctr_crypt(ctx,
                       aes256_encrypt,
                       AES_BLOCK_SIZE,
-                      file_id_as_hex,
+                      ctr,
                       bytesRead,
                       cphr_txt,
                       clr_txt);
 
-            ctr_crypt(&ctx,
+            memcpy(ctr, file_id_as_hex, AES_BLOCK_SIZE);
+
+            ctr_crypt(ctx,
                       aes256_encrypt,
                       AES_BLOCK_SIZE,
-                      file_id_as_hex,
+                      ctr,
                       bytesRead,
                       buff,
                       cphr_txt);
@@ -94,7 +99,7 @@ static encrypt_file(uv_work_t *work)
 
             fwrite(cphr_txt, bytesRead, 1, encrypted_file);
             fwrite(buff, bytesRead, 1, decrypted_file);
-            
+
             memset(clr_txt, '\0', 513);
             memset(cphr_txt, '\0', 513);
             memset(buff, '\0', 513);
@@ -107,6 +112,8 @@ static encrypt_file(uv_work_t *work)
     free(file_key_as_hex);
     free(file_id_as_hex);
     free(tmp_path);
+    free(ctx);
+    free(ctr);
 }
 
 static int queue_encrypt_file(storj_upload_state_t *state)
