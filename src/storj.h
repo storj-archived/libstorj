@@ -35,6 +35,28 @@
 #define SHARD_MULTIPLES_BACK 5
 #define STORJ_DOWNLOAD_CONCURRENCY 4
 
+// File transfer success
+#define STORJ_TRANSFER_OK 0
+
+// Bridge related errors 1000 to 1999
+#define STORJ_BRIDGE_REQUEST_ERROR 1000
+#define STORJ_BRIDGE_AUTH_ERROR 1001
+#define STORJ_BRIDGE_TOKEN_ERROR 1002
+#define STORJ_BRIDGE_TIMEOUT_ERROR 1003
+#define STORJ_BRIDGE_INTERNAL_ERROR 1004
+#define STORJ_BRIDGE_RATE_ERROR 1005
+#define STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR 1006
+#define STORJ_BRIDGE_FILE_NOTFOUND_ERROR 1007
+#define STORJ_BRIDGE_JSON_ERROR 1008
+
+// Farmer related errors 2000 to 2999
+#define STORJ_FARMER_REQUEST_ERROR 2000
+#define STORJ_FARMER_TIMEOUT_ERROR 2001
+#define STORJ_FARMER_AUTH_ERROR 2002
+
+// File related errors 3000 to 3999
+#define STORJ_FILE_INTEGRITY_ERROR 3000
+
 typedef struct {
     char *proto;
     char *host;
@@ -228,6 +250,17 @@ typedef struct {
 } json_request_download_t;
 
 storj_env_t *storj_init_env(storj_bridge_options_t *options);
+
+/**
+ * @brief Get the error message for an error code
+ *
+ * This function will return a error message associated with a storj
+ * error code.
+ *
+ * @param[in] error_code The storj error code integer
+ * @return A char pointer with error message
+ */
+char *storj_error(int error_code);
 
 /**
  * @brief Get Storj bridge API information.

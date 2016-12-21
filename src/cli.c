@@ -25,8 +25,10 @@ static void download_file_complete(int status, FILE *fd)
 {
     fclose(fd);
     if (status) {
-        // TODO give error
+        printf("Download failure: %s\n", storj_error(status));
+        exit(status);
     }
+    exit(0);
 }
 
 static int download_file(storj_env_t *env, char *bucket_id,

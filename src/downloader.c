@@ -27,6 +27,7 @@ static request_token(uv_work_t *work)
 
     struct json_object *token_value;
     if (!json_object_object_get_ex(response, "token", &token_value)) {
+
         //TODO error
     }
 
@@ -55,7 +56,7 @@ static after_request_token(uv_work_t *work, int status)
         req->download_state->token = req->token;
     } else {
         // TODO retry logic
-        req->download_state->error_status = 1;
+        req->download_state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     }
 
     queue_next_work(req->download_state);
@@ -212,11 +213,11 @@ static void after_request_pointers(uv_work_t *work, int status)
     // TODO error enum types for below
 
     if (status != 0)  {
-        req->state->error_status = 1;
+        req->state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     } else if (req->status_code != 200) {
-        req->state->error_status = 1;
+        req->state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     } else if (!json_object_is_type(req->response, json_type_array)) {
-        req->state->error_status = 1;
+        req->state->error_status = STORJ_BRIDGE_JSON_ERROR;
     } else {
         // TODO error check
         append_pointers_to_state(req->state, req->response);
@@ -295,7 +296,7 @@ static void after_request_shard(uv_work_t *work, int status)
 
     if (req->status_code != 200) {
         // TODO do not set state->error_status and retry the shard download
-        req->state->error_status = -1;
+        req->state->error_status = STORJ_FARMER_REQUEST_ERROR;
         req->state->pointers[req->pointer_index].status = POINTER_ERROR;
         return;
     }
@@ -499,7 +500,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->total_pointers = 0;
     state->pointers_completed = false;
     state->requesting_pointers = false;
-    state->error_status = 0;
+    state->error_status = STORJ_TRANSFER_OK;
     state->writing = false;
     state->token = NULL;
     state->requesting_token = false;
