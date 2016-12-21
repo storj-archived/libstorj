@@ -41,8 +41,12 @@ static encrypt_file(uv_work_t *work)
     uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_HEX_SIZE + 1, sizeof(char));
     str2hex(DETERMINISTIC_KEY_HEX_SIZE, meta->file_key, file_key_as_hex);
 
+    uint8_t *file_id_as_hex = calloc(FILE_ID_HEX_SIZE + 1, sizeof(char));
+    str2hex(FILE_ID_HEX_SIZE, meta->file_id, file_id_as_hex);
+
     // Encrypt file
     struct aes256_ctx ctx;
+    aes256_set_encrypt_key(&ctx, file_key_as_hex);
 
     // Load original file and tmp file
     FILE *original_file;
@@ -50,33 +54,58 @@ static encrypt_file(uv_work_t *work)
     original_file = fopen(meta->file_path, "r");
     encrypted_file = fopen(meta->tmp_path, "w+");
 
-    char input_buff[17];
-    char output_buff[500];
-    memset(output_buff, '\0', 500);
-    memset(input_buff, '\0', 17);
+    FILE *decrypted_file;
+    decrypted_file = fopen("/tmp/samplefile.txt.decrypt", "w+");
+
+    char clr_txt[512 + 1];
+    char cphr_txt[512 + 1];
+    char buff[512 + 1];
+
+    memset(clr_txt, '\0', 513);
+    memset(cphr_txt, '\0', 513);
+    memset(buff, '\0', 513);
+
+    printf("file_id: %s\n", meta->file_id);
+    printf("file_key: %s\n", meta->file_key);
 
     if (original_file) {
         size_t bytesRead = 0;
         // read up to sizeof(buffer) bytes
-        while ((bytesRead = fread(input_buff, 1, 16, original_file)) > 0) {
+        while ((bytesRead = fread(clr_txt, 1, AES_BLOCK_SIZE * 30, original_file)) > 0) {
             ctr_crypt(&ctx,
-                      &aes256_encrypt,
+                      aes256_encrypt,
                       AES_BLOCK_SIZE,
-                      file_key_as_hex,
+                      file_id_as_hex,
                       bytesRead,
-                      output_buff,
-                      input_buff);
+                      cphr_txt,
+                      clr_txt);
 
-            fputs(output_buff, encrypted_file);
-            memset(input_buff, '\0', 17);
-            memset(output_buff, '\0', 500);
+            ctr_crypt(&ctx,
+                      aes256_encrypt,
+                      AES_BLOCK_SIZE,
+                      file_id_as_hex,
+                      bytesRead,
+                      buff,
+                      cphr_txt);
+
+            printf("\nOriginal:  %s\n", clr_txt);
+            printf("Encrypted: %s\n", cphr_txt);
+            printf("Decrypted: %s\n", buff);
+
+            fwrite(cphr_txt, bytesRead, 1, encrypted_file);
+            fwrite(buff, bytesRead, 1, decrypted_file);
+            
+            memset(clr_txt, '\0', 513);
+            memset(cphr_txt, '\0', 513);
+            memset(buff, '\0', 513);
         }
     }
 
     fclose(original_file);
     fclose(encrypted_file);
-
+    fclose(decrypted_file);
     free(file_key_as_hex);
+    free(file_id_as_hex);
     free(tmp_path);
 }
 
