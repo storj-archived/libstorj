@@ -25,7 +25,7 @@ static void download_file_complete(int status, FILE *fd)
 {
     fclose(fd);
     if (status) {
-        printf("Download failure: %s\n", storj_error(status));
+        printf("Download failure: %s\n", storj_strerror(status));
         exit(status);
     }
     exit(0);

@@ -63,7 +63,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options)
     return env;
 }
 
-char *storj_error(int error_code)
+char *storj_strerror(int error_code)
 {
     switch(error_code) {
         case STORJ_BRIDGE_REQUEST_ERROR:

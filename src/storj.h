@@ -260,7 +260,7 @@ storj_env_t *storj_init_env(storj_bridge_options_t *options);
  * @param[in] error_code The storj error code integer
  * @return A char pointer with error message
  */
-char *storj_error(int error_code);
+char *storj_strerror(int error_code);
 
 /**
  * @brief Get Storj bridge API information.
