@@ -40,13 +40,20 @@ static encrypt_file(uv_work_t *work)
     // Convert file key to hex
     uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_HEX_SIZE + 1, sizeof(char));
     str2hex(DETERMINISTIC_KEY_HEX_SIZE, meta->file_key, file_key_as_hex);
+    uint8_t *pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(char));
+    sha256_of_str(file_key_as_hex, DETERMINISTIC_KEY_HEX_SIZE, pass);
+    pass[SHA256_DIGEST_SIZE] = '\0';
 
     uint8_t *file_id_as_hex = calloc(FILE_ID_HEX_SIZE + 1, sizeof(char));
     str2hex(FILE_ID_HEX_SIZE, meta->file_id, file_id_as_hex);
+    uint8_t *salt = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(char));
+    ripemd160_of_str(file_id_as_hex, FILE_ID_HEX_SIZE, salt);
+    salt[RIPEMD160_DIGEST_SIZE] = '\0';
 
     // Encrypt file
     struct aes256_ctx *ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
-    aes256_set_encrypt_key(ctx, file_key_as_hex);
+    //get sha256 of file_key
+    aes256_set_encrypt_key(ctx, pass);
 
     // Load original file and tmp file
     FILE *original_file;
@@ -74,7 +81,9 @@ static encrypt_file(uv_work_t *work)
         size_t bytesRead = 0;
         // read up to sizeof(buffer) bytes
         while ((bytesRead = fread(clr_txt, 1, AES_BLOCK_SIZE * 30, original_file)) > 0) {
-            memcpy(ctr, file_id_as_hex, AES_BLOCK_SIZE);
+            // We only need the first 16 bytes of the salt because it's CTR
+            memcpy(ctr, salt, AES_BLOCK_SIZE);
+
             ctr_crypt(ctx,
                       aes256_encrypt,
                       AES_BLOCK_SIZE,
@@ -83,7 +92,7 @@ static encrypt_file(uv_work_t *work)
                       cphr_txt,
                       clr_txt);
 
-            memcpy(ctr, file_id_as_hex, AES_BLOCK_SIZE);
+            memcpy(ctr, salt, AES_BLOCK_SIZE);
 
             ctr_crypt(ctx,
                       aes256_encrypt,
@@ -114,6 +123,8 @@ static encrypt_file(uv_work_t *work)
     free(tmp_path);
     free(ctx);
     free(ctr);
+    free(salt);
+    free(pass);
 }
 
 static int queue_encrypt_file(storj_upload_state_t *state)
