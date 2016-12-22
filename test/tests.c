@@ -308,7 +308,7 @@ int test_api()
     };
 
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&options);
+    storj_env_t *env = storj_init_env(&options, NULL);
     assert(env != NULL);
 
     int status;

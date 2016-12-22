@@ -66,8 +66,13 @@ typedef struct {
     char *pass;
 } storj_bridge_options_t;
 
+typedef struct storj_encrypt_options {
+    char *mnemonic;
+} storj_encrypt_options_t;
+
 typedef struct storj_env {
     storj_bridge_options_t *bridge_options;
+    storj_encrypt_options_t *encrypt_options;
     uv_loop_t *loop;
 } storj_env_t;
 
@@ -251,7 +256,8 @@ typedef struct {
     int status_code;
 } json_request_download_t;
 
-storj_env_t *storj_init_env(storj_bridge_options_t *options);
+storj_env_t *storj_init_env(storj_bridge_options_t *options,
+                            storj_encrypt_options_t *encrypt_options);
 
 /**
  * @brief Get the error message for an error code

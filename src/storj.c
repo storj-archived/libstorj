@@ -49,7 +49,8 @@ static uv_work_t *json_request_work_new(
     return work;
 }
 
-struct storj_env *storj_init_env(storj_bridge_options_t *options)
+struct storj_env *storj_init_env(storj_bridge_options_t *options,
+                                 storj_encrypt_options_t *encrypt_options)
 {
     uv_loop_t *loop = malloc(sizeof(uv_loop_t));
     if (uv_loop_init(loop)) {
@@ -59,6 +60,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options)
     storj_env_t *env = malloc(sizeof(storj_env_t));
     env->bridge_options = options;
     env->loop = loop;
+    env->encrypt_options = encrypt_options;
 
     return env;
 }
