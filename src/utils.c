@@ -32,7 +32,15 @@ int increment_ctr_aes_iv(uint8_t *iv, uint64_t bytes_position)
         return 1;
     }
 
-    uint64_t inc = bytes_position / AES_BLOCK_SIZE;
+    uint64_t times = bytes_position / AES_BLOCK_SIZE;
+
+    while (times) {
+        unsigned int i = AES_BLOCK_SIZE - 1;
+        if (++(iv)[i] == 0) {
+            while (i > 0 && ++(iv)[--i] == 0);
+        }
+        times--;
+    }
 
     return 0;
 }

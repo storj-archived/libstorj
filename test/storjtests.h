@@ -3,6 +3,7 @@
 
 #include "../src/storj.h"
 #include "../src/bip39.h"
+#include "../src/utils.h"
 
 #define KRED  "\x1B[31m"
 #define KGRN  "\x1B[32m"

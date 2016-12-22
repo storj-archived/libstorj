@@ -666,6 +666,40 @@ int test_calculate_file_id()
     return OK;
 }
 
+int test_increment_ctr_aes_iv()
+{
+    uint8_t iv[16] = {188,14,95,229,78,112,182,107,
+                        34,206,248,225,52,22,16,183};
+
+    if (!increment_ctr_aes_iv(iv, 1)) {
+        fail("increment_ctr_aes_iv(0)");
+        return ERROR;
+    }
+
+    if (increment_ctr_aes_iv(iv, AES_BLOCK_SIZE)) {
+        fail("increment_ctr_aes_iv(1)");
+        return ERROR;
+    }
+
+    if (iv[15] != 184) {
+        fail("increment_ctr_aes_iv(2)");
+        return ERROR;
+    }
+
+    if (increment_ctr_aes_iv(iv, AES_BLOCK_SIZE * 72)) {
+        fail("increment_ctr_aes_iv(3)");
+        return ERROR;
+    }
+
+    if (iv[15] != 0 || iv[14] != 17) {
+        fail("increment_ctr_aes_iv(4)");
+        return ERROR;
+    }
+
+    pass("increment_ctr_aes_iv");
+    return OK;
+}
+
 
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
@@ -733,6 +767,10 @@ int main(void)
     status -= test_generate_file_key();
     ++tests_ran;
     printf("\n");
+
+    printf("Test Suite: Utils\n");
+    status -= test_increment_ctr_aes_iv();
+    ++tests_ran;
 
     int num_failed = tests_ran + status;
     printf(KGRN "\nPASSED: %i" RESET, abs(status));
