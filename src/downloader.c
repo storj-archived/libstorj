@@ -27,12 +27,11 @@ static request_token(uv_work_t *work)
 
     struct json_object *token_value;
     if (!json_object_object_get_ex(response, "token", &token_value)) {
-
-        //TODO error
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
     if (!json_object_is_type(token_value, json_type_string) == 1) {
-        // TODO error
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
     req->token = (char *)json_object_get_string(token_value);
@@ -54,6 +53,8 @@ static after_request_token(uv_work_t *work, int status)
 
     if (req->status_code == 201) {
         req->download_state->token = req->token;
+    } else if (req->error_status){
+        req->download_state->error_status = req->error_status;
     } else {
         // TODO retry logic
         req->download_state->error_status = STORJ_BRIDGE_TOKEN_ERROR;

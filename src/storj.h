@@ -210,6 +210,7 @@ typedef struct {
     storj_download_state_t *download_state;
     storj_upload_state_t *upload_state;
     int status_code;
+    int error_status;
 } token_request_token_t;
 
 typedef struct {
