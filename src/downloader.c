@@ -292,6 +292,18 @@ static void request_shard(uv_work_t *work)
         // TODO enum error types
         req->status_code = -1;
     } else {
+
+        // TODO decrypt shard_data:
+        // need uint8_t 32 byte key
+        // need uint8_t 16 byte iv/ctr
+        // need the byte position of the shard
+        // increment_ctr_aes_iv(iv, byte_position);
+        // struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
+        // aes256_set_encrypt_key(ctx, key);
+        // ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
+        //           AES_BLOCK_SIZE, iv,
+        //           req->shard_total_bytes, req->shard_data, req->shard_data);
+
         req->status_code = status_code;
     }
 }
