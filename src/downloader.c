@@ -49,9 +49,9 @@ static after_request_token(uv_work_t *work, int status)
 
     req->download_state->requesting_token = false;
 
-    // TODO check status
-
-    if (req->status_code == 201) {
+    if (status != 0) {
+        req->download_state->token = STORJ_BRIDGE_TOKEN_ERROR;
+    } else if (req->status_code == 201) {
         req->download_state->token = req->token;
     } else if (req->error_status){
         req->download_state->error_status = req->error_status;
