@@ -215,16 +215,12 @@ static void append_pointers_to_state(storj_download_state_t *state,
 
 static void after_request_pointers(uv_work_t *work, int status)
 {
-    // TODO check status
-
     json_request_download_t *req = work->data;
 
     req->state->requesting_pointers = false;
 
     // expired token
     req->state->token = NULL;
-
-    // TODO error enum types for below
 
     if (status != 0)  {
         req->state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
@@ -371,14 +367,14 @@ static int queue_request_shards(storj_download_state_t *state)
 static void write_shard(uv_work_t *work)
 {
     shard_request_write_t *req = work->data;
-    req->status_code = 0;
+    req->error_status = 0;
 
     if (req->shard_total_bytes != fwrite(req->shard_data,
                                          sizeof(char),
                                          req->shard_total_bytes,
                                          req->destination)) {
 
-        req->status_code = ferror(req->destination);
+        req->error_status = ferror(req->destination);
     }
 }
 
@@ -390,9 +386,9 @@ static void after_write_shard(uv_work_t *work, int status)
 
     req->state->writing = false;
 
-    if (req->status_code) {
+    if (req->error_status) {
         // write failure
-        req->state->error_status = req->status_code;
+        req->state->error_status = STORJ_FILE_WRITE_ERROR;
     } else {
         // write success
         req->state->pointers[req->pointer_index].status = POINTER_WRITTEN;

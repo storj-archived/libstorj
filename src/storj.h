@@ -56,6 +56,7 @@
 
 // File related errors 3000 to 3999
 #define STORJ_FILE_INTEGRITY_ERROR 3000
+#define STORJ_FILE_WRITE_ERROR 3001
 
 typedef struct {
     char *proto;
@@ -216,7 +217,7 @@ typedef struct {
 typedef struct {
     char **shard_data;
     ssize_t shard_total_bytes;
-    int status_code;
+    int error_status;
     FILE *destination;
     uint32_t pointer_index;
     /* state should not be modified in worker threads */
