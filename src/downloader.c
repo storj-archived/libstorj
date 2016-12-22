@@ -380,14 +380,13 @@ static void write_shard(uv_work_t *work)
 
 static void after_write_shard(uv_work_t *work, int status)
 {
-    // TODO check status
-
     shard_request_write_t *req = work->data;
 
     req->state->writing = false;
 
-    if (req->error_status) {
-        // write failure
+    if (status != 0) {
+        req->state->error_status = STORJ_FILE_WRITE_ERROR;
+    } else if (req->error_status) {
         req->state->error_status = STORJ_FILE_WRITE_ERROR;
     } else {
         // write success
