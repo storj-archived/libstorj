@@ -16,8 +16,9 @@ static after_encrypt_file(uv_work_t *work)
 {
     encrypt_file_meta_t *meta = work->data;
 
-    printf("We done encrypting now boys\n");
     meta->upload_state->encrypting_file = false;
+
+    // TODO: Check if meta->tmp_path is the same size as meta->file_path
     meta->upload_state->tmp_path = meta->tmp_path;
 
     free(meta);
@@ -28,8 +29,6 @@ static encrypt_file(uv_work_t *work)
 {
     encrypt_file_meta_t *meta = work->data;
 
-    printf("We encrypting now boys\n");
-
     // Set tmp file
     int tmp_len = strlen(meta->file_path) + strlen(".crypt");
     char *tmp_path = calloc(tmp_len + 1, sizeof(char));
@@ -37,13 +36,14 @@ static encrypt_file(uv_work_t *work)
     strcat(tmp_path, ".crypt");
     meta->tmp_path = tmp_path;
 
-    // Convert file key to hex
+    // Convert file key to password
     uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_HEX_SIZE + 1, sizeof(char));
     str2hex(DETERMINISTIC_KEY_HEX_SIZE, meta->file_key, file_key_as_hex);
     uint8_t *pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(char));
     sha256_of_str(file_key_as_hex, DETERMINISTIC_KEY_HEX_SIZE, pass);
     pass[SHA256_DIGEST_SIZE] = '\0';
 
+    // Convert file id to salt
     uint8_t *file_id_as_hex = calloc(FILE_ID_HEX_SIZE + 1, sizeof(char));
     str2hex(FILE_ID_HEX_SIZE, meta->file_id, file_id_as_hex);
     uint8_t *salt = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(char));
@@ -52,8 +52,10 @@ static encrypt_file(uv_work_t *work)
 
     // Encrypt file
     struct aes256_ctx *ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
-    //get sha256 of file_key
     aes256_set_encrypt_key(ctx, pass);
+    // We only need the first 16 bytes of the salt because it's CTR mode
+    char *iv = calloc(AES_BLOCK_SIZE, sizeof(char));
+    memcpy(iv, salt, AES_BLOCK_SIZE);
 
     // Load original file and tmp file
     FILE *original_file;
@@ -61,68 +63,39 @@ static encrypt_file(uv_work_t *work)
     original_file = fopen(meta->file_path, "r");
     encrypted_file = fopen(meta->tmp_path, "w+");
 
-    FILE *decrypted_file;
-    decrypted_file = fopen("/tmp/samplefile.txt.decrypt", "w+");
-
     char clr_txt[512 + 1];
     char cphr_txt[512 + 1];
-    char buff[512 + 1];
-
-    char *ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
 
     memset(clr_txt, '\0', 513);
     memset(cphr_txt, '\0', 513);
-    memset(buff, '\0', 513);
-
-    printf("file_id: %s\n", meta->file_id);
-    printf("file_key: %s\n", meta->file_key);
 
     if (original_file) {
         size_t bytesRead = 0;
         // read up to sizeof(buffer) bytes
         while ((bytesRead = fread(clr_txt, 1, AES_BLOCK_SIZE * 30, original_file)) > 0) {
-            // We only need the first 16 bytes of the salt because it's CTR
-            memcpy(ctr, salt, AES_BLOCK_SIZE);
-
             ctr_crypt(ctx,
                       aes256_encrypt,
                       AES_BLOCK_SIZE,
-                      ctr,
+                      iv,
                       bytesRead,
                       cphr_txt,
                       clr_txt);
 
-            memcpy(ctr, salt, AES_BLOCK_SIZE);
-
-            ctr_crypt(ctx,
-                      aes256_encrypt,
-                      AES_BLOCK_SIZE,
-                      ctr,
-                      bytesRead,
-                      buff,
-                      cphr_txt);
-
-            printf("\nOriginal:  %s\n", clr_txt);
-            printf("Encrypted: %s\n", cphr_txt);
-            printf("Decrypted: %s\n", buff);
-
             fwrite(cphr_txt, bytesRead, 1, encrypted_file);
-            fwrite(buff, bytesRead, 1, decrypted_file);
 
             memset(clr_txt, '\0', 513);
             memset(cphr_txt, '\0', 513);
-            memset(buff, '\0', 513);
         }
     }
 
     fclose(original_file);
     fclose(encrypted_file);
-    fclose(decrypted_file);
+
     free(file_key_as_hex);
     free(file_id_as_hex);
     free(tmp_path);
     free(ctx);
-    free(ctr);
+    free(iv);
     free(salt);
     free(pass);
 }
@@ -249,10 +222,10 @@ static void queue_next_work(storj_upload_state_t *state)
         return;
     }
 
-    // // report progress of upload
-    // if (state->total_bytes > 0 && state->uploaded_bytes > 0) {
-    //     state->progress_cb(state->uploaded_bytes / state->total_bytes);
-    // }
+    // report progress of upload
+    if (state->file_size > 0 && state->uploaded_bytes > 0) {
+        state->progress_cb(state->uploaded_bytes / state->total_bytes);
+    }
 
     // report upload complete
     if (state->completed_shards == state->total_shards) {
@@ -262,13 +235,19 @@ static void queue_next_work(storj_upload_state_t *state)
         return;
     }
 
+    // Make sure we get a PUSH token
     if (!state->token && !state->requesting_token) {
         queue_request_bucket_token(state);
     }
 
+    // Encrypt the file
     if (!state->tmp_path && !state->encrypting_file) {
         queue_encrypt_file(state);
     }
+
+    // Create frame
+
+
 }
 
 static void begin_work_queue(uv_work_t *work)
