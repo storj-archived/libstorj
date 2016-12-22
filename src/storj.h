@@ -136,6 +136,10 @@ typedef struct {
 } storj_error_t;
 
 typedef struct {
+    char *frame_id;
+} storj_frame_t;
+
+typedef struct {
     storj_env_t *env;
     uint32_t file_concurrency;
     uint32_t shard_concurrency;
@@ -156,6 +160,8 @@ typedef struct {
     storj_boolean_t encrypting_file;
     char *token;
     storj_boolean_t requesting_token;
+    storj_frame_t *frame;
+    storj_boolean_t requesting_frame;
     int token_request_count;
     storj_boolean_t final_callback_called;
     storj_progress_cb progress_cb;

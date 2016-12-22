@@ -12,6 +12,11 @@ static uv_work_t *uv_work_new()
     return work;
 }
 
+static int queue_request_frame(storj_upload_state_t *state)
+{
+
+}
+
 static after_encrypt_file(uv_work_t *work)
 {
     encrypt_file_meta_t *meta = work->data;
@@ -130,11 +135,6 @@ static after_request_token(uv_work_t *work, int status)
 
     req->upload_state->token_request_count += 1;
 
-    printf("token: %s\n", req->token);
-    printf("status_code: %d\n", req->status_code);
-    printf("bucket_op: %s\n", req->bucket_op);
-    printf("bucket_id: %s\n", req->bucket_id);
-
     // Check if we got a 201 status and token
     if (req->status_code == 201 && req->token) {
         req->upload_state->requesting_token = false;
@@ -240,13 +240,14 @@ static void queue_next_work(storj_upload_state_t *state)
         queue_request_bucket_token(state);
     }
 
+    if (!state->frame && !state->requesting_frame) {
+        queue_request_frame(state);
+    }
+
     // Encrypt the file
     if (!state->tmp_path && !state->encrypting_file) {
         queue_encrypt_file(state);
     }
-
-    // Create frame
-
 
 }
 
@@ -329,14 +330,16 @@ int storj_bridge_store_file(storj_env_t *env,
     state->finished_cb = finished_cb;
     state->total_shards = 0;
     state->completed_shards = 0;
-    state->writing = false;
-    state->token = NULL;
-    state->requesting_token = false;
     state->final_callback_called = false;
     state->mnemonic = opts->mnemonic;
     state->error_code = 0;
-    state->tmp_path = NULL;
+    state->writing = false;
     state->encrypting_file = false;
+    state->requesting_frame = false;
+    state->requesting_token = false;
+    state->token = NULL;
+    state->tmp_path = NULL;
+    state->frame = NULL;
 
     // TODO: find a way to default at 0
     state->token_request_count = 0;
