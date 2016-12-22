@@ -1,4 +1,5 @@
 #include "storj.h"
+#include "utils.h"
 
 static void queue_next_work(storj_upload_state_t *state);
 static int queue_request_bucket_token(storj_upload_state_t *state);

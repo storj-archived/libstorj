@@ -1,5 +1,6 @@
 #include "storj.h"
 #include "http.h"
+#include "utils.h"
 
 // TODO memory cleanup
 

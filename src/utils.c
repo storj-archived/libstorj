@@ -26,6 +26,17 @@ int str2hex(unsigned length, char *data, uint8_t *buffer)
     return OK;
 }
 
+int increment_ctr_aes_iv(uint8_t *iv, uint64_t bytes_position)
+{
+    if (bytes_position % AES_BLOCK_SIZE != 0) {
+        return 1;
+    }
+
+    uint64_t inc = bytes_position / AES_BLOCK_SIZE;
+
+    return 0;
+}
+
 
 uint64_t check_file(storj_env_t *env, char *filepath)
 {

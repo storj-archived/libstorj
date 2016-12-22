@@ -1,4 +1,5 @@
 #include "storj.h"
+#include "utils.h"
 
 int calculate_file_id(char *bucket, char *file_name, char **buffer)
 {

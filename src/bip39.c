@@ -22,6 +22,7 @@
  */
 
 #include "storj.h"
+#include "utils.h"
 #include "bip39.h"
 #include "bip39_english.h"
 
