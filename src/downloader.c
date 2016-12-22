@@ -131,49 +131,62 @@ static void append_pointers_to_state(storj_download_state_t *state,
         for (int i = 0; i < length; i++) {
 
             struct json_object *pointer = json_object_array_get_idx(res, i);
-            // TODO error if not an object
+            if (!json_object_is_type(pointer, json_type_object)) {
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
+            }
 
             struct json_object* token_value;
             if (!json_object_object_get_ex(pointer, "token", &token_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             char *token = (char *)json_object_get_string(token_value);
 
             struct json_object* hash_value;
             if (!json_object_object_get_ex(pointer, "hash", &hash_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             char *hash = (char *)json_object_get_string(hash_value);
 
             struct json_object* size_value;
             if (!json_object_object_get_ex(pointer, "size", &size_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             uint64_t size = json_object_get_int64(size_value);
 
 
             struct json_object* index_value;
             if (!json_object_object_get_ex(pointer, "index", &index_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             uint32_t index = json_object_get_int(index_value);
 
             struct json_object* farmer_value;
             if (!json_object_object_get_ex(pointer, "farmer", &farmer_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
-            // TODO error if not an object
+            if (!json_object_is_type(farmer_value, json_type_object)) {
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
+            }
 
             struct json_object* address_value;
             if (!json_object_object_get_ex(farmer_value, "address",
                                            &address_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             char *address = (char *)json_object_get_string(address_value);
 
             struct json_object* port_value;
             if (!json_object_object_get_ex(farmer_value, "port", &port_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             uint32_t port = json_object_get_int(port_value);
 
@@ -220,7 +233,6 @@ static void after_request_pointers(uv_work_t *work, int status)
     } else if (!json_object_is_type(req->response, json_type_array)) {
         req->state->error_status = STORJ_BRIDGE_JSON_ERROR;
     } else {
-        // TODO error check
         append_pointers_to_state(req->state, req->response);
     }
 
