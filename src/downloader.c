@@ -560,10 +560,6 @@ int storj_bridge_resolve_file(storj_env_t *env,
         memcpy(decrypt_ctr, file_id_hash, AES_BLOCK_SIZE);
 
         state->decrypt_ctr = decrypt_ctr;
-
-        print_int_array(decrypt_ctr, AES_BLOCK_SIZE);
-
-
     };
 
     // start download

@@ -26,11 +26,11 @@ int mock_farmer_shard_server(void *cls,
     struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
 
     // mnemonic: abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about
-    // bucket_id: 368be0816766b28fd5f43af5ba0fc54ab1be516e
-    // file_id: 998960317b6725a3f8080c2b26875b0d8fe5731c
-    uint8_t encrypt_key[32] = {195,73,209,200,34,66,126,171,183,147,100,175,187,
-                                 138,47,140,58,237,23,248,41,207,207,138,133,22,
-                                 30,63,242,92,161,155};
+    // bucket_id: 368be0816766b28fd5f43af5
+    // file_id: 998960317b6725a3f8080c2b
+    uint8_t encrypt_key[32] = {15,243,113,252,58,46,227,100,168,227,44,251,233,
+                                 150,34,185,236,25,56,85,35,59,220,172,61,182,
+                                 195,29,113,35,50,11};
 
     uint8_t ctr[16] = {124,225,51,83,48,107,228,186,151,104,195,123,78,6,253,83};
     aes256_set_encrypt_key(ctx, encrypt_key);

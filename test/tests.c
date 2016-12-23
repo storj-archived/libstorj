@@ -330,7 +330,7 @@ int test_api()
     assert(status == 0);
 
     // TODO use expected size for the bucket_id
-    char *bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e";
+    char *bucket_id = "368be0816766b28fd5f43af5";
 
     // delete a bucket
     // TODO check for successful status code, response has object
@@ -349,7 +349,7 @@ int test_api()
     assert(status == 0);
 
     // TODO use expected size for the file_id
-    char *file_id = "998960317b6725a3f8080c2b26875b0d8fe5731c";
+    char *file_id = "998960317b6725a3f8080c2b";
 
     // delete a file in a bucket
     status = storj_bridge_delete_file(env,
