@@ -63,7 +63,9 @@ int main(int argc, char **argv)
         }
     }
 
-    char *command = argv[optind];
+    int command_index = optind;
+
+    char *command = argv[command_index];
     if (!command) {
         printf(HELP_TEXT);
         return 1;
@@ -101,7 +103,11 @@ int main(int argc, char **argv)
     // Get the bridge password
     char *pass = getenv("STORJ_BRIDGE_PASS");
     if (!pass) {
-        pass = getpass("Password: ");
+        char *pass_input = getpass("Password: ");
+
+        // TODO hash password
+
+        pass = pass_input;
     }
 
     storj_bridge_options_t options = {
@@ -119,9 +125,9 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "download-file") == 0) {
-        char *bucket_id = argv[2];
-        char *file_id = argv[3];
-        char *path = argv[4];
+        char *bucket_id = argv[command_index + 1];
+        char *file_id = argv[command_index + 2];
+        char *path = argv[command_index + 3];
 
         if (!bucket_id || !file_id || !path) {
             printf(HELP_TEXT);
@@ -131,6 +137,17 @@ int main(int argc, char **argv)
         if (download_file(env, bucket_id, file_id, path)) {
             return 1;
         }
+    } else if (strcmp(command, "upload-file") == 0) {
+        char *bucket_id = argv[command_index + 1];
+        char *path = argv[command_index + 2];
+
+        if (!bucket_id || !path) {
+            printf(HELP_TEXT);
+            return 1;
+        }
+
+        // TODO
+
     } else {
         printf(HELP_TEXT);
         return 1;
