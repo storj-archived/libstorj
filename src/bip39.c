@@ -1,4 +1,6 @@
 /**
+ * Based on bip39 from trezor-crypto
+ *
  * Copyright (c) 2013-2014 Tomas Dzetkulic
  * Copyright (c) 2013-2014 Pavol Rusnak
  *
@@ -21,7 +23,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "storj.h"
+#include "crypto.h"
+#include "utils.h"
 #include "bip39.h"
 #include "bip39_english.h"
 

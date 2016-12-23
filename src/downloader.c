@@ -1,5 +1,9 @@
 #include "storj.h"
 #include "http.h"
+#include "utils.h"
+#include "crypto.h"
+
+#define STORJ_DOWNLOAD_CONCURRENCY 4
 
 // TODO memory cleanup
 
@@ -27,11 +31,11 @@ static request_token(uv_work_t *work)
 
     struct json_object *token_value;
     if (!json_object_object_get_ex(response, "token", &token_value)) {
-        //TODO error
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
     if (!json_object_is_type(token_value, json_type_string) == 1) {
-        // TODO error
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
     req->token = (char *)json_object_get_string(token_value);
@@ -49,13 +53,15 @@ static after_request_token(uv_work_t *work, int status)
 
     req->download_state->requesting_token = false;
 
-    // TODO check status
-
-    if (req->status_code == 201) {
+    if (status != 0) {
+        req->download_state->token = STORJ_BRIDGE_TOKEN_ERROR;
+    } else if (req->status_code == 201) {
         req->download_state->token = req->token;
+    } else if (req->error_status){
+        req->download_state->error_status = req->error_status;
     } else {
         // TODO retry logic
-        req->download_state->error_status = 1;
+        req->download_state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     }
 
     queue_next_work(req->download_state);
@@ -129,49 +135,62 @@ static void append_pointers_to_state(storj_download_state_t *state,
         for (int i = 0; i < length; i++) {
 
             struct json_object *pointer = json_object_array_get_idx(res, i);
-            // TODO error if not an object
+            if (!json_object_is_type(pointer, json_type_object)) {
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
+            }
 
             struct json_object* token_value;
             if (!json_object_object_get_ex(pointer, "token", &token_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             char *token = (char *)json_object_get_string(token_value);
 
             struct json_object* hash_value;
             if (!json_object_object_get_ex(pointer, "hash", &hash_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             char *hash = (char *)json_object_get_string(hash_value);
 
             struct json_object* size_value;
             if (!json_object_object_get_ex(pointer, "size", &size_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             uint64_t size = json_object_get_int64(size_value);
 
 
             struct json_object* index_value;
             if (!json_object_object_get_ex(pointer, "index", &index_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             uint32_t index = json_object_get_int(index_value);
 
             struct json_object* farmer_value;
             if (!json_object_object_get_ex(pointer, "farmer", &farmer_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
-            // TODO error if not an object
+            if (!json_object_is_type(farmer_value, json_type_object)) {
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
+            }
 
             struct json_object* address_value;
             if (!json_object_object_get_ex(farmer_value, "address",
                                            &address_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             char *address = (char *)json_object_get_string(address_value);
 
             struct json_object* port_value;
             if (!json_object_object_get_ex(farmer_value, "port", &port_value)) {
-                // TODO error
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
             }
             uint32_t port = json_object_get_int(port_value);
 
@@ -200,8 +219,6 @@ static void append_pointers_to_state(storj_download_state_t *state,
 
 static void after_request_pointers(uv_work_t *work, int status)
 {
-    // TODO check status
-
     json_request_download_t *req = work->data;
 
     req->state->requesting_pointers = false;
@@ -209,16 +226,13 @@ static void after_request_pointers(uv_work_t *work, int status)
     // expired token
     req->state->token = NULL;
 
-    // TODO error enum types for below
-
     if (status != 0)  {
-        req->state->error_status = 1;
+        req->state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     } else if (req->status_code != 200) {
-        req->state->error_status = 1;
+        req->state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     } else if (!json_object_is_type(req->response, json_type_array)) {
-        req->state->error_status = 1;
+        req->state->error_status = STORJ_BRIDGE_JSON_ERROR;
     } else {
-        // TODO error check
         append_pointers_to_state(req->state, req->response);
     }
 
@@ -281,6 +295,18 @@ static void request_shard(uv_work_t *work)
         // TODO enum error types
         req->status_code = -1;
     } else {
+
+        // TODO decrypt shard_data:
+        // need uint8_t 32 byte key
+        // need uint8_t 16 byte iv/ctr
+        // need the byte position of the shard
+        // increment_ctr_aes_iv(iv, byte_position);
+        // struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
+        // aes256_set_encrypt_key(ctx, key);
+        // ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
+        //           AES_BLOCK_SIZE, iv,
+        //           req->shard_total_bytes, req->shard_data, req->shard_data);
+
         req->status_code = status_code;
     }
 }
@@ -295,7 +321,7 @@ static void after_request_shard(uv_work_t *work, int status)
 
     if (req->status_code != 200) {
         // TODO do not set state->error_status and retry the shard download
-        req->state->error_status = -1;
+        req->state->error_status = STORJ_FARMER_REQUEST_ERROR;
         req->state->pointers[req->pointer_index].status = POINTER_ERROR;
         return;
     }
@@ -357,28 +383,27 @@ static int queue_request_shards(storj_download_state_t *state)
 static void write_shard(uv_work_t *work)
 {
     shard_request_write_t *req = work->data;
-    req->status_code = 0;
+    req->error_status = 0;
 
     if (req->shard_total_bytes != fwrite(req->shard_data,
                                          sizeof(char),
                                          req->shard_total_bytes,
                                          req->destination)) {
 
-        req->status_code = ferror(req->destination);
+        req->error_status = ferror(req->destination);
     }
 }
 
 static void after_write_shard(uv_work_t *work, int status)
 {
-    // TODO check status
-
     shard_request_write_t *req = work->data;
 
     req->state->writing = false;
 
-    if (req->status_code) {
-        // write failure
-        req->state->error_status = req->status_code;
+    if (status != 0) {
+        req->state->error_status = STORJ_FILE_WRITE_ERROR;
+    } else if (req->error_status) {
+        req->state->error_status = STORJ_FILE_WRITE_ERROR;
     } else {
         // write success
         req->state->pointers[req->pointer_index].status = POINTER_WRITTEN;
@@ -499,7 +524,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->total_pointers = 0;
     state->pointers_completed = false;
     state->requesting_pointers = false;
-    state->error_status = 0;
+    state->error_status = STORJ_TRANSFER_OK;
     state->writing = false;
     state->token = NULL;
     state->requesting_token = false;

@@ -1,4 +1,4 @@
-#include "storj.h"
+#include "crypto.h"
 
 int calculate_file_id(char *bucket, char *file_name, char **buffer)
 {
@@ -122,4 +122,23 @@ void pbkdf2_hmac_sha512 (
     hmac_sha512_set_key (&sha512ctx, key_length, key);
     PBKDF2 (&sha512ctx, hmac_sha512_update, hmac_sha512_digest,
     SHA512_DIGEST_SIZE, iterations, salt_length, salt, length, dst);
+}
+
+int increment_ctr_aes_iv(uint8_t *iv, uint64_t bytes_position)
+{
+    if (bytes_position % AES_BLOCK_SIZE != 0) {
+        return 1;
+    }
+
+    uint64_t times = bytes_position / AES_BLOCK_SIZE;
+
+    while (times) {
+        unsigned int i = AES_BLOCK_SIZE - 1;
+        if (++(iv)[i] == 0) {
+            while (i > 0 && ++(iv)[--i] == 0);
+        }
+        times--;
+    }
+
+    return 0;
 }

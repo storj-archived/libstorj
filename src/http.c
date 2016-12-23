@@ -120,9 +120,6 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
     }
 
     if (ne_begin_request(req) != NE_OK) {
-        printf("Request failed: %s\n", ne_get_error(sess));
-        // FIXME: we should standardize how we want to write out errors.
-        // And do we want to return an object here or bail?
         clean_up_neon(sess, req);
         return NULL;
     }

@@ -9,18 +9,11 @@
 #define STORJ_H
 
 #include <assert.h>
-#include <nettle/aes.h>
-#include <nettle/ctr.h>
-#include <nettle/ripemd160.h>
-#include <nettle/hmac.h>
-#include <nettle/pbkdf2.h>
-#include <nettle/sha.h>
 #include <json-c/json.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <uv.h>
-#include <math.h>
 
 #ifdef _WIN32
 #include <time.h>
@@ -29,14 +22,32 @@
 #define PATH_SEPARATOR "/"
 #endif
 
+// TODO use 0 for success
 #define ERROR 0
 #define OK 1
-#define FILE_ID_SIZE 24
-#define FILE_ID_HEX_SIZE 12
-#define DETERMINISTIC_KEY_SIZE 64
-#define DETERMINISTIC_KEY_HEX_SIZE 32
-#define SHARD_MULTIPLES_BACK 5
-#define STORJ_DOWNLOAD_CONCURRENCY 4
+
+// File transfer success
+#define STORJ_TRANSFER_OK 0
+
+// Bridge related errors 1000 to 1999
+#define STORJ_BRIDGE_REQUEST_ERROR 1000
+#define STORJ_BRIDGE_AUTH_ERROR 1001
+#define STORJ_BRIDGE_TOKEN_ERROR 1002
+#define STORJ_BRIDGE_TIMEOUT_ERROR 1003
+#define STORJ_BRIDGE_INTERNAL_ERROR 1004
+#define STORJ_BRIDGE_RATE_ERROR 1005
+#define STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR 1006
+#define STORJ_BRIDGE_FILE_NOTFOUND_ERROR 1007
+#define STORJ_BRIDGE_JSON_ERROR 1008
+
+// Farmer related errors 2000 to 2999
+#define STORJ_FARMER_REQUEST_ERROR 2000
+#define STORJ_FARMER_TIMEOUT_ERROR 2001
+#define STORJ_FARMER_AUTH_ERROR 2002
+
+// File related errors 3000 to 3999
+#define STORJ_FILE_INTEGRITY_ERROR 3000
+#define STORJ_FILE_WRITE_ERROR 3001
 
 typedef struct {
     char *proto;
@@ -46,8 +57,13 @@ typedef struct {
     char *pass;
 } storj_bridge_options_t;
 
+typedef struct storj_encrypt_options {
+    char *mnemonic;
+} storj_encrypt_options_t;
+
 typedef struct storj_env {
     storj_bridge_options_t *bridge_options;
+    storj_encrypt_options_t *encrypt_options;
     uv_loop_t *loop;
 } storj_env_t;
 
@@ -143,10 +159,10 @@ typedef struct {
     storj_env_t *env;
     uint32_t file_concurrency;
     uint32_t shard_concurrency;
-    char file_id[FILE_ID_SIZE+1];
+    char *file_id;
     char *file_name;
     char *file_path;
-    char file_key[DETERMINISTIC_KEY_SIZE+1];
+    char *file_key;
     uint64_t file_size;
     char *tmp_path;
     char *bucket_id;
@@ -198,12 +214,13 @@ typedef struct {
     storj_download_state_t *download_state;
     storj_upload_state_t *upload_state;
     int status_code;
+    int error_status;
 } token_request_token_t;
 
 typedef struct {
     char **shard_data;
     ssize_t shard_total_bytes;
-    int status_code;
+    int error_status;
     FILE *destination;
     uint32_t pointer_index;
     /* state should not be modified in worker threads */
@@ -237,7 +254,19 @@ typedef struct {
     int status_code;
 } json_request_download_t;
 
-storj_env_t *storj_init_env(storj_bridge_options_t *options);
+storj_env_t *storj_init_env(storj_bridge_options_t *options,
+                            storj_encrypt_options_t *encrypt_options);
+
+/**
+ * @brief Get the error message for an error code
+ *
+ * This function will return a error message associated with a storj
+ * error code.
+ *
+ * @param[in] error_code The storj error code integer
+ * @return A char pointer with error message
+ */
+char *storj_strerror(int error_code);
 
 /**
  * @brief Get Storj bridge API information.
@@ -409,71 +438,5 @@ int storj_bridge_resolve_file(storj_env_t *env,
                               FILE *destination,
                               storj_progress_cb progress_cb,
                               storj_finished_download_cb finished_cb);
-
-int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
-
-uint64_t check_file(storj_env_t *env, char *filepath);
-
-int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest);
-
-int ripemd160_of_str(const uint8_t *str, int str_len, uint8_t *digest);
-
-void pbkdf2_hmac_sha512(unsigned key_length,
-                        const uint8_t *key,
-                        unsigned iterations,
-                        unsigned salt_length, const uint8_t *salt,
-                        unsigned length, uint8_t *dst);
-
-void random_buffer(uint8_t *buf, size_t len);
-
-uint64_t determine_shard_size(storj_upload_state_t *state,
-                                        int accumulator);
-
-uint64_t shardSize(int hops);
-
-/**
- * @brief Calculate file id by sha256ripemd160
- *
- * @param[in] bucket Character array of bucket id
- * @param[in] file_name Character array of file name
- * @param[out] buffer 12 byte character array that is the file's id
- * @return A non-zero error value on failure and 0 on success.
- */
-int calculate_file_id(char *bucket, char *file_name, char **buffer);
-
-/**
- * @brief Generate a bucket's key
- *
- * @param[in] Character array of the mnemonic
- * @param[in] bucket_id Character array of bucket id
- * @param[out] bucket_key 64 byte character array that is the bucket's key
- * @return A non-zero error value on failure and 0 on success.
- */
-int generate_bucket_key(char *mnemonic, char *bucket_id, char **bucket_key);
-
-/**
- * @brief Generate a file's key
- *
- * @param[in] Character array of the mnemonic
- * @param[in] bucket_id Character array of bucket id
- * @param[in] file_id Character array of file id
- * @param[out] file_key 64 byte character array that is the bucket's key
- * @return A non-zero error value on failure and 0 on success.
- */
-int generate_file_key(char *mnemonic,
-                      char *bucket_id,
-                      char *file_id,
-                      char **file_key);
-
-/**
- * @brief Calculate deterministic key by getting sha512 of key + id
- *
- * @param[in] Character array of the key
- * @param[in] key_len Integer value of length of key
- * @param[in] id Character array id
- * @param[out] buffer 64 byte character array of the deterministic key
- * @return A non-zero error value on failure and 0 on success.
- */
-int get_deterministic_key(char *key, int key_len, char *id, char **buffer);
 
 #endif /* STORJ_H */

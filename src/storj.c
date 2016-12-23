@@ -49,7 +49,8 @@ static uv_work_t *json_request_work_new(
     return work;
 }
 
-struct storj_env *storj_init_env(storj_bridge_options_t *options)
+struct storj_env *storj_init_env(storj_bridge_options_t *options,
+                                 storj_encrypt_options_t *encrypt_options)
 {
     uv_loop_t *loop = malloc(sizeof(uv_loop_t));
     if (uv_loop_init(loop)) {
@@ -59,8 +60,45 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options)
     storj_env_t *env = malloc(sizeof(storj_env_t));
     env->bridge_options = options;
     env->loop = loop;
+    env->encrypt_options = encrypt_options;
 
     return env;
+}
+
+char *storj_strerror(int error_code)
+{
+    switch(error_code) {
+        case STORJ_BRIDGE_REQUEST_ERROR:
+            return "Bridge request error";
+        case STORJ_BRIDGE_AUTH_ERROR:
+            return "Bridge request authorization error";
+        case STORJ_BRIDGE_TOKEN_ERROR:
+            return "Bridge request token error";
+        case STORJ_BRIDGE_TIMEOUT_ERROR:
+            return "Bridge request timeout error";
+        case STORJ_BRIDGE_INTERNAL_ERROR:
+            return "Bridge request internal error";
+        case STORJ_BRIDGE_RATE_ERROR:
+            return "Bridge transfer rate limit error";
+        case STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR:
+            return "Bucket is not found";
+        case STORJ_BRIDGE_FILE_NOTFOUND_ERROR:
+            return "File is not found";
+        case STORJ_BRIDGE_JSON_ERROR:
+            return "Unexpected JSON response";
+        case STORJ_FARMER_REQUEST_ERROR:
+            return "Farmer request error";
+        case STORJ_FARMER_TIMEOUT_ERROR:
+            return "Farmer request timeout error";
+        case STORJ_FARMER_AUTH_ERROR:
+            return "Farmer request authorization error";
+        case STORJ_FILE_INTEGRITY_ERROR:
+            return "File integrity error";
+        case STORJ_TRANSFER_OK:
+            return "No errors";
+        default:
+            return "Unknown error";
+    }
 }
 
 int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb)

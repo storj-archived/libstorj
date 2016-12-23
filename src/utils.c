@@ -1,4 +1,4 @@
-#include "storj.h"
+#include "utils.h"
 
 int hex2str(unsigned length, uint8_t *data, char *buffer)
 {
@@ -26,26 +26,6 @@ int str2hex(unsigned length, char *data, uint8_t *buffer)
     return OK;
 }
 
-
-uint64_t check_file(storj_env_t *env, char *filepath)
-{
-    int r = 0;
-    uv_fs_t *stat_req = malloc(sizeof(uv_fs_t));
-
-    r = uv_fs_stat(env->loop, stat_req, filepath, NULL);
-    if (r < 0) {
-        const char *msg = uv_strerror(r);
-        free(stat_req);
-        return 0;
-    }
-
-    long long size = (stat_req->statbuf.st_size);
-
-    free(stat_req);
-
-    return size;
-}
-
 void random_buffer(uint8_t *buf, size_t len)
 {
 static FILE *frand = NULL;
@@ -64,3 +44,8 @@ static FILE *frand = NULL;
 	assert(len_read == len);
 #endif
 }
+
+uint64_t shard_size(int hops)
+{
+    return (8  * (1024 * 1024)) * pow(2, hops);
+};

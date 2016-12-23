@@ -1,4 +1,9 @@
 #include "storj.h"
+#include "utils.h"
+#include "crypto.h"
+
+#define MAX_SHARD_SIZE 1073741824
+#define SHARD_MULTIPLES_BACK 5
 
 static void queue_next_work(storj_upload_state_t *state);
 static int queue_request_bucket_token(storj_upload_state_t *state);
@@ -15,6 +20,67 @@ static uv_work_t *uv_work_new()
 static int queue_request_frame(storj_upload_state_t *state)
 {
 
+}
+
+static uint64_t check_file(storj_env_t *env, char *filepath)
+{
+    int r = 0;
+    uv_fs_t *stat_req = malloc(sizeof(uv_fs_t));
+
+    r = uv_fs_stat(env->loop, stat_req, filepath, NULL);
+    if (r < 0) {
+        const char *msg = uv_strerror(r);
+        free(stat_req);
+        return 0;
+    }
+
+    long long size = (stat_req->statbuf.st_size);
+
+    free(stat_req);
+
+    return size;
+}
+
+static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulator)
+{
+    int shard_concurrency;
+    uint64_t file_size;
+
+    if (!state->file_size) {
+      // TODO: Log the error
+      printf("Cannot determine shard size when there is no file size.\n");
+      return 0;
+    } else {
+      file_size = state->file_size;
+    }
+
+    if (!state->shard_concurrency) {
+      shard_concurrency = 3;
+    } else {
+      shard_concurrency = state->shard_concurrency;
+    }
+
+    accumulator = accumulator ? accumulator : 0;
+    // Determine hops back by accumulator
+    int hops = ((accumulator - SHARD_MULTIPLES_BACK) < 0 ) ? 0: accumulator - SHARD_MULTIPLES_BACK;
+    uint64_t byteMultiple = shard_size(accumulator);
+    double check = (double) file_size / byteMultiple;
+
+    // Determine if bytemultiple is highest bytemultiple that is still <= size
+    if (check > 0 && check <= 1) {
+
+      // Certify the number of concurrency * shard_size doesn't exceed freemem
+      while (
+        hops > 0 &&
+        (MAX_SHARD_SIZE / shard_size(hops) <= shard_concurrency) //TODO: 1GB max memory
+      ) {
+        hops = hops - 1 <= 0 ? 0 : hops - 1;
+      }
+
+      return shard_size(hops);
+    }
+
+    return determine_shard_size(&state, ++accumulator);
 }
 
 static after_encrypt_file(uv_work_t *work)
@@ -289,14 +355,14 @@ static void prepare_upload_state(uv_work_t *work)
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
 
     calculate_file_id(state->bucket_id, state->file_name, &file_id);
-    memcpy(state->file_id, file_id, FILE_ID_SIZE);
-    state->file_id[FILE_ID_SIZE] = '\0';
-    generate_file_key(state->mnemonic, state->bucket_id, state->file_id, &file_key);
-    memcpy(state->file_key, file_key, DETERMINISTIC_KEY_SIZE);
-    state->file_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
-    free(file_id);
-    free(file_key);
+    file_id[FILE_ID_SIZE] = '\0';
+    state->file_id = file_id;
+
+    generate_file_key(state->mnemonic, state->bucket_id, state->file_id, &file_key);
+
+    file_key[DETERMINISTIC_KEY_SIZE] = '\0';
+    state->file_key = file_key;
 }
 
 int storj_bridge_store_file(storj_env_t *env,

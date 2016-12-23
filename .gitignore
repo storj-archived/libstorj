@@ -16,6 +16,7 @@ build-aux/
 .deps/
 .libs/
 src/main
+src/storj
 test/tests
 test/testingdb/
 testingdb/
