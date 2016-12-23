@@ -29,19 +29,30 @@ static request_token(uv_work_t *work)
                                               NULL,
                                               &status_code);
 
-    struct json_object *token_value;
-    if (!json_object_object_get_ex(response, "token", &token_value)) {
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    if (status_code == 201) {
+        struct json_object *token_value;
+        if (!json_object_object_get_ex(response, "token", &token_value)) {
+            req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        }
+
+        if (!json_object_is_type(token_value, json_type_string) == 1) {
+            req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        }
+
+        req->token = (char *)json_object_get_string(token_value);
+
+        free(token_value);
+
+    } else if (status_code == 403) {
+        req->error_status = STORJ_BRIDGE_AUTH_ERROR;
+    } else if (status_code == 404) {
+        req->error_status = STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR;
+    } else if (status_code == 500) {
+        req->error_status = STORJ_BRIDGE_INTERNAL_ERROR;
     }
 
-    if (!json_object_is_type(token_value, json_type_string) == 1) {
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
-    }
-
-    req->token = (char *)json_object_get_string(token_value);
     req->status_code = status_code;
 
-    free(token_value);
     free(response);
     free(body);
 }
