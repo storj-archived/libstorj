@@ -396,12 +396,11 @@ int test_api()
 
     assert(status == 0);
 
-
     // upload file
     storj_upload_opts_t upload_opts = {
         .file_concurrency = 1,
         .shard_concurrency = 3,
-        .bucket_id = "0d3902057a8a98467dcd6db2",
+        .bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e",
         .file_path = file,
         .key_pass = "password",
         .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"

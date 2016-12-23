@@ -1,4 +1,5 @@
 #include "storj.h"
+#include "http.h"
 #include "utils.h"
 #include "crypto.h"
 
@@ -15,6 +16,22 @@ static uv_work_t *uv_work_new()
     uv_work_t *work = malloc(sizeof(uv_work_t));
     assert(work != NULL);
     return work;
+}
+
+static void cleanup_state(storj_upload_state_t *state)
+{
+    state->final_callback_called = true;
+    state->finished_cb(state->error_status);
+
+    if (state->file_id) {
+        free(state->file_id);
+    }
+
+    if (state->file_key) {
+        free(state->file_key);
+    }
+
+    free(state);
 }
 
 static int queue_request_frame(storj_upload_state_t *state)
@@ -238,6 +255,8 @@ static request_token(uv_work_t *work)
                                               NULL,
                                               &status_code);
 
+    printf("Response: %s", json_object_to_json_string(response));
+
     struct json_object *token_value;
     if (!json_object_object_get_ex(response, "token", &token_value)) {
         req->error_status = STORJ_BRIDGE_JSON_ERROR;
@@ -282,11 +301,7 @@ static void queue_next_work(storj_upload_state_t *state)
 {
     // report any errors
     if (state->error_status != 0) {
-        // TODO make sure that finished_cb is not called multiple times
-        state->final_callback_called = true;
-        state->finished_cb(state->error_status);
-        free(state);
-        return;
+        return cleanup_state(state);
     }
 
     // report progress of upload
@@ -296,10 +311,7 @@ static void queue_next_work(storj_upload_state_t *state)
 
     // report upload complete
     if (state->completed_shards == state->total_shards) {
-        state->final_callback_called = true;
-        state->finished_cb(0);
-        free(state);
-        return;
+        return cleanup_state(state);
     }
 
     // Make sure we get a PUSH token
@@ -326,7 +338,6 @@ static void begin_work_queue(uv_work_t *work)
 
     free(work);
 }
-
 
 static void prepare_upload_state(uv_work_t *work)
 {

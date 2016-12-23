@@ -84,7 +84,6 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
                                char *token,
                                int **status_code)
 {
-
     // TODO: reuse an existing session and socket to the bridge
 
     ne_session *sess = ne_session_create(options->proto, options->host,
@@ -100,9 +99,20 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
 
     // include authentication headers if info is provided
     if (auth && options->user && options->pass) {
-        char *user_pass = ne_concat(options->user, ":", options->pass, NULL);
+        int user_pass_len = strlen(options->user) + strlen(options->pass) + 1;
+        char user_pass[user_pass_len + 1];
+        strcpy(user_pass, options->user);
+        strcat(user_pass, ":");
+        strcat(user_pass, options->pass);
+        user_pass[user_pass_len] = '\0';
+
         char *user_pass_64 = ne_base64((uint8_t *)user_pass, strlen(user_pass));
-        char *auth_value = ne_concat("Basic ", user_pass_64, NULL);
+
+        int auth_value_len = strlen(user_pass_64) + 6;
+        char auth_value[auth_value_len + 1];
+        strcpy(auth_value, "Basic ");
+        strcat(auth_value, user_pass_64);
+        auth_value[auth_value_len] = '\0';
 
         ne_add_request_header(req, "Authorization", auth_value);
     }
