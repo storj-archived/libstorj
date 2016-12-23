@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "storj.h"
 
@@ -69,16 +70,27 @@ int main(int argc, char **argv)
     int port = 443;
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
 
-    // Get the bridge user and the pass
+    // Get the bridge user
     char *user = getenv("STORJ_BRIDGE_USER");
     if (!user) {
-        // TODO get from argv or prompt?
-        user = "";
+        char *user_input;
+        size_t user_input_size = 1024;
+        size_t num_chars;
+        user_input = calloc(user_input_size, sizeof(char));
+        if (user_input == NULL) {
+            printf("Unable to allocate buffer");
+            exit(1);
+        }
+        printf("Username (email): ");
+        num_chars = getline(&user_input, &user_input_size, stdin);
+        user = calloc(num_chars, sizeof(char));
+        memcpy(user, user_input, num_chars * sizeof(char));
     }
+
+    // Get the bridge password
     char *pass = getenv("STORJ_BRIDGE_PASS");
     if (!pass) {
-        // TODO get from argv or prompt?
-        pass = "";
+        pass = getpass("Password: ");
     }
 
     storj_bridge_options_t options = {
