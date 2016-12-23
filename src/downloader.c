@@ -43,7 +43,7 @@ static request_token(uv_work_t *work)
 
         free(token_value);
 
-    } else if (status_code == 403) {
+    } else if (status_code == 403 || status_code == 401) {
         req->error_status = STORJ_BRIDGE_AUTH_ERROR;
     } else if (status_code == 404) {
         req->error_status = STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR;
