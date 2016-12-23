@@ -133,6 +133,7 @@ typedef struct {
     FILE *destination;
     storj_progress_cb progress_cb;
     storj_finished_download_cb finished_cb;
+    uint64_t shard_size;
     uint32_t total_shards;
     uint32_t completed_shards;
     uint32_t resolving_shards;
@@ -236,7 +237,10 @@ typedef struct {
     char *shard_hash;
     uint32_t pointer_index;
     char *token;
-    ssize_t shard_total_bytes;
+    uint64_t shard_total_bytes;
+    uint64_t byte_position;
+    uint8_t *decrypt_key;
+    uint8_t *decrypt_ctr;
     char *shard_data;
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
