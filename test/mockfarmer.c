@@ -115,6 +115,8 @@ int mock_farmer_shard_server(void *cls,
               AES_BLOCK_SIZE, ctr,
               total_bytes, crypt_page, page);
 
+    free(page);
+
     response = MHD_create_response_from_buffer(total_bytes,
                                                (void *) crypt_page,
                                                MHD_RESPMEM_MUST_FREE);
