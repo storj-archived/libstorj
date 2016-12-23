@@ -9,17 +9,11 @@
 #define STORJ_H
 
 #include <assert.h>
-#include <nettle/aes.h>
-#include <nettle/ripemd160.h>
-#include <nettle/hmac.h>
-#include <nettle/pbkdf2.h>
-#include <nettle/sha.h>
 #include <json-c/json.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <uv.h>
-#include <math.h>
 
 #ifdef _WIN32
 #include <time.h>
@@ -28,12 +22,9 @@
 #define PATH_SEPARATOR "/"
 #endif
 
+// TODO use 0 for success
 #define ERROR 0
 #define OK 1
-#define FILE_ID_SIZE 24
-#define DETERMINISTIC_KEY_SIZE 64
-#define SHARD_MULTIPLES_BACK 5
-#define STORJ_DOWNLOAD_CONCURRENCY 4
 
 // File transfer success
 #define STORJ_TRANSFER_OK 0
@@ -164,10 +155,10 @@ typedef struct {
     storj_env_t *env;
     uint32_t file_concurrency;
     uint32_t shard_concurrency;
-    char file_id[FILE_ID_SIZE+1];
+    char *file_id;
     char *file_name;
     char *file_path;
-    char file_key[DETERMINISTIC_KEY_SIZE+1];
+    char *file_key;
     uint64_t file_size;
     char *tmp_path;
     char *bucket_id;
@@ -440,67 +431,5 @@ int storj_bridge_resolve_file(storj_env_t *env,
                               FILE *destination,
                               storj_progress_cb progress_cb,
                               storj_finished_download_cb finished_cb);
-
-int storj_bridge_replicate_file(storj_env_t *env, uv_after_work_cb cb);
-
-int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest);
-
-int ripemd160_of_str(const uint8_t *str, int str_len, uint8_t *digest);
-
-void pbkdf2_hmac_sha512(unsigned key_length,
-                        const uint8_t *key,
-                        unsigned iterations,
-                        unsigned salt_length, const uint8_t *salt,
-                        unsigned length, uint8_t *dst);
-
-uint64_t determine_shard_size(storj_upload_state_t *state,
-                                        int accumulator);
-
-uint64_t shardSize(int hops);
-
-/**
- * @brief Calculate file id by sha256ripemd160
- *
- * @param[in] bucket Character array of bucket id
- * @param[in] file_name Character array of file name
- * @param[out] buffer 12 byte character array that is the file's id
- * @return A non-zero error value on failure and 0 on success.
- */
-int calculate_file_id(char *bucket, char *file_name, char **buffer);
-
-/**
- * @brief Generate a bucket's key
- *
- * @param[in] Character array of the mnemonic
- * @param[in] bucket_id Character array of bucket id
- * @param[out] bucket_key 64 byte character array that is the bucket's key
- * @return A non-zero error value on failure and 0 on success.
- */
-int generate_bucket_key(char *mnemonic, char *bucket_id, char **bucket_key);
-
-/**
- * @brief Generate a file's key
- *
- * @param[in] Character array of the mnemonic
- * @param[in] bucket_id Character array of bucket id
- * @param[in] file_id Character array of file id
- * @param[out] file_key 64 byte character array that is the bucket's key
- * @return A non-zero error value on failure and 0 on success.
- */
-int generate_file_key(char *mnemonic,
-                      char *bucket_id,
-                      char *file_id,
-                      char **file_key);
-
-/**
- * @brief Calculate deterministic key by getting sha512 of key + id
- *
- * @param[in] Character array of the key
- * @param[in] key_len Integer value of length of key
- * @param[in] id Character array id
- * @param[out] buffer 64 byte character array of the deterministic key
- * @return A non-zero error value on failure and 0 on success.
- */
-int get_deterministic_key(char *key, int key_len, char *id, char **buffer);
 
 #endif /* STORJ_H */

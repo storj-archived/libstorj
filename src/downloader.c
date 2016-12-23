@@ -1,6 +1,9 @@
 #include "storj.h"
 #include "http.h"
 #include "utils.h"
+#include "crypto.h"
+
+#define STORJ_DOWNLOAD_CONCURRENCY 4
 
 // TODO memory cleanup
 
