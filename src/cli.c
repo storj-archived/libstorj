@@ -52,17 +52,28 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
 int main(int argc, char **argv)
 {
+    char *storj_bridge = getenv("STORJ_BRIDGE");
+    int c;
 
-    char *command = argv[1];
+    while ((c = getopt(argc, argv, "h:")) != -1) {
+        switch (c) {
+            case 'h':
+                storj_bridge = optarg;
+                break;
+        }
+    }
+
+    char *command = argv[optind];
     if (!command) {
         printf(HELP_TEXT);
         return 1;
     }
 
-    char *storj_bridge = getenv("STORJ_BRIDGE");
     if (!storj_bridge) {
         storj_bridge = "https://api.storj.io:443/";
     }
+
+    printf("Using Storj bridge: %s\n", storj_bridge);
 
     // Parse the host, part and proto from the storj bridge url
     char proto[6];
