@@ -144,6 +144,8 @@ typedef struct {
     storj_boolean_t writing;
     char *token;
     storj_boolean_t requesting_token;
+    uint8_t *decrypt_key;
+    uint8_t *decrypt_ctr;
 } storj_download_state_t;
 
 typedef struct {

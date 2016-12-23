@@ -25,15 +25,15 @@ int mock_farmer_shard_server(void *cls,
 
     struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
 
-    // TODO use key based on mnemonic, bucket and file id
-    uint8_t key[32] = {148,86,234,177,203,100,167,131,80,160,6,244,74,153,
-                         168,217,127,183,61,14,9,191,195,249,145,5,251,218,
-                         232,170,152,31};
+    // mnemonic: abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about
+    // bucket_id: 368be0816766b28fd5f43af5ba0fc54ab1be516e
+    // file_id: 998960317b6725a3f8080c2b26875b0d8fe5731c
+    uint8_t encrypt_key[32] = {195,73,209,200,34,66,126,171,183,147,100,175,187,
+                                 138,47,140,58,237,23,248,41,207,207,138,133,22,
+                                 30,63,242,92,161,155};
 
-    // TODO use ctr/iv based on file id
-    uint8_t ctr[16] = {188,14,95,229,78,112,182,107,34,206,248,225,52,22,16,183};
-    aes256_set_encrypt_key(ctx, key);
-
+    uint8_t ctr[16] = {124,225,51,83,48,107,228,186,151,104,195,123,78,6,253,83};
+    aes256_set_encrypt_key(ctx, encrypt_key);
 
     if (0 == strcmp(method, "GET")) {
         if (0 == strcmp(url, "/shards/576fc7f60ff5819b824d868f07cb1c2dde5712af")) {

@@ -529,6 +529,43 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->token = NULL;
     state->requesting_token = false;
 
+    // determine the decryption key
+    if (!env->encrypt_options || !env->encrypt_options->mnemonic) {
+        state->decrypt_key = NULL;
+        state->decrypt_ctr = NULL;
+    } else {
+        char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+        generate_file_key(env->encrypt_options->mnemonic, bucket_id,
+                          file_id, &file_key);
+        file_key[DETERMINISTIC_KEY_SIZE] = '\0';
+
+        uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_HEX_SIZE + 1,
+                                          sizeof(uint8_t));
+        str2hex(DETERMINISTIC_KEY_HEX_SIZE, file_key, file_key_as_hex);
+
+        uint8_t *decrypt_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+        sha256_of_str(file_key_as_hex, DETERMINISTIC_KEY_HEX_SIZE, decrypt_key);
+        decrypt_key[SHA256_DIGEST_SIZE] = '\0';
+
+        state->decrypt_key = decrypt_key;
+
+        uint8_t *file_id_as_hex = calloc(FILE_ID_HEX_SIZE + 1, sizeof(uint8_t));
+        str2hex(FILE_ID_HEX_SIZE, file_id, file_id_as_hex);
+
+        uint8_t *file_id_hash = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
+        ripemd160_of_str(file_id_as_hex, FILE_ID_HEX_SIZE, file_id_hash);
+        file_id_hash[RIPEMD160_DIGEST_SIZE] = '\0';
+
+        uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+        memcpy(decrypt_ctr, file_id_hash, AES_BLOCK_SIZE);
+
+        state->decrypt_ctr = decrypt_ctr;
+
+        print_int_array(decrypt_ctr, AES_BLOCK_SIZE);
+
+
+    };
+
     // start download
     queue_next_work(state);
 }

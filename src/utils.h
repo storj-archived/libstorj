@@ -20,6 +20,8 @@
 
 int hex2str(unsigned length, uint8_t *data, char *buffer);
 
+void print_int_array(uint8_t *array, unsigned length);
+
 int str2hex(unsigned length, char *data, uint8_t *buffer);
 
 void random_buffer(uint8_t *buf, size_t len);

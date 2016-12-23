@@ -299,7 +299,7 @@ int test_api()
     create_test_file(file);
 
     // setup bridge options to point to mock server
-    storj_bridge_options_t options = {
+    storj_bridge_options_t bridge_options = {
         .proto = "http",
         .host  = "localhost",
         .port  = 8091,
@@ -307,8 +307,12 @@ int test_api()
         .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
     };
 
+    storj_encrypt_options_t encrypt_options = {
+        .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"        
+    };
+
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&options, NULL);
+    storj_env_t *env = storj_init_env(&bridge_options, &encrypt_options);
     assert(env != NULL);
 
     int status;
@@ -325,6 +329,7 @@ int test_api()
     status = storj_bridge_create_bucket(env, "backups", check_create_bucket);
     assert(status == 0);
 
+    // TODO use expected size for the bucket_id
     char *bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e";
 
     // delete a bucket
@@ -343,6 +348,7 @@ int test_api()
                                               check_bucket_tokens);
     assert(status == 0);
 
+    // TODO use expected size for the file_id
     char *file_id = "998960317b6725a3f8080c2b26875b0d8fe5731c";
 
     // delete a file in a bucket

@@ -22,6 +22,10 @@
 #define DETERMINISTIC_KEY_SIZE 64
 #define DETERMINISTIC_KEY_HEX_SIZE 32
 
+// TODO use *buffer for out instead of **buffer for many of these methods
+// and figure out if we need null termination, and if so have this be set within
+// the functions rather than needing to do this outside.
+
 int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest);
 
 int sha512_of_str(const uint8_t *str, int str_len, uint8_t *digest);
