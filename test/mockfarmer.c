@@ -1,3 +1,6 @@
+#include <nettle/aes.h>
+#include <nettle/ctr.h>
+
 #include "storjtests.h"
 
 int mock_farmer_shard_server(void *cls,
@@ -19,6 +22,15 @@ int mock_farmer_shard_server(void *cls,
 
     int total_bytes = 16777216;
     char *page = "Not Found";
+
+    struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
+
+    uint8_t key[32] = {148,86,234,177,203,100,167,131,80,160,6,244,74,153,
+                         168,217,127,183,61,14,9,191,195,249,145,5,251,218,
+                         232,170,152,31};
+
+    uint8_t ctr[16] = {188,14,95,229,78,112,182,107,34,206,248,225,52,22,16,183};
+    aes256_set_encrypt_key(ctx, key);
 
 
     if (0 == strcmp(method, "GET")) {
@@ -81,8 +93,14 @@ int mock_farmer_shard_server(void *cls,
         }
     }
 
-    response = MHD_create_response_from_buffer(strlen(page),
-                                               (void *) page,
+    char *crypt_page = malloc(total_bytes + 1);
+
+    ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
+              AES_BLOCK_SIZE, ctr,
+              total_bytes, crypt_page, page);
+
+    response = MHD_create_response_from_buffer(total_bytes,
+                                               (void *) crypt_page,
                                                MHD_RESPMEM_MUST_FREE);
 
     *ptr = NULL;
