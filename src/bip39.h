@@ -43,6 +43,7 @@ int mnemonic_generate(int strength, char **buffer);
 const uint16_t *mnemonic_generate_indexes(int strength); // strength in bits
 
 int mnemonic_from_data(const uint8_t *data, int len, char **buffer);
+
 const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len);
 
 int mnemonic_check(const char *mnemonic);

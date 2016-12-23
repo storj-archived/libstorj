@@ -119,7 +119,7 @@ const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len)
 int mnemonic_check(const char *mnemonic)
 {
     if (!mnemonic) {
-        return ERROR;
+        return 0;
     }
 
     uint32_t i, n;
@@ -134,7 +134,7 @@ int mnemonic_check(const char *mnemonic)
     n++;
     // check number of words
     if (n != 12 && n != 18 && n != 24) {
-        return ERROR;
+        return 0;
     }
 
     char current_word[10];
@@ -146,7 +146,7 @@ int mnemonic_check(const char *mnemonic)
         j = 0;
         while (mnemonic[i] != ' ' && mnemonic[i] != 0) {
             if (j >= sizeof(current_word) - 1) {
-                return ERROR;
+                return 0;
             }
             current_word[j] = mnemonic[i];
             i++; j++;
@@ -156,7 +156,7 @@ int mnemonic_check(const char *mnemonic)
         k = 0;
         for (;;) {
             if (!wordlist[k]) { // word not found
-                return ERROR;
+                return 0;
             }
             if (strcmp(current_word, wordlist[k]) == 0) { // word found on index k
                 for (ki = 0; ki < 11; ki++) {
@@ -171,7 +171,7 @@ int mnemonic_check(const char *mnemonic)
         }
     }
     if (bi != n * 11) {
-        return ERROR;
+        return 0;
     }
     bits[32] = bits[n * 4 / 3];
     sha256_of_str(bits, n * 4 / 3, bits);
@@ -184,7 +184,7 @@ int mnemonic_check(const char *mnemonic)
             if (n == 24) {
                 return bits[0] == bits[32]; // compare 8 bits
             }
-    return ERROR;
+    return 0;
 }
 
 int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer)

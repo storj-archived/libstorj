@@ -14,9 +14,8 @@
 #include <string.h>
 #include <math.h>
 
-// TODO use 0 for success
-#define OK 1
-#define ERROR 0
+#define OK 0
+#define ERROR 1
 
 int hex2str(unsigned length, uint8_t *data, char *buffer);
 

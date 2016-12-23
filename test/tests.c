@@ -173,7 +173,7 @@ void check_store_file(int error_code)
         pass("storj_bridge_store_file");
     } else {
         fail("storj_bridge_store_file");
-        printf("\t\tERROR CODE:   %d\n", error_code);
+        printf("\t\tERROR:   %s\n", storj_strerror(error_code));
     }
 }
 
@@ -746,36 +746,36 @@ int main(void)
 
     int status = 0;
     printf("Test Suite: API\n");
-    status -= test_api();
+    status += test_api();
     ++tests_ran;
     printf("\n");
 
     printf("Test Suite: BIP39\n");
-    status -= test_mnemonic_check();
+    status += test_mnemonic_check();
     ++tests_ran;
-    status -= test_mnemonic_generate();
+    status += test_mnemonic_generate();
     ++tests_ran;
-    status -= test_generate_seed();
+    status += test_generate_seed();
     ++tests_ran;
     printf("\n");
 
     printf("Test Suite: Crypto\n");
-    status -= test_calculate_file_id();
+    status += test_calculate_file_id();
     ++tests_ran;
-    status -= test_generate_bucket_key();
+    status += test_generate_bucket_key();
     ++tests_ran;
-    status -= test_generate_file_key();
+    status += test_generate_file_key();
     ++tests_ran;
     printf("\n");
 
     printf("Test Suite: Utils\n");
-    status -= test_increment_ctr_aes_iv();
+    status += test_increment_ctr_aes_iv();
     ++tests_ran;
 
-    int num_failed = tests_ran + status;
-    printf(KGRN "\nPASSED: %i" RESET, abs(status));
-    if (num_failed > 0) {
-        printf(KRED " FAILED: %i" RESET, num_failed);
+    int num_passed = tests_ran - status;
+    printf(KGRN "\nPASSED: %i" RESET, num_passed);
+    if (num_passed < tests_ran) {
+        printf(KRED " FAILED: %i" RESET, abs(status));
     }
     printf(" TOTAL: %i\n", (tests_ran));
 

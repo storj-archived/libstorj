@@ -202,11 +202,11 @@ static after_request_token(uv_work_t *work, int status)
     req->upload_state->token_request_count += 1;
 
     // Check if we got a 201 status and token
-    if (req->status_code == 201 && req->token) {
+    if (req->error_status == 0 && req->status_code == 201 && req->token) {
         req->upload_state->requesting_token = false;
         req->upload_state->token = req->token;
     } else if (req->upload_state->token_request_count == 6) {
-        req->upload_state->error_code = 1;
+        req->upload_state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     } else {
         queue_request_bucket_token(req->upload_state);
     }
@@ -240,11 +240,11 @@ static request_token(uv_work_t *work)
 
     struct json_object *token_value;
     if (!json_object_object_get_ex(response, "token", &token_value)) {
-        //TODO Log that we failed to get a token
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
     if (!json_object_is_type(token_value, json_type_string) == 1) {
-        // TODO error
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
     req->token = (char *)json_object_get_string(token_value);
@@ -266,6 +266,7 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
     req->bucket_id = state->bucket_id;
     req->bucket_op = BUCKET_OP[BUCKET_PUSH];
     req->upload_state = state;
+    req->error_status = 0;
     work->data = req;
 
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
@@ -280,10 +281,10 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
 static void queue_next_work(storj_upload_state_t *state)
 {
     // report any errors
-    if (state->error_code != 0) {
+    if (state->error_status != 0) {
         // TODO make sure that finished_cb is not called multiple times
         state->final_callback_called = true;
-        state->finished_cb(state->error_code);
+        state->finished_cb(state->error_status);
         free(state);
         return;
     }
@@ -342,7 +343,7 @@ static void prepare_upload_state(uv_work_t *work)
     // Get the file size
     state->file_size = check_file(state->env, state->file_path); // Expect to be up to 10tb
     if (state->file_size < 1) {
-        state->error_code = 1; // TODO: Make actual error Codes.
+        state->error_status = STORJ_FILE_INTEGRITY_ERROR;
         return;
     }
 
@@ -398,7 +399,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->completed_shards = 0;
     state->final_callback_called = false;
     state->mnemonic = opts->mnemonic;
-    state->error_code = 0;
+    state->error_status = 0;
     state->writing = false;
     state->encrypting_file = false;
     state->requesting_frame = false;

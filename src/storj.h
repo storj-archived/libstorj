@@ -22,9 +22,8 @@
 #define PATH_SEPARATOR "/"
 #endif
 
-// TODO use 0 for success
-#define ERROR 0
-#define OK 1
+#define ERROR 1
+#define OK 0
 
 // File transfer success
 #define STORJ_TRANSFER_OK 0
@@ -102,7 +101,7 @@ typedef struct {
 
 typedef void (*storj_progress_cb)(double progress);
 typedef void (*storj_finished_download_cb)(int status, FILE *fd);
-typedef void (*storj_finished_upload_cb)(int error_code);
+typedef void (*storj_finished_upload_cb)(int error_status);
 
 typedef struct {
     char *token;
@@ -183,7 +182,7 @@ typedef struct {
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;
     char *mnemonic;
-    int error_code;
+    int error_status;
 } storj_upload_state_t;
 
 typedef struct {
