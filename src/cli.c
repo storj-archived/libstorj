@@ -1,12 +1,13 @@
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <getopt.h>
 
 #include "storj.h"
 
 extern int errno;
 
-#define HELP_TEXT "usage: storj <command> [<args>]\n\n"                 \
+#define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
     "working with buckets and files\n"                                  \
     "  list-buckets\n"                                                  \
@@ -15,7 +16,10 @@ extern int errno;
     "downloading and uploading files\n"                                 \
     "  upload-file <bucket-id> <path>\n"                                \
     "  download-file <bucket-id> <file-id> <path>\n\n"                  \
-
+    "options:\n\n"                                                      \
+    "  -h, --help                output usage information\n"            \
+    "  -V, --version             output the version number\n"           \
+    "  -u, --url <url>           set the base url for the api\n\n"      \
 
 static void download_file_progress(double progress)
 {
@@ -52,13 +56,30 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
 int main(int argc, char **argv)
 {
+    static struct option cmd_options[] = {
+        {"url", required_argument,  0, 'u'},
+        {"version", no_argument,  0, 'V'},
+        {"help", no_argument,  0, 'h'},
+        {0, 0, 0, 0}
+    };
+
+    int index = 0;
+
     char *storj_bridge = getenv("STORJ_BRIDGE");
     int c;
 
-    while ((c = getopt(argc, argv, "h:")) != -1) {
+    while ((c = getopt_long(argc, argv, "hVu:", cmd_options, &index)) != -1) {
         switch (c) {
-            case 'h':
+            case 'u':
                 storj_bridge = optarg;
+                break;
+            case 'V':
+                printf("libstorj 1.0.0-alpha\n");
+                exit(0);
+                break;
+            case 'h':
+                printf(HELP_TEXT);
+                exit(0);
                 break;
         }
     }
