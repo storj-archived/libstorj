@@ -376,13 +376,17 @@ static int queue_request_shards(storj_download_state_t *state)
             // TODO assert max bytes for shard
             req->shard_data = calloc(pointer->size, sizeof(char));
 
+            if (state->decrypt_key && state->decrypt_ctr) {
+                req->decrypt_key = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+                req->decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+                memcpy(req->decrypt_key, state->decrypt_key, SHA256_DIGEST_SIZE);
+                memcpy(req->decrypt_ctr, state->decrypt_ctr, AES_BLOCK_SIZE);
 
-            req->decrypt_key = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
-            req->decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
-            memcpy(req->decrypt_key, state->decrypt_key, SHA256_DIGEST_SIZE);
-            memcpy(req->decrypt_ctr, state->decrypt_ctr, AES_BLOCK_SIZE);
-
-            increment_ctr_aes_iv(req->decrypt_ctr, req->byte_position);
+                increment_ctr_aes_iv(req->decrypt_ctr, req->byte_position);
+            } else {
+                req->decrypt_key = NULL;
+                req->decrypt_ctr = NULL;
+            }
 
             req->pointer_index = pointer->index;
 
