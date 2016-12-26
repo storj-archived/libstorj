@@ -125,17 +125,13 @@ static encrypt_file(uv_work_t *work)
     meta->tmp_path = tmp_path;
 
     // Convert file key to password
-    uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_HEX_SIZE + 1, sizeof(char));
-    str2hex(DETERMINISTIC_KEY_HEX_SIZE, meta->file_key, file_key_as_hex);
     uint8_t *pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(char));
-    sha256_of_str(file_key_as_hex, DETERMINISTIC_KEY_HEX_SIZE, pass);
+    sha256_of_str(meta->file_key, DETERMINISTIC_KEY_SIZE, pass);
     pass[SHA256_DIGEST_SIZE] = '\0';
 
     // Convert file id to salt
-    uint8_t *file_id_as_hex = calloc(FILE_ID_HEX_SIZE + 1, sizeof(char));
-    str2hex(FILE_ID_HEX_SIZE, meta->file_id, file_id_as_hex);
     uint8_t *salt = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(char));
-    ripemd160_of_str(file_id_as_hex, FILE_ID_HEX_SIZE, salt);
+    ripemd160_of_str(meta->file_id, FILE_ID_SIZE, salt);
     salt[RIPEMD160_DIGEST_SIZE] = '\0';
 
     // Encrypt file
@@ -179,8 +175,6 @@ static encrypt_file(uv_work_t *work)
     fclose(original_file);
     fclose(encrypted_file);
 
-    free(file_key_as_hex);
-    free(file_id_as_hex);
     free(tmp_path);
     free(ctx);
     free(iv);
