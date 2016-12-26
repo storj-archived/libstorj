@@ -10,6 +10,7 @@ extern int errno;
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
     "working with buckets and files\n"                                  \
+    "  get-info\n"                                                      \
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
     "  add-bucket <name> \n\n"                                          \
@@ -96,8 +97,37 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
 }
 
+void get_info_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    struct json_object *info;
+    json_object_object_get_ex(req->response, "info", &info);
+
+    struct json_object *title;
+    json_object_object_get_ex(info, "title", &title);
+    struct json_object *description;
+    json_object_object_get_ex(info, "description", &description);
+    struct json_object *version;
+    json_object_object_get_ex(info, "version", &version);
+    struct json_object *host;
+    json_object_object_get_ex(req->response, "host", &host);
+
+    printf("Title:       %s\n", json_object_to_json_string(title));
+    printf("Description: %s\n", json_object_to_json_string(description));
+    printf("Version:     %s\n", json_object_to_json_string(version));
+    printf("Host:        %s\n", json_object_to_json_string(host));
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
 int main(int argc, char **argv)
 {
+    int status = 0;
+
     static struct option cmd_options[] = {
         {"url", required_argument,  0, 'u'},
         {"version", no_argument,  0, 'V'},
@@ -131,14 +161,15 @@ int main(int argc, char **argv)
     char *command = argv[command_index];
     if (!command) {
         printf(HELP_TEXT);
-        return 1;
+        status = 0;
+        goto end_program;
     }
 
     if (!storj_bridge) {
         storj_bridge = "https://api.storj.io:443/";
     }
 
-    printf("Using Storj bridge: %s\n", storj_bridge);
+    printf("Using Storj bridge: %s\n\n", storj_bridge);
 
     // Parse the host, part and proto from the storj bridge url
     char proto[6];
@@ -184,7 +215,8 @@ int main(int argc, char **argv)
     // initialize event loop and environment
     storj_env_t *env = storj_init_env(&options, NULL);
     if (!env) {
-        return 1;
+        status = 1;
+        goto end_program;
     }
 
     if (strcmp(command, "download-file") == 0) {
@@ -194,11 +226,13 @@ int main(int argc, char **argv)
 
         if (!bucket_id || !file_id || !path) {
             printf(HELP_TEXT);
-            return 1;
+            status = 1;
+            goto end_program;
         }
 
         if (download_file(env, bucket_id, file_id, path)) {
-            return 1;
+            status = 1;
+            goto end_program;
         }
     } else if (strcmp(command, "upload-file") == 0) {
         char *bucket_id = argv[command_index + 1];
@@ -206,29 +240,40 @@ int main(int argc, char **argv)
 
         if (!bucket_id || !path) {
             printf(HELP_TEXT);
-            return 1;
+            status = 1;
+            goto end_program;
         }
 
         if (upload_file(env, bucket_id, path)) {
-            return 1;
+            status = 1;
+            goto end_program;
         }
 
-    } else {
+    } else if (strcmp(command, "get-info") == 0) {
+        storj_bridge_get_info(env, get_info_callback);
+    }  else {
         printf(HELP_TEXT);
-        return 1;
+        status = 1;
+        goto end_program;
     }
 
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
-        return 1;
+        status = 1;
+        goto end_program;
     }
 
     // shutdown
-    int status = uv_loop_close(env->loop);
-    if (status == UV_EBUSY) {
-        return 1;
+    int uv_status = uv_loop_close(env->loop);
+    if (uv_status == UV_EBUSY) {
+        status = 1;
+        goto end_program;
     }
 
-
-    return 0;
+end_program:
+    if (env) {
+        free(env->loop);
+        free(env);
+    }
+    return status;
 }
