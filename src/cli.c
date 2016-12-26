@@ -125,18 +125,7 @@ int main(int argc, char **argv)
     // Get the bridge password
     char *pass = getenv("STORJ_BRIDGE_PASS");
     if (!pass) {
-        char *pass_input = getpass("Password: ");
-
-        // TODO make this into a reusable function or include in http.c
-        uint8_t *pass_input_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
-        struct sha256_ctx ctx;
-        sha256_init(&ctx);
-        sha256_update(&ctx, strlen(pass_input), pass_input);
-        sha256_digest(&ctx, SHA256_DIGEST_SIZE, pass_input_hash);
-        pass = calloc(SHA256_DIGEST_SIZE * 2 + 1, sizeof(char));
-        for (unsigned i = 0; i < SHA256_DIGEST_SIZE; i++) {
-            sprintf(&pass[i*2], "%02x", pass_input_hash[i]);
-        }
+        pass = getpass("Password: ");
     }
 
     storj_bridge_options_t options = {
