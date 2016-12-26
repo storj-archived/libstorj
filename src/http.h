@@ -27,7 +27,7 @@ int fetch_shard(char *proto,
                 ssize_t shard_total_bytes,
                 char *shard_data,
                 char *token,
-                int **status_code);
+                int *status_code);
 
 /**
  * @brief Make a JSON HTTP request
@@ -46,7 +46,7 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
                                struct json_object *request_body,
                                storj_boolean_t auth,
                                char *token,
-                               int **status_code);
+                               int *status_code);
 
 
 #endif /* STORJ_HTTP_H */

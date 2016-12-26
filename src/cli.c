@@ -176,7 +176,7 @@ int main(int argc, char **argv)
     storj_bridge_options_t options = {
         .proto = proto,
         .host  = host,
-        .port  = 443,
+        .port  = port,
         .user  = user,
         .pass  = pass
     };
