@@ -1,3 +1,5 @@
+#include <nettle/sha.h>
+
 #include "http.h"
 
 // TODO error check the calloc and realloc calls
@@ -99,13 +101,18 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
 
     // include authentication headers if info is provided
     if (auth && options->user && options->pass) {
-        int user_pass_len = strlen(options->user) + strlen(options->pass) + 1;
-        char user_pass[user_pass_len + 1];
-        strcpy(user_pass, options->user);
-        strcat(user_pass, ":");
-        strcat(user_pass, options->pass);
-        user_pass[user_pass_len] = '\0';
+        // Hash password
+        uint8_t *pass_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+        char *pass = calloc(SHA256_DIGEST_SIZE * 2 + 1, sizeof(char));
+        struct sha256_ctx ctx;
+        sha256_init(&ctx);
+        sha256_update(&ctx, strlen(options->pass), options->pass);
+        sha256_digest(&ctx, SHA256_DIGEST_SIZE, pass_hash);
+        for (unsigned i = 0; i < SHA256_DIGEST_SIZE; i++) {
+            sprintf(&pass[i*2], "%02x", pass_hash[i]);
+        }
 
+        char *user_pass = ne_concat(options->user, ":", pass, NULL);
         char *user_pass_64 = ne_base64((uint8_t *)user_pass, strlen(user_pass));
 
         int auth_value_len = strlen(user_pass_64) + 6;
