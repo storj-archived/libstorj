@@ -44,7 +44,7 @@ struct json_object *get_response_json(char *path)
 
 storj_boolean_t check_auth(char *user, char *pass, int *status_code, char *page)
 {
-    if (user && 0 == strcmp(user, USER) && 0 == strcmp(pass, PASS)) {
+    if (user && 0 == strcmp(user, USER) && 0 == strcmp(pass, PASSHASH)) {
         return true;
     }
 
