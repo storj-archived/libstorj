@@ -49,6 +49,8 @@ static void request_token(uv_work_t *work)
         req->error_status = STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR;
     } else if (status_code == 500) {
         req->error_status = STORJ_BRIDGE_INTERNAL_ERROR;
+    } else {
+        req->error_status = STORJ_BRIDGE_REQUEST_ERROR;
     }
 
     req->status_code = status_code;
