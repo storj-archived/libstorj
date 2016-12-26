@@ -95,7 +95,7 @@ static int queue_request_bucket_token(storj_download_state_t *state)
 
     req->options = state->env->bridge_options;
     req->bucket_id = state->bucket_id;
-    req->bucket_op = BUCKET_OP[BUCKET_PULL];
+    req->bucket_op = (char *)BUCKET_OP[BUCKET_PULL];
     req->download_state = state;
     work->data = req;
 
