@@ -238,6 +238,10 @@ static request_token(uv_work_t *work)
 {
     token_request_token_t *req = work->data;
 
+    printf("[%s] Creating storage token... (retry: %d)\n",
+            req->upload_state->file_name,
+            req->upload_state->token_request_count);
+
     int path_len = strlen(req->bucket_id) + 17;
     char *path = calloc(path_len + 1, sizeof(char));
     sprintf(path, "%s%s%s%c", "/buckets/", req->bucket_id, "/tokens", '\0');
@@ -254,8 +258,6 @@ static request_token(uv_work_t *work)
                                               true,
                                               NULL,
                                               &status_code);
-
-    printf("Response: %s", json_object_to_json_string(response));
 
     struct json_object *token_value;
     if (!json_object_object_get_ex(response, "token", &token_value)) {
@@ -343,10 +345,10 @@ static void prepare_upload_state(uv_work_t *work)
 {
     storj_upload_state_t *state = work->data;
 
-    if (strchr(PATH_SEPARATOR, state->file_path)) {
-        state->file_name = strrchr(state->file_path, PATH_SEPARATOR);
+    if (strrchr(state->file_path, separator())) {
+        state->file_name = strrchr(state->file_path, separator());
         // Remove '/' from the front if exists by pushing the pointer up
-        if (state->file_name[0] == PATH_SEPARATOR) state->file_name++;
+        if (state->file_name[0] == separator()) state->file_name++;
     } else {
         state->file_name = state->file_path;
     }

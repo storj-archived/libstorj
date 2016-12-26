@@ -15,11 +15,18 @@
 #include <string.h>
 #include <uv.h>
 
+
+inline char separator()
+{
+#ifdef _WIN32
+    return '\\';
+#else
+    return '/';
+#endif
+}
+
 #ifdef _WIN32
 #include <time.h>
-#define PATH_SEPARATOR "\\"
-#else
-#define PATH_SEPARATOR "/"
 #endif
 
 #define ERROR 1
