@@ -308,7 +308,7 @@ int test_api()
     };
 
     storj_encrypt_options_t encrypt_options = {
-        .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"        
+        .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
     };
 
     // initialize event loop and environment
@@ -406,7 +406,7 @@ int test_api()
     storj_upload_opts_t upload_opts = {
         .file_concurrency = 1,
         .shard_concurrency = 3,
-        .bucket_id = "368be0816766b28fd5f43af5ba0fc54ab1be516e",
+        .bucket_id = "368be0816766b28fd5f43af5",
         .file_path = file,
         .key_pass = "password",
         .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
