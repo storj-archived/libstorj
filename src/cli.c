@@ -97,10 +97,57 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
 }
 
-void get_info_callback(uv_work_t *work_req, int status)
+static int get_buckets_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
     json_request_t *req = work_req->data;
+
+    if (req->response == NULL) {
+        free(req);
+        free(work_req);
+        printf("Failed to list buckets.\n");
+        exit(1);
+    }
+
+    struct json_object *buckets = json_object_object_get(req->response, "buckets");
+    int num_buckets = json_object_array_length(buckets);
+    struct json_object *bucket;
+    struct json_object *id;
+    struct json_object *name;
+    struct json_object *storage;
+    struct json_object *transfer;
+
+    for (int i = 0; i < num_buckets; i++) {
+        bucket = json_object_array_get_idx(buckets, i);
+        json_object_object_get_ex(bucket, "id", &id);
+        json_object_object_get_ex(bucket, "name", &name);
+        json_object_object_get_ex(bucket, "storage", &storage);
+        json_object_object_get_ex(bucket, "transfer", &transfer);
+        // print out the name attribute
+        printf("ID: %s, Name: %s, Storage: %s, Transfer: %s\n",
+                json_object_to_json_string(id),
+                json_object_to_json_string(name),
+                json_object_to_json_string(storage),
+                json_object_to_json_string(transfer));
+    }
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
+
+static void get_info_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    if (req->response == NULL) {
+        free(req);
+        free(work_req);
+        printf("Failed to get info.\n");
+        exit(1);
+    }
 
     struct json_object *info;
     json_object_object_get_ex(req->response, "info", &info);
@@ -251,7 +298,9 @@ int main(int argc, char **argv)
 
     } else if (strcmp(command, "get-info") == 0) {
         storj_bridge_get_info(env, get_info_callback);
-    }  else {
+    } else if (strcmp(command, "list-buckets") == 0) {
+        storj_bridge_get_buckets(env, get_buckets_callback);
+    } else {
         printf(HELP_TEXT);
         status = 1;
         goto end_program;
