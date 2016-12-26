@@ -28,11 +28,10 @@ int mock_farmer_shard_server(void *cls,
     // mnemonic: abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about
     // bucket_id: 368be0816766b28fd5f43af5
     // file_id: 998960317b6725a3f8080c2b
-    uint8_t encrypt_key[32] = {15,243,113,252,58,46,227,100,168,227,44,251,233,
-                                 150,34,185,236,25,56,85,35,59,220,172,61,182,
-                                 195,29,113,35,50,11};
-
-    uint8_t ctr[16] = {124,225,51,83,48,107,228,186,151,104,195,123,78,6,253,83};
+    uint8_t encrypt_key[32] = {215,99,0,133,172,219,64,35,54,53,171,23,146,160,
+                                 81,126,137,21,253,171,48,217,184,188,8,137,3,
+                                 4,83,50,30,251};
+    uint8_t ctr[16] = {70,219,247,135,162,7,93,193,44,123,188,234,203,115,129,82};
     aes256_set_encrypt_key(ctx, encrypt_key);
 
     if (0 == strcmp(method, "GET")) {

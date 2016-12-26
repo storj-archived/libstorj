@@ -40,9 +40,9 @@ void upload_file_complete(int status)
 
 static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 {
-    char *mnemonic = getenv("STORJ_CLI_MNEMONIC");
+    char *mnemonic = getenv("STORJ_MNEMONIC");
     if (!mnemonic) {
-        printf("Set your STORJ_CLI_MNEMONIC\n");
+        printf("Set your STORJ_MNEMONIC\n");
         exit(1);
         // "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
     }
@@ -324,8 +324,12 @@ int main(int argc, char **argv)
         .pass  = pass
     };
 
+    storj_encrypt_options_t encrypt_options = {
+        .mnemonic = getenv("STORJ_MNEMONIC")
+    };
+
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&options, NULL);
+    storj_env_t *env = storj_init_env(&options, &encrypt_options);
     if (!env) {
         status = 1;
         goto end_program;
