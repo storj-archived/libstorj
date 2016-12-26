@@ -10,7 +10,7 @@
 // TODO move to a header file for downloader
 static void queue_next_work(storj_download_state_t *state);
 
-static request_token(uv_work_t *work)
+static void request_token(uv_work_t *work)
 {
     token_request_token_t *req = work->data;
 
@@ -57,7 +57,7 @@ static request_token(uv_work_t *work)
     free(body);
 }
 
-static after_request_token(uv_work_t *work, int status)
+static void after_request_token(uv_work_t *work, int status)
 {
 
     token_request_token_t *req = work->data;
