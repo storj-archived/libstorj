@@ -97,6 +97,43 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
 }
 
+void list_files_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    if (req->response == NULL) {
+        free(req);
+        free(work_req);
+        printf("Failed to list files.\n");
+        exit(1);
+    }
+    int num_files = json_object_array_length(req->response);
+    struct json_object *file;
+    struct json_object *filename;
+    struct json_object *mimetype;
+    struct json_object *size;
+    struct json_object *id;
+
+    for (int i = 0; i < num_files; i++) {
+        file = json_object_array_get_idx(req->response, i);
+        json_object_object_get_ex(file, "filename", &filename);
+        json_object_object_get_ex(file, "mimetype", &mimetype);
+        json_object_object_get_ex(file, "size", &size);
+        json_object_object_get_ex(file, "id", &id);
+        // print out the name attribute
+        printf("Name: %s, Type: %s, Size: %s bytes, ID: %s\n",
+                json_object_to_json_string(filename),
+                json_object_to_json_string(mimetype),
+                json_object_to_json_string(size),
+                json_object_to_json_string(id));
+    }
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
 static int get_buckets_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -135,6 +172,39 @@ static int get_buckets_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+static void create_bucket_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    if (req->response == NULL) {
+        free(req);
+        free(work_req);
+        printf("Failed to add bucket.\n");
+        exit(1);
+    }
+
+    struct json_object *bucket;
+    struct json_object *id;
+    struct json_object *name;
+    struct json_object *storage;
+    struct json_object *transfer;
+
+    json_object_object_get_ex(req->response, "id", &id);
+    json_object_object_get_ex(req->response, "name", &name);
+    json_object_object_get_ex(req->response, "storage", &storage);
+    json_object_object_get_ex(req->response, "transfer", &transfer);
+    // print out the name attribute
+    printf("ID: %s, Name: %s, Storage: %s, Transfer: %s\n",
+            json_object_to_json_string(id),
+            json_object_to_json_string(name),
+            json_object_to_json_string(storage),
+            json_object_to_json_string(transfer));
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
 
 static void get_info_callback(uv_work_t *work_req, int status)
 {
@@ -290,9 +360,28 @@ int main(int argc, char **argv)
             status = 1;
             goto end_program;
         }
-
     } else if (strcmp(command, "get-info") == 0) {
         storj_bridge_get_info(env, get_info_callback);
+    } else if (strcmp(command, "list-files") == 0) {
+        char *bucket_id = argv[command_index + 1];
+
+        if (!bucket_id) {
+            printf(HELP_TEXT);
+            status = 1;
+            goto end_program;
+        }
+
+        storj_bridge_list_files(env, bucket_id, list_files_callback);
+    } else if (strcmp(command, "add-bucket") == 0) {
+        char *bucket_name = argv[command_index + 1];
+
+        if (!bucket_name) {
+            printf(HELP_TEXT);
+            status = 1;
+            goto end_program;
+        }
+
+        storj_bridge_create_bucket(env, bucket_name, create_bucket_callback);
     } else if (strcmp(command, "list-buckets") == 0) {
         storj_bridge_get_buckets(env, get_buckets_callback);
     } else {
