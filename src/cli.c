@@ -13,7 +13,9 @@ extern int errno;
     "  get-info\n"                                                      \
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
-    "  add-bucket <name> \n\n"                                          \
+    "  remove-file <bucket-id> <file-id>\n"                             \
+    "  add-bucket <name> \n"                                            \
+    "  remove-bucket <bucket-id>\n\n"                                   \
     "downloading and uploading files\n"                                 \
     "  upload-file <bucket-id> <path>\n"                                \
     "  download-file <bucket-id> <file-id> <path>\n\n"                  \
@@ -130,6 +132,36 @@ void list_files_callback(uv_work_t *work_req, int status)
     }
 
     json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
+static void delete_file_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    if (req->status_code == 200) {
+        printf("File was successfully removed from bucket.\n");
+    } else {
+        printf("Failed to remove file from bucket.\n");
+    }
+
+    free(req);
+    free(work_req);
+}
+
+static void delete_bucket_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    if (req->status_code == 200) {
+        printf("Bucket was successfully removed destroyed.\n");
+    } else {
+        printf("Failed to destroy bucket.\n");
+    }
+
     free(req);
     free(work_req);
 }
@@ -386,6 +418,26 @@ int main(int argc, char **argv)
         }
 
         storj_bridge_create_bucket(env, bucket_name, create_bucket_callback);
+    } else if (strcmp(command, "remove-bucket") == 0) {
+        char *bucket_id = argv[command_index + 1];
+
+        if (!bucket_id) {
+            printf(HELP_TEXT);
+            status = 1;
+            goto end_program;
+        }
+
+        storj_bridge_delete_bucket(env, bucket_id, delete_bucket_callback);
+    } else if (strcmp(command, "remove-file") == 0) {
+        char *bucket_id = argv[command_index + 1];
+        char *file_id = argv[command_index + 2];
+
+        if (!bucket_id || !file_id) {
+            printf(HELP_TEXT);
+            status = 1;
+            goto end_program;
+        }
+        storj_bridge_delete_file(env, bucket_id, file_id, delete_file_callback);
     } else if (strcmp(command, "list-buckets") == 0) {
         storj_bridge_get_buckets(env, get_buckets_callback);
     } else {
