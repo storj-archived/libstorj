@@ -20,7 +20,7 @@ static request_token(uv_work_t *work)
     json_object *op_string = json_object_new_string(req->bucket_op);
     json_object_object_add(body, "operation", op_string);
 
-    int *status_code;
+    int status_code = 0;
     struct json_object *response = fetch_json(req->options,
                                               "POST",
                                               path,
@@ -65,7 +65,7 @@ static after_request_token(uv_work_t *work, int status)
     req->download_state->requesting_token = false;
 
     if (status != 0) {
-        req->download_state->token = STORJ_BRIDGE_TOKEN_ERROR;
+        req->download_state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     } else if (req->status_code == 201) {
         req->download_state->token = req->token;
     } else if (req->error_status){
@@ -113,11 +113,10 @@ static void request_pointers(uv_work_t *work)
 {
     json_request_download_t *req = work->data;
 
-    int *status_code;
+    int status_code;
     req->response = fetch_json(req->options, req->method, req->path, req->body,
                                req->auth, req->token, &status_code);
 
-    // TODO clear integer from pointer warning
     req->status_code = status_code;
 }
 
@@ -303,7 +302,7 @@ static void request_shard(uv_work_t *work)
 {
     shard_request_download_t *req = work->data;
 
-    int *status_code;
+    int status_code;
 
     if (fetch_shard(req->farmer_proto, req->farmer_host, req->farmer_port,
                     req->shard_hash, req->shard_total_bytes,

@@ -21,7 +21,7 @@ int fetch_shard(char *proto,
                 ssize_t shard_total_bytes,
                 char *shard_data,
                 char *token,
-                int **status_code)
+                int *status_code)
 {
     // TODO make sure that shard_data has correct number of bytes allocated
 
@@ -82,7 +82,7 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
                                struct json_object *request_body,
                                storj_boolean_t auth,
                                char *token,
-                               int **status_code)
+                               int *status_code)
 {
 
     // TODO: reuse an existing session and socket to the bridge
