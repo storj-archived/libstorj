@@ -110,8 +110,7 @@ static int get_buckets_callback(uv_work_t *work_req, int status)
         exit(1);
     }
 
-    struct json_object *buckets = json_object_object_get(req->response, "buckets");
-    int num_buckets = json_object_array_length(buckets);
+    int num_buckets = json_object_array_length(req->response);
     struct json_object *bucket;
     struct json_object *id;
     struct json_object *name;
@@ -119,7 +118,7 @@ static int get_buckets_callback(uv_work_t *work_req, int status)
     struct json_object *transfer;
 
     for (int i = 0; i < num_buckets; i++) {
-        bucket = json_object_array_get_idx(buckets, i);
+        bucket = json_object_array_get_idx(req->response, i);
         json_object_object_get_ex(bucket, "id", &id);
         json_object_object_get_ex(bucket, "name", &name);
         json_object_object_get_ex(bucket, "storage", &storage);
