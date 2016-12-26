@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <nettle/sha.h>
 
 #include "storj.h"
 
@@ -117,8 +118,8 @@ int main(int argc, char **argv)
         }
         printf("Username (email): ");
         num_chars = getline(&user_input, &user_input_size, stdin);
-        user = calloc(num_chars, sizeof(char));
-        memcpy(user, user_input, num_chars * sizeof(char));
+        user = calloc(num_chars - 1, sizeof(char));
+        memcpy(user, user_input, num_chars * sizeof(char) - 1);
     }
 
     // Get the bridge password
@@ -126,9 +127,16 @@ int main(int argc, char **argv)
     if (!pass) {
         char *pass_input = getpass("Password: ");
 
-        // TODO hash password
-
-        pass = pass_input;
+        // TODO make this into a reusable function or include in http.c
+        uint8_t *pass_input_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+        struct sha256_ctx ctx;
+        sha256_init(&ctx);
+        sha256_update(&ctx, strlen(pass_input), pass_input);
+        sha256_digest(&ctx, SHA256_DIGEST_SIZE, pass_input_hash);
+        pass = calloc(SHA256_DIGEST_SIZE * 2 + 1, sizeof(char));
+        for (unsigned i = 0; i < SHA256_DIGEST_SIZE; i++) {
+            sprintf(&pass[i*2], "%02x", pass_input_hash[i]);
+        }
     }
 
     storj_bridge_options_t options = {
