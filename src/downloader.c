@@ -29,19 +29,30 @@ static request_token(uv_work_t *work)
                                               NULL,
                                               &status_code);
 
-    struct json_object *token_value;
-    if (!json_object_object_get_ex(response, "token", &token_value)) {
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    if (status_code == 201) {
+        struct json_object *token_value;
+        if (!json_object_object_get_ex(response, "token", &token_value)) {
+            req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        }
+
+        if (!json_object_is_type(token_value, json_type_string) == 1) {
+            req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        }
+
+        req->token = (char *)json_object_get_string(token_value);
+
+        free(token_value);
+
+    } else if (status_code == 403 || status_code == 401) {
+        req->error_status = STORJ_BRIDGE_AUTH_ERROR;
+    } else if (status_code == 404) {
+        req->error_status = STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR;
+    } else if (status_code == 500) {
+        req->error_status = STORJ_BRIDGE_INTERNAL_ERROR;
     }
 
-    if (!json_object_is_type(token_value, json_type_string) == 1) {
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
-    }
-
-    req->token = (char *)json_object_get_string(token_value);
     req->status_code = status_code;
 
-    free(token_value);
     free(response);
     free(body);
 }
@@ -212,6 +223,12 @@ static void append_pointers_to_state(storj_download_state_t *state,
             state->pointers[j].index = index;
             state->pointers[j].farmer_address = address;
             state->pointers[j].farmer_port = port;
+
+            if (!state->shard_size) {
+                // TODO make sure all except last shard is the same size
+                state->shard_size = size;
+            };
+
         }
     }
 
@@ -296,16 +313,14 @@ static void request_shard(uv_work_t *work)
         req->status_code = -1;
     } else {
 
-        // TODO decrypt shard_data:
-        // need uint8_t 32 byte key
-        // need uint8_t 16 byte iv/ctr
-        // need the byte position of the shard
-        // increment_ctr_aes_iv(iv, byte_position);
-        // struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
-        // aes256_set_encrypt_key(ctx, key);
-        // ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
-        //           AES_BLOCK_SIZE, iv,
-        //           req->shard_total_bytes, req->shard_data, req->shard_data);
+        // Decrypt the shard
+        if (req->decrypt_key && req->decrypt_ctr) {
+            struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
+            aes256_set_encrypt_key(ctx, req->decrypt_key);
+            ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
+                      AES_BLOCK_SIZE, req->decrypt_ctr,
+                      req->shard_total_bytes, req->shard_data, req->shard_data);
+        }
 
         req->status_code = status_code;
     }
@@ -355,10 +370,23 @@ static int queue_request_shards(storj_download_state_t *state)
             req->farmer_port = pointer->farmer_port;
             req->shard_hash = pointer->shard_hash;
             req->shard_total_bytes = pointer->size;
+            req->byte_position = state->shard_size * i;
             req->token = pointer->token;
 
             // TODO assert max bytes for shard
             req->shard_data = calloc(pointer->size, sizeof(char));
+
+            if (state->decrypt_key && state->decrypt_ctr) {
+                req->decrypt_key = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+                req->decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+                memcpy(req->decrypt_key, state->decrypt_key, SHA256_DIGEST_SIZE);
+                memcpy(req->decrypt_ctr, state->decrypt_ctr, AES_BLOCK_SIZE);
+
+                increment_ctr_aes_iv(req->decrypt_ctr, req->byte_position);
+            } else {
+                req->decrypt_key = NULL;
+                req->decrypt_ctr = NULL;
+            }
 
             req->pointer_index = pointer->index;
 
@@ -528,6 +556,40 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->writing = false;
     state->token = NULL;
     state->requesting_token = false;
+    state->shard_size = 0;
+
+    // determine the decryption key
+    if (!env->encrypt_options || !env->encrypt_options->mnemonic) {
+        state->decrypt_key = NULL;
+        state->decrypt_ctr = NULL;
+    } else {
+        char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+        generate_file_key(env->encrypt_options->mnemonic, bucket_id,
+                          file_id, &file_key);
+        file_key[DETERMINISTIC_KEY_SIZE] = '\0';
+
+        uint8_t *file_key_as_hex = calloc(DETERMINISTIC_KEY_HEX_SIZE + 1,
+                                          sizeof(uint8_t));
+        str2hex(DETERMINISTIC_KEY_HEX_SIZE, file_key, file_key_as_hex);
+
+        uint8_t *decrypt_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+        sha256_of_str(file_key_as_hex, DETERMINISTIC_KEY_HEX_SIZE, decrypt_key);
+        decrypt_key[SHA256_DIGEST_SIZE] = '\0';
+
+        state->decrypt_key = decrypt_key;
+
+        uint8_t *file_id_as_hex = calloc(FILE_ID_HEX_SIZE + 1, sizeof(uint8_t));
+        str2hex(FILE_ID_HEX_SIZE, file_id, file_id_as_hex);
+
+        uint8_t *file_id_hash = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
+        ripemd160_of_str(file_id_as_hex, FILE_ID_HEX_SIZE, file_id_hash);
+        file_id_hash[RIPEMD160_DIGEST_SIZE] = '\0';
+
+        uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+        memcpy(decrypt_ctr, file_id_hash, AES_BLOCK_SIZE);
+
+        state->decrypt_ctr = decrypt_ctr;
+    };
 
     // start download
     queue_next_work(state);

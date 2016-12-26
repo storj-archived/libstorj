@@ -13,6 +13,18 @@ int hex2str(unsigned length, uint8_t *data, char *buffer)
     return OK;
 }
 
+void print_int_array(uint8_t *array, unsigned length)
+{
+    printf("{");
+    for (int i = 0; i < length; i++) {
+        printf("%i", array[i]);
+        if (i != length - 1) {
+            printf(",");
+        }
+    }
+    printf("}\n");
+}
+
 int str2hex(unsigned length, char *data, uint8_t *buffer)
 {
     unsigned i;

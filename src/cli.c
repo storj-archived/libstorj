@@ -1,11 +1,13 @@
 #include <errno.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <getopt.h>
 
 #include "storj.h"
 
 extern int errno;
 
-#define HELP_TEXT "usage: storj <command> [<args>]\n\n"                 \
+#define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
     "working with buckets and files\n"                                  \
     "  list-buckets\n"                                                  \
@@ -14,7 +16,10 @@ extern int errno;
     "downloading and uploading files\n"                                 \
     "  upload-file <bucket-id> <path>\n"                                \
     "  download-file <bucket-id> <file-id> <path>\n\n"                  \
-
+    "options:\n\n"                                                      \
+    "  -h, --help                output usage information\n"            \
+    "  -V, --version             output the version number\n"           \
+    "  -u, --url <url>           set the base url for the api\n\n"      \
 
 static void download_file_progress(double progress)
 {
@@ -51,17 +56,47 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
 int main(int argc, char **argv)
 {
+    static struct option cmd_options[] = {
+        {"url", required_argument,  0, 'u'},
+        {"version", no_argument,  0, 'V'},
+        {"help", no_argument,  0, 'h'},
+        {0, 0, 0, 0}
+    };
 
-    char *command = argv[1];
+    int index = 0;
+
+    char *storj_bridge = getenv("STORJ_BRIDGE");
+    int c;
+
+    while ((c = getopt_long(argc, argv, "hVu:", cmd_options, &index)) != -1) {
+        switch (c) {
+            case 'u':
+                storj_bridge = optarg;
+                break;
+            case 'V':
+                printf("libstorj 1.0.0-alpha\n");
+                exit(0);
+                break;
+            case 'h':
+                printf(HELP_TEXT);
+                exit(0);
+                break;
+        }
+    }
+
+    int command_index = optind;
+
+    char *command = argv[command_index];
     if (!command) {
         printf(HELP_TEXT);
         return 1;
     }
 
-    char *storj_bridge = getenv("STORJ_BRIDGE");
     if (!storj_bridge) {
         storj_bridge = "https://api.storj.io:443/";
     }
+
+    printf("Using Storj bridge: %s\n", storj_bridge);
 
     // Parse the host, part and proto from the storj bridge url
     char proto[6];
@@ -69,16 +104,31 @@ int main(int argc, char **argv)
     int port = 443;
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
 
-    // Get the bridge user and the pass
+    // Get the bridge user
     char *user = getenv("STORJ_BRIDGE_USER");
     if (!user) {
-        // TODO get from argv or prompt?
-        user = "";
+        char *user_input;
+        size_t user_input_size = 1024;
+        size_t num_chars;
+        user_input = calloc(user_input_size, sizeof(char));
+        if (user_input == NULL) {
+            printf("Unable to allocate buffer");
+            exit(1);
+        }
+        printf("Username (email): ");
+        num_chars = getline(&user_input, &user_input_size, stdin);
+        user = calloc(num_chars, sizeof(char));
+        memcpy(user, user_input, num_chars * sizeof(char));
     }
+
+    // Get the bridge password
     char *pass = getenv("STORJ_BRIDGE_PASS");
     if (!pass) {
-        // TODO get from argv or prompt?
-        pass = "";
+        char *pass_input = getpass("Password: ");
+
+        // TODO hash password
+
+        pass = pass_input;
     }
 
     storj_bridge_options_t options = {
@@ -96,9 +146,9 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "download-file") == 0) {
-        char *bucket_id = argv[2];
-        char *file_id = argv[3];
-        char *path = argv[4];
+        char *bucket_id = argv[command_index + 1];
+        char *file_id = argv[command_index + 2];
+        char *path = argv[command_index + 3];
 
         if (!bucket_id || !file_id || !path) {
             printf(HELP_TEXT);
@@ -108,6 +158,17 @@ int main(int argc, char **argv)
         if (download_file(env, bucket_id, file_id, path)) {
             return 1;
         }
+    } else if (strcmp(command, "upload-file") == 0) {
+        char *bucket_id = argv[command_index + 1];
+        char *path = argv[command_index + 2];
+
+        if (!bucket_id || !path) {
+            printf(HELP_TEXT);
+            return 1;
+        }
+
+        // TODO
+
     } else {
         printf(HELP_TEXT);
         return 1;
