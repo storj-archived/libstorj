@@ -130,7 +130,7 @@ static void request_frame(uv_work_t *work)
 
     struct json_object *body = json_object_new_object();
 
-    int *status_code;
+    int status_code;
     struct json_object *response = fetch_json(req->options,
                                               "POST",
                                               "/frames",
@@ -319,7 +319,7 @@ static void request_token(uv_work_t *work)
     json_object *op_string = json_object_new_string(req->bucket_op);
     json_object_object_add(body, "operation", op_string);
 
-    int *status_code;
+    int status_code;
     struct json_object *response = fetch_json(req->options,
                                               "POST",
                                               path,
