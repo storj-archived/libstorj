@@ -354,7 +354,7 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
 
     req->options = state->env->bridge_options;
     req->bucket_id = state->bucket_id;
-    req->bucket_op = BUCKET_OP[BUCKET_PUSH];
+    req->bucket_op = (char *)BUCKET_OP[BUCKET_PUSH];
     req->upload_state = state;
     req->error_status = 0;
     work->data = req;
