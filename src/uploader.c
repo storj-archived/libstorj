@@ -12,7 +12,7 @@ static void after_request_token(uv_work_t *work, int status);
 static void request_token(uv_work_t *work);
 static int queue_request_frame(storj_upload_state_t *state);
 static void request_frame(uv_work_t *work);
-static void after_request_frame(uv_work_t *work);
+static void after_request_frame(uv_work_t *work, int status);
 
 static uv_work_t *uv_work_new()
 {
@@ -98,7 +98,7 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
     return determine_shard_size(&state, ++accumulator);
 }
 
-static void after_request_frame(uv_work_t *work)
+static void after_request_frame(uv_work_t *work, int status)
 {
     frame_request_t *req = work->data;
 
@@ -175,7 +175,7 @@ static int queue_request_frame(storj_upload_state_t *state)
     return status;
 }
 
-static void after_encrypt_file(uv_work_t *work)
+static void after_encrypt_file(uv_work_t *work, int status)
 {
     encrypt_file_meta_t *meta = work->data;
 
