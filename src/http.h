@@ -44,7 +44,7 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
                                char *method,
                                char *path,
                                struct json_object *request_body,
-                               storj_boolean_t auth,
+                               bool auth,
                                char *token,
                                int *status_code);
 

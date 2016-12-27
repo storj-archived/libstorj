@@ -23,7 +23,7 @@ static json_request_t *json_request_new(
     char *method,
     char *path,
     struct json_object *request_body,
-    storj_boolean_t auth)
+    bool auth)
 {
     json_request_t *req = malloc(sizeof(json_request_t));
     assert(req != NULL);
@@ -42,7 +42,7 @@ static uv_work_t *json_request_work_new(
     char *method,
     char *path,
     struct json_object *request_body,
-    storj_boolean_t auth)
+    bool auth)
 {
     uv_work_t *work = uv_work_new();
     work->data = json_request_new(options, method, path, request_body, auth);

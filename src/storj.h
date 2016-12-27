@@ -5,13 +5,19 @@
  * Implements functionality to upload and download files from the Storj
  * distributed network.
  */
+
 #ifndef STORJ_H
 #define STORJ_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <assert.h>
 #include <json-c/json.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <uv.h>
 
@@ -74,13 +80,11 @@ typedef struct storj_env {
     uv_loop_t *loop;
 } storj_env_t;
 
-typedef enum { false, true } storj_boolean_t;
-
 typedef struct {
     storj_bridge_options_t *options;
     char *method;
     char *path;
-    storj_boolean_t auth;
+    bool auth;
     struct json_object *body;
     struct json_object *response;
     int status_code;
@@ -146,12 +150,12 @@ typedef struct {
     uint32_t resolving_shards;
     storj_pointer_t *pointers;
     uint32_t total_pointers;
-    storj_boolean_t pointers_completed;
-    storj_boolean_t requesting_pointers;
+    bool pointers_completed;
+    bool requesting_pointers;
     int error_status;
-    storj_boolean_t writing;
+    bool writing;
     char *token;
-    storj_boolean_t requesting_token;
+    bool requesting_token;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
 } storj_download_state_t;
@@ -182,15 +186,15 @@ typedef struct {
     uint64_t shard_size;
     uint64_t total_bytes;
     uint64_t uploaded_bytes;
-    storj_boolean_t writing;
-    storj_boolean_t encrypting_file;
+    bool writing;
+    bool encrypting_file;
     char *token;
-    storj_boolean_t requesting_token;
+    bool requesting_token;
     char *frame_id;
-    storj_boolean_t requesting_frame;
+    bool requesting_frame;
     int token_request_count;
     int frame_request_count;
-    storj_boolean_t final_callback_called;
+    bool final_callback_called;
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;
     char *mnemonic;
@@ -268,7 +272,7 @@ typedef struct {
     storj_bridge_options_t *options;
     char *method;
     char *path;
-    storj_boolean_t auth;
+    bool auth;
     char *token;
     struct json_object *body;
     struct json_object *response;
@@ -461,5 +465,8 @@ int storj_bridge_resolve_file(storj_env_t *env,
                               FILE *destination,
                               storj_progress_cb progress_cb,
                               storj_finished_download_cb finished_cb);
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* STORJ_H */
