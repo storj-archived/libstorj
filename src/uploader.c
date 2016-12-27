@@ -401,7 +401,7 @@ static void queue_next_work(storj_upload_state_t *state)
 
 }
 
-static void begin_work_queue(uv_work_t *work)
+static void begin_work_queue(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
 
