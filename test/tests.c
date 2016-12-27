@@ -671,6 +671,35 @@ int test_calculate_file_id()
     return OK;
 }
 
+int test_str2hex()
+{
+    char *data = "632442ba2e5f28a3a4e68dcb0b45d1d8f097d5b47479d74e2259055aa25a08aa";
+    uint8_t *buffer = calloc(32 + 1, sizeof(uint8_t));
+
+    str2hex(64, data, buffer);
+
+    uint8_t expected[32] = {99,36,66,186,46,95,40,163,164,230,141,203,11,69,
+                              209,216,240,151,213,180,116,121,215,78,34,89,5,
+                              90,162,90,8,170};
+
+    int failed = 0;
+    for (int i = 0; i < 32; i++) {
+        if (expected[i] != buffer[i]) {
+            failed = 1;
+        }
+    }
+
+    if (failed) {
+        fail("test_str2hex");
+    } else {
+        pass("test_str2hex");
+    }
+
+    print_int_array(buffer, 32);
+
+    return OK;
+}
+
 int test_increment_ctr_aes_iv()
 {
     uint8_t iv[16] = {188,14,95,229,78,112,182,107,
@@ -771,10 +800,12 @@ int main(void)
     ++tests_ran;
     status += test_generate_file_key();
     ++tests_ran;
+    status += test_increment_ctr_aes_iv();
+    ++tests_ran;
     printf("\n");
 
     printf("Test Suite: Utils\n");
-    status += test_increment_ctr_aes_iv();
+    status += test_str2hex();
     ++tests_ran;
 
     int num_passed = tests_ran - status;
