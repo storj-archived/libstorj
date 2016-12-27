@@ -24,12 +24,12 @@ extern int errno;
     "  -V, --version             output the version number\n"           \
     "  -u, --url <url>           set the base url for the api\n\n"      \
 
-void upload_file_progress(double progress)
+static void upload_file_progress(double progress)
 {
     // TODO assersions
 }
 
-void upload_file_complete(int status)
+static void upload_file_complete(int status)
 {
     if (status != 0) {
         printf("Upload failure: %s\n", storj_strerror(status));
@@ -99,7 +99,7 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
 }
 
-void list_files_callback(uv_work_t *work_req, int status)
+static void list_files_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
     json_request_t *req = work_req->data;
@@ -166,7 +166,7 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-static int get_buckets_callback(uv_work_t *work_req, int status)
+static void get_buckets_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
     json_request_t *req = work_req->data;
