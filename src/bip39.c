@@ -31,7 +31,7 @@
 int mnemonic_generate(int strength, char **buffer)
 {
     if (strength % 32 || strength < 128 || strength > 256) {
-        return ERROR;
+        return 0;
     }
     uint8_t data[32];
     random_buffer(data, 32);
@@ -42,7 +42,7 @@ int mnemonic_generate(int strength, char **buffer)
 const uint16_t *mnemonic_generate_indexes(int strength)
 {
     if (strength % 32 || strength < 128 || strength > 256) {
-        return ERROR;
+        return 0;
     }
     uint8_t data[32];
     random_buffer(data, 32);
@@ -52,7 +52,7 @@ const uint16_t *mnemonic_generate_indexes(int strength)
 int mnemonic_from_data(const uint8_t *data, int len, char **buffer)
 {
     if (len % 4 || len < 16 || len > 32) {
-        return ERROR;
+        return 0;
     }
 
     uint8_t bits[32 + 1];
@@ -82,13 +82,13 @@ int mnemonic_from_data(const uint8_t *data, int len, char **buffer)
 
     strcpy(*buffer, mnemo);
 
-    return OK;
+    return 1;
 }
 
 const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len)
 {
     if (len % 4 || len < 16 || len > 32) {
-        return 1;
+        return 0;
     }
 
     uint8_t bits[32 + 1];
@@ -219,7 +219,7 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer
     free(seed);
     free(salt);
 
-    return OK;
+    return 1;
 }
 
 const char * const *mnemonic_wordlist(void)
