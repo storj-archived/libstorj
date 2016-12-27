@@ -8,11 +8,11 @@
 
 static void queue_next_work(storj_upload_state_t *state);
 static int queue_request_bucket_token(storj_upload_state_t *state);
-static after_request_token(uv_work_t *work, int status);
-static request_token(uv_work_t *work);
+static void after_request_token(uv_work_t *work, int status);
+static void request_token(uv_work_t *work);
 static int queue_request_frame(storj_upload_state_t *state);
-static request_frame(uv_work_t *work);
-static after_request_frame(uv_work_t *work);
+static void request_frame(uv_work_t *work);
+static void after_request_frame(uv_work_t *work);
 
 static uv_work_t *uv_work_new()
 {
@@ -98,7 +98,7 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
     return determine_shard_size(&state, ++accumulator);
 }
 
-static after_request_frame(uv_work_t *work)
+static void after_request_frame(uv_work_t *work)
 {
     frame_request_t *req = work->data;
 
@@ -120,7 +120,7 @@ static after_request_frame(uv_work_t *work)
     free(work);
 }
 
-static request_frame(uv_work_t *work)
+static void request_frame(uv_work_t *work)
 {
     frame_request_t *req = work->data;
 
@@ -175,7 +175,7 @@ static int queue_request_frame(storj_upload_state_t *state)
     return status;
 }
 
-static after_encrypt_file(uv_work_t *work)
+static void after_encrypt_file(uv_work_t *work)
 {
     encrypt_file_meta_t *meta = work->data;
 
@@ -188,7 +188,7 @@ static after_encrypt_file(uv_work_t *work)
     free(work);
 }
 
-static encrypt_file(uv_work_t *work)
+static void encrypt_file(uv_work_t *work)
 {
     encrypt_file_meta_t *meta = work->data;
 
@@ -281,7 +281,7 @@ static int queue_encrypt_file(storj_upload_state_t *state)
     return status;
 }
 
-static after_request_token(uv_work_t *work, int status)
+static void after_request_token(uv_work_t *work, int status)
 {
     token_request_token_t *req = work->data;
 
@@ -303,7 +303,7 @@ static after_request_token(uv_work_t *work, int status)
     free(work);
 }
 
-static request_token(uv_work_t *work)
+static void request_token(uv_work_t *work)
 {
     token_request_token_t *req = work->data;
 
