@@ -114,7 +114,7 @@ typedef void (*storj_finished_upload_cb)(int error_status);
 typedef struct {
     char *token;
     char *shard_hash;
-    char **shard_data;
+    char *shard_data;
     uint32_t index;
     int status;
     uint64_t size;
@@ -238,7 +238,7 @@ typedef struct {
 } frame_request_t;
 
 typedef struct {
-    char **shard_data;
+    char *shard_data;
     ssize_t shard_total_bytes;
     int error_status;
     FILE *destination;
