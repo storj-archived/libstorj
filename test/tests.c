@@ -695,8 +695,6 @@ int test_str2hex()
         pass("test_str2hex");
     }
 
-    print_int_array(buffer, 32);
-
     return OK;
 }
 
