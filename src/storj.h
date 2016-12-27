@@ -45,6 +45,7 @@ inline char separator()
 #define STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR 1006
 #define STORJ_BRIDGE_FILE_NOTFOUND_ERROR 1007
 #define STORJ_BRIDGE_JSON_ERROR 1008
+#define STORJ_BRIDGE_FRAME_ERROR 1009
 
 // Farmer related errors 2000 to 2999
 #define STORJ_FARMER_REQUEST_ERROR 2000
@@ -185,9 +186,10 @@ typedef struct {
     storj_boolean_t encrypting_file;
     char *token;
     storj_boolean_t requesting_token;
-    storj_frame_t *frame;
+    char *frame_id;
     storj_boolean_t requesting_frame;
     int token_request_count;
+    int frame_request_count;
     storj_boolean_t final_callback_called;
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;
@@ -225,6 +227,15 @@ typedef struct {
     int status_code;
     int error_status;
 } token_request_token_t;
+
+typedef struct {
+    storj_bridge_options_t *options;
+    /* state should not be modified in worker threads */
+    storj_upload_state_t *upload_state;
+    char *frame_id;
+    int status_code;
+    int error_status;
+} frame_request_t;
 
 typedef struct {
     char **shard_data;

@@ -10,6 +10,9 @@ static void queue_next_work(storj_upload_state_t *state);
 static int queue_request_bucket_token(storj_upload_state_t *state);
 static after_request_token(uv_work_t *work, int status);
 static request_token(uv_work_t *work);
+static int queue_request_frame(storj_upload_state_t *state);
+static request_frame(uv_work_t *work);
+static after_request_frame(uv_work_t *work);
 
 static uv_work_t *uv_work_new()
 {
@@ -32,11 +35,6 @@ static void cleanup_state(storj_upload_state_t *state)
     }
 
     free(state);
-}
-
-static int queue_request_frame(storj_upload_state_t *state)
-{
-
 }
 
 static uint64_t check_file(storj_env_t *env, char *filepath)
@@ -98,6 +96,83 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
     }
 
     return determine_shard_size(&state, ++accumulator);
+}
+
+static after_request_frame(uv_work_t *work)
+{
+    frame_request_t *req = work->data;
+
+    req->upload_state->frame_request_count += 1;
+
+    // Check if we got a 201 status and token
+    if (req->error_status == 0 && req->status_code == 200 && req->frame_id) {
+        req->upload_state->requesting_frame = false;
+        req->upload_state->frame_id = req->frame_id;
+    } else if (req->upload_state->frame_request_count == 6) {
+        req->upload_state->error_status = STORJ_BRIDGE_FRAME_ERROR;
+    } else {
+        queue_request_frame(req->upload_state);
+    }
+
+    queue_next_work(req->upload_state);
+
+    free(req);
+    free(work);
+}
+
+static request_frame(uv_work_t *work)
+{
+    frame_request_t *req = work->data;
+
+    printf("[%s] Creating file staging frame... (retry: %d)\n",
+            req->upload_state->file_name,
+            req->upload_state->frame_request_count);
+
+    struct json_object *body = json_object_new_object();
+
+    int *status_code;
+    struct json_object *response = fetch_json(req->options,
+                                              "POST",
+                                              "/frames",
+                                              body,
+                                              true,
+                                              NULL,
+                                              &status_code);
+
+    struct json_object *frame_id;
+    if (!json_object_object_get_ex(response, "id", &frame_id)) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    if (!json_object_is_type(frame_id, json_type_string) == 1) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    req->frame_id = (char *)json_object_get_string(frame_id);
+    req->status_code = status_code;
+
+    json_object_put(response);
+    json_object_put(body);
+}
+
+static int queue_request_frame(storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+
+    frame_request_t *req = malloc(sizeof(frame_request_t));
+    assert(req != NULL);
+
+    req->options = state->env->bridge_options;
+    req->upload_state = state;
+    req->error_status = 0;
+    work->data = req;
+
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               request_frame, after_request_frame);
+
+    state->requesting_frame = true;
+
+    return status;
 }
 
 static after_encrypt_file(uv_work_t *work)
@@ -315,7 +390,7 @@ static void queue_next_work(storj_upload_state_t *state)
         queue_request_bucket_token(state);
     }
 
-    if (!state->frame && !state->requesting_frame) {
+    if (!state->frame_id && !state->requesting_frame) {
         queue_request_frame(state);
     }
 
@@ -413,10 +488,11 @@ int storj_bridge_store_file(storj_env_t *env,
     state->requesting_token = false;
     state->token = NULL;
     state->tmp_path = NULL;
-    state->frame = NULL;
+    state->frame_id = NULL;
 
     // TODO: find a way to default at 0
     state->token_request_count = 0;
+    state->frame_request_count = 0;
 
     uv_work_t *work = uv_work_new();
     work->data = state;

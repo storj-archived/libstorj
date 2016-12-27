@@ -95,6 +95,8 @@ char *storj_strerror(int error_code)
             return "Farmer request authorization error";
         case STORJ_FILE_INTEGRITY_ERROR:
             return "File integrity error";
+        case STORJ_BRIDGE_FRAME_ERROR:
+            return "Bridge frame request error";
         case STORJ_TRANSFER_OK:
             return "No errors";
         default:
