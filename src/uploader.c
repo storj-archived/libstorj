@@ -95,7 +95,7 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
       return shard_size(hops);
     }
 
-    return determine_shard_size(&state, ++accumulator);
+    return determine_shard_size(state, ++accumulator);
 }
 
 static void after_request_frame(uv_work_t *work, int status)
