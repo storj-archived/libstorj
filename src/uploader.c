@@ -233,7 +233,7 @@ static void encrypt_file(uv_work_t *work)
         // read up to sizeof(buffer) bytes
         while ((bytesRead = fread(clr_txt, 1, AES_BLOCK_SIZE * 30, original_file)) > 0) {
             ctr_crypt(ctx,
-                      aes256_encrypt,
+                      (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE,
                       iv,
                       bytesRead,
