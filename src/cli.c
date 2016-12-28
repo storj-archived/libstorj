@@ -10,7 +10,6 @@ extern int errno;
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
     "working with buckets and files\n"                                  \
-    "  get-info\n"                                                      \
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
     "  remove-file <bucket-id> <file-id>\n"                             \
@@ -19,9 +18,11 @@ extern int errno;
     "downloading and uploading files\n"                                 \
     "  upload-file <bucket-id> <path>\n"                                \
     "  download-file <bucket-id> <file-id> <path>\n\n"                  \
-    "options:\n\n"                                                      \
+    "bridge api information\n"                                          \
+    "  get-info\n\n"                                                    \
+    "options:\n"                                                        \
     "  -h, --help                output usage information\n"            \
-    "  -V, --version             output the version number\n"           \
+    "  -v, --version             output the version number\n"           \
     "  -u, --url <url>           set the base url for the api\n\n"      \
 
 static void upload_file_progress(double progress)
@@ -105,7 +106,7 @@ static void list_files_callback(uv_work_t *work_req, int status)
     json_request_t *req = work_req->data;
 
     if (req->status_code != 200) {
-        printf("Request failed with status code %i", req->status_code);
+        printf("Request failed with status code: %i\n", req->status_code);
     }
 
     if (req->response == NULL) {
@@ -287,7 +288,7 @@ int main(int argc, char **argv)
 
     static struct option cmd_options[] = {
         {"url", required_argument,  0, 'u'},
-        {"version", no_argument,  0, 'V'},
+        {"version", no_argument,  0, 'v'},
         {"help", no_argument,  0, 'h'},
         {0, 0, 0, 0}
     };
@@ -297,13 +298,14 @@ int main(int argc, char **argv)
     char *storj_bridge = getenv("STORJ_BRIDGE");
     int c;
 
-    while ((c = getopt_long(argc, argv, "hVu:", cmd_options, &index)) != -1) {
+    while ((c = getopt_long(argc, argv, "hvVu:", cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
                 storj_bridge = optarg;
                 break;
             case 'V':
-                printf("libstorj 1.0.0-alpha\n");
+            case 'v':
+                printf("libstorj 1.0.0-alpha\n\n");
                 exit(0);
                 break;
             case 'h':
@@ -318,15 +320,12 @@ int main(int argc, char **argv)
     char *command = argv[command_index];
     if (!command) {
         printf(HELP_TEXT);
-        status = 0;
-        goto end_program;
+        return 0;
     }
 
     if (!storj_bridge) {
         storj_bridge = "https://api.storj.io:443/";
     }
-
-    printf("Using Storj bridge: %s\n\n", storj_bridge);
 
     // Parse the host, part and proto from the storj bridge url
     char proto[6];
@@ -334,125 +333,152 @@ int main(int argc, char **argv)
     int port = 443;
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
 
-    // Get the bridge user
-    char *user = getenv("STORJ_BRIDGE_USER");
-    if (!user) {
-        char *user_input;
-        size_t user_input_size = 1024;
-        size_t num_chars;
-        user_input = calloc(user_input_size, sizeof(char));
-        if (user_input == NULL) {
-            printf("Unable to allocate buffer");
-            exit(1);
-        }
-        printf("Username (email): ");
-        num_chars = getline(&user_input, &user_input_size, stdin);
-        user = calloc(num_chars - 1, sizeof(char));
-        memcpy(user, user_input, num_chars * sizeof(char) - 1);
-    }
-
-    // Get the bridge password
-    char *pass = getenv("STORJ_BRIDGE_PASS");
-    if (!pass) {
-        pass = getpass("Password: ");
-    }
-
-    storj_bridge_options_t options = {
-        .proto = proto,
-        .host  = host,
-        .port  = port,
-        .user  = user,
-        .pass  = pass
-    };
-
-    storj_encrypt_options_t encrypt_options = {
-        .mnemonic = getenv("STORJ_MNEMONIC")
-    };
-
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&options, &encrypt_options);
-    if (!env) {
-        status = 1;
-        goto end_program;
-    }
+    storj_env_t *env;
 
-    if (strcmp(command, "download-file") == 0) {
-        char *bucket_id = argv[command_index + 1];
-        char *file_id = argv[command_index + 2];
-        char *path = argv[command_index + 3];
+    if (strcmp(command, "get-info") == 0) {
 
-        if (!bucket_id || !file_id || !path) {
-            printf(HELP_TEXT);
-            status = 1;
-            goto end_program;
+        printf("Storj bridge: %s\n\n", storj_bridge);
+
+        storj_bridge_options_t options = {
+            .proto = proto,
+            .host  = host,
+            .port  = port,
+            .user  = NULL,
+            .pass  = NULL
+        };
+
+        env = storj_init_env(&options, NULL);
+        if (!env) {
+            return 1;
         }
 
-        if (download_file(env, bucket_id, file_id, path)) {
-            status = 1;
-            goto end_program;
-        }
-    } else if (strcmp(command, "upload-file") == 0) {
-        char *bucket_id = argv[command_index + 1];
-        char *path = argv[command_index + 2];
-
-        if (!bucket_id || !path) {
-            printf(HELP_TEXT);
-            status = 1;
-            goto end_program;
-        }
-
-        if (upload_file(env, bucket_id, path)) {
-            status = 1;
-            goto end_program;
-        }
-    } else if (strcmp(command, "get-info") == 0) {
         storj_bridge_get_info(env, get_info_callback);
-    } else if (strcmp(command, "list-files") == 0) {
-        char *bucket_id = argv[command_index + 1];
 
-        if (!bucket_id) {
-            printf(HELP_TEXT);
-            status = 1;
-            goto end_program;
-        }
-
-        storj_bridge_list_files(env, bucket_id, list_files_callback);
-    } else if (strcmp(command, "add-bucket") == 0) {
-        char *bucket_name = argv[command_index + 1];
-
-        if (!bucket_name) {
-            printf(HELP_TEXT);
-            status = 1;
-            goto end_program;
-        }
-
-        storj_bridge_create_bucket(env, bucket_name, create_bucket_callback);
-    } else if (strcmp(command, "remove-bucket") == 0) {
-        char *bucket_id = argv[command_index + 1];
-
-        if (!bucket_id) {
-            printf(HELP_TEXT);
-            status = 1;
-            goto end_program;
-        }
-
-        storj_bridge_delete_bucket(env, bucket_id, delete_bucket_callback);
-    } else if (strcmp(command, "remove-file") == 0) {
-        char *bucket_id = argv[command_index + 1];
-        char *file_id = argv[command_index + 2];
-
-        if (!bucket_id || !file_id) {
-            printf(HELP_TEXT);
-            status = 1;
-            goto end_program;
-        }
-        storj_bridge_delete_file(env, bucket_id, file_id, delete_file_callback);
-    } else if (strcmp(command, "list-buckets") == 0) {
-        storj_bridge_get_buckets(env, get_buckets_callback);
     } else {
-        printf(HELP_TEXT);
-        status = 1;
-        goto end_program;
+
+        // Get the bridge user
+        char *user = getenv("STORJ_BRIDGE_USER");
+        if (!user) {
+            char *user_input;
+            size_t user_input_size = 1024;
+            size_t num_chars;
+            user_input = calloc(user_input_size, sizeof(char));
+            if (user_input == NULL) {
+                printf("Unable to allocate buffer");
+                exit(1);
+            }
+            printf("Username (email): ");
+            num_chars = getline(&user_input, &user_input_size, stdin);
+            user = calloc(num_chars - 1, sizeof(char));
+            memcpy(user, user_input, num_chars * sizeof(char) - 1);
+        }
+
+        // Get the bridge password
+        char *pass = getenv("STORJ_BRIDGE_PASS");
+        if (!pass) {
+            pass = getpass("Password: ");
+        }
+
+        storj_bridge_options_t options = {
+            .proto = proto,
+            .host  = host,
+            .port  = port,
+            .user  = user,
+            .pass  = pass
+        };
+
+        storj_encrypt_options_t encrypt_options = {
+            .mnemonic = getenv("STORJ_MNEMONIC")
+        };
+
+        env = storj_init_env(&options, &encrypt_options);
+        if (!env) {
+            status = 1;
+            goto end_program;
+        }
+
+        if (strcmp(command, "download-file") == 0) {
+            char *bucket_id = argv[command_index + 1];
+            char *file_id = argv[command_index + 2];
+            char *path = argv[command_index + 3];
+
+            if (!bucket_id || !file_id || !path) {
+                printf(HELP_TEXT);
+                status = 1;
+                goto end_program;
+            }
+
+            if (download_file(env, bucket_id, file_id, path)) {
+                status = 1;
+                goto end_program;
+            }
+        } else if (strcmp(command, "upload-file") == 0) {
+            char *bucket_id = argv[command_index + 1];
+            char *path = argv[command_index + 2];
+
+            if (!bucket_id || !path) {
+                printf(HELP_TEXT);
+                status = 1;
+                goto end_program;
+            }
+
+            if (upload_file(env, bucket_id, path)) {
+                status = 1;
+                goto end_program;
+            }
+        } else if (strcmp(command, "list-files") == 0) {
+            char *bucket_id = argv[command_index + 1];
+
+            if (!bucket_id) {
+                printf(HELP_TEXT);
+                status = 1;
+                goto end_program;
+            }
+
+            storj_bridge_list_files(env, bucket_id, list_files_callback);
+        } else if (strcmp(command, "add-bucket") == 0) {
+            char *bucket_name = argv[command_index + 1];
+
+            if (!bucket_name) {
+                printf(HELP_TEXT);
+                status = 1;
+                goto end_program;
+            }
+
+            storj_bridge_create_bucket(env, bucket_name,
+                                       create_bucket_callback);
+
+        } else if (strcmp(command, "remove-bucket") == 0) {
+            char *bucket_id = argv[command_index + 1];
+
+            if (!bucket_id) {
+                printf(HELP_TEXT);
+                status = 1;
+                goto end_program;
+            }
+
+            storj_bridge_delete_bucket(env, bucket_id, delete_bucket_callback);
+        } else if (strcmp(command, "remove-file") == 0) {
+            char *bucket_id = argv[command_index + 1];
+            char *file_id = argv[command_index + 2];
+
+            if (!bucket_id || !file_id) {
+                printf(HELP_TEXT);
+                status = 1;
+                goto end_program;
+            }
+            storj_bridge_delete_file(env, bucket_id, file_id,
+                                     delete_file_callback);
+
+        } else if (strcmp(command, "list-buckets") == 0) {
+            storj_bridge_get_buckets(env, get_buckets_callback);
+        } else {
+            printf("'%s' is not a storj command. See 'storj --help'\n\n",
+                   command);
+            status = 1;
+            goto end_program;
+        }
     }
 
     // run all queued events
