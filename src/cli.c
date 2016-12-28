@@ -104,6 +104,10 @@ static void list_files_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
 
+    if (req->status_code != 200) {
+        printf("Request failed with status code %i", req->status_code);
+    }
+
     if (req->response == NULL) {
         free(req);
         free(work_req);
@@ -111,6 +115,11 @@ static void list_files_callback(uv_work_t *work_req, int status)
         exit(1);
     }
     int num_files = json_object_array_length(req->response);
+
+    if (num_files == 0) {
+        printf("No files for bucket");
+    }
+
     struct json_object *file;
     struct json_object *filename;
     struct json_object *mimetype;
