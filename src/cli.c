@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <termios.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -24,6 +25,28 @@ extern int errno;
     "  -h, --help                output usage information\n"            \
     "  -v, --version             output the version number\n"           \
     "  -u, --url <url>           set the base url for the api\n\n"      \
+
+static void get_password(char *password)
+{
+    static struct termios prev_terminal;
+    static struct termios terminal;
+
+    tcgetattr(STDIN_FILENO, &prev_terminal);
+
+    // do not echo the characters
+    terminal = prev_terminal;
+    terminal.c_lflag &= ~(ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &terminal);
+
+    if (fgets(password, BUFSIZ, stdin) == NULL) {
+        password[0] = '\0';
+    } else {
+        password[strlen(password)-1] = '\0';
+    }
+
+    // go back to the previous settings
+    tcsetattr(STDIN_FILENO, TCSANOW, &prev_terminal);
+}
 
 static void upload_file_progress(double progress)
 {
@@ -180,6 +203,10 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
     json_request_t *req = work_req->data;
+
+    if (req->status_code != 200) {
+        printf("Request failed with status code: %i\n", req->status_code);
+    }
 
     if (req->response == NULL) {
         free(req);
@@ -368,7 +395,7 @@ int main(int argc, char **argv)
                 printf("Unable to allocate buffer");
                 exit(1);
             }
-            printf("Username (email): ");
+            printf("Bridge username (email): ");
             num_chars = getline(&user_input, &user_input_size, stdin);
             user = calloc(num_chars - 1, sizeof(char));
             memcpy(user, user_input, num_chars * sizeof(char) - 1);
@@ -377,7 +404,10 @@ int main(int argc, char **argv)
         // Get the bridge password
         char *pass = getenv("STORJ_BRIDGE_PASS");
         if (!pass) {
-            pass = getpass("Password: ");
+            printf("Bridge password: ");
+            pass = calloc(BUFSIZ, sizeof(char));
+            get_password(pass);
+            printf("\n");
         }
 
         storj_bridge_options_t options = {
@@ -388,8 +418,17 @@ int main(int argc, char **argv)
             .pass  = pass
         };
 
+        char *mnemonic = getenv("STORJ_MNEMONIC");
+
+        if (!mnemonic) {
+            printf("Encryption mnemonic: ");
+            mnemonic = calloc(BUFSIZ, sizeof(char));
+            get_password(mnemonic);
+            printf("\n");
+        }
+
         storj_encrypt_options_t encrypt_options = {
-            .mnemonic = getenv("STORJ_MNEMONIC")
+            .mnemonic = mnemonic
         };
 
         env = storj_init_env(&options, &encrypt_options);
