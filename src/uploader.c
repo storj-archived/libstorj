@@ -7,12 +7,18 @@
 #define SHARD_MULTIPLES_BACK 5
 
 static void queue_next_work(storj_upload_state_t *state);
+
 static int queue_request_bucket_token(storj_upload_state_t *state);
-static void after_request_token(uv_work_t *work, int status);
-static void request_token(uv_work_t *work);
 static int queue_request_frame(storj_upload_state_t *state);
+static int queue_encrypt_file(storj_upload_state_t *state);
+
+static void request_token(uv_work_t *work);
 static void request_frame(uv_work_t *work);
+static void encrypt_file(uv_work_t *work);
+
+static void after_request_token(uv_work_t *work, int status);
 static void after_request_frame(uv_work_t *work, int status);
+static void after_encrypt_file(uv_work_t *work, int status);
 
 static uv_work_t *uv_work_new()
 {
@@ -178,12 +184,23 @@ static int queue_request_frame(storj_upload_state_t *state)
 static void after_encrypt_file(uv_work_t *work, int status)
 {
     encrypt_file_meta_t *meta = work->data;
+    storj_upload_state_t *state = meta->upload_state;
 
-    meta->upload_state->encrypting_file = false;
+    state->encrypt_file_count += 1;
 
-    // TODO: Check if meta->tmp_path is the same size as meta->file_path
-    meta->upload_state->tmp_path = meta->tmp_path;
+    if (check_file(state->env, meta->tmp_path) == state->file_size) {
+        state->encrypting_file = false;
+        state->completed_encryption = true;
+        state->tmp_path = meta->tmp_path;
+    } else if (state->encrypt_file_count == 6) {
+        state->error_status = STORJ_FILE_ENCRYPTION_ERROR;
+    } else {
+        queue_encrypt_file(state);
+    }
 
+    queue_next_work(state);
+
+    free(meta->tmp_path);
     free(meta);
     free(work);
 }
@@ -191,6 +208,10 @@ static void after_encrypt_file(uv_work_t *work, int status)
 static void encrypt_file(uv_work_t *work)
 {
     encrypt_file_meta_t *meta = work->data;
+
+    printf("[%s] Encrypting file... (retry: %d)\n",
+            meta->upload_state->file_name,
+            meta->upload_state->encrypt_file_count);
 
     // Set tmp file
     int tmp_len = strlen(meta->file_path) + strlen(".crypt");
@@ -250,7 +271,6 @@ static void encrypt_file(uv_work_t *work)
     fclose(original_file);
     fclose(encrypted_file);
 
-    free(tmp_path);
     free(ctx);
     free(iv);
     free(salt);
@@ -392,6 +412,8 @@ static void queue_next_work(storj_upload_state_t *state)
 
     if (!state->frame_id && !state->requesting_frame) {
         queue_request_frame(state);
+    } else if (state->frame_id && state->completed_encryption) {
+        printf("hasing shards\n");
     }
 
     // Encrypt the file
@@ -471,16 +493,18 @@ int storj_bridge_store_file(storj_env_t *env,
     storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
     state->file_concurrency = opts->file_concurrency;
     state->shard_concurrency = opts->shard_concurrency;
-    state->uploaded_bytes = 0;
     state->env = env;
     state->file_path = opts->file_path;
     state->bucket_id = opts->bucket_id;
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
-    state->total_shards = 0;
-    state->completed_shards = 0;
-    state->final_callback_called = false;
     state->mnemonic = opts->mnemonic;
+
+    // TODO: find a way to default
+    state->token_request_count = 0;
+    state->frame_request_count = 0;
+    state->encrypt_file_count = 0;
+    state->completed_encryption = false;
     state->error_status = 0;
     state->writing = false;
     state->encrypting_file = false;
@@ -489,10 +513,10 @@ int storj_bridge_store_file(storj_env_t *env,
     state->token = NULL;
     state->tmp_path = NULL;
     state->frame_id = NULL;
-
-    // TODO: find a way to default at 0
-    state->token_request_count = 0;
-    state->frame_request_count = 0;
+    state->total_shards = 0;
+    state->completed_shards = 0;
+    state->uploaded_bytes = 0;
+    state->final_callback_called = false;
 
     uv_work_t *work = uv_work_new();
     work->data = state;

@@ -61,6 +61,7 @@ inline char separator()
 // File related errors 3000 to 3999
 #define STORJ_FILE_INTEGRITY_ERROR 3000
 #define STORJ_FILE_WRITE_ERROR 3001
+#define STORJ_FILE_ENCRYPTION_ERROR 3002
 
 typedef struct {
     char *proto;
@@ -188,12 +189,14 @@ typedef struct {
     uint64_t uploaded_bytes;
     bool writing;
     bool encrypting_file;
+    bool completed_encryption;
     char *token;
     bool requesting_token;
     char *frame_id;
     bool requesting_frame;
     int token_request_count;
     int frame_request_count;
+    int encrypt_file_count;
     bool final_callback_called;
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;

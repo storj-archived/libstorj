@@ -97,6 +97,8 @@ char *storj_strerror(int error_code)
             return "File integrity error";
         case STORJ_BRIDGE_FRAME_ERROR:
             return "Bridge frame request error";
+        case STORJ_FILE_ENCRYPTION_ERROR:
+            return "File Encryption error";
         case STORJ_TRANSFER_OK:
             return "No errors";
         default:
