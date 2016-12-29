@@ -129,7 +129,11 @@ int mock_bridge_server(void *cls,
 
     } else if (0 == strcmp(method, "POST")) {
 
-        if (0 == strcmp(url, "/buckets")) {
+        if (0 == strcmp(url, "/reports/exchanges")) {
+            // TODO check post body
+            page = "{}";
+            status_code = 201;
+        } else if (0 == strcmp(url, "/buckets")) {
             if (check_auth(user, pass, &status_code, page)) {
                 // TODO check post body
                 page = get_response_string(responses, "putbuckets");

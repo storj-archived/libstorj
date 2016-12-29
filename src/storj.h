@@ -117,7 +117,8 @@ typedef struct {
     uint64_t end;
     unsigned int code;
     char *message;
-    bool reported;
+    unsigned int send_status;
+    unsigned int send_count;
 } storj_exchange_report_t;
 
 typedef struct {
@@ -293,6 +294,12 @@ typedef struct {
     storj_download_state_t *state;
     int status_code;
 } shard_request_download_t;
+
+typedef struct {
+    storj_bridge_options_t *options;
+    int status_code;
+    storj_exchange_report_t *report;
+} shard_send_report_t;
 
 typedef struct {
     storj_bridge_options_t *options;

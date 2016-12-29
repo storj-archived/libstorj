@@ -244,7 +244,8 @@ static void append_pointers_to_state(storj_download_state_t *state,
             state->pointers[j].report->client_id = client_id;
             state->pointers[j].report->data_hash = hash;
             state->pointers[j].report->farmer_id = farmer_id;
-            state->pointers[j].report->reported = false;
+            state->pointers[j].report->send_status = 0; // not sent
+            state->pointers[j].report->send_count = 0;
 
             // these values will be changed in after_request_shard
             state->pointers[j].report->start = 0;
@@ -528,6 +529,89 @@ static void queue_write_next_shard(storj_download_state_t *state)
     }
 }
 
+static void send_exchange_report(uv_work_t *work)
+{
+    shard_send_report_t *req = work->data;
+
+    struct json_object *body = json_object_new_object();
+
+    json_object_object_add(body, "dataHash",
+                           json_object_new_string(req->report->data_hash));
+
+    json_object_object_add(body, "reporterId",
+                           json_object_new_string(req->report->reporter_id));
+
+    json_object_object_add(body, "farmerId",
+                           json_object_new_string(req->report->farmer_id));
+
+    json_object_object_add(body, "clientId",
+                           json_object_new_string(req->report->client_id));
+
+    json_object_object_add(body, "exchangeStart",
+                           json_object_new_int64(req->report->start));
+
+    json_object_object_add(body, "exchangeEnd",
+                           json_object_new_int64(req->report->end));
+
+    json_object_object_add(body, "exchangeResultCode",
+                           json_object_new_int(req->report->code));
+
+    json_object_object_add(body, "exchangeResultMessage",
+                           json_object_new_string(req->report->message));
+
+    int status_code = 0;
+
+    // there should be an empty object in response
+    struct json_object *response = fetch_json(req->options, "POST",
+                                              "/reports/exchanges", body,
+                                              NULL, NULL, &status_code);
+    req->status_code = status_code;
+
+    free(body);
+}
+
+static void after_send_exchange_report(uv_work_t *work, int status)
+{
+    shard_send_report_t *req = work->data;
+
+    if (req->status_code == 201) {
+        req->report->send_status = 2; // report has been sent
+    } else {
+        req->report->send_status = 0; // reset report back to unsent
+    }
+
+    // TODO add debug logs on failure/success
+
+}
+
+static void queue_send_exchange_reports(storj_download_state_t *state)
+{
+    for (int i = 0; i < state->total_pointers; i++) {
+
+        storj_pointer_t *pointer = &state->pointers[i];
+
+        if (pointer->report->send_status < 1 &&
+            pointer->report->send_count < 2) {
+
+            uv_work_t *work = malloc(sizeof(uv_work_t));
+            assert(work != NULL);
+
+            shard_send_report_t *req = malloc(sizeof(shard_send_report_t));
+
+            req->options = state->env->bridge_options;
+            req->status_code = 0;
+            req->report = pointer->report;
+            req->report->send_status = 1; // being reported
+            req->report->send_count += 1;
+
+            work->data = req;
+
+            uv_queue_work(state->env->loop, (uv_work_t*) work,
+                          send_exchange_report, after_send_exchange_report);
+        }
+    }
+}
+
 static void queue_next_work(storj_download_state_t *state)
 {
     // report any errors
@@ -567,6 +651,9 @@ static void queue_next_work(storj_download_state_t *state)
     }
 
     queue_request_shards(state);
+
+    // send back download status reports to the bridge
+    queue_send_exchange_reports(state);
 }
 
 int storj_bridge_resolve_file(storj_env_t *env,
