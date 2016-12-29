@@ -234,7 +234,23 @@ static void append_pointers_to_state(storj_download_state_t *state,
             state->pointers[j].index = index;
             state->pointers[j].farmer_address = address;
             state->pointers[j].farmer_port = port;
-            state->pointers[j].farmer_id = farmer_id;
+
+            // setup exchange report values
+            state->pointers[j].report = malloc(
+                sizeof(storj_exchange_report_t));
+
+            char *client_id = state->env->bridge_options->user;
+            state->pointers[j].report->reporter_id = client_id;
+            state->pointers[j].report->client_id = client_id;
+            state->pointers[j].report->data_hash = hash;
+            state->pointers[j].report->farmer_id = farmer_id;
+            state->pointers[j].report->reported = false;
+
+            // these values will be changed in after_request_shard
+            state->pointers[j].report->start = 0;
+            state->pointers[j].report->end = 0;
+            state->pointers[j].report->code = STORJ_REPORT_FAILURE;
+            state->pointers[j].report->message = STORJ_REPORT_DOWNLOAD_ERROR;
 
             if (!state->shard_size) {
                 // TODO make sure all except last shard is the same size
@@ -317,13 +333,19 @@ static void request_shard(uv_work_t *work)
 
     int status_code;
 
+    req->start = get_time_milliseconds();
+
     if (fetch_shard(req->farmer_proto, req->farmer_host, req->farmer_port,
                     req->shard_hash, req->shard_total_bytes,
                     req->shard_data, req->token, &status_code)) {
 
+        req->end = get_time_milliseconds();
+
         // TODO enum error types
         req->status_code = -1;
     } else {
+
+        req->end = get_time_milliseconds();
 
         // Decrypt the shard
         if (req->decrypt_key && req->decrypt_ctr) {
@@ -346,17 +368,24 @@ static void after_request_shard(uv_work_t *work, int status)
 
     req->state->resolving_shards -= 1;
 
+    storj_pointer_t *pointer = &req->state->pointers[req->pointer_index];
+
+    pointer->report->start = req->start;
+    pointer->report->end = req->end;
+
     if (req->status_code != 200) {
         // TODO do not set state->error_status and retry the shard download
         req->state->error_status = STORJ_FARMER_REQUEST_ERROR;
-        req->state->pointers[req->pointer_index].status = POINTER_ERROR;
-        return;
+        pointer->status = POINTER_ERROR;
+        pointer->report->code = STORJ_REPORT_FAILURE;
+        pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
+    } else {
+        // TODO update downloaded bytes
+        pointer->report->code = STORJ_REPORT_SUCCESS;
+        pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
+        pointer->status = POINTER_DOWNLOADED;
+        pointer->shard_data = req->shard_data;
     }
-
-    // TODO update downloaded bytes
-
-    req->state->pointers[req->pointer_index].status = POINTER_DOWNLOADED;
-    req->state->pointers[req->pointer_index].shard_data = req->shard_data;
 
     queue_next_work(req->state);
 

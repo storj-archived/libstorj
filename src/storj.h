@@ -113,11 +113,12 @@ typedef struct {
     char *reporter_id;
     char *farmer_id;
     char *client_id;
-    uint64_t exchange_start;
-    uint64_t exchange_end;
-    unsigned int exchange_result_code;
-    char *exchange_result_message;
-} storj_exchange_report;
+    uint64_t start;
+    uint64_t end;
+    unsigned int code;
+    char *message;
+    bool reported;
+} storj_exchange_report_t;
 
 typedef struct {
 } storj_shard_tree;
@@ -144,9 +145,9 @@ typedef struct {
     uint32_t index;
     int status;
     uint64_t size;
-    char *farmer_id;
     char *farmer_address;
     int farmer_port;
+    storj_exchange_report_t *report;
 } storj_pointer_t;
 
 typedef enum {
@@ -281,6 +282,8 @@ typedef struct {
     char *shard_hash;
     uint32_t pointer_index;
     char *token;
+    uint64_t start;
+    uint64_t end;
     uint64_t shard_total_bytes;
     uint64_t byte_position;
     uint8_t *decrypt_key;
