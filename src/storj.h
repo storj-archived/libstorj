@@ -63,6 +63,17 @@ inline char separator()
 #define STORJ_FILE_WRITE_ERROR 3001
 #define STORJ_FILE_ENCRYPTION_ERROR 3002
 
+// Exchange report codes
+#define STORJ_REPORT_SUCCESS 1000;
+#define STORJ_REPORT_FAILURE 1100;
+
+// Exchange report messages
+#define STORJ_REPORT_FAILED_INTEGRITY "FAILED_INTEGRITY"
+#define STORJ_REPORT_SHARD_DOWNLOADED "SHARD_DOWNLOADED"
+#define STORJ_REPORT_SHARD_UPLOADED "SHARD_UPLOADED"
+#define STORJ_REPORT_DOWNLOAD_ERROR "DOWNLOAD_ERROR"
+#define STORJ_REPORT_UPLOAD_ERROR "TRANSFER_FAILED"
+
 typedef struct {
     char *proto;
     char *host;
@@ -99,6 +110,19 @@ typedef enum {
 static const char *BUCKET_OP[] = { "PUSH", "PULL" };
 
 typedef struct {
+    char *data_hash;
+    char *reporter_id;
+    char *farmer_id;
+    char *client_id;
+    uint64_t start;
+    uint64_t end;
+    unsigned int code;
+    char *message;
+    unsigned int send_status;
+    unsigned int send_count;
+} storj_exchange_report_t;
+
+typedef struct {
 } storj_shard_tree;
 
 typedef struct {
@@ -123,8 +147,10 @@ typedef struct {
     uint32_t index;
     int status;
     uint64_t size;
+    uint64_t downloaded_size;
     char *farmer_address;
     int farmer_port;
+    storj_exchange_report_t *report;
 } storj_pointer_t;
 
 typedef enum {
@@ -138,7 +164,6 @@ typedef enum {
 
 typedef struct {
     uint64_t total_bytes;
-    uint64_t downloaded_bytes;
     storj_env_t *env;
     char *file_id;
     char *bucket_id;
@@ -261,7 +286,10 @@ typedef struct {
     char *shard_hash;
     uint32_t pointer_index;
     char *token;
+    uint64_t start;
+    uint64_t end;
     uint64_t shard_total_bytes;
+    uv_async_t progress_handle;
     uint64_t byte_position;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
@@ -270,6 +298,19 @@ typedef struct {
     storj_download_state_t *state;
     int status_code;
 } shard_request_download_t;
+
+typedef struct {
+    uint32_t pointer_index;
+    uint64_t bytes;
+    /* state should not be modified in worker threads */
+    storj_download_state_t *state;
+} shard_download_progress_t;
+
+typedef struct {
+    storj_bridge_options_t *options;
+    int status_code;
+    storj_exchange_report_t *report;
+} shard_send_report_t;
 
 typedef struct {
     storj_bridge_options_t *options;

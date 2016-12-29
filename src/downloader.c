@@ -206,12 +206,22 @@ static void append_pointers_to_state(storj_download_state_t *state,
             }
             uint32_t port = json_object_get_int(port_value);
 
+            struct json_object* farmer_id_value;
+            if (!json_object_object_get_ex(farmer_value, "nodeID",
+                                           &farmer_id_value)) {
+
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
+            }
+            char *farmer_id = (char *)json_object_get_string(farmer_id_value);
+
             free(token_value);
             free(hash_value);
             free(size_value);
             free(index_value);
             free(address_value);
             free(port_value);
+            free(farmer_id_value);
             free(pointer);
 
             // get the relative index
@@ -220,10 +230,29 @@ static void append_pointers_to_state(storj_download_state_t *state,
             state->pointers[j].token = token;
             state->pointers[j].shard_hash = hash;
             state->pointers[j].size = size;
+            state->pointers[j].downloaded_size = 0;
             state->pointers[j].status = POINTER_CREATED;
             state->pointers[j].index = index;
             state->pointers[j].farmer_address = address;
             state->pointers[j].farmer_port = port;
+
+            // setup exchange report values
+            state->pointers[j].report = malloc(
+                sizeof(storj_exchange_report_t));
+
+            char *client_id = state->env->bridge_options->user;
+            state->pointers[j].report->reporter_id = client_id;
+            state->pointers[j].report->client_id = client_id;
+            state->pointers[j].report->data_hash = hash;
+            state->pointers[j].report->farmer_id = farmer_id;
+            state->pointers[j].report->send_status = 0; // not sent
+            state->pointers[j].report->send_count = 0;
+
+            // these values will be changed in after_request_shard
+            state->pointers[j].report->start = 0;
+            state->pointers[j].report->end = 0;
+            state->pointers[j].report->code = STORJ_REPORT_FAILURE;
+            state->pointers[j].report->message = STORJ_REPORT_DOWNLOAD_ERROR;
 
             if (!state->shard_size) {
                 // TODO make sure all except last shard is the same size
@@ -306,13 +335,20 @@ static void request_shard(uv_work_t *work)
 
     int status_code;
 
+    req->start = get_time_milliseconds();
+
     if (fetch_shard(req->farmer_proto, req->farmer_host, req->farmer_port,
                     req->shard_hash, req->shard_total_bytes,
-                    req->shard_data, req->token, &status_code)) {
+                    req->shard_data, req->token, &status_code,
+                    &req->progress_handle)) {
+
+        req->end = get_time_milliseconds();
 
         // TODO enum error types
         req->status_code = -1;
     } else {
+
+        req->end = get_time_milliseconds();
 
         // Decrypt the shard
         if (req->decrypt_key && req->decrypt_ctr) {
@@ -327,6 +363,14 @@ static void request_shard(uv_work_t *work)
     }
 }
 
+static void free_request_shard_work(uv_handle_t *progress_handle)
+{
+    uv_work_t *work = progress_handle->data;
+
+    free(work->data);
+    free(work);
+}
+
 static void after_request_shard(uv_work_t *work, int status)
 {
     // TODO check status
@@ -335,22 +379,61 @@ static void after_request_shard(uv_work_t *work, int status)
 
     req->state->resolving_shards -= 1;
 
+    uv_handle_t *progress_handle = (uv_handle_t *) &req->progress_handle;
+
+    // free the download progress
+    free(progress_handle->data);
+
+    // assign work so that we can free after progress_handle is closed
+    progress_handle->data = work;
+
+    // update the pointer status
+    storj_pointer_t *pointer = &req->state->pointers[req->pointer_index];
+
+    pointer->report->start = req->start;
+    pointer->report->end = req->end;
+
     if (req->status_code != 200) {
         // TODO do not set state->error_status and retry the shard download
         req->state->error_status = STORJ_FARMER_REQUEST_ERROR;
-        req->state->pointers[req->pointer_index].status = POINTER_ERROR;
-        return;
+        pointer->status = POINTER_ERROR;
+        pointer->report->code = STORJ_REPORT_FAILURE;
+        pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
+    } else {
+        // TODO update downloaded bytes
+        pointer->report->code = STORJ_REPORT_SUCCESS;
+        pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
+        pointer->status = POINTER_DOWNLOADED;
+        pointer->shard_data = req->shard_data;
     }
-
-    // TODO update downloaded bytes
-
-    req->state->pointers[req->pointer_index].status = POINTER_DOWNLOADED;
-    req->state->pointers[req->pointer_index].shard_data = req->shard_data;
 
     queue_next_work(req->state);
 
-    free(work->data);
-    free(work);
+    // close the async progress handle
+    uv_close(progress_handle, free_request_shard_work);
+}
+
+static void progress_request_shard(uv_async_t* async)
+{
+
+    shard_download_progress_t *progress = async->data;
+
+    progress->state->pointers[progress->pointer_index].downloaded_size = progress->bytes;
+
+    uint64_t downloaded_bytes = 0;
+    uint64_t total_bytes = 0;
+
+    for (int i = 0; i < progress->state->total_pointers; i++) {
+
+        storj_pointer_t *pointer = &progress->state->pointers[i];
+
+        downloaded_bytes += pointer->downloaded_size;
+        total_bytes += pointer->size;
+    }
+
+    double total_progress = (double)downloaded_bytes / (double)total_bytes;
+
+    progress->state->progress_cb(total_progress);
 }
 
 static int queue_request_shards(storj_download_state_t *state)
@@ -401,6 +484,20 @@ static int queue_request_shards(storj_download_state_t *state)
             state->resolving_shards += 1;
             pointer->status = POINTER_BEING_DOWNLOADED;
 
+            // setup download progress reporting
+            shard_download_progress_t *progress =
+                malloc(sizeof(shard_download_progress_t));
+
+            progress->pointer_index = pointer->index;
+            progress->bytes = 0;
+            progress->state = state;
+
+            req->progress_handle.data = progress;
+
+            uv_async_init(state->env->loop, &req->progress_handle,
+                          progress_request_shard);
+
+            // queue download
             uv_queue_work(state->env->loop, (uv_work_t*) work,
                           request_shard, after_request_shard);
         }
@@ -488,6 +585,91 @@ static void queue_write_next_shard(storj_download_state_t *state)
     }
 }
 
+static void send_exchange_report(uv_work_t *work)
+{
+    shard_send_report_t *req = work->data;
+
+    struct json_object *body = json_object_new_object();
+
+    json_object_object_add(body, "dataHash",
+                           json_object_new_string(req->report->data_hash));
+
+    json_object_object_add(body, "reporterId",
+                           json_object_new_string(req->report->reporter_id));
+
+    json_object_object_add(body, "farmerId",
+                           json_object_new_string(req->report->farmer_id));
+
+    json_object_object_add(body, "clientId",
+                           json_object_new_string(req->report->client_id));
+
+    json_object_object_add(body, "exchangeStart",
+                           json_object_new_int64(req->report->start));
+
+    json_object_object_add(body, "exchangeEnd",
+                           json_object_new_int64(req->report->end));
+
+    json_object_object_add(body, "exchangeResultCode",
+                           json_object_new_int(req->report->code));
+
+    json_object_object_add(body, "exchangeResultMessage",
+                           json_object_new_string(req->report->message));
+
+    int status_code = 0;
+
+    // there should be an empty object in response
+    struct json_object *response = fetch_json(req->options, "POST",
+                                              "/reports/exchanges", body,
+                                              NULL, NULL, &status_code);
+    req->status_code = status_code;
+
+    free(body);
+}
+
+static void after_send_exchange_report(uv_work_t *work, int status)
+{
+    shard_send_report_t *req = work->data;
+
+    if (req->status_code == 201) {
+        req->report->send_status = 2; // report has been sent
+    } else {
+        req->report->send_status = 0; // reset report back to unsent
+    }
+
+    // TODO add debug logs on failure/success
+
+}
+
+static void queue_send_exchange_reports(storj_download_state_t *state)
+{
+    for (int i = 0; i < state->total_pointers; i++) {
+
+        storj_pointer_t *pointer = &state->pointers[i];
+
+        if (pointer->report->send_status < 1 &&
+            pointer->report->send_count < 2 &&
+            pointer->report->start > 0 &&
+            pointer->report->end > 0) {
+
+            uv_work_t *work = malloc(sizeof(uv_work_t));
+            assert(work != NULL);
+
+            shard_send_report_t *req = malloc(sizeof(shard_send_report_t));
+
+            req->options = state->env->bridge_options;
+            req->status_code = 0;
+            req->report = pointer->report;
+            req->report->send_status = 1; // being reported
+            req->report->send_count += 1;
+
+            work->data = req;
+
+            uv_queue_work(state->env->loop, (uv_work_t*) work,
+                          send_exchange_report, after_send_exchange_report);
+        }
+    }
+}
+
 static void queue_next_work(storj_download_state_t *state)
 {
     // report any errors
@@ -501,11 +683,6 @@ static void queue_next_work(storj_download_state_t *state)
     }
 
     queue_write_next_shard(state);
-
-    // report progress of download
-    if (state->total_bytes > 0 && state->downloaded_bytes > 0) {
-        state->progress_cb(state->downloaded_bytes / state->total_bytes);
-    }
 
     // report download complete
     if (state->pointers_completed &&
@@ -527,6 +704,9 @@ static void queue_next_work(storj_download_state_t *state)
     }
 
     queue_request_shards(state);
+
+    // send back download status reports to the bridge
+    queue_send_exchange_reports(state);
 }
 
 int storj_bridge_resolve_file(storj_env_t *env,
@@ -540,7 +720,6 @@ int storj_bridge_resolve_file(storj_env_t *env,
     // setup download state
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
     state->total_bytes = 0;
-    state->downloaded_bytes = 0;
     state->env = env;
     state->file_id = file_id;
     state->bucket_id = bucket_id;

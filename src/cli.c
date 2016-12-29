@@ -92,7 +92,24 @@ static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 
 static void download_file_progress(double progress)
 {
-    // TODO
+    int bar_width = 70;
+
+    printf("\r[");
+    int pos = bar_width * progress;
+    for (int i = 0; i < bar_width; ++i) {
+        if (i < pos) {
+            printf("=");
+        } else if (i == pos) {
+            printf(">");
+        } else {
+            printf(" ");
+        }
+    }
+    printf("] %.*f%%", 2, progress * 100);
+    if (progress == (double)1) {
+        printf("\n");
+    }
+    fflush(stdout);
 }
 
 static void download_file_complete(int status, FILE *fd)
