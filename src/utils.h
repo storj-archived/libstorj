@@ -13,7 +13,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/time.h>
+#endif
 
 #define OK 0
 #define ERROR 1
@@ -28,6 +33,6 @@ void random_buffer(uint8_t *buf, size_t len);
 
 uint64_t shard_size(int hops);
 
-double get_time_milliseconds();
+uint64_t get_time_milliseconds();
 
 #endif /* STORJ_UTILS_H */
