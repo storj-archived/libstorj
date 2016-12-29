@@ -698,6 +698,20 @@ int test_str2hex()
     return OK;
 }
 
+int test_get_time_milliseconds()
+{
+    double time = get_time_milliseconds();
+
+    // TODO check against another source
+    if (time) {
+        pass("test_get_time_milliseconds");
+    } else {
+        fail("test_get_time_milliseconds");
+    }
+
+    return OK;
+}
+
 int test_increment_ctr_aes_iv()
 {
     uint8_t iv[16] = {188,14,95,229,78,112,182,107,
@@ -804,6 +818,8 @@ int main(void)
 
     printf("Test Suite: Utils\n");
     status += test_str2hex();
+    ++tests_ran;
+    status += test_get_time_milliseconds();
     ++tests_ran;
 
     int num_passed = tests_ran - status;

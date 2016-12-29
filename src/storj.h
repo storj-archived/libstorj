@@ -62,6 +62,17 @@ inline char separator()
 #define STORJ_FILE_INTEGRITY_ERROR 3000
 #define STORJ_FILE_WRITE_ERROR 3001
 
+// Exchange report codes
+#define STORJ_REPORT_SUCCESS 1000;
+#define STORJ_REPORT_FAILURE 1100;
+
+// Exchange report messages
+#define STORJ_REPORT_FAILED_INTEGRITY "FAILED_INTEGRITY"
+#define STORJ_REPORT_SHARD_DOWNLOADED "SHARD_DOWNLOADED"
+#define STORJ_REPORT_SHARD_UPLOADED "SHARD_UPLOADED"
+#define STORJ_REPORT_DOWNLOAD_ERROR "DOWNLOAD_ERROR"
+#define STORJ_REPORT_UPLOAD_ERROR "TRANSFER_FAILED"
+
 typedef struct {
     char *proto;
     char *host;
@@ -96,6 +107,17 @@ typedef enum {
 } storj_bucket_op_t;
 
 static const char *BUCKET_OP[] = { "PUSH", "PULL" };
+
+typedef struct {
+    char *data_hash;
+    char *reporter_id;
+    char *farmer_id;
+    char *client_id;
+    uint64_t exchange_start;
+    uint64_t exchange_end;
+    unsigned int exchange_result_code;
+    char *exchange_result_message;
+} storj_exchange_report;
 
 typedef struct {
 } storj_shard_tree;

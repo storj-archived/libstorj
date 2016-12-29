@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <sys/time.h>
 
 #define OK 0
 #define ERROR 1
@@ -26,5 +27,7 @@ int str2hex(unsigned length, char *data, uint8_t *buffer);
 void random_buffer(uint8_t *buf, size_t len);
 
 uint64_t shard_size(int hops);
+
+double get_time_milliseconds();
 
 #endif /* STORJ_UTILS_H */

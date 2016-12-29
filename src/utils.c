@@ -47,6 +47,7 @@ int str2hex(unsigned length, char *data, uint8_t *buffer)
 
 void random_buffer(uint8_t *buf, size_t len)
 {
+    // TODO check os portability for randomness
     static FILE *frand = NULL;
 #ifdef _WIN32
     srand((unsigned)time(NULL));
@@ -68,3 +69,11 @@ uint64_t shard_size(int hops)
 {
     return (8  * (1024 * 1024)) * pow(2, hops);
 };
+
+double get_time_milliseconds() {
+    // TODO os platform portability
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    double milliseconds = t.tv_sec * 1000LL + t.tv_usec / 1000;
+    return milliseconds;
+}
