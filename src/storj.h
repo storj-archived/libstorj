@@ -144,6 +144,7 @@ typedef struct {
     uint32_t index;
     int status;
     uint64_t size;
+    char *farmer_id;
     char *farmer_address;
     int farmer_port;
 } storj_pointer_t;

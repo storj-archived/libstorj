@@ -206,12 +206,22 @@ static void append_pointers_to_state(storj_download_state_t *state,
             }
             uint32_t port = json_object_get_int(port_value);
 
+            struct json_object* farmer_id_value;
+            if (!json_object_object_get_ex(farmer_value, "nodeID",
+                                           &farmer_id_value)) {
+
+                state->error_status = STORJ_BRIDGE_JSON_ERROR;
+                return;
+            }
+            char *farmer_id = (char *)json_object_get_string(farmer_id_value);
+
             free(token_value);
             free(hash_value);
             free(size_value);
             free(index_value);
             free(address_value);
             free(port_value);
+            free(farmer_id_value);
             free(pointer);
 
             // get the relative index
@@ -224,6 +234,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
             state->pointers[j].index = index;
             state->pointers[j].farmer_address = address;
             state->pointers[j].farmer_port = port;
+            state->pointers[j].farmer_id = farmer_id;
 
             if (!state->shard_size) {
                 // TODO make sure all except last shard is the same size
