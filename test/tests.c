@@ -151,8 +151,11 @@ void check_file_pointers(uv_work_t *work_req, int status)
 
 void check_resolve_file_progress(double progress)
 {
-    printf("progress called %f\n", progress);
-    // TODO assersions
+    if (progress == (double)1) {
+        pass("storj_bridge_resolve_file (progress finished)");
+    }
+
+    // TODO check error case
 }
 
 void check_resolve_file(int status, FILE *fd)

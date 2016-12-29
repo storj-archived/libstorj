@@ -230,6 +230,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
             state->pointers[j].token = token;
             state->pointers[j].shard_hash = hash;
             state->pointers[j].size = size;
+            state->pointers[j].downloaded_size = 0;
             state->pointers[j].status = POINTER_CREATED;
             state->pointers[j].index = index;
             state->pointers[j].farmer_address = address;
@@ -417,10 +418,20 @@ static void progress_request_shard(uv_async_t* async)
 
     shard_download_progress_t *progress = async->data;
 
-    // TODO update pointer bytes downloaded
-    // TODO sum all pointers bytes loaded, and total bytes
-    // TODO update total progress
-    double total_progress = 0;
+    progress->state->pointers[progress->pointer_index].downloaded_size = progress->bytes;
+
+    uint64_t downloaded_bytes = 0;
+    uint64_t total_bytes = 0;
+
+    for (int i = 0; i < progress->state->total_pointers; i++) {
+
+        storj_pointer_t *pointer = &progress->state->pointers[i];
+
+        downloaded_bytes += pointer->downloaded_size;
+        total_bytes += pointer->size;
+    }
+
+    double total_progress = (double)downloaded_bytes / (double)total_bytes;
 
     progress->state->progress_cb(total_progress);
 }
