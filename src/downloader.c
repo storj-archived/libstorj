@@ -591,7 +591,9 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
         storj_pointer_t *pointer = &state->pointers[i];
 
         if (pointer->report->send_status < 1 &&
-            pointer->report->send_count < 2) {
+            pointer->report->send_count < 2 &&
+            pointer->report->start > 0 &&
+            pointer->report->end > 0) {
 
             uv_work_t *work = malloc(sizeof(uv_work_t));
             assert(work != NULL);
