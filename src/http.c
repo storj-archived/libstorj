@@ -23,7 +23,8 @@ int fetch_shard(char *proto,
                 ssize_t shard_total_bytes,
                 char *shard_data,
                 char *token,
-                int *status_code)
+                int *status_code,
+                uv_async_t *progress_handle)
 {
     // TODO make sure that shard_data has correct number of bytes allocated
 
@@ -53,6 +54,8 @@ int fetch_shard(char *proto,
     ssize_t bytes = 0;
     ssize_t total = 0;
 
+    ssize_t bytes_since_progress = 0;
+
     while ((bytes = ne_read_response_block(req, buf, NE_BUFSIZ)) > 0) {
         if (total + bytes > shard_total_bytes) {
             // TODO error enum types: SHARD_INTEGRITY
@@ -61,6 +64,17 @@ int fetch_shard(char *proto,
 
         memcpy(shard_data + total, buf, bytes);
         total += bytes;
+
+        bytes_since_progress += bytes;
+
+        // give progress updates at set interval
+        if (progress_handle && bytes_since_progress > SHARD_PROGRESS_INTERVAL) {
+            shard_download_progress_t *progress = progress_handle->data;
+            progress->bytes = total;
+            uv_async_send(progress_handle);
+            bytes_since_progress = 0;
+        }
+
     }
 
     if (bytes == 0) {
@@ -70,6 +84,13 @@ int fetch_shard(char *proto,
     if (total != shard_total_bytes) {
         // TODO error enum types: SHARD_INTEGRITY
         return -1;
+    }
+
+    // final progress update
+    if (progress_handle) {
+        shard_download_progress_t *progress = progress_handle->data;
+        progress->bytes = total;
+        uv_async_send(progress_handle);
     }
 
     clean_up_neon(sess, req);

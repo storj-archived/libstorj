@@ -162,7 +162,6 @@ typedef enum {
 
 typedef struct {
     uint64_t total_bytes;
-    uint64_t downloaded_bytes;
     storj_env_t *env;
     char *file_id;
     char *bucket_id;
@@ -286,6 +285,7 @@ typedef struct {
     uint64_t start;
     uint64_t end;
     uint64_t shard_total_bytes;
+    uv_async_t progress_handle;
     uint64_t byte_position;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
@@ -294,6 +294,13 @@ typedef struct {
     storj_download_state_t *state;
     int status_code;
 } shard_request_download_t;
+
+typedef struct {
+    uint32_t pointer_index;
+    uint64_t bytes;
+    /* state should not be modified in worker threads */
+    storj_download_state_t *state;
+} shard_download_progress_t;
 
 typedef struct {
     storj_bridge_options_t *options;

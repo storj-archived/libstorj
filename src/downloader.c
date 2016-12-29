@@ -338,7 +338,8 @@ static void request_shard(uv_work_t *work)
 
     if (fetch_shard(req->farmer_proto, req->farmer_host, req->farmer_port,
                     req->shard_hash, req->shard_total_bytes,
-                    req->shard_data, req->token, &status_code)) {
+                    req->shard_data, req->token, &status_code,
+                    &req->progress_handle)) {
 
         req->end = get_time_milliseconds();
 
@@ -361,6 +362,14 @@ static void request_shard(uv_work_t *work)
     }
 }
 
+static void free_request_shard_work(uv_handle_t *progress_handle)
+{
+    uv_work_t *work = progress_handle->data;
+
+    free(work->data);
+    free(work);
+}
+
 static void after_request_shard(uv_work_t *work, int status)
 {
     // TODO check status
@@ -369,6 +378,15 @@ static void after_request_shard(uv_work_t *work, int status)
 
     req->state->resolving_shards -= 1;
 
+    uv_handle_t *progress_handle = (uv_handle_t *) &req->progress_handle;
+
+    // free the download progress
+    free(progress_handle->data);
+
+    // assign work so that we can free after progress_handle is closed
+    progress_handle->data = work;
+
+    // update the pointer status
     storj_pointer_t *pointer = &req->state->pointers[req->pointer_index];
 
     pointer->report->start = req->start;
@@ -390,8 +408,21 @@ static void after_request_shard(uv_work_t *work, int status)
 
     queue_next_work(req->state);
 
-    free(work->data);
-    free(work);
+    // close the async progress handle
+    uv_close(progress_handle, free_request_shard_work);
+}
+
+static void progress_request_shard(uv_async_t* async)
+{
+
+    shard_download_progress_t *progress = async->data;
+
+    // TODO update pointer bytes downloaded
+    // TODO sum all pointers bytes loaded, and total bytes
+    // TODO update total progress
+    double total_progress = 0;
+
+    progress->state->progress_cb(total_progress);
 }
 
 static int queue_request_shards(storj_download_state_t *state)
@@ -442,6 +473,20 @@ static int queue_request_shards(storj_download_state_t *state)
             state->resolving_shards += 1;
             pointer->status = POINTER_BEING_DOWNLOADED;
 
+            // setup download progress reporting
+            shard_download_progress_t *progress =
+                malloc(sizeof(shard_download_progress_t));
+
+            progress->pointer_index = pointer->index;
+            progress->bytes = 0;
+            progress->state = state;
+
+            req->progress_handle.data = progress;
+
+            uv_async_init(state->env->loop, &req->progress_handle,
+                          progress_request_shard);
+
+            // queue download
             uv_queue_work(state->env->loop, (uv_work_t*) work,
                           request_shard, after_request_shard);
         }
@@ -628,11 +673,6 @@ static void queue_next_work(storj_download_state_t *state)
 
     queue_write_next_shard(state);
 
-    // report progress of download
-    if (state->total_bytes > 0 && state->downloaded_bytes > 0) {
-        state->progress_cb(state->downloaded_bytes / state->total_bytes);
-    }
-
     // report download complete
     if (state->pointers_completed &&
         state->completed_shards == state->total_shards) {
@@ -669,7 +709,6 @@ int storj_bridge_resolve_file(storj_env_t *env,
     // setup download state
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
     state->total_bytes = 0;
-    state->downloaded_bytes = 0;
     state->env = env;
     state->file_id = file_id;
     state->bucket_id = bucket_id;

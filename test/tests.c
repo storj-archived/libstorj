@@ -151,6 +151,7 @@ void check_file_pointers(uv_work_t *work_req, int status)
 
 void check_resolve_file_progress(double progress)
 {
+    printf("progress called %f\n", progress);
     // TODO assersions
 }
 

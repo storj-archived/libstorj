@@ -11,6 +11,8 @@
 #include <neon/ne_request.h>
 #include <neon/ne_string.h>
 
+#define SHARD_PROGRESS_INTERVAL NE_BUFSIZ * 150
+
 /**
  * @brief Make a HTTP request for a shard
  *
@@ -27,7 +29,8 @@ int fetch_shard(char *proto,
                 ssize_t shard_total_bytes,
                 char *shard_data,
                 char *token,
-                int *status_code);
+                int *status_code,
+                uv_async_t *progress_handle);
 
 /**
  * @brief Make a JSON HTTP request
