@@ -75,6 +75,10 @@ char *storj_strerror(int error_code)
             return "Bridge request authorization error";
         case STORJ_BRIDGE_TOKEN_ERROR:
             return "Bridge request token error";
+        case STORJ_BRIDGE_POINTER_ERROR:
+            return "Bridge request pointer error";
+        case STORJ_BRIDGE_REPOINTER_ERROR:
+            return "Bridge request replace pointer error";
         case STORJ_BRIDGE_TIMEOUT_ERROR:
             return "Bridge request timeout error";
         case STORJ_BRIDGE_INTERNAL_ERROR:
@@ -89,6 +93,8 @@ char *storj_strerror(int error_code)
             return "Unexpected JSON response";
         case STORJ_FARMER_REQUEST_ERROR:
             return "Farmer request error";
+        case STORJ_FARMER_EXHAUSTED_ERROR:
+            return "Farmer exhausted error";
         case STORJ_FARMER_TIMEOUT_ERROR:
             return "Farmer request timeout error";
         case STORJ_FARMER_AUTH_ERROR:

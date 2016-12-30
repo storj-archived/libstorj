@@ -52,11 +52,14 @@ inline char separator()
 #define STORJ_BRIDGE_FILE_NOTFOUND_ERROR 1007
 #define STORJ_BRIDGE_JSON_ERROR 1008
 #define STORJ_BRIDGE_FRAME_ERROR 1009
+#define STORJ_BRIDGE_POINTER_ERROR 1010
+#define STORJ_BRIDGE_REPOINTER_ERROR 1011
 
 // Farmer related errors 2000 to 2999
 #define STORJ_FARMER_REQUEST_ERROR 2000
 #define STORJ_FARMER_TIMEOUT_ERROR 2001
 #define STORJ_FARMER_AUTH_ERROR 2002
+#define STORJ_FARMER_EXHAUSTED_ERROR 2003
 
 // File related errors 3000 to 3999
 #define STORJ_FILE_INTEGRITY_ERROR 3000
@@ -120,6 +123,7 @@ typedef struct {
     char *message;
     unsigned int send_status;
     unsigned int send_count;
+    uint32_t pointer_index;
 } storj_exchange_report_t;
 
 typedef struct {
@@ -141,6 +145,7 @@ typedef void (*storj_finished_download_cb)(int status, FILE *fd);
 typedef void (*storj_finished_upload_cb)(int error_status);
 
 typedef struct {
+    unsigned int replace_count;
     char *token;
     char *shard_hash;
     char *shard_data;
@@ -154,6 +159,8 @@ typedef struct {
 } storj_pointer_t;
 
 typedef enum {
+    POINTER_BEING_REPLACED = -3,
+    POINTER_ERROR_REPORTED = -2,
     POINTER_ERROR = -1,
     POINTER_CREATED = 0,
     POINTER_BEING_DOWNLOADED = 1,
@@ -175,6 +182,7 @@ typedef struct {
     uint32_t completed_shards;
     uint32_t resolving_shards;
     storj_pointer_t *pointers;
+    char *excluded_farmer_ids;
     uint32_t total_pointers;
     bool pointers_completed;
     bool requesting_pointers;
@@ -307,10 +315,26 @@ typedef struct {
 } shard_download_progress_t;
 
 typedef struct {
+    uint32_t pointer_index;
     storj_bridge_options_t *options;
     int status_code;
     storj_exchange_report_t *report;
+    /* state should not be modified in worker threads */
+    storj_download_state_t *state;
 } shard_send_report_t;
+
+typedef struct {
+    storj_bridge_options_t *options;
+    uint32_t pointer_index;
+    char *token;
+    char *bucket_id;
+    char *file_id;
+    char *excluded_farmer_ids;
+    /* state should not be modified in worker threads */
+    storj_download_state_t *state;
+    struct json_object *response;
+    int status_code;
+} json_request_replace_pointer_t;
 
 typedef struct {
     storj_bridge_options_t *options;

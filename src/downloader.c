@@ -4,6 +4,8 @@
 #include "crypto.h"
 
 #define STORJ_DOWNLOAD_CONCURRENCY 4
+#define STORJ_DEFAULT_MIRRORS 5
+#define STORJ_MAX_REPORT_TRIES 2
 
 // TODO memory cleanup
 
@@ -122,6 +124,146 @@ static void request_pointers(uv_work_t *work)
     req->status_code = status_code;
 }
 
+static void request_replace_pointer(uv_work_t *work)
+{
+    json_request_replace_pointer_t *req = work->data;
+
+    int status_code;
+
+    char query_args[32 + strlen(req->excluded_farmer_ids)];
+    ne_snprintf(query_args, 20, "?limit=1&skip=%i&exclude=%s",
+                req->pointer_index, req->excluded_farmer_ids);
+    char *path = ne_concat("/buckets/", req->bucket_id, "/files/",
+                           req->file_id, query_args, NULL);
+
+    req->response = fetch_json(req->options, "GET", path, NULL, NULL,
+                               req->token, &status_code);
+
+    req->status_code = status_code;
+}
+
+static void set_pointer_from_json(storj_download_state_t *state,
+                                  storj_pointer_t *p, struct json_object *json,
+                                  bool is_replaced)
+{
+    // TODO free existing values if is replaced?
+
+    if (!json_object_is_type(json, json_type_object)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+
+    struct json_object *token_value;
+    if (!json_object_object_get_ex(json, "token", &token_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    char *token = (char *)json_object_get_string(token_value);
+
+    struct json_object *hash_value;
+    if (!json_object_object_get_ex(json, "hash", &hash_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    char *hash = (char *)json_object_get_string(hash_value);
+
+    struct json_object *size_value;
+    if (!json_object_object_get_ex(json, "size", &size_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    uint64_t size = json_object_get_int64(size_value);
+
+
+    struct json_object *index_value;
+    if (!json_object_object_get_ex(json, "index", &index_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    uint32_t index = json_object_get_int(index_value);
+
+    struct json_object *farmer_value;
+    if (!json_object_object_get_ex(json, "farmer", &farmer_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    if (!json_object_is_type(farmer_value, json_type_object)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+
+    struct json_object *address_value;
+    if (!json_object_object_get_ex(farmer_value, "address",
+                                   &address_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    char *address = (char *)json_object_get_string(address_value);
+
+    struct json_object *port_value;
+    if (!json_object_object_get_ex(farmer_value, "port", &port_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    uint32_t port = json_object_get_int(port_value);
+
+    struct json_object *farmer_id_value;
+    if (!json_object_object_get_ex(farmer_value, "nodeID",
+                                   &farmer_id_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    char *farmer_id = (char *)json_object_get_string(farmer_id_value);
+
+    free(token_value);
+    free(hash_value);
+    free(size_value);
+    free(index_value);
+    free(address_value);
+    free(port_value);
+    free(farmer_id_value);
+
+    if (is_replaced) {
+        p->replace_count += 1;
+    } else {
+        p->replace_count = 0;
+    }
+
+    // reset the status
+    p->status = POINTER_CREATED;
+
+    p->token = token;
+    p->shard_hash = hash;
+    p->size = size;
+    p->downloaded_size = 0;
+    p->index = index;
+    p->farmer_address = address;
+    p->farmer_port = port;
+
+    // setup exchange report values
+    p->report = malloc(
+        sizeof(storj_exchange_report_t));
+
+    char *client_id = state->env->bridge_options->user;
+    p->report->reporter_id = client_id;
+    p->report->client_id = client_id;
+    p->report->data_hash = hash;
+    p->report->farmer_id = farmer_id;
+    p->report->send_status = 0; // not sent
+    p->report->send_count = 0;
+
+    // these values will be changed in after_request_shard
+    p->report->start = 0;
+    p->report->end = 0;
+    p->report->code = STORJ_REPORT_FAILURE;
+    p->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
+
+    if (!state->shard_size) {
+        // TODO make sure all except last shard is the same size
+        state->shard_size = size;
+    };
+}
+
 static void append_pointers_to_state(storj_download_state_t *state,
                                      struct json_object *res)
 {
@@ -146,118 +288,14 @@ static void append_pointers_to_state(storj_download_state_t *state,
 
         for (int i = 0; i < length; i++) {
 
-            struct json_object *pointer = json_object_array_get_idx(res, i);
-            if (!json_object_is_type(pointer, json_type_object)) {
-                state->error_status = STORJ_BRIDGE_JSON_ERROR;
-                return;
-            }
-
-            struct json_object* token_value;
-            if (!json_object_object_get_ex(pointer, "token", &token_value)) {
-                state->error_status = STORJ_BRIDGE_JSON_ERROR;
-                return;
-            }
-            char *token = (char *)json_object_get_string(token_value);
-
-            struct json_object* hash_value;
-            if (!json_object_object_get_ex(pointer, "hash", &hash_value)) {
-                state->error_status = STORJ_BRIDGE_JSON_ERROR;
-                return;
-            }
-            char *hash = (char *)json_object_get_string(hash_value);
-
-            struct json_object* size_value;
-            if (!json_object_object_get_ex(pointer, "size", &size_value)) {
-                state->error_status = STORJ_BRIDGE_JSON_ERROR;
-                return;
-            }
-            uint64_t size = json_object_get_int64(size_value);
-
-
-            struct json_object* index_value;
-            if (!json_object_object_get_ex(pointer, "index", &index_value)) {
-                state->error_status = STORJ_BRIDGE_JSON_ERROR;
-                return;
-            }
-            uint32_t index = json_object_get_int(index_value);
-
-            struct json_object* farmer_value;
-            if (!json_object_object_get_ex(pointer, "farmer", &farmer_value)) {
-                state->error_status = STORJ_BRIDGE_JSON_ERROR;
-                return;
-            }
-            if (!json_object_is_type(farmer_value, json_type_object)) {
-                state->error_status = STORJ_BRIDGE_JSON_ERROR;
-                return;
-            }
-
-            struct json_object* address_value;
-            if (!json_object_object_get_ex(farmer_value, "address",
-                                           &address_value)) {
-                state->error_status = STORJ_BRIDGE_JSON_ERROR;
-                return;
-            }
-            char *address = (char *)json_object_get_string(address_value);
-
-            struct json_object* port_value;
-            if (!json_object_object_get_ex(farmer_value, "port", &port_value)) {
-                state->error_status = STORJ_BRIDGE_JSON_ERROR;
-                return;
-            }
-            uint32_t port = json_object_get_int(port_value);
-
-            struct json_object* farmer_id_value;
-            if (!json_object_object_get_ex(farmer_value, "nodeID",
-                                           &farmer_id_value)) {
-
-                state->error_status = STORJ_BRIDGE_JSON_ERROR;
-                return;
-            }
-            char *farmer_id = (char *)json_object_get_string(farmer_id_value);
-
-            free(token_value);
-            free(hash_value);
-            free(size_value);
-            free(index_value);
-            free(address_value);
-            free(port_value);
-            free(farmer_id_value);
-            free(pointer);
-
             // get the relative index
             int j = i + prev_total_pointers;
 
-            state->pointers[j].token = token;
-            state->pointers[j].shard_hash = hash;
-            state->pointers[j].size = size;
-            state->pointers[j].downloaded_size = 0;
-            state->pointers[j].status = POINTER_CREATED;
-            state->pointers[j].index = index;
-            state->pointers[j].farmer_address = address;
-            state->pointers[j].farmer_port = port;
+            struct json_object *json = json_object_array_get_idx(res, i);
 
-            // setup exchange report values
-            state->pointers[j].report = malloc(
-                sizeof(storj_exchange_report_t));
+            set_pointer_from_json(state, &state->pointers[j], json, false);
 
-            char *client_id = state->env->bridge_options->user;
-            state->pointers[j].report->reporter_id = client_id;
-            state->pointers[j].report->client_id = client_id;
-            state->pointers[j].report->data_hash = hash;
-            state->pointers[j].report->farmer_id = farmer_id;
-            state->pointers[j].report->send_status = 0; // not sent
-            state->pointers[j].report->send_count = 0;
-
-            // these values will be changed in after_request_shard
-            state->pointers[j].report->start = 0;
-            state->pointers[j].report->end = 0;
-            state->pointers[j].report->code = STORJ_REPORT_FAILURE;
-            state->pointers[j].report->message = STORJ_REPORT_DOWNLOAD_ERROR;
-
-            if (!state->shard_size) {
-                // TODO make sure all except last shard is the same size
-                state->shard_size = size;
-            };
+            free(json);
 
         }
     }
@@ -274,9 +312,9 @@ static void after_request_pointers(uv_work_t *work, int status)
     req->state->token = NULL;
 
     if (status != 0)  {
-        req->state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
+        req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
     } else if (req->status_code != 200) {
-        req->state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
+        req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
     } else if (!json_object_is_type(req->response, json_type_array)) {
         req->state->error_status = STORJ_BRIDGE_JSON_ERROR;
     } else {
@@ -289,16 +327,99 @@ static void after_request_pointers(uv_work_t *work, int status)
     free(work);
 }
 
-static int queue_request_pointers(storj_download_state_t *state)
+static void after_request_replace_pointer(uv_work_t *work, int status)
 {
-    if (state->requesting_pointers) {
-        return 0;
+    // TODO check status
+
+    json_request_replace_pointer_t *req = work->data;
+
+    req->state->requesting_pointers = false;
+
+    // expired token
+    req->state->token = NULL;
+
+    if (status != 0) {
+        req->state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
+    } else if (req->status_code != 200) {
+        req->state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
+    } else if (!json_object_is_type(req->response, json_type_array)) {
+        req->state->error_status = STORJ_BRIDGE_JSON_ERROR;
+    } else {
+        struct json_object *json = json_object_array_get_idx(req->response, 0);
+        // TODO check json
+
+        set_pointer_from_json(req->state,
+                              &req->state->pointers[req->pointer_index],
+                              json,
+                              true);
     }
 
-    // TODO queue request to replace pointer if any pointers have failure
+    free(work->data);
+    free(work);
+
+}
+
+static void queue_request_pointers(storj_download_state_t *state)
+{
+    if (state->requesting_pointers) {
+        return;
+    }
 
     uv_work_t *work = malloc(sizeof(uv_work_t));
     assert(work != NULL);
+
+    // queue request to replace pointer if any pointers have failure
+    for (int i = 0; i < state->total_pointers; i++) {
+
+        storj_pointer_t *pointer = &state->pointers[i];
+
+        if (pointer->replace_count >= STORJ_DEFAULT_MIRRORS) {
+            state->error_status = STORJ_FARMER_EXHAUSTED_ERROR;
+            return;
+        }
+
+        if (pointer->status == POINTER_ERROR_REPORTED) {
+
+            // exclude this farmer id from future requests
+            if (!state->excluded_farmer_ids) {
+                state->excluded_farmer_ids = calloc(41, sizeof(char));
+                strcat(state->excluded_farmer_ids, pointer->report->farmer_id);
+            } else {
+                state->excluded_farmer_ids =
+                    realloc(state->excluded_farmer_ids,
+                            strlen(state->excluded_farmer_ids) + 41);
+
+                strcat(state->excluded_farmer_ids, ",");
+                strcat(state->excluded_farmer_ids, pointer->report->farmer_id);
+            }
+
+            json_request_replace_pointer_t *req =
+                malloc(sizeof(json_request_replace_pointer_t));
+            assert(req != NULL);
+
+            req->pointer_index = i;
+            req->token = state->token;
+            req->bucket_id = state->bucket_id;
+            req->file_id = state->file_id;
+            req->state = state;
+            req->excluded_farmer_ids = state->excluded_farmer_ids;
+
+            work->data = req;
+
+            int status = uv_queue_work(state->env->loop,
+                                       (uv_work_t*) work,
+                                       request_replace_pointer,
+                                       after_request_replace_pointer);
+            // TODO check status
+
+            pointer->status = POINTER_BEING_REPLACED;
+
+            // we're done until the next pass
+            state->requesting_pointers = true;
+            return;
+        }
+
+    }
 
     json_request_download_t *req = malloc(sizeof(json_request_download_t));
     assert(req != NULL);
@@ -324,9 +445,6 @@ static int queue_request_pointers(storj_download_state_t *state)
 
     // TODO check status
     state->requesting_pointers = true;
-
-    return status;
-
 }
 
 static void request_shard(uv_work_t *work)
@@ -394,8 +512,7 @@ static void after_request_shard(uv_work_t *work, int status)
     pointer->report->end = req->end;
 
     if (req->status_code != 200) {
-        // TODO do not set state->error_status and retry the shard download
-        req->state->error_status = STORJ_FARMER_REQUEST_ERROR;
+        // TODO log debug error
         pointer->status = POINTER_ERROR;
         pointer->report->code = STORJ_REPORT_FAILURE;
         pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
@@ -630,13 +747,23 @@ static void after_send_exchange_report(uv_work_t *work, int status)
 {
     shard_send_report_t *req = work->data;
 
+    // set status so that this pointer can be replaced
+    if (req->report->send_count >= STORJ_MAX_REPORT_TRIES ||
+        req->status_code == 201) {
+
+        storj_pointer_t *pointer = &req->state->pointers[req->pointer_index];
+
+        if (pointer->status == POINTER_ERROR) {
+            pointer->status = POINTER_ERROR_REPORTED;
+        }
+    }
+
     if (req->status_code == 201) {
+        // set the status so that this pointer can be replaced
         req->report->send_status = 2; // report has been sent
     } else {
         req->report->send_status = 0; // reset report back to unsent
     }
-
-    // TODO add debug logs on failure/success
 
 }
 
@@ -647,7 +774,7 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
         storj_pointer_t *pointer = &state->pointers[i];
 
         if (pointer->report->send_status < 1 &&
-            pointer->report->send_count < 2 &&
+            pointer->report->send_count < STORJ_MAX_REPORT_TRIES &&
             pointer->report->start > 0 &&
             pointer->report->end > 0) {
 
@@ -661,6 +788,8 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
             req->report = pointer->report;
             req->report->send_status = 1; // being reported
             req->report->send_count += 1;
+            req->state = state;
+            req->pointer_index = i;
 
             work->data = req;
 

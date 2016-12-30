@@ -161,9 +161,12 @@ void check_resolve_file_progress(double progress)
 void check_resolve_file(int status, FILE *fd)
 {
     fclose(fd);
-    assert(status == 0);
-
-    pass("storj_bridge_resolve_file");
+    if (status) {
+        fail("storj_bridge_resolve_file");
+        printf("Download failed: %s", storj_strerror(status));
+    } else {
+        pass("storj_bridge_resolve_file");
+    }
 }
 
 void check_store_file_progress(double progress)
