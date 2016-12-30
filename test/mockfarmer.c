@@ -3,6 +3,8 @@
 
 #include "storjtests.h"
 
+static int e_count = 0;
+
 int mock_farmer_shard_server(void *cls,
                              struct MHD_Connection *connection,
                              const char *url,
@@ -21,6 +23,7 @@ int mock_farmer_shard_server(void *cls,
     int ret;
 
     int total_bytes = 16777216;
+    int total_bytes_sent = 16777216;
     char *page = "Not Found";
 
     struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
@@ -56,10 +59,18 @@ int mock_farmer_shard_server(void *cls,
             increment_ctr_aes_iv(ctr, total_bytes * 3);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/b3262bf52f0ce496a0f66f3a04006a275c03bc7e")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'e', total_bytes);
+            if (e_count == 0) {
+                // mock a flaky farmer w/ truncated bytes
+                total_bytes_sent = total_bytes_sent / 2;
+                page = calloc(total_bytes_sent + 1, sizeof(char));
+                memset(page, 'e', total_bytes_sent);
+            } else {
+                page = calloc(total_bytes + 1, sizeof(char));
+                memset(page, 'e', total_bytes);
+            }
             increment_ctr_aes_iv(ctr, total_bytes * 4);
             status_code = MHD_HTTP_OK;
+            e_count += 1;
         } else if (0 == strcmp(url, "/shards/0233f478fd335f8923a8a1f95b728864c71462f5")) {
             page = calloc(total_bytes + 1, sizeof(char));
             memset(page, 'f', total_bytes);
@@ -108,15 +119,15 @@ int mock_farmer_shard_server(void *cls,
         }
     }
 
-    char *crypt_page = malloc(total_bytes + 1);
+    char *crypt_page = malloc(total_bytes_sent + 1);
 
     ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
               AES_BLOCK_SIZE, ctr,
-              total_bytes, crypt_page, page);
+              total_bytes_sent, crypt_page, page);
 
     free(page);
 
-    response = MHD_create_response_from_buffer(total_bytes,
+    response = MHD_create_response_from_buffer(total_bytes_sent,
                                                (void *) crypt_page,
                                                MHD_RESPMEM_MUST_FREE);
 

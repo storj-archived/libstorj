@@ -177,6 +177,7 @@ typedef struct {
     FILE *destination;
     storj_progress_cb progress_cb;
     storj_finished_download_cb finished_cb;
+    bool finished;
     uint64_t shard_size;
     uint32_t total_shards;
     uint32_t completed_shards;

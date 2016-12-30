@@ -128,7 +128,7 @@ static void request_replace_pointer(uv_work_t *work)
 {
     json_request_replace_pointer_t *req = work->data;
 
-    int status_code;
+    int status_code = 0;
 
     char query_args[32 + strlen(req->excluded_farmer_ids)];
     ne_snprintf(query_args, 20, "?limit=1&skip=%i&exclude=%s",
@@ -421,6 +421,11 @@ static void queue_request_pointers(storj_download_state_t *state)
 
     }
 
+    // only request the next set of pointers if we're not finished
+    if (state->pointers_completed) {
+        return;
+    }
+
     json_request_download_t *req = malloc(sizeof(json_request_download_t));
     assert(req != NULL);
 
@@ -562,7 +567,7 @@ static int queue_request_shards(storj_download_state_t *state)
 
         storj_pointer_t *pointer = &state->pointers[i];
 
-        if (pointer->status <= POINTER_CREATED) {
+        if (pointer->status == POINTER_CREATED) {
             shard_request_download_t *req = malloc(sizeof(shard_request_download_t));
             assert(req != NULL);
 
@@ -765,10 +770,16 @@ static void after_send_exchange_report(uv_work_t *work, int status)
         req->report->send_status = 0; // reset report back to unsent
     }
 
+    queue_next_work(req->state);
+
+    free(work->data);
+    free(work);
+
 }
 
 static void queue_send_exchange_reports(storj_download_state_t *state)
 {
+
     for (int i = 0; i < state->total_pointers; i++) {
 
         storj_pointer_t *pointer = &state->pointers[i];
@@ -803,11 +814,15 @@ static void queue_next_work(storj_download_state_t *state)
 {
     // report any errors
     if (state->error_status != 0) {
-        // TODO make sure that finished_cb is not called multiple times
-        state->finished_cb(state->error_status, state->destination);
+        if (!state->finished) {
+            state->finished = true;
+            state->finished_cb(state->error_status, state->destination);
 
-        free(state->pointers);
-        free(state);
+            // TODO queue work to free if no pending work
+            free(state->pointers);
+            free(state);
+        }
+
         return;
     }
 
@@ -817,18 +832,23 @@ static void queue_next_work(storj_download_state_t *state)
     if (state->pointers_completed &&
         state->completed_shards == state->total_shards) {
 
-        state->finished_cb(0, state->destination);
+        if (!state->finished) {
+            state->finished = true;
+            state->finished_cb(0, state->destination);
 
-        free(state->pointers);
-        free(state);
+            // TODO queue work to free if no pending work
+            free(state->pointers);
+            free(state);
+        }
+
         return;
     }
 
-    if (!state->token && !state->pointers_completed) {
+    if (!state->token) {
         queue_request_bucket_token(state);
     }
 
-    if (state->token && !state->pointers_completed) {
+    if (state->token) {
         queue_request_pointers(state);
     }
 
@@ -855,6 +875,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->destination = destination;
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
+    state->finished = false;
     state->total_shards = 0;
     state->completed_shards = 0;
     state->resolving_shards = 0;
