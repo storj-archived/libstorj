@@ -27,4 +27,8 @@ void random_buffer(uint8_t *buf, size_t len);
 
 uint64_t shard_size(int hops);
 
+char *read_encrypted_file(char *filename, char *key);
+
+void write_encrypted_file(char *filename, char *key, char *data);
+
 #endif /* STORJ_UTILS_H */

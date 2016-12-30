@@ -61,3 +61,39 @@ uint64_t shard_size(int hops)
 {
     return (8  * (1024 * 1024)) * pow(2, hops);
 };
+
+char *read_encrypted_file(char *filename, char *key)
+{
+  FILE *fp;
+  fp = fopen(filename, "r");
+
+  if (fp != NULL) {
+    fseek(fp, 0, SEEK_END);
+    long fsize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    char *result = malloc(fsize + 1);
+    fread(result, fsize, 1, fp);
+
+    if (ferror(fp)) {
+      return NULL;
+    }
+    fclose(fp);
+
+    result[fsize] = '\0';
+    return result;
+  }
+
+  return NULL;
+};
+
+void write_encrypted_file(char *filename, char *key, char *data)
+{
+  FILE *fp;
+  fp = fopen(filename, "w");
+
+  if (fp != NULL) {
+    fputs(data, fp);
+    fclose(fp);
+  }
+};

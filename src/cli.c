@@ -2,8 +2,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <sys/stat.h>
 
 #include "storj.h"
+#include "utils.h"
 
 extern int errno;
 
@@ -22,7 +24,8 @@ extern int errno;
     "options:\n\n"                                                      \
     "  -h, --help                output usage information\n"            \
     "  -V, --version             output the version number\n"           \
-    "  -u, --url <url>           set the base url for the api\n\n"      \
+    "  -u, --url <url>           set the base url for the api\n"        \
+    "  set-auth                  set user, password, and mnemonic\n\n"  \
 
 void upload_file_progress(double progress)
 {
@@ -43,6 +46,9 @@ void upload_file_complete(int status)
 static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 {
     char *mnemonic = getenv("STORJ_MNEMONIC");
+    if (!mnemonic && access(".storj/mnemonic", F_OK) != -1) {
+      mnemonic = read_encrypted_file(".storj/mnemonic", "key");
+    }
     if (!mnemonic) {
         printf("Set your STORJ_MNEMONIC\n");
         exit(1);
@@ -272,6 +278,58 @@ static void get_info_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+static void set_auth()
+{
+  char *user;
+  char *user_input;
+  size_t user_input_size = 1024;
+  size_t num_chars;
+  user_input = calloc(user_input_size, sizeof(char));
+  if (user_input == NULL) {
+      printf("Unable to allocate buffer");
+      exit(1);
+  }
+  printf("Username (email): ");
+  num_chars = getline(&user_input, &user_input_size, stdin);
+  user = calloc(num_chars - 1, sizeof(char));
+  memcpy(user, user_input, num_chars * sizeof(char) - 1);
+
+  char *pass;
+  pass = getpass("Password: ");
+
+  char *mnemonic;
+  char *mnemonic_input;
+  size_t mnemonic_input_size = 1024;
+  mnemonic_input = calloc(mnemonic_input_size, sizeof(char));
+  if (mnemonic_input == NULL) {
+      printf("Unable to allocate buffer");
+      exit(1);
+  }
+  printf("Mnemonic: ");
+  num_chars = getline(&mnemonic_input, &mnemonic_input_size, stdin);
+  mnemonic = calloc(num_chars - 1, sizeof(char));
+  memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char) - 1);
+
+  struct stat st = {0};
+
+  if (stat(".storj", &st) == -1) {
+    printf("storj directory does not exist");
+    mkdir(".storj", 0700);
+  } else {
+    printf("storj directory exists");
+  }
+
+  if (user[0] != '\0') {
+    write_encrypted_file(".storj/user", "key", user);
+  }
+  if (pass[0] != '\0') {
+    write_encrypted_file(".storj/pass", "key", pass);
+  }
+  if (mnemonic[0] != '\0') {
+    write_encrypted_file(".storj/mnemonic", "key", mnemonic);
+  }
+}
+
 int main(int argc, char **argv)
 {
     int status = 0;
@@ -313,6 +371,11 @@ int main(int argc, char **argv)
         goto end_program;
     }
 
+    if (strcmp(command, "set-auth") == 0) {
+      set_auth();
+      exit(0);
+    }
+
     if (!storj_bridge) {
         storj_bridge = "https://api.storj.io:443/";
     }
@@ -327,6 +390,9 @@ int main(int argc, char **argv)
 
     // Get the bridge user
     char *user = getenv("STORJ_BRIDGE_USER");
+    if (!user && access(".storj/user", F_OK) != -1) {
+      user = read_encrypted_file(".storj/user", "key");
+    }
     if (!user) {
         char *user_input;
         size_t user_input_size = 1024;
@@ -344,6 +410,9 @@ int main(int argc, char **argv)
 
     // Get the bridge password
     char *pass = getenv("STORJ_BRIDGE_PASS");
+    if (!pass && access(".storj/pass", F_OK) != -1) {
+      pass = read_encrypted_file(".storj/pass", "key");
+    }
     if (!pass) {
         pass = getpass("Password: ");
     }
