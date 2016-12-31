@@ -937,11 +937,13 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->resolving_shards = 0;
     state->total_pointers = 0;
     state->pointers_completed = false;
+    state->pointer_fail_count = 0;
     state->requesting_pointers = false;
     state->error_status = STORJ_TRANSFER_OK;
     state->writing = false;
     state->token = NULL;
     state->requesting_token = false;
+    state->token_fail_count = 0;
     state->shard_size = 0;
 
     // determine the decryption key
