@@ -96,25 +96,29 @@ int mock_bridge_server(void *cls,
                 status_code = MHD_HTTP_OK;
             }
         } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/files/998960317b6725a3f8080c2b")) {
-            if (check_auth(user, pass, &status_code, page)) {
+            // TODO check token auth
 
-                const char* skip = MHD_lookup_connection_value(connection,
-                                                               MHD_GET_ARGUMENT_KIND,
-                                                               "skip");
-                if (!skip || 0 == strcmp(skip, "0")) {
-                    page = get_response_string(responses, "getfilepointers-0");
-                    status_code = MHD_HTTP_OK;
-                } else if (0 == strcmp(skip, "6")) {
-                    page = get_response_string(responses, "getfilepointers-1");
-                    status_code = MHD_HTTP_OK;
-                } else if (0 == strcmp(skip, "12")) {
-                    page = get_response_string(responses, "getfilepointers-2");
-                    status_code = MHD_HTTP_OK;
-                } else {
-                    page = "[]";
-                    status_code = MHD_HTTP_OK;
-                }
+            const char* skip = MHD_lookup_connection_value(connection,
+                                                           MHD_GET_ARGUMENT_KIND,
+                                                           "skip");
+            if (!skip || 0 == strcmp(skip, "0")) {
+                page = get_response_string(responses, "getfilepointers-0");
+                status_code = MHD_HTTP_OK;
+            } else if (0 == strcmp(skip, "6")) {
+                page = get_response_string(responses, "getfilepointers-1");
+                status_code = MHD_HTTP_OK;
+            } else if (0 == strcmp(skip, "12")) {
+                page = get_response_string(responses, "getfilepointers-2");
+                status_code = MHD_HTTP_OK;
+            } else if (0 == strcmp(skip, "4")) {
+                // TODO check exclude and limit query
+                page = get_response_string(responses, "getfilepointers-r");
+                status_code = MHD_HTTP_OK;
+            } else {
+                page = "[]";
+                status_code = MHD_HTTP_OK;
             }
+
         } else if (0 == strcmp(url, "/frames")) {
             if (check_auth(user, pass, &status_code, page)) {
                 page = get_response_string(responses, "getframes");

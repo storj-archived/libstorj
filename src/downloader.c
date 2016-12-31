@@ -131,8 +131,11 @@ static void request_replace_pointer(uv_work_t *work)
     int status_code = 0;
 
     char query_args[32 + strlen(req->excluded_farmer_ids)];
-    ne_snprintf(query_args, 20, "?limit=1&skip=%i&exclude=%s",
-                req->pointer_index, req->excluded_farmer_ids);
+    ne_snprintf(query_args, 25 + strlen(req->excluded_farmer_ids),
+                "?limit=1&skip=%i&exclude=%s",
+                req->pointer_index,
+                req->excluded_farmer_ids);
+
     char *path = ne_concat("/buckets/", req->bucket_id, "/files/",
                            req->file_id, query_args, NULL);
 
@@ -348,11 +351,15 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
         struct json_object *json = json_object_array_get_idx(req->response, 0);
         // TODO check json
 
+        // TODO check that the index of pointer matches what is expected
+
         set_pointer_from_json(req->state,
                               &req->state->pointers[req->pointer_index],
                               json,
                               true);
     }
+
+    queue_next_work(req->state);
 
     free(work->data);
     free(work);
@@ -398,6 +405,8 @@ static void queue_request_pointers(storj_download_state_t *state)
             assert(req != NULL);
 
             req->pointer_index = i;
+
+            req->options = state->env->bridge_options;
             req->token = state->token;
             req->bucket_id = state->bucket_id;
             req->file_id = state->file_id;
@@ -837,6 +846,9 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished_cb(0, state->destination);
 
             // TODO queue work to free if no pending work
+            // and also check that if it's not finished yet all work
+            // has been exhausted
+
             free(state->pointers);
             free(state);
         }

@@ -2293,5 +2293,22 @@
       "index": 13,
       "size": 16777216
     }
+  ],
+  "getfilepointers-r": [
+    {
+      "token": "2d9ae13d317209c1523b80716f186f887a4c7d3a",
+      "hash": "b3262bf52f0ce496a0f66f3a04006a275c03bc7e",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "15a02aed7a92e593d03d6cd1f43c0ab504131296",
+        "lastSeen": 1480963977022
+      },
+      "operation": "PULL",
+      "index": 4,
+      "size": 16777216
+    }
   ]
 }
