@@ -7,6 +7,7 @@
 #define STORJ_DEFAULT_MIRRORS 5
 #define STORJ_MAX_REPORT_TRIES 2
 #define STORJ_MAX_TOKEN_TRIES 3
+#define STORJ_MAX_POINTER_TRIES 2
 
 // TODO memory cleanup
 
@@ -130,11 +131,15 @@ static void request_pointers(uv_work_t *work)
 {
     json_request_download_t *req = work->data;
 
-    int status_code;
+    int status_code = 0;
     req->response = fetch_json(req->options, req->method, req->path, req->body,
                                req->auth, req->token, &status_code);
 
     req->status_code = status_code;
+
+    if (!req->response) {
+        req->status_code = -1;
+    }
 }
 
 static void request_replace_pointer(uv_work_t *work)
@@ -156,6 +161,10 @@ static void request_replace_pointer(uv_work_t *work)
                                req->token, &status_code);
 
     req->status_code = status_code;
+
+    if (!req->response) {
+        req->status_code = -1;
+    }
 }
 
 static void set_pointer_from_json(storj_download_state_t *state,
@@ -330,7 +339,17 @@ static void after_request_pointers(uv_work_t *work, int status)
     if (status != 0)  {
         req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
     } else if (req->status_code != 200) {
-        req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+        if (req->status_code > 0 && req->status_code < 500) {
+            req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+        } else {
+            req->state->pointer_fail_count += 1;
+        }
+
+        if (req->state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
+            req->state->pointer_fail_count = 0;
+            req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+        }
+
     } else if (!json_object_is_type(req->response, json_type_array)) {
         req->state->error_status = STORJ_BRIDGE_JSON_ERROR;
     } else {
@@ -358,6 +377,18 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
         req->state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
     } else if (req->status_code != 200) {
         req->state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
+
+        if (req->status_code > 0 && req->status_code < 500) {
+            req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+        } else {
+            req->state->pointer_fail_count += 1;
+        }
+
+        if (req->state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
+            req->state->pointer_fail_count = 0;
+            req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+        }
+
     } else if (!json_object_is_type(req->response, json_type_array)) {
         req->state->error_status = STORJ_BRIDGE_JSON_ERROR;
     } else {
