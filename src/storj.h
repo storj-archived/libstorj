@@ -186,11 +186,13 @@ typedef struct {
     char *excluded_farmer_ids;
     uint32_t total_pointers;
     bool pointers_completed;
+    uint32_t pointer_fail_count;
     bool requesting_pointers;
     int error_status;
     bool writing;
     char *token;
     bool requesting_token;
+    uint32_t token_fail_count;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
 } storj_download_state_t;

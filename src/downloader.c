@@ -6,6 +6,7 @@
 #define STORJ_DOWNLOAD_CONCURRENCY 4
 #define STORJ_DEFAULT_MIRRORS 5
 #define STORJ_MAX_REPORT_TRIES 2
+#define STORJ_MAX_TOKEN_TRIES 3
 
 // TODO memory cleanup
 
@@ -73,9 +74,21 @@ static void after_request_token(uv_work_t *work, int status)
     } else if (req->status_code == 201) {
         req->download_state->token = req->token;
     } else if (req->error_status){
-        req->download_state->error_status = req->error_status;
+        switch (req->error_status) {
+            case STORJ_BRIDGE_REQUEST_ERROR:
+            case STORJ_BRIDGE_INTERNAL_ERROR:
+                req->download_state->token_fail_count += 1;
+                break;
+            default:
+                req->download_state->error_status = req->error_status;
+                break;
+        }
+        if (req->download_state->token_fail_count >= STORJ_MAX_TOKEN_TRIES) {
+            req->download_state->token_fail_count = 0;
+            req->download_state->error_status = req->error_status;
+        }
+
     } else {
-        // TODO retry logic
         req->download_state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     }
 
