@@ -67,6 +67,11 @@ extern "C" {
 #define STORJ_REPORT_DOWNLOAD_ERROR "DOWNLOAD_ERROR"
 #define STORJ_REPORT_UPLOAD_ERROR "TRANSFER_FAILED"
 
+/** @brief Bridge configuration options
+ *
+ * Proto can be "http" or "https", and the user/pass are used for
+ * basic authentication to a Storj bridge.
+ */
 typedef struct {
     char *proto;
     char *host;
@@ -75,10 +80,20 @@ typedef struct {
     char *pass;
 } storj_bridge_options_t;
 
+/** @brief File encryption options
+ *
+ * The mnemonic is a BIP39 secret code used for generating keys for file
+ * encryption and decryption.
+ */
 typedef struct storj_encrypt_options {
     char *mnemonic;
 } storj_encrypt_options_t;
 
+/** @brief A structure for a Storj user environment.
+ *
+ * This is the highest level structure and holds many commonly used options
+ * and the event loop for queuing work.
+ */
 typedef struct storj_env {
     storj_bridge_options_t *bridge_options;
     storj_encrypt_options_t *encrypt_options;
