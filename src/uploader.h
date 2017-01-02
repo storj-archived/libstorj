@@ -79,6 +79,15 @@ typedef struct {
     int error_status;
 } frame_request_t;
 
+inline char separator()
+{
+#ifdef _WIN32
+    return '\\';
+#else
+    return '/';
+#endif
+}
+
 static void queue_next_work(storj_upload_state_t *state);
 
 static int queue_request_bucket_token(storj_upload_state_t *state);
