@@ -168,50 +168,6 @@ typedef struct {
 } storj_frame_t;
 
 typedef struct {
-    storj_env_t *env;
-    uint32_t file_concurrency;
-    uint32_t shard_concurrency;
-    char *file_id;
-    char *file_name;
-    char *file_path;
-    char *file_key;
-    uint64_t file_size;
-    char *tmp_path;
-    char *bucket_id;
-    char *bucket_key;
-    uint32_t completed_shards;
-    uint32_t total_shards;
-    uint64_t shard_size;
-    uint64_t total_bytes;
-    uint64_t uploaded_bytes;
-    bool writing;
-    bool encrypting_file;
-    bool completed_encryption;
-    char *token;
-    bool requesting_token;
-    char *frame_id;
-    bool requesting_frame;
-    int token_request_count;
-    int frame_request_count;
-    int encrypt_file_count;
-    bool final_callback_called;
-    storj_progress_cb progress_cb;
-    storj_finished_upload_cb finished_cb;
-    char *mnemonic;
-    int error_status;
-} storj_upload_state_t;
-
-typedef struct {
-   char *file_id;
-   char *file_key;
-   char *file_path;
-   char *file_name;
-   char *tmp_path;
-   uint64_t file_size;
-   storj_upload_state_t *upload_state;
-} encrypt_file_meta_t;
-
-typedef struct {
     int file_concurrency;
     int shard_concurrency;
     char *bucket_id;
@@ -219,26 +175,6 @@ typedef struct {
     char *key_pass;
     char *mnemonic;
 } storj_upload_opts_t;
-
-typedef struct {
-    storj_bridge_options_t *options;
-    char *token;
-    char *bucket_id;
-    char *bucket_op;
-    /* state should not be modified in worker threads */
-    storj_upload_state_t *upload_state;
-    int status_code;
-    int error_status;
-} token_request_token_t;
-
-typedef struct {
-    storj_bridge_options_t *options;
-    /* state should not be modified in worker threads */
-    storj_upload_state_t *upload_state;
-    char *frame_id;
-    int status_code;
-    int error_status;
-} frame_request_t;
 
 storj_env_t *storj_init_env(storj_bridge_options_t *options,
                             storj_encrypt_options_t *encrypt_options);
