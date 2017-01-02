@@ -13,6 +13,13 @@
 
 #define SHARD_PROGRESS_INTERVAL NE_BUFSIZ * 150
 
+typedef struct {
+    uint32_t pointer_index;
+    uint64_t bytes;
+    /* state should not be modified in worker threads */
+    void *state;
+} shard_download_progress_t;
+
 /**
  * @brief Make a HTTP request for a shard
  *

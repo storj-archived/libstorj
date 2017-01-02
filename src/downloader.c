@@ -4,7 +4,7 @@
 
 static void request_token(uv_work_t *work)
 {
-    token_request_token_t *req = work->data;
+    token_request_download_t *req = work->data;
 
     char *path = ne_concat("/buckets/", req->bucket_id, "/tokens", NULL);
 
@@ -54,34 +54,34 @@ static void request_token(uv_work_t *work)
 static void after_request_token(uv_work_t *work, int status)
 {
 
-    token_request_token_t *req = work->data;
+    token_request_download_t *req = work->data;
 
-    req->download_state->requesting_token = false;
+    req->state->requesting_token = false;
 
     if (status != 0) {
-        req->download_state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
+        req->state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     } else if (req->status_code == 201) {
-        req->download_state->token = req->token;
+        req->state->token = req->token;
     } else if (req->error_status){
         switch (req->error_status) {
             case STORJ_BRIDGE_REQUEST_ERROR:
             case STORJ_BRIDGE_INTERNAL_ERROR:
-                req->download_state->token_fail_count += 1;
+                req->state->token_fail_count += 1;
                 break;
             default:
-                req->download_state->error_status = req->error_status;
+                req->state->error_status = req->error_status;
                 break;
         }
-        if (req->download_state->token_fail_count >= STORJ_MAX_TOKEN_TRIES) {
-            req->download_state->token_fail_count = 0;
-            req->download_state->error_status = req->error_status;
+        if (req->state->token_fail_count >= STORJ_MAX_TOKEN_TRIES) {
+            req->state->token_fail_count = 0;
+            req->state->error_status = req->error_status;
         }
 
     } else {
-        req->download_state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
+        req->state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     }
 
-    queue_next_work(req->download_state);
+    queue_next_work(req->state);
 
     free(req);
     free(work);
@@ -96,13 +96,13 @@ static int queue_request_bucket_token(storj_download_state_t *state)
     uv_work_t *work = malloc(sizeof(uv_work_t));
     assert(work != NULL);
 
-    token_request_token_t *req = malloc(sizeof(token_request_token_t));
+    token_request_download_t *req = malloc(sizeof(token_request_download_t));
     assert(req != NULL);
 
     req->options = state->env->bridge_options;
     req->bucket_id = state->bucket_id;
     req->bucket_op = (char *)BUCKET_OP[BUCKET_PULL];
-    req->download_state = state;
+    req->state = state;
     work->data = req;
 
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
@@ -581,14 +581,16 @@ static void progress_request_shard(uv_async_t* async)
 
     shard_download_progress_t *progress = async->data;
 
-    progress->state->pointers[progress->pointer_index].downloaded_size = progress->bytes;
+    storj_download_state_t *state = progress->state;
+
+    state->pointers[progress->pointer_index].downloaded_size = progress->bytes;
 
     uint64_t downloaded_bytes = 0;
     uint64_t total_bytes = 0;
 
-    for (int i = 0; i < progress->state->total_pointers; i++) {
+    for (int i = 0; i < state->total_pointers; i++) {
 
-        storj_pointer_t *pointer = &progress->state->pointers[i];
+        storj_pointer_t *pointer = &state->pointers[i];
 
         downloaded_bytes += pointer->downloaded_size;
         total_bytes += pointer->size;
@@ -596,7 +598,7 @@ static void progress_request_shard(uv_async_t* async)
 
     double total_progress = (double)downloaded_bytes / (double)total_bytes;
 
-    progress->state->progress_cb(total_progress);
+    state->progress_cb(total_progress);
 }
 
 static int queue_request_shards(storj_download_state_t *state)
