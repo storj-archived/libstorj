@@ -131,20 +131,6 @@ typedef struct {
     uint32_t pointer_index;
 } storj_exchange_report_t;
 
-typedef struct {
-} storj_shard_tree;
-
-typedef struct {
-} storj_shard_challenges;
-
-typedef struct {
-    int index;
-    char *hash;
-    uint64_t size;
-    storj_shard_tree tree;
-    storj_shard_challenges challenges;
-} storj_shard_t;
-
 typedef void (*storj_progress_cb)(double progress);
 typedef void (*storj_finished_download_cb)(int status, FILE *fd);
 typedef void (*storj_finished_upload_cb)(int error_status);
@@ -162,15 +148,6 @@ typedef struct {
     int farmer_port;
     storj_exchange_report_t *report;
 } storj_pointer_t;
-
-typedef struct {
-    int code;
-    char *message;
-} storj_error_t;
-
-typedef struct {
-    char *frame_id;
-} storj_frame_t;
 
 typedef struct {
     int file_concurrency;
@@ -321,18 +298,6 @@ int storj_bridge_get_frame(storj_env_t *env,
 int storj_bridge_delete_frame(storj_env_t *env,
                               char *frame_id,
                               uv_after_work_cb cb);
-
-/**
- * @brief Add a shard to a frame
- *
- * @param[in] env The storj environment struct
- * @param[in] cb A function called with response when complete
- * @return A non-zero error value on failure and 0 on success.
- */
-int storj_bridge_add_shard_to_frame(storj_env_t *env,
-                                    char *frame_id,
-                                    storj_shard_t *shard,
-                                    uv_after_work_cb cb);
 
 /**
  * @brief Get metadata for a file

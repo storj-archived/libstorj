@@ -239,14 +239,6 @@ int storj_bridge_delete_frame(storj_env_t *env, char *frame_id,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_add_shard_to_frame(storj_env_t *env,
-                                    char *frame_id,
-                                    storj_shard_t *shard,
-                                    uv_after_work_cb cb)
-{
-    (void) 0;
-}
-
 int storj_bridge_get_file_info(storj_env_t *env,
                                char *bucket_id,
                                char *file_id,
