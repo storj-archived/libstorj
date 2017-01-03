@@ -186,6 +186,17 @@ typedef struct {
     char *mnemonic;
 } storj_upload_opts_t;
 
+/**
+ * @brief Initialize a Storj environment
+ *
+ * This will setup an event loop for queueing further actions, as well
+ * as define necessary configuration options for communicating with Storj
+ * bridge, and for encrypting/decrypting files.
+ *
+ * @param[in] options
+ * @param[in] encrypt_options
+ * @return A null value on error, otherwise a storj_env pointer.
+ */
 storj_env_t *storj_init_env(storj_bridge_options_t *options,
                             storj_encrypt_options_t *encrypt_options);
 
