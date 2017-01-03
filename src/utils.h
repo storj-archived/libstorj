@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include "crypto.h"
 
 #define OK 0
 #define ERROR 1

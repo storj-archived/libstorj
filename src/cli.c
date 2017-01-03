@@ -310,6 +310,9 @@ static void set_auth()
   mnemonic = calloc(num_chars - 1, sizeof(char));
   memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char) - 1);
 
+  char *key;
+  key = getpass("Encryption key: ");
+
   struct stat st = {0};
 
   if (stat(".storj", &st) == -1) {
@@ -320,13 +323,13 @@ static void set_auth()
   }
 
   if (user[0] != '\0') {
-    write_encrypted_file(".storj/user", "key", user);
+    write_encrypted_file(".storj/user", NULL, user);
   }
   if (pass[0] != '\0') {
-    write_encrypted_file(".storj/pass", "key", pass);
+    write_encrypted_file(".storj/pass", key, pass);
   }
   if (mnemonic[0] != '\0') {
-    write_encrypted_file(".storj/mnemonic", "key", mnemonic);
+    write_encrypted_file(".storj/mnemonic", key, mnemonic);
   }
 }
 
@@ -389,9 +392,11 @@ int main(int argc, char **argv)
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
 
     // Get the bridge user
+    char *encryptionKey;
     char *user = getenv("STORJ_BRIDGE_USER");
     if (!user && access(".storj/user", F_OK) != -1) {
-      user = read_encrypted_file(".storj/user", "key");
+      encryptionKey = getpass("Encryption key: ");
+      user = read_encrypted_file(".storj/user", NULL);
     }
     if (!user) {
         char *user_input;
@@ -410,8 +415,9 @@ int main(int argc, char **argv)
 
     // Get the bridge password
     char *pass = getenv("STORJ_BRIDGE_PASS");
-    if (!pass && access(".storj/pass", F_OK) != -1) {
-      pass = read_encrypted_file(".storj/pass", "key");
+    if (!pass && access(".storj/pass", F_OK) != -1 && encryptionKey != NULL) {
+      pass = read_encrypted_file(".storj/pass", encryptionKey);
+      printf("decrypted pass: %s", pass);
     }
     if (!pass) {
         pass = getpass("Password: ");

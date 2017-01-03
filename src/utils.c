@@ -80,6 +80,34 @@ char *read_encrypted_file(char *filename, char *key)
     }
     fclose(fp);
 
+    if (key != NULL) {
+      // Convert key to password
+      uint8_t *pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(char));
+      sha256_of_str(key, DETERMINISTIC_KEY_SIZE, pass);
+      pass[SHA256_DIGEST_SIZE] = '\0';
+
+      // Convert user email to salt
+      // uint8_t *salt = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(char));
+      // ripemd160_of_str("user@example.com", sizeof("user@example.com"), salt);
+      // salt[RIPEMD160_DIGEST_SIZE] = '\0';
+
+      // Decrypt data
+      struct aes256_ctx *ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
+      aes256_set_decrypt_key(ctx, pass);
+      // We only need the first 16 bytes of the salt because it's CTR mode
+      // char *iv = calloc(AES_BLOCK_SIZE, sizeof(char));
+      // memcpy(iv, salt, AES_BLOCK_SIZE);
+
+      aes256_decrypt(ctx, AES_BLOCK_SIZE * 10, result, result);
+
+      free(ctx);
+      // free(iv);
+      // free(salt);
+      free(pass);
+
+      return result;
+    }
+
     result[fsize] = '\0';
     return result;
   }
@@ -93,6 +121,38 @@ void write_encrypted_file(char *filename, char *key, char *data)
   fp = fopen(filename, "w");
 
   if (fp != NULL) {
+    if (key != NULL) {
+      // Convert key to password
+      uint8_t *pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(char));
+      sha256_of_str(key, DETERMINISTIC_KEY_SIZE, pass);
+      pass[SHA256_DIGEST_SIZE] = '\0';
+
+      // Convert user email to salt
+      // uint8_t *salt = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(char));
+      // ripemd160_of_str("user@example.com", sizeof("user@example.com"), salt);
+      // salt[RIPEMD160_DIGEST_SIZE] = '\0';
+
+      // Encrypt data
+      struct aes256_ctx *ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
+      aes256_set_encrypt_key(ctx, pass);
+      // We only need the first 16 bytes of the salt because it's CTR mode
+      // char *iv = calloc(AES_BLOCK_SIZE, sizeof(char));
+      // memcpy(iv, salt, AES_BLOCK_SIZE);
+
+      char *result = malloc(AES_BLOCK_SIZE * 10);
+      aes256_encrypt(ctx, AES_BLOCK_SIZE * 10, result, data);
+
+      fputs(result, fp);
+      fclose(fp);
+
+      free(ctx);
+      // free(iv);
+      // free(salt);
+      free(pass);
+      free(result);
+      return;
+    }
+
     fputs(data, fp);
     fclose(fp);
   }
