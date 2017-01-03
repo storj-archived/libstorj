@@ -100,6 +100,8 @@ typedef struct storj_env {
     uv_loop_t *loop;
 } storj_env_t;
 
+/** @brief A structure for queueing json request work
+ */
 typedef struct {
     storj_bridge_options_t *options;
     char *method;
@@ -117,6 +119,11 @@ typedef enum {
 
 static const char *BUCKET_OP[] = { "PUSH", "PULL" };
 
+/** @brief A data structure that represents an exchange report
+ *
+ * These are sent at the end of an exchange with a farmer to report the
+ * performance and reliability of farmers.
+ */
 typedef struct {
     char *data_hash;
     char *reporter_id;
@@ -131,10 +138,29 @@ typedef struct {
     uint32_t pointer_index;
 } storj_exchange_report_t;
 
+/** @brief A function signature for download/upload progress callback
+ */
 typedef void (*storj_progress_cb)(double progress);
+
+/** @brief A function signature for a download complete callback
+ */
 typedef void (*storj_finished_download_cb)(int status, FILE *fd);
+
+/** @brief A function signature for an upload complete callback
+ */
 typedef void (*storj_finished_upload_cb)(int error_status);
 
+/** @brief A structure that represents a pointer to a shard
+ *
+ * A shard is an encrypted piece of a file, a pointer holds all necessary
+ * information to retrieve a shard from a farmer, including the IP address
+ * and port of the farmer, as well as a token indicating a transfer has been
+ * authorized. Other necessary information such as the expected hash of the
+ * data, and the index position in the file is also included.
+ *
+ * The data can be replaced with new farmer contact, in case of failure, and the
+ * total number of replacements can be tracked.
+ */
 typedef struct {
     unsigned int replace_count;
     char *token;
@@ -149,6 +175,8 @@ typedef struct {
     storj_exchange_report_t *report;
 } storj_pointer_t;
 
+/** @brief A structure for file upload options
+ */
 typedef struct {
     int file_concurrency;
     int shard_concurrency;
