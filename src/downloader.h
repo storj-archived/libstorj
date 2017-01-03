@@ -18,6 +18,13 @@
 #define STORJ_MAX_TOKEN_TRIES 3
 #define STORJ_MAX_POINTER_TRIES 2
 
+/** @brief Enumerable that defines that status of a pointer
+ *
+ * A pointer will begin as created, and move forward until an error
+ * occurs, in which case it will start moving backwards from the error
+ * state until it has been replaced and reset back to created. This process
+ * can continue until success.
+ */
 typedef enum {
     POINTER_BEING_REPLACED = -3,
     POINTER_ERROR_REPORTED = -2,
@@ -29,6 +36,15 @@ typedef enum {
     POINTER_WRITTEN = 4
 } storj_pointer_status_t;
 
+/** @brief A structure that keeps state between multiple worker threads.
+ *
+ * After work has been completed in a thread, its after work callback will
+ * update and modify the state and then queue the next set of work based on the
+ * changes, and added to the event loop. The state is all managed within one
+ * thread, the event loop thread, and any work that is performed in another
+ * thread should not modify this structure directly, but should pass a
+ * reference to it, so that once the work is complete the state can be updated.
+ */
 typedef struct {
     uint64_t total_bytes;
     storj_env_t *env;
@@ -57,6 +73,9 @@ typedef struct {
     uint8_t *decrypt_ctr;
 } storj_download_state_t;
 
+/** @brief A structure for sharing data with worker threads for writing
+ * a shard to a file decriptor.
+ */
 typedef struct {
     char *shard_data;
     ssize_t shard_total_bytes;
@@ -67,6 +86,9 @@ typedef struct {
     storj_download_state_t *state;
 } shard_request_write_t;
 
+/** @brief A structure for sharing data with worker threads for downloading
+ * shards from farmers.
+ */
 typedef struct {
     char *farmer_proto;
     char *farmer_host;
@@ -87,6 +109,9 @@ typedef struct {
     int status_code;
 } shard_request_download_t;
 
+/** @brief A structure for sharing data with worker threads for sending
+ * exchange reports to the bridge.
+ */
 typedef struct {
     uint32_t pointer_index;
     storj_bridge_options_t *options;
@@ -96,6 +121,9 @@ typedef struct {
     storj_download_state_t *state;
 } shard_send_report_t;
 
+/** @brief A structure for sharing data with worker threads for replacing a
+ * pointer with a new farmer.
+ */
 typedef struct {
     storj_bridge_options_t *options;
     uint32_t pointer_index;
@@ -109,6 +137,9 @@ typedef struct {
     int status_code;
 } json_request_replace_pointer_t;
 
+/** @brief A structure for sharing data with worker threads for making JSON
+ * requests with the bridge.
+ */
 typedef struct {
     storj_bridge_options_t *options;
     char *method;
@@ -122,6 +153,9 @@ typedef struct {
     int status_code;
 } json_request_download_t;
 
+/** @brief A structure for sharing data with worker threads for requesting
+ * a bucket operation token from the bridge.
+ */
 typedef struct {
     storj_bridge_options_t *options;
     char *token;
@@ -133,6 +167,14 @@ typedef struct {
     int error_status;
 } token_request_download_t;
 
+/** @brief A method that determines the next work necessary to download a file
+ *
+ * This method is called after each individual work is complete, and will
+ * determine and queue the next set of work that needs to be completed. Once
+ * the file is completely downloaded, it will call the finished callback.
+ *
+ * This method should only be called with in the main loop thread.
+ */
 static void queue_next_work(storj_download_state_t *state);
 
 #endif /* STORJ_DOWNLOADER_H */
