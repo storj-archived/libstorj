@@ -111,25 +111,25 @@ static void create_frame(uv_work_t *work)
 
     uint8_t *shard_data = calloc(state->shard_size, sizeof(char));
     char *shard_hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 1, sizeof(char));
+    size_t read_bytes;
 
     for (index = 0; index < state->total_shards; index++ ) {
         printf("Creating frame for shard index %d\n", index);
 
-        // Seek to shard's location in file
-        fseek(encrypted_file, index*state->shard_size, SEEK_SET);
-
-        // Read shard data from file
-        size_t read_bytes;
-        read_bytes = fread(shard_data, 1, state->shard_size, encrypted_file);
-
-
+        read_bytes = 0;
+        memset(shard_data, '\0', state->shard_size);
         memset(shard_hash, '\0', RIPEMD160_DIGEST_SIZE*2 + 1);
-        ripmd160sha256(shard_data, state->shard_size, &shard_hash);
+
+        do {
+            // Seek to shard's location in file
+            fseek(encrypted_file, index*state->shard_size, SEEK_SET);
+            // Read shard data from file
+            read_bytes = fread(shard_data, 1, state->shard_size, encrypted_file);
+        } while(read_bytes < state->shard_size && index != state->total_shards - 1);
+
+        ripmd160sha256(shard_data, read_bytes, &shard_hash);
 
         printf("Shard hash: %s\n", shard_hash);
-
-        // Clear data for next shard
-        memset(shard_data, '\0', state->shard_size);
     }
 
     fclose(encrypted_file);
