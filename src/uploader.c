@@ -84,6 +84,78 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
     return determine_shard_size(state, ++accumulator);
 }
 
+static void after_create_frame(uv_work_t *work, int status)
+{
+    shard_meta_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+
+    state->hashing_shards = false;
+    state->completed_shard_hash = true;
+
+    free(req);
+    free(work);
+}
+
+static void create_frame(uv_work_t *work)
+{
+    shard_meta_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+    int index;
+
+    // Open encrypted file
+    FILE *encrypted_file = fopen(state->tmp_path, "r");
+    if (NULL == encrypted_file) {
+        req->error_status = STORJ_FILE_INTEGRITY_ERROR;
+        return;
+    }
+
+    uint8_t *shard_data = calloc(state->shard_size, sizeof(char));
+    char *shard_hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 1, sizeof(char));
+
+    for (index = 0; index < state->total_shards; index++ ) {
+        printf("Creating frame for shard index %d\n", index);
+
+        // Seek to shard's location in file
+        fseek(encrypted_file, index*state->shard_size, SEEK_SET);
+
+        // Read shard data from file
+        size_t read_bytes;
+        read_bytes = fread(shard_data, 1, state->shard_size, encrypted_file);
+
+
+        memset(shard_hash, '\0', RIPEMD160_DIGEST_SIZE*2 + 1);
+        ripmd160sha256(shard_data, state->shard_size, &shard_hash);
+
+        printf("Shard hash: %s\n", shard_hash);
+
+        // Clear data for next shard
+        memset(shard_data, '\0', state->shard_size);
+    }
+
+    fclose(encrypted_file);
+    free(shard_data);
+    free(shard_hash);
+}
+
+static int queue_create_frame(storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+
+    shard_meta_t *req = malloc(sizeof(shard_meta_t));
+    assert(req != NULL);
+
+    req->upload_state = state;
+    req->error_status = 0;
+    work->data = req;
+
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               create_frame, after_create_frame);
+
+    state->hashing_shards = true;
+
+    return status;
+}
+
 static void after_request_frame(uv_work_t *work, int status)
 {
     frame_request_t *req = work->data;
@@ -180,7 +252,6 @@ static void after_encrypt_file(uv_work_t *work, int status)
 
     queue_next_work(state);
 
-    free(meta->tmp_path);
     free(meta);
     free(work);
 }
@@ -392,8 +463,8 @@ static void queue_next_work(storj_upload_state_t *state)
 
     if (!state->frame_id && !state->requesting_frame) {
         queue_request_frame(state);
-    } else if (state->frame_id && state->completed_encryption) {
-        printf("hasing shards\n");
+    } else if (state->frame_id && state->completed_encryption && !state->hashing_shards && !state->completed_shard_hash) {
+        queue_create_frame(state);
     }
 
     // Encrypt the file
@@ -485,11 +556,13 @@ int storj_bridge_store_file(storj_env_t *env,
     state->frame_request_count = 0;
     state->encrypt_file_count = 0;
     state->completed_encryption = false;
+    state->completed_shard_hash = false;
     state->error_status = 0;
     state->writing = false;
     state->encrypting_file = false;
     state->requesting_frame = false;
     state->requesting_token = false;
+    state->hashing_shards = false;
     state->token = NULL;
     state->tmp_path = NULL;
     state->frame_id = NULL;

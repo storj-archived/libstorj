@@ -32,6 +32,8 @@ typedef struct {
     uint64_t shard_size;
     uint64_t total_bytes;
     uint64_t uploaded_bytes;
+    bool hashing_shards;
+    bool completed_shard_hash;
     bool writing;
     bool encrypting_file;
     bool completed_encryption;
@@ -48,6 +50,17 @@ typedef struct {
     char *mnemonic;
     int error_status;
 } storj_upload_state_t;
+
+typedef struct {
+    char *hash;
+    char **challenges;
+    char **tree;
+    int shard_index;
+    /* state should not be modified in worker threads */
+    storj_upload_state_t *upload_state;
+    int status_code;
+    int error_status;
+} shard_meta_t;
 
 typedef struct {
    char *file_id;
@@ -93,13 +106,16 @@ static void queue_next_work(storj_upload_state_t *state);
 static int queue_request_bucket_token(storj_upload_state_t *state);
 static int queue_request_frame(storj_upload_state_t *state);
 static int queue_encrypt_file(storj_upload_state_t *state);
+static int queue_create_frame(storj_upload_state_t *state);
 
 static void request_token(uv_work_t *work);
 static void request_frame(uv_work_t *work);
 static void encrypt_file(uv_work_t *work);
+static void create_frame(uv_work_t *work);
 
 static void after_request_token(uv_work_t *work, int status);
 static void after_request_frame(uv_work_t *work, int status);
 static void after_encrypt_file(uv_work_t *work, int status);
+static void after_create_frame(uv_work_t *work, int status);
 
 #endif /* STORJ_UPLOADER_H */

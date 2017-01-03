@@ -28,6 +28,27 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
     return OK;
 }
 
+int ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
+{
+    // Get the sha256 of the file_name + bucket+id
+    uint8_t sha256_digest[SHA256_DIGEST_SIZE];
+    sha256_of_str(data, data_size, sha256_digest);
+
+    // Get the ripemd160 of the sha256
+    uint8_t ripemd160_digest[RIPEMD160_DIGEST_SIZE];
+    ripemd160_of_str(sha256_digest, SHA256_DIGEST_SIZE, ripemd160_digest);
+
+    // Convert ripemd160 hex to character array
+    char ripemd160_str[RIPEMD160_DIGEST_SIZE*2+1];
+    memset(ripemd160_str, '\0', RIPEMD160_DIGEST_SIZE*2+1);
+    hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest, ripemd160_str);
+
+    //Copy the result into buffer
+    memcpy(*digest, ripemd160_str, RIPEMD160_DIGEST_SIZE * 2);
+
+    return OK;
+}
+
 int generate_bucket_key(char *mnemonic, char *bucket_id, char **bucket_key)
 {
     char *seed = calloc(128 + 1, sizeof(char));
