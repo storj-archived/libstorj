@@ -1,4 +1,5 @@
 #include <nettle/sha.h>
+#include <nettle/ripemd160.h>
 
 #include "http.h"
 
@@ -16,6 +17,7 @@ static void clean_up_neon(ne_session *s, ne_request *r)
     ne_session_destroy(s);
 }
 
+/* shard_data must be allocated for shard_total_bytes */
 int fetch_shard(char *proto,
                 char *host,
                 int port,
@@ -26,7 +28,10 @@ int fetch_shard(char *proto,
                 int *status_code,
                 uv_async_t *progress_handle)
 {
-    // TODO make sure that shard_data has correct number of bytes allocated
+    struct sha256_ctx ctx;
+    sha256_init(&ctx);
+
+    // TODO free memory in this method when returning early
 
     ne_session *sess = ne_session_create(proto, host, port);
 
@@ -43,8 +48,7 @@ int fetch_shard(char *proto,
 
     if (ne_begin_request(req) != NE_OK) {
         clean_up_neon(sess, req);
-        // TODO enum error types: REQUEST_FAILURE
-        return -1;
+        return STORJ_FARMER_REQUEST_ERROR;
     }
 
     *status_code = ne_get_status(req)->code;
@@ -58,9 +62,10 @@ int fetch_shard(char *proto,
 
     while ((bytes = ne_read_response_block(req, buf, NE_BUFSIZ)) > 0) {
         if (total + bytes > shard_total_bytes) {
-            // TODO error enum types: SHARD_INTEGRITY
-            return -1;
+            return STORJ_FARMER_INTEGRITY_ERROR;
         }
+
+        sha256_update(&ctx, bytes, buf);
 
         memcpy(shard_data + total, buf, bytes);
         total += bytes;
@@ -82,8 +87,25 @@ int fetch_shard(char *proto,
     }
 
     if (total != shard_total_bytes) {
-        // TODO error enum types: SHARD_INTEGRITY
-        return -1;
+        return STORJ_FARMER_INTEGRITY_ERROR;
+    }
+
+    uint8_t *hash_sha256 = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+    sha256_digest(&ctx, SHA256_DIGEST_SIZE, hash_sha256);
+
+    struct ripemd160_ctx rctx;
+    ripemd160_init(&rctx);
+    ripemd160_update(&rctx, SHA256_DIGEST_SIZE, hash_sha256);
+    uint8_t *hash_rmd160 = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
+    ripemd160_digest(&rctx, RIPEMD160_DIGEST_SIZE, hash_rmd160);
+
+    char *hash = calloc(RIPEMD160_DIGEST_SIZE * 2 + 1, sizeof(char));
+    for (unsigned i = 0; i < RIPEMD160_DIGEST_SIZE; i++) {
+        sprintf(&hash[i*2], "%02x", hash_rmd160[i]);
+    }
+
+    if (strcmp(shard_hash, hash) != 0) {
+        return STORJ_FARMER_INTEGRITY_ERROR;
     }
 
     // final progress update

@@ -99,6 +99,8 @@ char *storj_strerror(int error_code)
             return "Farmer request timeout error";
         case STORJ_FARMER_AUTH_ERROR:
             return "Farmer request authorization error";
+        case STORJ_FARMER_INTEGRITY_ERROR:
+            return "Farmer requst integrity error";
         case STORJ_FILE_INTEGRITY_ERROR:
             return "File integrity error";
         case STORJ_BRIDGE_FRAME_ERROR:

@@ -106,7 +106,7 @@ typedef struct {
     char *shard_data;
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
-    int status_code;
+    int error_status;
 } shard_request_download_t;
 
 /** @brief A structure for sharing data with worker threads for sending

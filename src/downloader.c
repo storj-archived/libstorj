@@ -384,6 +384,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
         // TODO check json
 
         // TODO check that the index of pointer matches what is expected
+        // TODO check that the shard hash is the same
 
         set_pointer_from_json(req->state,
                               &req->state->pointers[req->pointer_index],
@@ -501,19 +502,29 @@ static void request_shard(uv_work_t *work)
 
     req->start = get_time_milliseconds();
 
-    if (fetch_shard(req->farmer_proto, req->farmer_host, req->farmer_port,
-                    req->shard_hash, req->shard_total_bytes,
-                    req->shard_data, req->token, &status_code,
-                    &req->progress_handle)) {
+    int error_status = fetch_shard(req->farmer_proto, req->farmer_host,
+                                   req->farmer_port, req->shard_hash,
+                                   req->shard_total_bytes, req->shard_data,
+                                   req->token, &status_code,
+                                   &req->progress_handle);
 
-        req->end = get_time_milliseconds();
+    req->end = get_time_milliseconds();
 
-        // TODO enum error types
-        req->status_code = -1;
+    if (error_status) {
+        req->error_status = error_status;
+    } else if (status_code != 200) {
+        switch(status_code) {
+            case 401:
+            case 403:
+                req->error_status = STORJ_FARMER_AUTH_ERROR;
+                break;
+            case 504:
+                req->error_status = STORJ_FARMER_TIMEOUT_ERROR;
+                break;
+            default:
+                req->error_status = STORJ_FARMER_REQUEST_ERROR;
+        }
     } else {
-
-        req->end = get_time_milliseconds();
-
         // Decrypt the shard
         if (req->decrypt_key && req->decrypt_ctr) {
             struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
@@ -523,7 +534,7 @@ static void request_shard(uv_work_t *work)
                       req->shard_total_bytes, req->shard_data, req->shard_data);
         }
 
-        req->status_code = status_code;
+        req->error_status = 0;
     }
 }
 
@@ -557,13 +568,18 @@ static void after_request_shard(uv_work_t *work, int status)
     pointer->report->start = req->start;
     pointer->report->end = req->end;
 
-    if (req->status_code != 200) {
-        // TODO log debug error
+    if (req->error_status) {
         pointer->status = POINTER_ERROR;
-        pointer->report->code = STORJ_REPORT_FAILURE;
-        pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
+
+        switch(req->error_status) {
+            case STORJ_FARMER_INTEGRITY_ERROR:
+                pointer->report->code = STORJ_REPORT_FAILURE;
+                pointer->report->message = STORJ_REPORT_FAILED_INTEGRITY;
+            default:
+                pointer->report->code = STORJ_REPORT_FAILURE;
+                pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
+        }
     } else {
-        // TODO update downloaded bytes
         pointer->report->code = STORJ_REPORT_SUCCESS;
         pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
         pointer->status = POINTER_DOWNLOADED;
