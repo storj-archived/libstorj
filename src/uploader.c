@@ -144,6 +144,12 @@ static void create_frame(uv_work_t *work)
             char *buff = malloc(32);
             random_buffer(buff, 32);
             memcpy(challenges[i], buff, 32);
+
+            char challenge_as_str[64 + 1];
+            memset(challenge_as_str, '\0', 64+1);
+            hex2str(32, buff, challenge_as_str);
+            printf("Challenge [%d]: %s\n", i, challenge_as_str);
+
             free(buff);
         }
 
