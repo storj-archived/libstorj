@@ -118,7 +118,7 @@ static void create_frame(uv_work_t *work)
     // Challenges for shard Merkle tree. Should be 32 bytes long
     char *challenges[CHALLENGES][32];
     // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
-    char *tree[2*CHALLENGES - 1][RIPEMD160_DIGEST_SIZE*2];
+    char *tree[2*CHALLENGES - 1][RIPEMD160_DIGEST_SIZE*2 + 1];
 
     for (index = 0; index < state->total_shards; index++ ) {
         printf("Creating frame for shard index %d\n", index);
@@ -148,6 +148,21 @@ static void create_frame(uv_work_t *work)
         }
 
         // Calculate the merkle tree with challenges
+        for (int i = 0; i < CHALLENGES; i++ ) {
+            int preleaf_size = 32 + read_bytes;
+            char *preleaf = calloc(preleaf_size, sizeof(char));
+            memcpy(preleaf, challenges[i], 32);
+            memcpy(preleaf+32, shard_data, read_bytes);
+
+            char *buff = calloc(RIPEMD160_DIGEST_SIZE*2 +1, sizeof(char));
+            double_ripmd160sha256_as_string(preleaf, preleaf_size, &buff);
+            memcpy(tree[i], buff, RIPEMD160_DIGEST_SIZE*2 + 1);
+
+            free(preleaf);
+            free(buff);
+
+            printf("Leaf [%d]: %s\n", i, tree[i]);
+        }
 
     }
 
