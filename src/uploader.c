@@ -109,9 +109,16 @@ static void create_frame(uv_work_t *work)
         return;
     }
 
+    // Encrypted shard read from file
     uint8_t *shard_data = calloc(state->shard_size, sizeof(char));
+    // Hash of the shard_data
     char *shard_hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 1, sizeof(char));
+    // Bytes read from file
     size_t read_bytes;
+    // Challenges for shard Merkle tree. Should be 32 bytes long
+    char *challenges[CHALLENGES][32];
+    // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
+    char *tree[2*CHALLENGES - 1][RIPEMD160_DIGEST_SIZE*2];
 
     for (index = 0; index < state->total_shards; index++ ) {
         printf("Creating frame for shard index %d\n", index);
@@ -127,9 +134,21 @@ static void create_frame(uv_work_t *work)
             read_bytes = fread(shard_data, 1, state->shard_size, encrypted_file);
         } while(read_bytes < state->shard_size && index != state->total_shards - 1);
 
-        ripmd160sha256(shard_data, read_bytes, &shard_hash);
+        // Calculate Shard Hash
+        ripmd160sha256_as_string(shard_data, read_bytes, &shard_hash);
 
         printf("Shard hash: %s\n", shard_hash);
+
+        // Set the challenges
+        for (int i = 0; i < CHALLENGES; i++ ) {
+            char *buff = malloc(32);
+            random_buffer(buff, 32);
+            memcpy(challenges[i], buff, 32);
+            free(buff);
+        }
+
+        // Calculate the merkle tree with challenges
+
     }
 
     fclose(encrypted_file);

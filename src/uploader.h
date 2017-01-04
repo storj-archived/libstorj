@@ -14,6 +14,7 @@
 
 #define MAX_SHARD_SIZE 1073741824
 #define SHARD_MULTIPLES_BACK 5
+#define CHALLENGES 4
 
 typedef struct {
     storj_env_t *env;
