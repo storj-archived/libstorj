@@ -48,7 +48,9 @@ static void get_password(char *password)
     tcsetattr(STDIN_FILENO, TCSANOW, &prev_terminal);
 }
 
-static void upload_file_progress(double progress)
+static void upload_file_progress(double progress,
+                                 uint64_t uploaded_bytes,
+                                 uint64_t total_bytes)
 {
     // TODO assersions
 }
@@ -90,7 +92,9 @@ static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 }
 
 
-static void download_file_progress(double progress)
+static void download_file_progress(double progress,
+                                   uint64_t downloaded_bytes,
+                                   uint64_t total_bytes)
 {
     int bar_width = 70;
 

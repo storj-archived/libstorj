@@ -614,7 +614,7 @@ static void progress_request_shard(uv_async_t* async)
 
     double total_progress = (double)downloaded_bytes / (double)total_bytes;
 
-    state->progress_cb(total_progress);
+    state->progress_cb(total_progress, downloaded_bytes, total_bytes);
 }
 
 static int queue_request_shards(storj_download_state_t *state)

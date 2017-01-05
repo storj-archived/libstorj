@@ -149,7 +149,9 @@ void check_file_pointers(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-void check_resolve_file_progress(double progress)
+void check_resolve_file_progress(double progress,
+                                 uint64_t downloaded_bytes,
+                                 uint64_t total_bytes)
 {
     if (progress == (double)1) {
         pass("storj_bridge_resolve_file (progress finished)");
@@ -169,7 +171,9 @@ void check_resolve_file(int status, FILE *fd)
     }
 }
 
-void check_store_file_progress(double progress)
+void check_store_file_progress(double progress,
+                               uint64_t uploaded_bytes,
+                               uint64_t total_bytes)
 {
     // TODO assersions
 }

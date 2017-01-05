@@ -488,7 +488,9 @@ static void queue_next_work(storj_upload_state_t *state)
 
     // report progress of upload
     if (state->file_size > 0 && state->uploaded_bytes > 0) {
-        state->progress_cb(state->uploaded_bytes / state->total_bytes);
+        state->progress_cb(state->uploaded_bytes / state->total_bytes,
+                           state->uploaded_bytes,
+                           state->total_bytes);
     }
 
     // report upload complete

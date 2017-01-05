@@ -141,7 +141,9 @@ typedef struct {
 
 /** @brief A function signature for download/upload progress callback
  */
-typedef void (*storj_progress_cb)(double progress);
+typedef void (*storj_progress_cb)(double progress,
+                                  uint64_t bytes,
+                                  uint64_t total_bytes);
 
 /** @brief A function signature for a download complete callback
  */
