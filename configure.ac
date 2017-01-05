@@ -38,6 +38,11 @@ AC_CHECK_HEADERS([uv.h], [uv_found_headers=yes; break;])
 AS_IF([test "x$uv_found_headers" != "xyes"],
         [AC_MSG_ERROR([Unable to find libuv headers.])])
 
+PKG_CHECK_MODULES([MICROHTTPD], [libmicrohttpd >= 0.9],, [AC_MSG_ERROR([libmicrohttpd 0.9 or greater was not found.])])
+AC_CHECK_HEADERS([microhttpd.h], [microhttpd_found_headers=yes; break;])
+AS_IF([test "x$microhttpd_found_headers" != "xyes"],
+        [AC_MSG_ERROR([Unable to find libmicrohttpd headers.])])
+
 AC_CONFIG_FILES([Makefile src/Makefile test/Makefile])
 AC_CONFIG_FILES([libstorj.pc:libstorj.pc.in])
 
