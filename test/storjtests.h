@@ -6,6 +6,8 @@
 #include "../src/utils.h"
 #include "../src/crypto.h"
 
+#include "mockbridge.json.h"
+
 #define KRED  "\x1B[31m"
 #define KGRN  "\x1B[32m"
 #define RESET "\x1B[0m"

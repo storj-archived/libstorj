@@ -4,6 +4,12 @@ AC_CONFIG_MACRO_DIR([build-aux/m4])
 AM_INIT_AUTOMAKE([foreign])
 LT_INIT
 
+AC_PATH_PROG(HEXDUMP,hexdump)
+
+if test x$HEXDUMP = x; then
+AC_MSG_ERROR(hexdump is required for tests)
+fi
+
 PKG_PROG_PKG_CONFIG
 if test -z "$PKG_CONFIG"; then
    AC_MSG_ERROR([pkg-config not found. pkg-config is required to check for some dependencies.])

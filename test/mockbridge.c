@@ -11,37 +11,6 @@ char *get_response_string(json_object *obj, const char *key)
     }
 }
 
-struct json_object *get_response_json(char *path)
-{
-    FILE *f = fopen(path, "r");
-    if (f == NULL) {
-        printf("Error reading %s", path);
-        exit(1);
-    }
-
-    fseek(f, 0, SEEK_END);
-    long fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char *json_string = malloc(fsize + 1);
-
-    size_t len = fread(json_string, fsize, 1, f);
-    if (len == 0) {
-        printf("Error reading %s", path);
-        exit(1);
-    }
-
-    fclose(f);
-
-    json_string[fsize] = 0;
-
-    struct json_object *j = json_tokener_parse(json_string);
-
-    free(json_string);
-
-    return j;
-}
-
 bool check_auth(char *user, char *pass, int *status_code, char *page)
 {
     if (user && 0 == strcmp(user, USER) && 0 == strcmp(pass, PASSHASH)) {
@@ -66,7 +35,7 @@ int mock_bridge_server(void *cls,
 
     struct MHD_Response *response;
 
-    json_object *responses = get_response_json("test/mockbridge.json");
+    struct json_object *responses = json_tokener_parse(mockbridge_json);
 
     char *page = "Not Found";
     int status_code = MHD_HTTP_NOT_FOUND;
