@@ -35,7 +35,19 @@ int mock_bridge_server(void *cls,
 
     struct MHD_Response *response;
 
-    struct json_object *responses = json_tokener_parse(mockbridge_json);
+    json_tokener *tok = json_tokener_new();
+    json_object *responses = NULL;
+    int stringlen = 0;
+    enum json_tokener_error jerr;
+    do {
+        stringlen = strlen(mockbridge_json);
+        responses = json_tokener_parse_ex(tok, mockbridge_json, stringlen);
+    } while ((jerr = json_tokener_get_error(tok)) == json_tokener_continue);
+
+    if (jerr != json_tokener_success) {
+        fprintf(stderr, "Error: %s\n", json_tokener_error_desc(jerr));
+        exit(1);
+    }
 
     char *page = "Not Found";
     int status_code = MHD_HTTP_NOT_FOUND;
