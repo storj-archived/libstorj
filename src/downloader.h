@@ -36,43 +36,6 @@ typedef enum {
     POINTER_WRITTEN = 4
 } storj_pointer_status_t;
 
-/** @brief A structure that keeps state between multiple worker threads.
- *
- * After work has been completed in a thread, its after work callback will
- * update and modify the state and then queue the next set of work based on the
- * changes, and added to the event loop. The state is all managed within one
- * thread, the event loop thread, and any work that is performed in another
- * thread should not modify this structure directly, but should pass a
- * reference to it, so that once the work is complete the state can be updated.
- */
-typedef struct {
-    uint64_t total_bytes;
-    storj_env_t *env;
-    char *file_id;
-    char *bucket_id;
-    FILE *destination;
-    storj_progress_cb progress_cb;
-    storj_finished_download_cb finished_cb;
-    bool finished;
-    uint64_t shard_size;
-    uint32_t total_shards;
-    uint32_t completed_shards;
-    uint32_t resolving_shards;
-    storj_pointer_t *pointers;
-    char *excluded_farmer_ids;
-    uint32_t total_pointers;
-    bool pointers_completed;
-    uint32_t pointer_fail_count;
-    bool requesting_pointers;
-    int error_status;
-    bool writing;
-    char *token;
-    bool requesting_token;
-    uint32_t token_fail_count;
-    uint8_t *decrypt_key;
-    uint8_t *decrypt_ctr;
-} storj_download_state_t;
-
 /** @brief A structure for sharing data with worker threads for writing
  * a shard to a file decriptor.
  */
@@ -107,6 +70,7 @@ typedef struct {
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
     int error_status;
+    bool *cancelled;
 } shard_request_download_t;
 
 /** @brief A structure for sharing data with worker threads for sending

@@ -43,7 +43,8 @@ int fetch_shard(char *proto,
                 char *shard_data,
                 char *token,
                 int *status_code,
-                uv_async_t *progress_handle);
+                uv_async_t *progress_handle,
+                bool *cancelled);
 
 /**
  * @brief Make a JSON HTTP request

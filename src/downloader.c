@@ -271,6 +271,8 @@ static void set_pointer_from_json(storj_download_state_t *state,
     p->report->code = STORJ_REPORT_FAILURE;
     p->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
 
+    p->work = NULL;
+
     if (!state->shard_size) {
         // TODO make sure all except last shard is the same size
         state->shard_size = size;
@@ -455,6 +457,7 @@ static void queue_request_pointers(storj_download_state_t *state)
             // TODO check status
 
             pointer->status = POINTER_BEING_REPLACED;
+            pointer->work = work;
 
             // we're done until the next pass
             state->requesting_pointers = true;
@@ -506,7 +509,8 @@ static void request_shard(uv_work_t *work)
                                    req->farmer_port, req->shard_hash,
                                    req->shard_total_bytes, req->shard_data,
                                    req->token, &status_code,
-                                   &req->progress_handle);
+                                   &req->progress_handle,
+                                   req->cancelled);
 
     req->end = get_time_milliseconds();
 
@@ -656,6 +660,7 @@ static int queue_request_shards(storj_download_state_t *state)
             req->pointer_index = pointer->index;
 
             req->state = state;
+            req->cancelled = &state->cancelled;
 
             uv_work_t *work = malloc(sizeof(uv_work_t));
             assert(work != NULL);
@@ -920,7 +925,30 @@ static void queue_next_work(storj_download_state_t *state)
     queue_send_exchange_reports(state);
 }
 
+int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
+{
+    state->cancelled = true;
+    state->error_status = STORJ_TRANSFER_CANCELLED;
+
+    // loop over all pointers, and cancel any that are queued to be downloaded
+    // any downloads that are in-progress will monitor the state->cancelled
+    // status and exit when set to true
+    for (int i = 0; i < state->total_pointers; i++) {
+
+        storj_pointer_t *pointer = &state->pointers[i];
+
+        if (pointer->status == POINTER_BEING_DOWNLOADED) {
+
+            uv_cancel((uv_req_t *)pointer->work);
+        }
+
+    }
+
+
+}
+
 int storj_bridge_resolve_file(storj_env_t *env,
+                              storj_download_state_t *state,
                               char *bucket_id,
                               char *file_id,
                               FILE *destination,
@@ -929,7 +957,6 @@ int storj_bridge_resolve_file(storj_env_t *env,
 {
 
     // setup download state
-    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
     state->total_bytes = 0;
     state->env = env;
     state->file_id = file_id;

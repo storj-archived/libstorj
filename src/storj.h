@@ -30,6 +30,7 @@ extern "C" {
 
 // File transfer success
 #define STORJ_TRANSFER_OK 0
+#define STORJ_TRANSFER_CANCELLED 1
 
 // Bridge related errors 1000 to 1999
 #define STORJ_BRIDGE_REQUEST_ERROR 1000
@@ -176,6 +177,7 @@ typedef struct {
     char *farmer_address;
     int farmer_port;
     storj_exchange_report_t *report;
+    uv_work_t *work;
 } storj_pointer_t;
 
 /** @brief A structure for file upload options
@@ -188,6 +190,45 @@ typedef struct {
     char *key_pass;
     char *mnemonic;
 } storj_upload_opts_t;
+
+/** @brief A structure that keeps state between multiple worker threads,
+ * and for referencing a download to apply actions to an in-progress download.
+ *
+ * After work has been completed in a thread, its after work callback will
+ * update and modify the state and then queue the next set of work based on the
+ * changes, and added to the event loop. The state is all managed within one
+ * thread, the event loop thread, and any work that is performed in another
+ * thread should not modify this structure directly, but should pass a
+ * reference to it, so that once the work is complete the state can be updated.
+ */
+typedef struct {
+    uint64_t total_bytes;
+    storj_env_t *env;
+    char *file_id;
+    char *bucket_id;
+    FILE *destination;
+    storj_progress_cb progress_cb;
+    storj_finished_download_cb finished_cb;
+    bool finished;
+    bool cancelled;
+    uint64_t shard_size;
+    uint32_t total_shards;
+    uint32_t completed_shards;
+    uint32_t resolving_shards;
+    storj_pointer_t *pointers;
+    char *excluded_farmer_ids;
+    uint32_t total_pointers;
+    bool pointers_completed;
+    uint32_t pointer_fail_count;
+    bool requesting_pointers;
+    int error_status;
+    bool writing;
+    char *token;
+    bool requesting_token;
+    uint32_t token_fail_count;
+    uint8_t *decrypt_key;
+    uint8_t *decrypt_ctr;
+} storj_download_state_t;
 
 /**
  * @brief Initialize a Storj environment
@@ -358,15 +399,29 @@ int storj_bridge_store_file(storj_env_t *env,
                            storj_progress_cb progress_cb,
                            storj_finished_upload_cb finished_cb);
 
+
+/**
+ * @brief Will cancel a download
+ *
+ * @param[in] state A pointer to the the download state
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int storj_bridge_resolve_file_cancel(storj_download_state_t *state);
+
 /**
  * @brief Download a file
  *
+ * @param[in] env A pointer to environment
+ * @param[in] state A pointer to the the download state
  * @param[in] bucket_id Character array of bucket id
  * @param[in] file_id Character array of file id
- * @param[out] destination A file descriptor of the destination
+ * @param[in] destination File descriptor of the destination
+ * @param[in] progress_cb Function called with progress updates
+ * @param[in] finished_cb Function called when download finished
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_resolve_file(storj_env_t *env,
+                              storj_download_state_t *state,
                               char *bucket_id,
                               char *file_id,
                               FILE *destination,

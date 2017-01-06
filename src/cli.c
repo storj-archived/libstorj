@@ -136,7 +136,9 @@ static int download_file(storj_env_t *env, char *bucket_id,
         return 1;
     }
 
-    int status = storj_bridge_resolve_file(env, bucket_id, file_id, fd,
+    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+
+    int status = storj_bridge_resolve_file(env, state, bucket_id, file_id, fd,
                                            download_file_progress,
                                            download_file_complete);
 

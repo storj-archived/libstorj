@@ -26,7 +26,8 @@ int fetch_shard(char *proto,
                 char *shard_data,
                 char *token,
                 int *status_code,
-                uv_async_t *progress_handle)
+                uv_async_t *progress_handle,
+                bool *cancelled)
 {
     struct sha256_ctx ctx;
     sha256_init(&ctx);
@@ -78,6 +79,10 @@ int fetch_shard(char *proto,
             progress->bytes = total;
             uv_async_send(progress_handle);
             bytes_since_progress = 0;
+        }
+
+        if (*cancelled) {
+            return STORJ_TRANSFER_CANCELLED;
         }
 
     }

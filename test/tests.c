@@ -405,7 +405,14 @@ int test_api()
     strcat(download_file, "storj-test-download.data");
     FILE *download_fp = fopen(download_file, "w+");
 
-    status = storj_bridge_resolve_file(env, bucket_id, file_id, download_fp,
+
+    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+
+    status = storj_bridge_resolve_file(env,
+                                       state,
+                                       bucket_id,
+                                       file_id,
+                                       download_fp,
                                        check_resolve_file_progress,
                                        check_resolve_file);
 
