@@ -110,20 +110,33 @@ static void download_file_progress(double progress,
         }
     }
     printf("] %.*f%%", 2, progress * 100);
-    if (progress == (double)1) {
-        printf("\n");
-    }
     fflush(stdout);
 }
 
 static void download_file_complete(int status, FILE *fd)
 {
+    printf("\n");
     fclose(fd);
     if (status) {
         printf("Download failure: %s\n", storj_strerror(status));
         exit(status);
     }
     exit(0);
+}
+
+void close_signal(uv_handle_t *handle)
+{
+    ((void)0);
+}
+
+void signal_handler(uv_signal_t *req, int signum)
+{
+    storj_download_state_t *state = req->data;
+    storj_bridge_resolve_file_cancel(state);
+    if (uv_signal_stop(req)) {
+        printf("Unable to stop signal\n");
+    }
+    uv_close((uv_handle_t *)req, close_signal);
 }
 
 static int download_file(storj_env_t *env, char *bucket_id,
@@ -136,7 +149,13 @@ static int download_file(storj_env_t *env, char *bucket_id,
         return 1;
     }
 
+    uv_signal_t sig;
+    uv_signal_init(env->loop, &sig);
+    uv_signal_start(&sig, signal_handler, SIGINT);
+
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+
+    sig.data = state;
 
     int status = storj_bridge_resolve_file(env, state, bucket_id, file_id, fd,
                                            download_file_progress,
