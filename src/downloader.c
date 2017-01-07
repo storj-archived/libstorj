@@ -883,8 +883,9 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished_cb(state->error_status, state->destination);
 
             // TODO queue work to free if no pending work
-            free(state->pointers);
-            free(state);
+            // TODO free state
+            //free(state->pointers);
+            //free(state);
         }
 
         return;
@@ -978,6 +979,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->requesting_token = false;
     state->token_fail_count = 0;
     state->shard_size = 0;
+    state->excluded_farmer_ids = NULL;
 
     // determine the decryption key
     if (!env->encrypt_options || !env->encrypt_options->mnemonic) {
