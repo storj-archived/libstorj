@@ -53,9 +53,9 @@ static void request_token(uv_work_t *work)
 
 static void after_request_token(uv_work_t *work, int status)
 {
-
     token_request_download_t *req = work->data;
 
+    req->state->pending_work_count--;
     req->state->requesting_token = false;
 
     if (status != 0) {
@@ -105,6 +105,7 @@ static int queue_request_bucket_token(storj_download_state_t *state)
     req->state = state;
     work->data = req;
 
+    state->pending_work_count++;
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                request_token, after_request_token);
 
@@ -321,6 +322,7 @@ static void after_request_pointers(uv_work_t *work, int status)
 {
     json_request_download_t *req = work->data;
 
+    req->state->pending_work_count--;
     req->state->requesting_pointers = false;
 
     // expired token
@@ -358,6 +360,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
 
     json_request_replace_pointer_t *req = work->data;
 
+    req->state->pending_work_count--;
     req->state->requesting_pointers = false;
 
     // expired token
@@ -450,6 +453,7 @@ static void queue_request_pointers(storj_download_state_t *state)
 
             work->data = req;
 
+            state->pending_work_count++;
             int status = uv_queue_work(state->env->loop,
                                        (uv_work_t*) work,
                                        request_replace_pointer,
@@ -490,6 +494,7 @@ static void queue_request_pointers(storj_download_state_t *state)
 
     work->data = req;
 
+    state->pending_work_count++;
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                request_pointers, after_request_pointers);
 
@@ -556,6 +561,7 @@ static void after_request_shard(uv_work_t *work, int status)
 
     shard_request_download_t *req = work->data;
 
+    req->state->pending_work_count--;
     req->state->resolving_shards -= 1;
 
     uv_handle_t *progress_handle = (uv_handle_t *) &req->progress_handle;
@@ -684,6 +690,7 @@ static int queue_request_shards(storj_download_state_t *state)
                           progress_request_shard);
 
             // queue download
+            state->pending_work_count++;
             uv_queue_work(state->env->loop, (uv_work_t*) work,
                           request_shard, after_request_shard);
         }
@@ -710,6 +717,7 @@ static void after_write_shard(uv_work_t *work, int status)
 {
     shard_request_write_t *req = work->data;
 
+    req->state->pending_work_count--;
     req->state->writing = false;
 
     if (status != 0) {
@@ -761,6 +769,7 @@ static void queue_write_next_shard(storj_download_state_t *state)
             state->writing = true;
             pointer->status = POINTER_BEING_WRITTEN;
 
+            state->pending_work_count++;
             uv_queue_work(state->env->loop, (uv_work_t*) work,
                           write_shard, after_write_shard);
             break;
@@ -816,6 +825,8 @@ static void after_send_exchange_report(uv_work_t *work, int status)
 {
     shard_send_report_t *req = work->data;
 
+    req->state->pending_work_count--;
+
     // set status so that this pointer can be replaced
     if (req->report->send_count >= STORJ_MAX_REPORT_TRIES ||
         req->status_code == 201) {
@@ -868,6 +879,7 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
 
             work->data = req;
 
+            state->pending_work_count++;
             uv_queue_work(state->env->loop, (uv_work_t*) work,
                           send_exchange_report, after_send_exchange_report);
         }
@@ -878,14 +890,13 @@ static void queue_next_work(storj_download_state_t *state)
 {
     // report any errors
     if (state->error_status != 0) {
-        if (!state->finished) {
+        if (!state->finished && state->pending_work_count == 0) {
+
             state->finished = true;
             state->finished_cb(state->error_status, state->destination);
 
-            // TODO queue work to free if no pending work
-            // TODO free state
-            //free(state->pointers);
-            //free(state);
+            free(state->pointers);
+            free(state);
         }
 
         return;
@@ -897,13 +908,9 @@ static void queue_next_work(storj_download_state_t *state)
     if (state->pointers_completed &&
         state->completed_shards == state->total_shards) {
 
-        if (!state->finished) {
+        if (!state->finished && state->pending_work_count == 0) {
             state->finished = true;
             state->finished_cb(0, state->destination);
-
-            // TODO queue work to free if no pending work
-            // and also check that if it's not finished yet all work
-            // has been exhausted
 
             free(state->pointers);
             free(state);
@@ -970,6 +977,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->completed_shards = 0;
     state->resolving_shards = 0;
     state->total_pointers = 0;
+    state->pointers = NULL;
     state->pointers_completed = false;
     state->pointer_fail_count = 0;
     state->requesting_pointers = false;
@@ -980,6 +988,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->token_fail_count = 0;
     state->shard_size = 0;
     state->excluded_farmer_ids = NULL;
+    state->pending_work_count = 0;
 
     // determine the decryption key
     if (!env->encrypt_options || !env->encrypt_options->mnemonic) {

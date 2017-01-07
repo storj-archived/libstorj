@@ -228,6 +228,7 @@ typedef struct {
     uint32_t token_fail_count;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
+    uint32_t pending_work_count;
 } storj_download_state_t;
 
 /**
