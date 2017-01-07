@@ -947,6 +947,8 @@ int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
             uv_cancel((uv_req_t *)pointer->work);
         }
     }
+
+    return 0;
 }
 
 int storj_bridge_resolve_file(storj_env_t *env,
@@ -1013,4 +1015,6 @@ int storj_bridge_resolve_file(storj_env_t *env,
 
     // start download
     queue_next_work(state);
+
+    return 0;
 }
