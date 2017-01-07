@@ -371,7 +371,7 @@ int test_download_cancel()
     // resolve file
     char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
     strcpy(download_file, folder);
-    strcat(download_file, "storj-test-download.data");
+    strcat(download_file, "storj-test-download-cancelled.data");
     FILE *download_fp = fopen(download_file, "w+");
 
     char *bucket_id = "368be0816766b28fd5f43af5";
@@ -390,19 +390,33 @@ int test_download_cancel()
     free(download_file);
     assert(status == 0);
 
-    status = storj_bridge_resolve_file_cancel(state);
-    assert(status == 0);
+    // process the loop one at a time so that we can do other things while
+    // the loop is processing, such as cancel the download
+    int count = 0;
+    bool more;
+    do {
+        more = uv_run(env->loop, UV_RUN_ONCE);
+        if (more == false) {
+            more = uv_loop_alive(env->loop);
+            if (uv_run(env->loop, UV_RUN_NOWAIT) != 0) {
+                more = true;
+            }
+        }
 
-    if (uv_run(env->loop, UV_RUN_DEFAULT)) {
-        return 1;
-    }
+        count++;
+
+        if (count > 100) {
+            status = storj_bridge_resolve_file_cancel(state);
+            assert(status == 0);
+        }
+
+    } while (more == true);
 
     // shutdown
     status = uv_loop_close(env->loop);
     if (status == UV_EBUSY) {
         return 1;
     }
-
 
     free(env->loop);
     free(env);

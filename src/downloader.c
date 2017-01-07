@@ -461,7 +461,6 @@ static void queue_request_pointers(storj_download_state_t *state)
             // TODO check status
 
             pointer->status = POINTER_BEING_REPLACED;
-            pointer->work = work;
 
             // we're done until the next pass
             state->requesting_pointers = true;
@@ -675,6 +674,7 @@ static int queue_request_shards(storj_download_state_t *state)
 
             state->resolving_shards += 1;
             pointer->status = POINTER_BEING_DOWNLOADED;
+            pointer->work = work;
 
             // setup download progress reporting
             shard_download_progress_t *progress =
