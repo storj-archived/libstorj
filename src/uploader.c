@@ -103,7 +103,9 @@ static void after_create_frame(uv_work_t *work, int status)
         state->hashing_shards = false;
         state->completed_shard_hash = true;
     }
-    
+
+    // TODO: set the shard_meta to an array in the state for later use.
+
     shard_state_cleanup(shard_meta);
     free(work);
 }
@@ -148,11 +150,12 @@ static void create_frame(uv_work_t *work)
 
     // Set the challenges
     for (int i = 0; i < CHALLENGES; i++ ) {
-        char *buff = malloc(32);
+        uint8_t *buff = malloc(32);
         random_buffer(buff, 32);
         memcpy(shard_meta->challenges[i], buff, 32);
 
-        hex2str(32, buff, shard_meta->challenges_as_str[i]);
+        // Convert the uint8_t challenges to character arrays
+        hex2str(32, buff, (char *)shard_meta->challenges_as_str[i]);
 
         free(buff);
     }
@@ -160,7 +163,7 @@ static void create_frame(uv_work_t *work)
     // Calculate the merkle tree with challenges
     for (int i = 0; i < CHALLENGES; i++ ) {
         int preleaf_size = 32 + shard_meta->size;
-        char *preleaf = calloc(preleaf_size, sizeof(char));
+        uint8_t *preleaf = calloc(preleaf_size, sizeof(char));
         memcpy(preleaf, shard_meta->challenges[i], 32);
         memcpy(preleaf+32, shard_data, shard_meta->size);
 
@@ -212,7 +215,7 @@ static int queue_create_frame(storj_upload_state_t *state)
 
     state->hashing_shards = true;
 
-    return;
+    return 0;
 }
 
 static void after_request_frame(uv_work_t *work, int status)
