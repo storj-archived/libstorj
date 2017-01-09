@@ -20,6 +20,14 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->file_key);
     }
 
+    // if (state->all_shard_meta) {
+    //     for (int i = 0; i < state->total_shards; i++ ) {
+    //         if (state->all_shard_meta[i]) {
+    //             shard_state_cleanup(state->all_shard_meta[i]);
+    //         }
+    //     }
+    // }
+
     free(state);
 }
 
@@ -89,9 +97,13 @@ static void after_create_frame(uv_work_t *work, int status)
     shard_meta_t *shard_meta = work->data;
     storj_upload_state_t *state = shard_meta->upload_state;
 
-    state->hashing_shards = false;
-    state->completed_shard_hash = true;
+    state->shards_hashed += 1;
 
+    if (state->shards_hashed == state->total_shards) {
+        state->hashing_shards = false;
+        state->completed_shard_hash = true;
+    }
+    
     shard_state_cleanup(shard_meta);
     free(work);
 }
@@ -119,7 +131,6 @@ static void create_frame(uv_work_t *work)
 
     read_bytes = 0;
 
-
     // TODO: make sure we only loop a certain number of times
     do {
         // Seek to shard's location in file
@@ -142,7 +153,6 @@ static void create_frame(uv_work_t *work)
         memcpy(shard_meta->challenges[i], buff, 32);
 
         hex2str(32, buff, shard_meta->challenges_as_str[i]);
-        printf("Challenge [%d]: %s\n", i, shard_meta->challenges_as_str[i]);
 
         free(buff);
     }
@@ -160,8 +170,6 @@ static void create_frame(uv_work_t *work)
 
         free(preleaf);
         free(buff);
-
-        printf("Leaf [%d]: %s\n", i, shard_meta->tree[i]);
     }
 
     fclose(encrypted_file);
@@ -608,6 +616,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->token_request_count = 0;
     state->frame_request_count = 0;
     state->encrypt_file_count = 0;
+    state->shards_hashed = 0;
     state->completed_encryption = false;
     state->completed_shard_hash = false;
     state->error_status = 0;

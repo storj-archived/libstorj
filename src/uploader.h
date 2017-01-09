@@ -33,6 +33,7 @@ typedef struct {
     uint64_t shard_size;
     uint64_t total_bytes;
     uint64_t uploaded_bytes;
+    int shards_hashed;
     bool hashing_shards;
     bool completed_shard_hash;
     bool writing;
