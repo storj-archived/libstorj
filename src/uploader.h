@@ -61,11 +61,15 @@ typedef struct {
     char *tree[2*CHALLENGES - 1][RIPEMD160_DIGEST_SIZE*2 + 1];
     int index;
     uint64_t size;
-    /* state should not be modified in worker threads */
-    storj_upload_state_t *upload_state;
-    int status_code;
-    int error_status;
 } shard_meta_t;
+
+typedef struct {
+  /* state should not be modified in worker threads */
+  storj_upload_state_t *upload_state;
+  int status_code;
+  int error_status;
+  shard_meta_t *shard_meta;
+} frame_builder_t;
 
 typedef struct {
    char *file_id;

@@ -94,8 +94,9 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
 
 static void after_create_frame(uv_work_t *work, int status)
 {
-    shard_meta_t *shard_meta = work->data;
-    storj_upload_state_t *state = shard_meta->upload_state;
+    frame_builder_t *frame_builder = work->data;
+    shard_meta_t *shard_meta = frame_builder->shard_meta;
+    storj_upload_state_t *state = frame_builder->upload_state;
 
     state->shards_hashed += 1;
 
@@ -107,18 +108,20 @@ static void after_create_frame(uv_work_t *work, int status)
     // TODO: set the shard_meta to an array in the state for later use.
 
     shard_state_cleanup(shard_meta);
+    free(frame_builder);
     free(work);
 }
 
 static void create_frame(uv_work_t *work)
 {
-    shard_meta_t *shard_meta = work->data;
-    storj_upload_state_t *state = shard_meta->upload_state;
+    frame_builder_t *frame_builder = work->data;
+    shard_meta_t *shard_meta = frame_builder->shard_meta;
+    storj_upload_state_t *state = frame_builder->upload_state;
 
     // Open encrypted file
     FILE *encrypted_file = fopen(state->tmp_path, "r");
     if (NULL == encrypted_file) {
-        shard_meta->error_status = STORJ_FILE_INTEGRITY_ERROR;
+        frame_builder->error_status = STORJ_FILE_INTEGRITY_ERROR;
         return;
     }
 
@@ -191,15 +194,16 @@ static void shard_state_cleanup(shard_meta_t *shard_meta)
 static uv_work_t *shard_state_new(int index, storj_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
+    frame_builder_t *frame_builder = malloc(sizeof(frame_builder_t));
+    frame_builder->shard_meta = malloc(sizeof(shard_meta_t));
+    frame_builder->upload_state = state;
 
-    shard_meta_t *shard_meta = malloc(sizeof(shard_meta_t));
-    assert(shard_meta != NULL);
+    assert(frame_builder->shard_meta != NULL);
 
-    shard_meta->index = index;
-    shard_meta->error_status = 0;
-    shard_meta->upload_state = state;
+    frame_builder->shard_meta->index = index;
+    frame_builder->error_status = 0;
 
-    work->data = shard_meta;
+    work->data = frame_builder;
 
     return work;
 }
