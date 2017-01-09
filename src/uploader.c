@@ -86,114 +86,125 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
 
 static void after_create_frame(uv_work_t *work, int status)
 {
-    shard_meta_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
+    shard_meta_t *shard_meta = work->data;
+    storj_upload_state_t *state = shard_meta->upload_state;
 
     state->hashing_shards = false;
     state->completed_shard_hash = true;
 
-    free(req);
+    shard_state_cleanup(shard_meta);
     free(work);
 }
 
 static void create_frame(uv_work_t *work)
 {
-    shard_meta_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
-    int index;
+    shard_meta_t *shard_meta = work->data;
+    storj_upload_state_t *state = shard_meta->upload_state;
 
     // Open encrypted file
     FILE *encrypted_file = fopen(state->tmp_path, "r");
     if (NULL == encrypted_file) {
-        req->error_status = STORJ_FILE_INTEGRITY_ERROR;
+        shard_meta->error_status = STORJ_FILE_INTEGRITY_ERROR;
         return;
     }
 
     // Encrypted shard read from file
     uint8_t *shard_data = calloc(state->shard_size, sizeof(char));
     // Hash of the shard_data
-    char *shard_hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 1, sizeof(char));
+    shard_meta->hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 1, sizeof(char));
     // Bytes read from file
-    size_t read_bytes;
-    // Challenges for shard Merkle tree. Should be 32 bytes long
-    char *challenges[CHALLENGES][32];
-    // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
-    char *tree[2*CHALLENGES - 1][RIPEMD160_DIGEST_SIZE*2 + 1];
+    uint64_t read_bytes;
 
-    for (index = 0; index < state->total_shards; index++ ) {
-        printf("Creating frame for shard index %d\n", index);
+    printf("Creating frame for shard index %d\n", shard_meta->index);
 
-        read_bytes = 0;
-        memset(shard_data, '\0', state->shard_size);
-        memset(shard_hash, '\0', RIPEMD160_DIGEST_SIZE*2 + 1);
+    read_bytes = 0;
 
-        do {
-            // Seek to shard's location in file
-            fseek(encrypted_file, index*state->shard_size, SEEK_SET);
-            // Read shard data from file
-            read_bytes = fread(shard_data, 1, state->shard_size, encrypted_file);
-        } while(read_bytes < state->shard_size && index != state->total_shards - 1);
 
-        // Calculate Shard Hash
-        ripmd160sha256_as_string(shard_data, read_bytes, &shard_hash);
+    // TODO: make sure we only loop a certain number of times
+    do {
+        // Seek to shard's location in file
+        fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
+        // Read shard data from file
+        read_bytes = fread(shard_data, 1, state->shard_size, encrypted_file);
+    } while(read_bytes < state->shard_size && shard_meta->index != state->total_shards - 1);
 
-        printf("Shard hash: %s\n", shard_hash);
+    shard_meta->size = read_bytes;
 
-        // Set the challenges
-        for (int i = 0; i < CHALLENGES; i++ ) {
-            char *buff = malloc(32);
-            random_buffer(buff, 32);
-            memcpy(challenges[i], buff, 32);
+    // Calculate Shard Hash
+    ripmd160sha256_as_string(shard_data, shard_meta->size, &shard_meta->hash);
 
-            char challenge_as_str[64 + 1];
-            memset(challenge_as_str, '\0', 64+1);
-            hex2str(32, buff, challenge_as_str);
-            printf("Challenge [%d]: %s\n", i, challenge_as_str);
+    printf("Shard hash: %s\n", shard_meta->hash);
 
-            free(buff);
-        }
+    // Set the challenges
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        char *buff = malloc(32);
+        random_buffer(buff, 32);
+        memcpy(shard_meta->challenges[i], buff, 32);
 
-        // Calculate the merkle tree with challenges
-        for (int i = 0; i < CHALLENGES; i++ ) {
-            int preleaf_size = 32 + read_bytes;
-            char *preleaf = calloc(preleaf_size, sizeof(char));
-            memcpy(preleaf, challenges[i], 32);
-            memcpy(preleaf+32, shard_data, read_bytes);
+        hex2str(32, buff, shard_meta->challenges_as_str[i]);
+        printf("Challenge [%d]: %s\n", i, shard_meta->challenges_as_str[i]);
 
-            char *buff = calloc(RIPEMD160_DIGEST_SIZE*2 +1, sizeof(char));
-            double_ripmd160sha256_as_string(preleaf, preleaf_size, &buff);
-            memcpy(tree[i], buff, RIPEMD160_DIGEST_SIZE*2 + 1);
+        free(buff);
+    }
 
-            free(preleaf);
-            free(buff);
+    // Calculate the merkle tree with challenges
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        int preleaf_size = 32 + shard_meta->size;
+        char *preleaf = calloc(preleaf_size, sizeof(char));
+        memcpy(preleaf, shard_meta->challenges[i], 32);
+        memcpy(preleaf+32, shard_data, shard_meta->size);
 
-            printf("Leaf [%d]: %s\n", i, tree[i]);
-        }
+        char *buff = calloc(RIPEMD160_DIGEST_SIZE*2 +1, sizeof(char));
+        double_ripmd160sha256_as_string(preleaf, preleaf_size, &buff);
+        memcpy(shard_meta->tree[i], buff, RIPEMD160_DIGEST_SIZE*2 + 1);
 
+        free(preleaf);
+        free(buff);
+
+        printf("Leaf [%d]: %s\n", i, shard_meta->tree[i]);
     }
 
     fclose(encrypted_file);
     free(shard_data);
-    free(shard_hash);
+}
+
+static void shard_state_cleanup(shard_meta_t *shard_meta)
+{
+    if (shard_meta->hash != NULL) {
+        free(shard_meta->hash);
+    }
+
+    free(shard_meta);
+}
+
+static uv_work_t *shard_state_new(int index, storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+
+    shard_meta_t *shard_meta = malloc(sizeof(shard_meta_t));
+    assert(shard_meta != NULL);
+
+    shard_meta->index = index;
+    shard_meta->error_status = 0;
+    shard_meta->upload_state = state;
+
+    work->data = shard_meta;
+
+    return work;
 }
 
 static int queue_create_frame(storj_upload_state_t *state)
 {
-    uv_work_t *work = uv_work_new();
+    struct uv_work_t *shard_work[state->total_shards];
 
-    shard_meta_t *req = malloc(sizeof(shard_meta_t));
-    assert(req != NULL);
-
-    req->upload_state = state;
-    req->error_status = 0;
-    work->data = req;
-
-    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
-                               create_frame, after_create_frame);
+    for (int index = 0; index < state->total_shards; index++ ) {
+        shard_work[index] = shard_state_new(index, state);
+        uv_queue_work(state->env->loop, (uv_work_t*) shard_work[index], create_frame, after_create_frame);
+    }
 
     state->hashing_shards = true;
 
-    return status;
+    return;
 }
 
 static void after_request_frame(uv_work_t *work, int status)

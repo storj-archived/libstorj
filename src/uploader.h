@@ -54,9 +54,12 @@ typedef struct {
 
 typedef struct {
     char *hash;
-    char **challenges;
-    char **tree;
-    int shard_index;
+    char *challenges[CHALLENGES][32];
+    char *challenges_as_str[CHALLENGES][64 + 1];
+    // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
+    char *tree[2*CHALLENGES - 1][RIPEMD160_DIGEST_SIZE*2 + 1];
+    int index;
+    uint64_t size;
     /* state should not be modified in worker threads */
     storj_upload_state_t *upload_state;
     int status_code;
@@ -101,6 +104,9 @@ inline char separator()
     return '/';
 #endif
 }
+
+static uv_work_t *shard_state_new(int index, storj_upload_state_t *state);
+static void shard_state_cleanup(shard_meta_t *shard_meta);
 
 static void queue_next_work(storj_upload_state_t *state);
 
