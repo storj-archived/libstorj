@@ -11,38 +11,7 @@ char *get_response_string(json_object *obj, const char *key)
     }
 }
 
-struct json_object *get_response_json(char *path)
-{
-    FILE *f = fopen(path, "r");
-    if (f == NULL) {
-        printf("Error reading %s", path);
-        exit(1);
-    }
-
-    fseek(f, 0, SEEK_END);
-    long fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    char *json_string = malloc(fsize + 1);
-
-    size_t len = fread(json_string, fsize, 1, f);
-    if (len == 0) {
-        printf("Error reading %s", path);
-        exit(1);
-    }
-
-    fclose(f);
-
-    json_string[fsize] = 0;
-
-    struct json_object *j = json_tokener_parse(json_string);
-
-    free(json_string);
-
-    return j;
-}
-
-storj_boolean_t check_auth(char *user, char *pass, int *status_code, char *page)
+bool check_auth(char *user, char *pass, int *status_code, char *page)
 {
     if (user && 0 == strcmp(user, USER) && 0 == strcmp(pass, PASSHASH)) {
         return true;
@@ -66,7 +35,19 @@ int mock_bridge_server(void *cls,
 
     struct MHD_Response *response;
 
-    json_object *responses = get_response_json("test/mockbridge.json");
+    json_tokener *tok = json_tokener_new();
+    json_object *responses = NULL;
+    int stringlen = 0;
+    enum json_tokener_error jerr;
+    do {
+        stringlen = strlen(mockbridge_json);
+        responses = json_tokener_parse_ex(tok, mockbridge_json, stringlen);
+    } while ((jerr = json_tokener_get_error(tok)) == json_tokener_continue);
+
+    if (jerr != json_tokener_success) {
+        fprintf(stderr, "Error: %s\n", json_tokener_error_desc(jerr));
+        exit(1);
+    }
 
     char *page = "Not Found";
     int status_code = MHD_HTTP_NOT_FOUND;
@@ -96,25 +77,29 @@ int mock_bridge_server(void *cls,
                 status_code = MHD_HTTP_OK;
             }
         } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/files/998960317b6725a3f8080c2b")) {
-            if (check_auth(user, pass, &status_code, page)) {
+            // TODO check token auth
 
-                const char* skip = MHD_lookup_connection_value(connection,
-                                                               MHD_GET_ARGUMENT_KIND,
-                                                               "skip");
-                if (!skip || 0 == strcmp(skip, "0")) {
-                    page = get_response_string(responses, "getfilepointers-0");
-                    status_code = MHD_HTTP_OK;
-                } else if (0 == strcmp(skip, "6")) {
-                    page = get_response_string(responses, "getfilepointers-1");
-                    status_code = MHD_HTTP_OK;
-                } else if (0 == strcmp(skip, "12")) {
-                    page = get_response_string(responses, "getfilepointers-2");
-                    status_code = MHD_HTTP_OK;
-                } else {
-                    page = "[]";
-                    status_code = MHD_HTTP_OK;
-                }
+            const char* skip = MHD_lookup_connection_value(connection,
+                                                           MHD_GET_ARGUMENT_KIND,
+                                                           "skip");
+            if (!skip || 0 == strcmp(skip, "0")) {
+                page = get_response_string(responses, "getfilepointers-0");
+                status_code = MHD_HTTP_OK;
+            } else if (0 == strcmp(skip, "6")) {
+                page = get_response_string(responses, "getfilepointers-1");
+                status_code = MHD_HTTP_OK;
+            } else if (0 == strcmp(skip, "12")) {
+                page = get_response_string(responses, "getfilepointers-2");
+                status_code = MHD_HTTP_OK;
+            } else if (0 == strcmp(skip, "4")) {
+                // TODO check exclude and limit query
+                page = get_response_string(responses, "getfilepointers-r");
+                status_code = MHD_HTTP_OK;
+            } else {
+                page = "[]";
+                status_code = MHD_HTTP_OK;
             }
+
         } else if (0 == strcmp(url, "/frames")) {
             if (check_auth(user, pass, &status_code, page)) {
                 page = get_response_string(responses, "getframes");
@@ -129,7 +114,11 @@ int mock_bridge_server(void *cls,
 
     } else if (0 == strcmp(method, "POST")) {
 
-        if (0 == strcmp(url, "/buckets")) {
+        if (0 == strcmp(url, "/reports/exchanges")) {
+            // TODO check post body
+            page = "{}";
+            status_code = 201;
+        } else if (0 == strcmp(url, "/buckets")) {
             if (check_auth(user, pass, &status_code, page)) {
                 // TODO check post body
                 page = get_response_string(responses, "putbuckets");

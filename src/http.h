@@ -11,6 +11,21 @@
 #include <neon/ne_request.h>
 #include <neon/ne_string.h>
 
+#define SHARD_PROGRESS_INTERVAL NE_BUFSIZ * 150
+
+/** @brief A structure for sharing progress state between threads.
+ *
+ * This structure is used to send async updates from a worker thread
+ * back to the event loop thread, to report the bytes that have been
+ * received for a shard.
+ */
+typedef struct {
+    uint32_t pointer_index;
+    uint64_t bytes;
+    /* state should not be modified in worker threads */
+    void *state;
+} shard_download_progress_t;
+
 /**
  * @brief Make a HTTP request for a shard
  *
@@ -27,7 +42,9 @@ int fetch_shard(char *proto,
                 ssize_t shard_total_bytes,
                 char *shard_data,
                 char *token,
-                int *status_code);
+                int *status_code,
+                uv_async_t *progress_handle,
+                bool *cancelled);
 
 /**
  * @brief Make a JSON HTTP request
@@ -44,7 +61,7 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
                                char *method,
                                char *path,
                                struct json_object *request_body,
-                               storj_boolean_t auth,
+                               bool auth,
                                char *token,
                                int *status_code);
 

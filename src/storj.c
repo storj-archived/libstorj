@@ -23,7 +23,7 @@ static json_request_t *json_request_new(
     char *method,
     char *path,
     struct json_object *request_body,
-    storj_boolean_t auth)
+    bool auth)
 {
     json_request_t *req = malloc(sizeof(json_request_t));
     assert(req != NULL);
@@ -42,7 +42,7 @@ static uv_work_t *json_request_work_new(
     char *method,
     char *path,
     struct json_object *request_body,
-    storj_boolean_t auth)
+    bool auth)
 {
     uv_work_t *work = uv_work_new();
     work->data = json_request_new(options, method, path, request_body, auth);
@@ -75,6 +75,10 @@ char *storj_strerror(int error_code)
             return "Bridge request authorization error";
         case STORJ_BRIDGE_TOKEN_ERROR:
             return "Bridge request token error";
+        case STORJ_BRIDGE_POINTER_ERROR:
+            return "Bridge request pointer error";
+        case STORJ_BRIDGE_REPOINTER_ERROR:
+            return "Bridge request replace pointer error";
         case STORJ_BRIDGE_TIMEOUT_ERROR:
             return "Bridge request timeout error";
         case STORJ_BRIDGE_INTERNAL_ERROR:
@@ -89,12 +93,22 @@ char *storj_strerror(int error_code)
             return "Unexpected JSON response";
         case STORJ_FARMER_REQUEST_ERROR:
             return "Farmer request error";
+        case STORJ_FARMER_EXHAUSTED_ERROR:
+            return "Farmer exhausted error";
         case STORJ_FARMER_TIMEOUT_ERROR:
             return "Farmer request timeout error";
         case STORJ_FARMER_AUTH_ERROR:
             return "Farmer request authorization error";
+        case STORJ_FARMER_INTEGRITY_ERROR:
+            return "Farmer requst integrity error";
         case STORJ_FILE_INTEGRITY_ERROR:
             return "File integrity error";
+        case STORJ_BRIDGE_FRAME_ERROR:
+            return "Bridge frame request error";
+        case STORJ_FILE_ENCRYPTION_ERROR:
+            return "File Encryption error";
+        case STORJ_TRANSFER_CANCELLED:
+            return "File transfer cancelled";
         case STORJ_TRANSFER_OK:
             return "No errors";
         default:
@@ -227,14 +241,6 @@ int storj_bridge_delete_frame(storj_env_t *env, char *frame_id,
                                             NULL, true);
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
-}
-
-int storj_bridge_add_shard_to_frame(storj_env_t *env,
-                                    char *frame_id,
-                                    storj_shard_t *shard,
-                                    uv_after_work_cb cb)
-{
-    (void) 0;
 }
 
 int storj_bridge_get_file_info(storj_env_t *env,

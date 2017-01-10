@@ -1,15 +1,4 @@
-#include "storj.h"
-#include "http.h"
-#include "utils.h"
-#include "crypto.h"
-
-#define MAX_SHARD_SIZE 1073741824
-#define SHARD_MULTIPLES_BACK 5
-
-static void queue_next_work(storj_upload_state_t *state);
-static int queue_request_bucket_token(storj_upload_state_t *state);
-static after_request_token(uv_work_t *work, int status);
-static request_token(uv_work_t *work);
+#include "uploader.h"
 
 static uv_work_t *uv_work_new()
 {
@@ -31,12 +20,15 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->file_key);
     }
 
+    // if (state->all_shard_meta) {
+    //     for (int i = 0; i < state->total_shards; i++ ) {
+    //         if (state->all_shard_meta[i]) {
+    //             shard_state_cleanup(state->all_shard_meta[i]);
+    //         }
+    //     }
+    // }
+
     free(state);
-}
-
-static int queue_request_frame(storj_upload_state_t *state)
-{
-
 }
 
 static uint64_t check_file(storj_env_t *env, char *filepath)
@@ -97,25 +89,246 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
       return shard_size(hops);
     }
 
-    return determine_shard_size(&state, ++accumulator);
+    return determine_shard_size(state, ++accumulator);
 }
 
-static after_encrypt_file(uv_work_t *work)
+static void after_create_frame(uv_work_t *work, int status)
+{
+    frame_builder_t *frame_builder = work->data;
+    shard_meta_t *shard_meta = frame_builder->shard_meta;
+    storj_upload_state_t *state = frame_builder->upload_state;
+
+    state->shards_hashed += 1;
+
+    if (state->shards_hashed == state->total_shards) {
+        state->hashing_shards = false;
+        state->completed_shard_hash = true;
+    }
+
+    // TODO: set the shard_meta to an array in the state for later use.
+
+    shard_state_cleanup(shard_meta);
+    free(frame_builder);
+    free(work);
+}
+
+static void create_frame(uv_work_t *work)
+{
+    frame_builder_t *frame_builder = work->data;
+    shard_meta_t *shard_meta = frame_builder->shard_meta;
+    storj_upload_state_t *state = frame_builder->upload_state;
+
+    // Open encrypted file
+    FILE *encrypted_file = fopen(state->tmp_path, "r");
+    if (NULL == encrypted_file) {
+        frame_builder->error_status = STORJ_FILE_INTEGRITY_ERROR;
+        return;
+    }
+
+    // Encrypted shard read from file
+    uint8_t *shard_data = calloc(state->shard_size, sizeof(char));
+    // Hash of the shard_data
+    shard_meta->hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 1, sizeof(char));
+    // Bytes read from file
+    uint64_t read_bytes;
+
+    printf("Creating frame for shard index %d\n", shard_meta->index);
+
+    read_bytes = 0;
+
+    // TODO: make sure we only loop a certain number of times
+    do {
+        // Seek to shard's location in file
+        fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
+        // Read shard data from file
+        read_bytes = fread(shard_data, 1, state->shard_size, encrypted_file);
+    } while(read_bytes < state->shard_size && shard_meta->index != state->total_shards - 1);
+
+    shard_meta->size = read_bytes;
+
+    // Calculate Shard Hash
+    ripmd160sha256_as_string(shard_data, shard_meta->size, &shard_meta->hash);
+
+    printf("Shard hash: %s\n", shard_meta->hash);
+
+    // Set the challenges
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        uint8_t *buff = malloc(32);
+        random_buffer(buff, 32);
+        memcpy(shard_meta->challenges[i], buff, 32);
+
+        // Convert the uint8_t challenges to character arrays
+        hex2str(32, buff, (char *)shard_meta->challenges_as_str[i]);
+
+        free(buff);
+    }
+
+    // Calculate the merkle tree with challenges
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        int preleaf_size = 32 + shard_meta->size;
+        uint8_t *preleaf = calloc(preleaf_size, sizeof(char));
+        memcpy(preleaf, shard_meta->challenges[i], 32);
+        memcpy(preleaf+32, shard_data, shard_meta->size);
+
+        char *buff = calloc(RIPEMD160_DIGEST_SIZE*2 +1, sizeof(char));
+        double_ripmd160sha256_as_string(preleaf, preleaf_size, &buff);
+        memcpy(shard_meta->tree[i], buff, RIPEMD160_DIGEST_SIZE*2 + 1);
+
+        free(preleaf);
+        free(buff);
+    }
+
+    fclose(encrypted_file);
+    free(shard_data);
+}
+
+static void shard_state_cleanup(shard_meta_t *shard_meta)
+{
+    if (shard_meta->hash != NULL) {
+        free(shard_meta->hash);
+    }
+
+    free(shard_meta);
+}
+
+static uv_work_t *shard_state_new(int index, storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+    frame_builder_t *frame_builder = malloc(sizeof(frame_builder_t));
+    frame_builder->shard_meta = malloc(sizeof(shard_meta_t));
+    frame_builder->upload_state = state;
+
+    assert(frame_builder->shard_meta != NULL);
+
+    frame_builder->shard_meta->index = index;
+    frame_builder->error_status = 0;
+
+    work->data = frame_builder;
+
+    return work;
+}
+
+static int queue_create_frame(storj_upload_state_t *state)
+{
+    struct uv_work_t *shard_work[state->total_shards];
+
+    for (int index = 0; index < state->total_shards; index++ ) {
+        shard_work[index] = shard_state_new(index, state);
+        uv_queue_work(state->env->loop, (uv_work_t*) shard_work[index], create_frame, after_create_frame);
+    }
+
+    state->hashing_shards = true;
+
+    return 0;
+}
+
+static void after_request_frame(uv_work_t *work, int status)
+{
+    frame_request_t *req = work->data;
+
+    req->upload_state->frame_request_count += 1;
+
+    // Check if we got a 201 status and token
+    if (req->error_status == 0 && req->status_code == 200 && req->frame_id) {
+        req->upload_state->requesting_frame = false;
+        req->upload_state->frame_id = req->frame_id;
+    } else if (req->upload_state->frame_request_count == 6) {
+        req->upload_state->error_status = STORJ_BRIDGE_FRAME_ERROR;
+    } else {
+        queue_request_frame(req->upload_state);
+    }
+
+    queue_next_work(req->upload_state);
+
+    free(req);
+    free(work);
+}
+
+static void request_frame(uv_work_t *work)
+{
+    frame_request_t *req = work->data;
+
+    printf("[%s] Creating file staging frame... (retry: %d)\n",
+            req->upload_state->file_name,
+            req->upload_state->frame_request_count);
+
+    struct json_object *body = json_object_new_object();
+
+    int status_code;
+    struct json_object *response = fetch_json(req->options,
+                                              "POST",
+                                              "/frames",
+                                              body,
+                                              true,
+                                              NULL,
+                                              &status_code);
+
+    struct json_object *frame_id;
+    if (!json_object_object_get_ex(response, "id", &frame_id)) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    if (!json_object_is_type(frame_id, json_type_string) == 1) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    req->frame_id = (char *)json_object_get_string(frame_id);
+    req->status_code = status_code;
+
+    json_object_put(response);
+    json_object_put(body);
+}
+
+static int queue_request_frame(storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+
+    frame_request_t *req = malloc(sizeof(frame_request_t));
+    assert(req != NULL);
+
+    req->options = state->env->bridge_options;
+    req->upload_state = state;
+    req->error_status = 0;
+    work->data = req;
+
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               request_frame, after_request_frame);
+
+    state->requesting_frame = true;
+
+    return status;
+}
+
+static void after_encrypt_file(uv_work_t *work, int status)
 {
     encrypt_file_meta_t *meta = work->data;
+    storj_upload_state_t *state = meta->upload_state;
 
-    meta->upload_state->encrypting_file = false;
+    state->encrypt_file_count += 1;
 
-    // TODO: Check if meta->tmp_path is the same size as meta->file_path
-    meta->upload_state->tmp_path = meta->tmp_path;
+    if (check_file(state->env, meta->tmp_path) == state->file_size) {
+        state->encrypting_file = false;
+        state->completed_encryption = true;
+        state->tmp_path = meta->tmp_path;
+    } else if (state->encrypt_file_count == 6) {
+        state->error_status = STORJ_FILE_ENCRYPTION_ERROR;
+    } else {
+        queue_encrypt_file(state);
+    }
+
+    queue_next_work(state);
 
     free(meta);
     free(work);
 }
 
-static encrypt_file(uv_work_t *work)
+static void encrypt_file(uv_work_t *work)
 {
     encrypt_file_meta_t *meta = work->data;
+
+    printf("[%s] Encrypting file... (retry: %d)\n",
+            meta->upload_state->file_name,
+            meta->upload_state->encrypt_file_count);
 
     // Set tmp file
     int tmp_len = strlen(meta->file_path) + strlen(".crypt");
@@ -158,7 +371,7 @@ static encrypt_file(uv_work_t *work)
         // read up to sizeof(buffer) bytes
         while ((bytesRead = fread(clr_txt, 1, AES_BLOCK_SIZE * 30, original_file)) > 0) {
             ctr_crypt(ctx,
-                      aes256_encrypt,
+                      (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE,
                       iv,
                       bytesRead,
@@ -175,7 +388,6 @@ static encrypt_file(uv_work_t *work)
     fclose(original_file);
     fclose(encrypted_file);
 
-    free(tmp_path);
     free(ctx);
     free(iv);
     free(salt);
@@ -206,7 +418,7 @@ static int queue_encrypt_file(storj_upload_state_t *state)
     return status;
 }
 
-static after_request_token(uv_work_t *work, int status)
+static void after_request_token(uv_work_t *work, int status)
 {
     token_request_token_t *req = work->data;
 
@@ -228,7 +440,7 @@ static after_request_token(uv_work_t *work, int status)
     free(work);
 }
 
-static request_token(uv_work_t *work)
+static void request_token(uv_work_t *work)
 {
     token_request_token_t *req = work->data;
 
@@ -244,7 +456,7 @@ static request_token(uv_work_t *work)
     json_object *op_string = json_object_new_string(req->bucket_op);
     json_object_object_add(body, "operation", op_string);
 
-    int *status_code;
+    int status_code;
     struct json_object *response = fetch_json(req->options,
                                               "POST",
                                               path,
@@ -279,7 +491,7 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
 
     req->options = state->env->bridge_options;
     req->bucket_id = state->bucket_id;
-    req->bucket_op = BUCKET_OP[BUCKET_PUSH];
+    req->bucket_op = (char *)BUCKET_OP[BUCKET_PUSH];
     req->upload_state = state;
     req->error_status = 0;
     work->data = req;
@@ -302,7 +514,9 @@ static void queue_next_work(storj_upload_state_t *state)
 
     // report progress of upload
     if (state->file_size > 0 && state->uploaded_bytes > 0) {
-        state->progress_cb(state->uploaded_bytes / state->total_bytes);
+        state->progress_cb(state->uploaded_bytes / state->total_bytes,
+                           state->uploaded_bytes,
+                           state->total_bytes);
     }
 
     // report upload complete
@@ -315,8 +529,10 @@ static void queue_next_work(storj_upload_state_t *state)
         queue_request_bucket_token(state);
     }
 
-    if (!state->frame && !state->requesting_frame) {
+    if (!state->frame_id && !state->requesting_frame) {
         queue_request_frame(state);
+    } else if (state->frame_id && state->completed_encryption && !state->hashing_shards && !state->completed_shard_hash) {
+        queue_create_frame(state);
     }
 
     // Encrypt the file
@@ -326,7 +542,7 @@ static void queue_next_work(storj_upload_state_t *state)
 
 }
 
-static void begin_work_queue(uv_work_t *work)
+static void begin_work_queue(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
 
@@ -396,27 +612,33 @@ int storj_bridge_store_file(storj_env_t *env,
     storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
     state->file_concurrency = opts->file_concurrency;
     state->shard_concurrency = opts->shard_concurrency;
-    state->uploaded_bytes = 0;
     state->env = env;
     state->file_path = opts->file_path;
     state->bucket_id = opts->bucket_id;
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
-    state->total_shards = 0;
-    state->completed_shards = 0;
-    state->final_callback_called = false;
     state->mnemonic = opts->mnemonic;
+
+    // TODO: find a way to default
+    state->token_request_count = 0;
+    state->frame_request_count = 0;
+    state->encrypt_file_count = 0;
+    state->shards_hashed = 0;
+    state->completed_encryption = false;
+    state->completed_shard_hash = false;
     state->error_status = 0;
     state->writing = false;
     state->encrypting_file = false;
     state->requesting_frame = false;
     state->requesting_token = false;
+    state->hashing_shards = false;
     state->token = NULL;
     state->tmp_path = NULL;
-    state->frame = NULL;
-
-    // TODO: find a way to default at 0
-    state->token_request_count = 0;
+    state->frame_id = NULL;
+    state->total_shards = 0;
+    state->completed_shards = 0;
+    state->uploaded_bytes = 0;
+    state->final_callback_called = false;
 
     uv_work_t *work = uv_work_new();
     work->data = state;

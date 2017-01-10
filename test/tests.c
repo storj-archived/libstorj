@@ -1,5 +1,20 @@
 #include "storjtests.h"
 
+char *folder;
+
+// setup bridge options to point to mock server
+storj_bridge_options_t bridge_options = {
+    .proto = "http",
+    .host  = "localhost",
+    .port  = 8091,
+    .user  = "testuser@storj.io",
+    .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
+};
+
+storj_encrypt_options_t encrypt_options = {
+    .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+};
+
 void fail(char *msg)
 {
     printf("\t" KRED "FAIL" RESET " %s\n", msg);
@@ -149,20 +164,41 @@ void check_file_pointers(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-void check_resolve_file_progress(double progress)
+void check_resolve_file_progress(double progress,
+                                 uint64_t downloaded_bytes,
+                                 uint64_t total_bytes)
 {
-    // TODO assersions
+    if (progress == (double)1) {
+        pass("storj_bridge_resolve_file (progress finished)");
+    }
+
+    // TODO check error case
 }
 
 void check_resolve_file(int status, FILE *fd)
 {
     fclose(fd);
-    assert(status == 0);
-
-    pass("storj_bridge_resolve_file");
+    if (status) {
+        fail("storj_bridge_resolve_file");
+        printf("Download failed: %s\n", storj_strerror(status));
+    } else {
+        pass("storj_bridge_resolve_file");
+    }
 }
 
-void check_store_file_progress(double progress)
+void check_resolve_file_cancel(int status, FILE *fd)
+{
+    fclose(fd);
+    if (status == STORJ_TRANSFER_CANCELLED) {
+        pass("storj_bridge_resolve_file_cancel");
+    } else {
+        fail("storj_bridge_resolve_file_cancel");
+    }
+}
+
+void check_store_file_progress(double progress,
+                               uint64_t uploaded_bytes,
+                               uint64_t total_bytes)
 {
     // TODO assersions
 }
@@ -280,16 +316,114 @@ void check_file_info(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-int test_api()
+int test_download()
 {
 
-    // Make sure we have a tmp folder
-    char *folder = getenv("TMPDIR");
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&bridge_options, &encrypt_options);
+    assert(env != NULL);
 
-    if (folder == 0) {
-        printf("You need to set $TMPDIR before running. (e.g. export TMPDIR=/tmp/)\n");
-        exit(1);
+    // resolve file
+    char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
+    strcpy(download_file, folder);
+    strcat(download_file, "storj-test-download.data");
+    FILE *download_fp = fopen(download_file, "w+");
+
+    char *bucket_id = "368be0816766b28fd5f43af5";
+    char *file_id = "998960317b6725a3f8080c2b";
+
+    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+
+    int status = storj_bridge_resolve_file(env,
+                                           state,
+                                           bucket_id,
+                                           file_id,
+                                           download_fp,
+                                           check_resolve_file_progress,
+                                           check_resolve_file);
+
+    free(download_file);
+
+    assert(status == 0);
+
+    if (uv_run(env->loop, UV_RUN_DEFAULT)) {
+        return 1;
     }
+
+    // shutdown
+    status = uv_loop_close(env->loop);
+    if (status == UV_EBUSY) {
+        return 1;
+    }
+
+
+    free(env->loop);
+    free(env);
+}
+
+int test_download_cancel()
+{
+
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&bridge_options, &encrypt_options);
+    assert(env != NULL);
+
+    // resolve file
+    char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
+    strcpy(download_file, folder);
+    strcat(download_file, "storj-test-download-cancelled.data");
+    FILE *download_fp = fopen(download_file, "w+");
+
+    char *bucket_id = "368be0816766b28fd5f43af5";
+    char *file_id = "998960317b6725a3f8080c2b";
+
+    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+
+    int status = storj_bridge_resolve_file(env,
+                                           state,
+                                           bucket_id,
+                                           file_id,
+                                           download_fp,
+                                           check_resolve_file_progress,
+                                           check_resolve_file_cancel);
+
+    free(download_file);
+    assert(status == 0);
+
+    // process the loop one at a time so that we can do other things while
+    // the loop is processing, such as cancel the download
+    int count = 0;
+    bool more;
+    do {
+        more = uv_run(env->loop, UV_RUN_ONCE);
+        if (more == false) {
+            more = uv_loop_alive(env->loop);
+            if (uv_run(env->loop, UV_RUN_NOWAIT) != 0) {
+                more = true;
+            }
+        }
+
+        count++;
+
+        if (count > 100) {
+            status = storj_bridge_resolve_file_cancel(state);
+            assert(status == 0);
+        }
+
+    } while (more == true);
+
+    // shutdown
+    status = uv_loop_close(env->loop);
+    if (status == UV_EBUSY) {
+        return 1;
+    }
+
+    free(env->loop);
+    free(env);
+}
+
+int test_api()
+{
     char *file_name = "samplefile.txt";
     int len = strlen(folder) + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));
@@ -297,19 +431,6 @@ int test_api()
     strcat(file, file_name);
     file[len] = '\0';
     create_test_file(file);
-
-    // setup bridge options to point to mock server
-    storj_bridge_options_t bridge_options = {
-        .proto = "http",
-        .host  = "localhost",
-        .port  = 8091,
-        .user  = "testuser@storj.io",
-        .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
-    };
-
-    storj_encrypt_options_t encrypt_options = {
-        .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
-    };
 
     // initialize event loop and environment
     storj_env_t *env = storj_init_env(&bridge_options, &encrypt_options);
@@ -329,7 +450,6 @@ int test_api()
     status = storj_bridge_create_bucket(env, "backups", check_create_bucket);
     assert(status == 0);
 
-    // TODO use expected size for the bucket_id
     char *bucket_id = "368be0816766b28fd5f43af5";
 
     // delete a bucket
@@ -348,7 +468,6 @@ int test_api()
                                               check_bucket_tokens);
     assert(status == 0);
 
-    // TODO use expected size for the file_id
     char *file_id = "998960317b6725a3f8080c2b";
 
     // delete a file in a bucket
@@ -388,20 +507,6 @@ int test_api()
                                             file_id, check_file_pointers);
     assert(status == 0);
 
-    // resolve file
-    char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
-    strcpy(download_file, folder);
-    strcat(download_file, "storj-test-download.data");
-    FILE *download_fp = fopen(download_file, "w+");
-
-    status = storj_bridge_resolve_file(env, bucket_id, file_id, download_fp,
-                                       check_resolve_file_progress,
-                                       check_resolve_file);
-
-    free(download_file);
-
-    assert(status == 0);
-
     // upload file
     storj_upload_opts_t upload_opts = {
         .file_concurrency = 1,
@@ -420,13 +525,13 @@ int test_api()
 
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
-        // Error
+        return 1;
     }
 
     // shutdown
     status = uv_loop_close(env->loop);
     if (status == UV_EBUSY) {
-        // Error
+        return 1;
     }
 
 
@@ -671,6 +776,47 @@ int test_calculate_file_id()
     return OK;
 }
 
+int test_str2hex()
+{
+    char *data = "632442ba2e5f28a3a4e68dcb0b45d1d8f097d5b47479d74e2259055aa25a08aa";
+    uint8_t *buffer = calloc(32 + 1, sizeof(uint8_t));
+
+    str2hex(64, data, buffer);
+
+    uint8_t expected[32] = {99,36,66,186,46,95,40,163,164,230,141,203,11,69,
+                              209,216,240,151,213,180,116,121,215,78,34,89,5,
+                              90,162,90,8,170};
+
+    int failed = 0;
+    for (int i = 0; i < 32; i++) {
+        if (expected[i] != buffer[i]) {
+            failed = 1;
+        }
+    }
+
+    if (failed) {
+        fail("test_str2hex");
+    } else {
+        pass("test_str2hex");
+    }
+
+    return OK;
+}
+
+int test_get_time_milliseconds()
+{
+    double time = get_time_milliseconds();
+
+    // TODO check against another source
+    if (time) {
+        pass("test_get_time_milliseconds");
+    } else {
+        fail("test_get_time_milliseconds");
+    }
+
+    return OK;
+}
+
 int test_increment_ctr_aes_iv()
 {
     uint8_t iv[16] = {188,14,95,229,78,112,182,107,
@@ -737,6 +883,14 @@ struct MHD_Daemon *start_farmer_server()
 
 int main(void)
 {
+    // Make sure we have a tmp folder
+    folder = getenv("TMPDIR");
+
+    if (folder == 0) {
+        printf("You need to set $TMPDIR before running. (e.g. export TMPDIR=/tmp/)\n");
+        exit(1);
+    }
+
     // spin up test bridge server
     struct MHD_Daemon *d = start_test_server();
     if (d == NULL) {
@@ -750,8 +904,16 @@ int main(void)
     int tests_ran = 0;
 
     int status = 0;
+
     printf("Test Suite: API\n");
     status += test_api();
+    ++tests_ran;
+    printf("\n");
+
+    printf("Test Suite: Downloads\n");
+    status += test_download();
+    ++tests_ran;
+    status += test_download_cancel();
     ++tests_ran;
     printf("\n");
 
@@ -771,10 +933,14 @@ int main(void)
     ++tests_ran;
     status += test_generate_file_key();
     ++tests_ran;
+    status += test_increment_ctr_aes_iv();
+    ++tests_ran;
     printf("\n");
 
     printf("Test Suite: Utils\n");
-    status += test_increment_ctr_aes_iv();
+    status += test_str2hex();
+    ++tests_ran;
+    status += test_get_time_milliseconds();
     ++tests_ran;
 
     int num_passed = tests_ran - status;
