@@ -73,13 +73,29 @@ static void upload_file_complete(int status)
 static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 {
     char *mnemonic = getenv("STORJ_MNEMONIC");
+
+    char *homedir;
+    if ((homedir = getenv("HOME")) == NULL) {
+        homedir = getpwuid(getuid())->pw_dir;
+    }
+    char *rootDir[1024];
+    strcpy(rootDir, homedir);
+    strcat(rootDir, "/.storj");
+
+    char *userFile[1024];
+    strcpy(userFile, rootDir);
+    strcat(userFile, "/user");
+    char *mnemonicFile[1024];
+    strcpy(mnemonicFile, rootDir);
+    strcat(mnemonicFile, "/mnemonic");
+
     if (!mnemonic && access(".storj/mnemonic", F_OK) != -1) {
       printf("Encryption key: ");
       char *key = calloc(BUFSIZ, sizeof(char));
       get_password(key);
       printf("\n");
-      char *user = read_encrypted_file(".storj/user", NULL, NULL);
-      mnemonic = read_encrypted_file(".storj/mnemonic", key, user);
+      char *user = read_encrypted_file(userFile, NULL, NULL);
+      mnemonic = read_encrypted_file(mnemonicFile, key, user);
     }
     if (!mnemonic) {
         printf("Set your STORJ_MNEMONIC\n");
@@ -402,21 +418,41 @@ static void set_auth()
   get_password(key);
   printf("\n");
 
-  struct stat st = {0};
 
-  if (stat(".storj", &st) == -1) {
+  char *homedir;
+  if ((homedir = getenv("HOME")) == NULL) {
+      homedir = getpwuid(getuid())->pw_dir;
+  }
+  char *rootDir[1024];
+  strcpy(rootDir, homedir);
+  strcat(rootDir, "/.storj");
+
+  char *userFile[1024];
+  strcpy(userFile, rootDir);
+  strcat(userFile, "/user");
+  char *pwFile[1024];
+  strcpy(pwFile, rootDir);
+  strcat(pwFile, "/password");
+  char *mnemonicFile[1024];
+  strcpy(mnemonicFile, rootDir);
+  strcat(mnemonicFile, "/mnemonic");
+
+  printf("user dir: %s\n", userFile);
+
+  struct stat st = {0};
+  if (stat(rootDir, &st) == -1) {
     printf("Creating .storj directory...\n");
-    mkdir(".storj", 0700);
+    mkdir(rootDir, 0700);
   }
 
   if (user[0] != '\0') {
-    write_encrypted_file(".storj/user", NULL, NULL, user);
+    write_encrypted_file(userFile, NULL, NULL, user);
   }
   if (pass[0] != '\0') {
-    write_encrypted_file(".storj/pass", key, user, pass);
+    write_encrypted_file(pwFile, key, user, pass);
   }
   if (mnemonic[0] != '\0') {
-    write_encrypted_file(".storj/mnemonic", key, user, mnemonic);
+    write_encrypted_file(mnemonicFile, key, user, mnemonic);
   }
 
   printf("Successfully stored username, password, and mnemonic :)\n");
@@ -500,14 +536,32 @@ int main(int argc, char **argv)
         storj_bridge_get_info(env, get_info_callback);
 
     } else {
+        char *homedir;
+        if ((homedir = getenv("HOME")) == NULL) {
+            homedir = getpwuid(getuid())->pw_dir;
+        }
+        char *rootDir[1024];
+        strcpy(rootDir, homedir);
+        strcat(rootDir, "/.storj");
+
+        char *userFile[1024];
+        strcpy(userFile, rootDir);
+        strcat(userFile, "/user");
+        char *pwFile[1024];
+        strcpy(pwFile, rootDir);
+        strcat(pwFile, "/password");
+        char *mnemonicFile[1024];
+        strcpy(mnemonicFile, rootDir);
+        strcat(mnemonicFile, "/mnemonic");
+
         // Get the bridge user
         char *encryptionKey = calloc(BUFSIZ, sizeof(char));
         char *user = getenv("STORJ_BRIDGE_USER");
-        if (!user && access(".storj/user", F_OK) != -1) {
+        if (!user && access(userFile, F_OK) != -1) {
           printf("Encryption key: ");
           get_password(encryptionKey);
           printf("\n");
-          user = read_encrypted_file(".storj/user", NULL, NULL);
+          user = read_encrypted_file(userFile, NULL, NULL);
         }
         if (!user) {
             char *user_input;
@@ -526,8 +580,8 @@ int main(int argc, char **argv)
 
         // Get the bridge password
         char *pass = getenv("STORJ_BRIDGE_PASS");
-        if (!pass && access(".storj/pass", F_OK) != -1 && encryptionKey != NULL) {
-          pass = read_encrypted_file(".storj/pass", encryptionKey, user);
+        if (!pass && access(pwFile, F_OK) != -1 && encryptionKey != NULL) {
+          pass = read_encrypted_file(pwFile, encryptionKey, user);
         }
         if (!pass) {
             printf("Bridge password: ");
@@ -545,8 +599,8 @@ int main(int argc, char **argv)
         };
 
         char *mnemonic = getenv("STORJ_MNEMONIC");
-        if (!mnemonic && access(".storj/mnemonic", F_OK) != -1 && encryptionKey != NULL) {
-          mnemonic = read_encrypted_file(".storj/mnemonic", encryptionKey, user);
+        if (!mnemonic && access(mnemonicFile, F_OK) != -1 && encryptionKey != NULL) {
+          mnemonic = read_encrypted_file(mnemonicFile, encryptionKey, user);
         }
         if (!mnemonic) {
             printf("Encryption mnemonic: ");
