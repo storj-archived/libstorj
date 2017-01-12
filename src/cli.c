@@ -26,6 +26,8 @@ extern int errno;
     "  -v, --version             output the version number\n"           \
     "  -u, --url <url>           set the base url for the api\n\n"      \
 
+#define CLI_VERSION "libstorj-1.0.0-alpha"
+
 static void get_password(char *password)
 {
     static struct termios prev_terminal;
@@ -374,7 +376,7 @@ int main(int argc, char **argv)
                 break;
             case 'V':
             case 'v':
-                printf("libstorj 1.0.0-alpha\n\n");
+                printf(CLI_VERSION "\n\n");
                 exit(0);
                 break;
             case 'h':
@@ -405,6 +407,10 @@ int main(int argc, char **argv)
     // initialize event loop and environment
     storj_env_t *env;
 
+    storj_http_options_t http_options = {
+        .user_agent = CLI_VERSION
+    };
+
     if (strcmp(command, "get-info") == 0) {
 
         printf("Storj bridge: %s\n\n", storj_bridge);
@@ -417,7 +423,7 @@ int main(int argc, char **argv)
             .pass  = NULL
         };
 
-        env = storj_init_env(&options, NULL);
+        env = storj_init_env(&options, NULL, &http_options);
         if (!env) {
             return 1;
         }
@@ -473,7 +479,7 @@ int main(int argc, char **argv)
             .mnemonic = mnemonic
         };
 
-        env = storj_init_env(&options, &encrypt_options);
+        env = storj_init_env(&options, &encrypt_options, &http_options);
         if (!env) {
             status = 1;
             goto end_program;

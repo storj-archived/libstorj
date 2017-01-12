@@ -15,6 +15,10 @@ storj_encrypt_options_t encrypt_options = {
     .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
 };
 
+storj_http_options_t http_options = {
+    .user_agent = "storj-test"
+};
+
 void fail(char *msg)
 {
     printf("\t" KRED "FAIL" RESET " %s\n", msg);
@@ -320,7 +324,9 @@ int test_download()
 {
 
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options, &encrypt_options);
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options);
     assert(env != NULL);
 
     // resolve file
@@ -365,7 +371,9 @@ int test_download_cancel()
 {
 
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options, &encrypt_options);
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options);
     assert(env != NULL);
 
     // resolve file
@@ -433,7 +441,9 @@ int test_api()
     create_test_file(file);
 
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options, &encrypt_options);
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options);
     assert(env != NULL);
 
     int status;

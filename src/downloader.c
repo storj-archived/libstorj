@@ -13,7 +13,8 @@ static void request_token(uv_work_t *work)
     json_object_object_add(body, "operation", op_string);
 
     int status_code = 0;
-    struct json_object *response = fetch_json(req->options,
+    struct json_object *response = fetch_json(req->http_options,
+                                              req->options,
                                               "POST",
                                               path,
                                               body,
@@ -99,6 +100,7 @@ static int queue_request_bucket_token(storj_download_state_t *state)
     token_request_download_t *req = malloc(sizeof(token_request_download_t));
     assert(req != NULL);
 
+    req->http_options = state->env->http_options;
     req->options = state->env->bridge_options;
     req->bucket_id = state->bucket_id;
     req->bucket_op = (char *)BUCKET_OP[BUCKET_PULL];
@@ -121,8 +123,9 @@ static void request_pointers(uv_work_t *work)
     json_request_download_t *req = work->data;
 
     int status_code = 0;
-    req->response = fetch_json(req->options, req->method, req->path, req->body,
-                               req->auth, req->token, &status_code);
+    req->response = fetch_json(req->http_options, req->options, req->method,
+                               req->path, req->body, req->auth, req->token,
+                               &status_code);
 
     req->status_code = status_code;
 
@@ -146,8 +149,8 @@ static void request_replace_pointer(uv_work_t *work)
     char *path = ne_concat("/buckets/", req->bucket_id, "/files/",
                            req->file_id, query_args, NULL);
 
-    req->response = fetch_json(req->options, "GET", path, NULL, NULL,
-                               req->token, &status_code);
+    req->response = fetch_json(req->http_options, req->options, "GET",
+                               path, NULL, NULL, req->token, &status_code);
 
     req->status_code = status_code;
 
@@ -157,7 +160,8 @@ static void request_replace_pointer(uv_work_t *work)
 }
 
 static void set_pointer_from_json(storj_download_state_t *state,
-                                  storj_pointer_t *p, struct json_object *json,
+                                  storj_pointer_t *p,
+                                  struct json_object *json,
                                   bool is_replaced)
 {
     // TODO free existing values if is replaced?
@@ -444,6 +448,7 @@ static void queue_request_pointers(storj_download_state_t *state)
 
             req->pointer_index = i;
 
+            req->http_options = state->env->http_options;
             req->options = state->env->bridge_options;
             req->token = state->token;
             req->bucket_id = state->bucket_id;
@@ -482,6 +487,7 @@ static void queue_request_pointers(storj_download_state_t *state)
     char *path = ne_concat("/buckets/", state->bucket_id, "/files/",
                            state->file_id, query_args, NULL);
 
+    req->http_options = state->env->http_options;
     req->options = state->env->bridge_options;
     req->method = "GET";
     req->path = path;
@@ -509,7 +515,8 @@ static void request_shard(uv_work_t *work)
 
     req->start = get_time_milliseconds();
 
-    int error_status = fetch_shard(req->farmer_proto, req->farmer_host,
+    int error_status = fetch_shard(req->http_options,
+                                   req->farmer_proto, req->farmer_host,
                                    req->farmer_port, req->shard_hash,
                                    req->shard_total_bytes, req->shard_data,
                                    req->token, &status_code,
@@ -557,7 +564,6 @@ static void free_request_shard_work(uv_handle_t *progress_handle)
 static void after_request_shard(uv_work_t *work, int status)
 {
     // TODO check status
-
     shard_request_download_t *req = work->data;
 
     req->state->pending_work_count--;
@@ -639,6 +645,7 @@ static int queue_request_shards(storj_download_state_t *state)
             shard_request_download_t *req = malloc(sizeof(shard_request_download_t));
             assert(req != NULL);
 
+            req->http_options = state->env->http_options;
             req->farmer_proto = "http";
             req->farmer_host = pointer->farmer_address;
             req->farmer_port = pointer->farmer_port;
@@ -813,7 +820,8 @@ static void send_exchange_report(uv_work_t *work)
     int status_code = 0;
 
     // there should be an empty object in response
-    struct json_object *response = fetch_json(req->options, "POST",
+    struct json_object *response = fetch_json(req->http_options,
+                                              req->options, "POST",
                                               "/reports/exchanges", body,
                                               NULL, NULL, &status_code);
     req->status_code = status_code;
@@ -869,6 +877,7 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
 
             shard_send_report_t *req = malloc(sizeof(shard_send_report_t));
 
+            req->http_options = state->env->http_options;
             req->options = state->env->bridge_options;
             req->status_code = 0;
             req->report = pointer->report;

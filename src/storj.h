@@ -91,6 +91,14 @@ typedef struct storj_encrypt_options {
     char *mnemonic;
 } storj_encrypt_options_t;
 
+/** @brief HTTP configuration options
+ *
+ * Settings for making HTTP requests
+ */
+typedef struct storj_http_options {
+    char *user_agent;
+} storj_http_options_t;
+
 /** @brief A structure for a Storj user environment.
  *
  * This is the highest level structure and holds many commonly used options
@@ -99,12 +107,14 @@ typedef struct storj_encrypt_options {
 typedef struct storj_env {
     storj_bridge_options_t *bridge_options;
     storj_encrypt_options_t *encrypt_options;
+    storj_http_options_t *http_options;
     uv_loop_t *loop;
 } storj_env_t;
 
 /** @brief A structure for queueing json request work
  */
 typedef struct {
+    storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     char *method;
     char *path;
@@ -243,7 +253,8 @@ typedef struct {
  * @return A null value on error, otherwise a storj_env pointer.
  */
 storj_env_t *storj_init_env(storj_bridge_options_t *options,
-                            storj_encrypt_options_t *encrypt_options);
+                            storj_encrypt_options_t *encrypt_options,
+                            storj_http_options_t *http_options);
 
 /**
  * @brief Get the error message for an error code

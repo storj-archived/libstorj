@@ -18,7 +18,8 @@ static void clean_up_neon(ne_session *s, ne_request *r)
 }
 
 /* shard_data must be allocated for shard_total_bytes */
-int fetch_shard(char *proto,
+int fetch_shard(storj_http_options_t *http_options,
+                char *proto,
                 char *host,
                 int port,
                 char *shard_hash,
@@ -35,6 +36,10 @@ int fetch_shard(char *proto,
     // TODO free memory in this method when returning early
 
     ne_session *sess = ne_session_create(proto, host, port);
+
+    if (http_options->user_agent) {
+        ne_set_useragent(sess, http_options->user_agent);
+    }
 
     char query_args[80];
     ne_snprintf(query_args, 80, "?token=%s", token);
@@ -126,7 +131,8 @@ int fetch_shard(char *proto,
     return 0;
 }
 
-struct json_object *fetch_json(storj_bridge_options_t *options,
+struct json_object *fetch_json(storj_http_options_t *http_options,
+                               storj_bridge_options_t *options,
                                char *method,
                                char *path,
                                struct json_object *request_body,
@@ -138,6 +144,10 @@ struct json_object *fetch_json(storj_bridge_options_t *options,
 
     ne_session *sess = ne_session_create(options->proto, options->host,
                                          options->port);
+
+    if (http_options->user_agent) {
+        ne_set_useragent(sess, http_options->user_agent);
+    }
 
     // TODO: error check the ne calls in this function
 
