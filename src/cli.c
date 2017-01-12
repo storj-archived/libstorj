@@ -541,8 +541,9 @@ int main(int argc, char **argv)
         };
 
         char *mnemonic = getenv("STORJ_MNEMONIC");
-        if (!pass && access(".storj/mnemonic", F_OK) != -1 && encryptionKey != NULL) {
+        if (!mnemonic && access(".storj/mnemonic", F_OK) != -1 && encryptionKey != NULL) {
           mnemonic = read_encrypted_file(".storj/mnemonic", encryptionKey);
+          printf("decrypted mnemonic: %s\n", mnemonic);
         }
         if (!mnemonic) {
             printf("Encryption mnemonic: ");
