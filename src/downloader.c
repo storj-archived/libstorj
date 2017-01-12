@@ -994,6 +994,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->shard_size = 0;
     state->excluded_farmer_ids = NULL;
     state->pending_work_count = 0;
+    state->cancelled = false;
 
     // determine the decryption key
     if (!env->encrypt_options || !env->encrypt_options->mnemonic) {
