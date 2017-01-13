@@ -108,6 +108,19 @@ typedef struct storj_http_options {
     int proxy_port;
 } storj_http_options_t;
 
+/** @brief A function signature for logging
+ */
+typedef void (*storj_logger_fn)(const char *format, ...);
+
+/** @brief Logging configuration options
+ *
+ * Settings for logging
+ */
+typedef struct storj_log_options {
+    storj_logger_fn logger;
+    int level;
+} storj_log_options_t;
+
 /** @brief A structure for a Storj user environment.
  *
  * This is the highest level structure and holds many commonly used options
@@ -117,6 +130,7 @@ typedef struct storj_env {
     storj_bridge_options_t *bridge_options;
     storj_encrypt_options_t *encrypt_options;
     storj_http_options_t *http_options;
+    storj_log_options_t *log_options;
     uv_loop_t *loop;
 } storj_env_t;
 
@@ -249,6 +263,7 @@ typedef struct {
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
     uint32_t pending_work_count;
+    storj_logger_fn logger;
 } storj_download_state_t;
 
 /**
@@ -258,13 +273,16 @@ typedef struct {
  * as define necessary configuration options for communicating with Storj
  * bridge, and for encrypting/decrypting files.
  *
- * @param[in] options
- * @param[in] encrypt_options
+ * @param[in] options - Storj Bridge API options
+ * @param[in] encrypt_options - File encryption options
+ * @param[in] http_options - HTTP settings
+ * @param[in] log_options - Logging settings
  * @return A null value on error, otherwise a storj_env pointer.
  */
 storj_env_t *storj_init_env(storj_bridge_options_t *options,
                             storj_encrypt_options_t *encrypt_options,
-                            storj_http_options_t *http_options);
+                            storj_http_options_t *http_options,
+                            storj_log_options_t *log_options);
 
 /**
  * @brief Get the error message for an error code

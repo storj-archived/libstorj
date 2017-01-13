@@ -419,6 +419,11 @@ int main(int argc, char **argv)
         .user_agent = CLI_VERSION
     };
 
+    storj_log_options_t log_options = {
+        .logger = (storj_logger_fn)printf,
+        .level = 4
+    };
+
     if (proxy) {
         char proxy_proto[8];
         char proxy_host[100];
@@ -453,7 +458,7 @@ int main(int argc, char **argv)
             .pass  = NULL
         };
 
-        env = storj_init_env(&options, NULL, &http_options);
+        env = storj_init_env(&options, NULL, &http_options, &log_options);
         if (!env) {
             return 1;
         }
@@ -509,7 +514,8 @@ int main(int argc, char **argv)
             .mnemonic = mnemonic
         };
 
-        env = storj_init_env(&options, &encrypt_options, &http_options);
+        env = storj_init_env(&options, &encrypt_options,
+                             &http_options, &log_options);
         if (!env) {
             status = 1;
             goto end_program;
