@@ -24,7 +24,9 @@ extern int errno;
     "options:\n"                                                        \
     "  -h, --help                output usage information\n"            \
     "  -v, --version             output the version number\n"           \
-    "  -u, --url <url>           set the base url for the api\n\n"      \
+    "  -u, --url <url>           set the base url for the api\n"        \
+    "  -p, --proxy <url>         set the socks proxy "                  \
+    "(e.g. socks5://<host>:<port>)\n\n"
 
 #define CLI_VERSION "libstorj-1.0.0-alpha"
 
@@ -360,6 +362,7 @@ int main(int argc, char **argv)
     static struct option cmd_options[] = {
         {"url", required_argument,  0, 'u'},
         {"version", no_argument,  0, 'v'},
+        {"proxy", required_argument,  0, 'p'},
         {"help", no_argument,  0, 'h'},
         {0, 0, 0, 0}
     };
@@ -369,10 +372,15 @@ int main(int argc, char **argv)
     char *storj_bridge = getenv("STORJ_BRIDGE");
     int c;
 
-    while ((c = getopt_long(argc, argv, "hvVu:", cmd_options, &index)) != -1) {
+    char *proxy = getenv("STORJ_PROXY");
+
+    while ((c = getopt_long_only(argc, argv, "hp:vVu:", cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
                 storj_bridge = optarg;
+                break;
+            case 'p':
+                proxy = optarg;
                 break;
             case 'V':
             case 'v':
@@ -410,6 +418,28 @@ int main(int argc, char **argv)
     storj_http_options_t http_options = {
         .user_agent = CLI_VERSION
     };
+
+    if (proxy) {
+        char proxy_proto[8];
+        char proxy_host[100];
+        int proxy_port = 0;
+        sscanf(proxy, "%7[^://]://%99[^:/]:%99d", proxy_proto,
+               proxy_host, &proxy_port);
+
+        if (strcmp(proxy_proto, "socks5") == 0) {
+            http_options.proxy_version = STORJ_PROXY_SOCKSV5;
+        } else if(strcmp(proxy_proto, "socks4") == 0) {
+            http_options.proxy_version = STORJ_PROXY_SOCKSV4;
+        } else if(strcmp(proxy_proto, "socks4a") == 0) {
+            http_options.proxy_version = STORJ_PROXY_SOCKSV4A;
+        } else {
+            printf("Unsupported proxy protocol\n");
+            return 1;
+        }
+
+        http_options.proxy_host = proxy_host;
+        http_options.proxy_port = proxy_port;
+    }
 
     if (strcmp(command, "get-info") == 0) {
 

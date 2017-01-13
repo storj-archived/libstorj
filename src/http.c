@@ -41,6 +41,18 @@ int fetch_shard(storj_http_options_t *http_options,
         ne_set_useragent(sess, http_options->user_agent);
     }
 
+    if (http_options->proxy_version &&
+        http_options->proxy_host &&
+        http_options->proxy_port) {
+
+        ne_session_socks_proxy(sess,
+                               http_options->proxy_version,
+                               http_options->proxy_host,
+                               http_options->proxy_port,
+                               "",
+                               "");
+    }
+
     char query_args[80];
     ne_snprintf(query_args, 80, "?token=%s", token);
 
@@ -147,6 +159,18 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
 
     if (http_options->user_agent) {
         ne_set_useragent(sess, http_options->user_agent);
+    }
+
+    if (http_options->proxy_version &&
+        http_options->proxy_host &&
+        http_options->proxy_port) {
+
+        ne_session_socks_proxy(sess,
+                               http_options->proxy_version,
+                               http_options->proxy_host,
+                               http_options->proxy_port,
+                               "",
+                               "");
     }
 
     // TODO: error check the ne calls in this function

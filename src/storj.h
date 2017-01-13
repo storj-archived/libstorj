@@ -91,12 +91,21 @@ typedef struct storj_encrypt_options {
     char *mnemonic;
 } storj_encrypt_options_t;
 
+typedef enum {
+    STORJ_PROXY_SOCKSV4 = 0,
+    STORJ_PROXY_SOCKSV4A,
+    STORJ_PROXY_SOCKSV5
+} storj_proxy_version_t;
+
 /** @brief HTTP configuration options
  *
  * Settings for making HTTP requests
  */
 typedef struct storj_http_options {
     char *user_agent;
+    storj_proxy_version_t proxy_version;
+    char *proxy_host;
+    int proxy_port;
 } storj_http_options_t;
 
 /** @brief A structure for a Storj user environment.
