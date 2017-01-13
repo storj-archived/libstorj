@@ -257,6 +257,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
     p->index = index;
     p->farmer_address = address;
     p->farmer_port = port;
+    p->farmer_id = farmer_id;
 
     // setup exchange report values
     p->report = malloc(
@@ -515,7 +516,7 @@ static void request_shard(uv_work_t *work)
 
     req->start = get_time_milliseconds();
 
-    int error_status = fetch_shard(req->http_options,
+    int error_status = fetch_shard(req->http_options, req->farmer_id,
                                    req->farmer_proto, req->farmer_host,
                                    req->farmer_port, req->shard_hash,
                                    req->shard_total_bytes, req->shard_data,
@@ -646,6 +647,7 @@ static int queue_request_shards(storj_download_state_t *state)
             assert(req != NULL);
 
             req->http_options = state->env->http_options;
+            req->farmer_id = pointer->farmer_id;
             req->farmer_proto = "http";
             req->farmer_host = pointer->farmer_address;
             req->farmer_port = pointer->farmer_port;

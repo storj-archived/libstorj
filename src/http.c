@@ -19,6 +19,7 @@ static void clean_up_neon(ne_session *s, ne_request *r)
 
 /* shard_data must be allocated for shard_total_bytes */
 int fetch_shard(storj_http_options_t *http_options,
+                char *farmer_id,
                 char *proto,
                 char *host,
                 int port,
@@ -59,6 +60,8 @@ int fetch_shard(storj_http_options_t *http_options,
     char *path = ne_concat("/shards/", shard_hash, query_args, NULL);
 
     ne_request *req = ne_request_create(sess, "GET", path);
+
+    ne_add_request_header(req, "x-storj-node-id", farmer_id);
 
     if (0 == strcmp(proto, "https")) {
         ne_ssl_trust_default_ca(sess);

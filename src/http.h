@@ -36,6 +36,7 @@ typedef struct {
  * @return A non-zero error value on failure and 0 on success.
  */
 int fetch_shard(storj_http_options_t *http_options,
+                char *farmer_id,
                 char *proto,
                 char *host,
                 int port,

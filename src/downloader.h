@@ -54,6 +54,7 @@ typedef struct {
  */
 typedef struct {
     storj_http_options_t *http_options;
+    char *farmer_id;
     char *farmer_proto;
     char *farmer_host;
     int farmer_port;

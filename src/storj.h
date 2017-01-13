@@ -193,6 +193,7 @@ typedef struct {
     int status;
     uint64_t size;
     uint64_t downloaded_size;
+    char *farmer_id;
     char *farmer_address;
     int farmer_port;
     storj_exchange_report_t *report;
