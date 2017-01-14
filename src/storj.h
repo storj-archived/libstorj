@@ -121,6 +121,15 @@ typedef struct storj_log_options {
     int level;
 } storj_log_options_t;
 
+/** @brief Functions for all logging levels
+ */
+typedef struct storj_log_levels {
+    storj_logger_fn debug;
+    storj_logger_fn info;
+    storj_logger_fn warn;
+    storj_logger_fn error;
+} storj_log_levels_t;
+
 /** @brief A structure for a Storj user environment.
  *
  * This is the highest level structure and holds many commonly used options
@@ -132,6 +141,7 @@ typedef struct storj_env {
     storj_http_options_t *http_options;
     storj_log_options_t *log_options;
     uv_loop_t *loop;
+    storj_log_levels_t *log;
 } storj_env_t;
 
 /** @brief A structure for queueing json request work
@@ -263,7 +273,7 @@ typedef struct {
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
     uint32_t pending_work_count;
-    storj_logger_fn logger;
+    storj_log_levels_t *log;
 } storj_download_state_t;
 
 /**

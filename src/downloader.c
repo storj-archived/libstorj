@@ -567,7 +567,7 @@ static void after_request_shard(uv_work_t *work, int status)
     // TODO check status
     shard_request_download_t *req = work->data;
 
-    req->state->logger("Finished downloading shard: %s\n", req->shard_hash);
+    req->state->log->info("Finished downloading shard: %s\n", req->shard_hash);
 
     req->state->pending_work_count--;
     req->state->resolving_shards -= 1;
@@ -999,7 +999,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->excluded_farmer_ids = NULL;
     state->pending_work_count = 0;
     state->cancelled = false;
-    state->logger = env->log_options->logger;
+    state->log = env->log;
 
     // determine the decryption key
     if (!env->encrypt_options || !env->encrypt_options->mnemonic) {

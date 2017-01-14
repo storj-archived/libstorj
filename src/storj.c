@@ -1,6 +1,8 @@
 #include "storj.h"
 #include "http.h"
 
+static inline void noop() {};
+
 static void json_request_worker(uv_work_t *work)
 {
     json_request_t *req = work->data;
@@ -71,6 +73,28 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     env->encrypt_options = encrypt_options;
     env->http_options = http_options;
     env->log_options = log_options;
+
+    storj_log_levels_t *log = malloc(sizeof(storj_log_levels_t));
+
+    log->debug = (storj_logger_fn)noop;
+    log->info = (storj_logger_fn)noop;
+    log->warn = (storj_logger_fn)noop;
+    log->error = (storj_logger_fn)noop;
+
+    switch(log_options->level) {
+        case 4:
+            log->debug = log_options->logger;
+        case 3:
+            log->info = log_options->logger;
+        case 2:
+            log->warn = log_options->logger;
+        case 1:
+            log->error = log_options->logger;
+        case 0:
+            break;
+    }
+
+    env->log = log;
 
     return env;
 }

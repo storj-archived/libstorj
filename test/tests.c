@@ -21,7 +21,7 @@ storj_http_options_t http_options = {
 
 storj_log_options_t log_options = {
     .logger = (storj_logger_fn)printf,
-    .level = 4
+    .level = 0
 };
 
 void fail(char *msg)
@@ -371,6 +371,8 @@ int test_download()
 
     free(env->loop);
     free(env);
+
+    return OK;
 }
 
 int test_download_cancel()
@@ -435,6 +437,8 @@ int test_download_cancel()
 
     free(env->loop);
     free(env);
+
+    return OK;
 }
 
 int test_api()
