@@ -26,7 +26,8 @@ extern int errno;
     "  -v, --version             output the version number\n"           \
     "  -u, --url <url>           set the base url for the api\n"        \
     "  -p, --proxy <url>         set the socks proxy (e.g. socks5://<host>:<port>)\n" \
-    "  -l, --log <level>         set the log level (default 0)\n\n"
+    "  -l, --log <level>         set the log level (default 0)\n" \
+    "  -d, --debug               set the debug log level\n\n"
 
 #define CLI_VERSION "libstorj-1.0.0-alpha"
 
@@ -364,6 +365,7 @@ int main(int argc, char **argv)
         {"version", no_argument,  0, 'v'},
         {"proxy", required_argument,  0, 'p'},
         {"log", required_argument,  0, 'l'},
+        {"debug", no_argument,  0, 'd'},
         {"help", no_argument,  0, 'h'},
         {0, 0, 0, 0}
     };
@@ -376,7 +378,7 @@ int main(int argc, char **argv)
 
     char *proxy = getenv("STORJ_PROXY");
 
-    while ((c = getopt_long_only(argc, argv, "hl:p:vVu:", cmd_options, &index)) != -1) {
+    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:", cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
                 storj_bridge = optarg;
@@ -386,6 +388,9 @@ int main(int argc, char **argv)
                 break;
             case 'l':
                 log_level = atoi(optarg);
+                break;
+            case 'd':
+                log_level = 4;
                 break;
             case 'V':
             case 'v':
