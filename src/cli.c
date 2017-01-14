@@ -25,8 +25,8 @@ extern int errno;
     "  -h, --help                output usage information\n"            \
     "  -v, --version             output the version number\n"           \
     "  -u, --url <url>           set the base url for the api\n"        \
-    "  -p, --proxy <url>         set the socks proxy "                  \
-    "(e.g. socks5://<host>:<port>)\n\n"
+    "  -p, --proxy <url>         set the socks proxy (e.g. socks5://<host>:<port>)\n" \
+    "  -l, --log <level>         set the log level (default 0)\n\n"
 
 #define CLI_VERSION "libstorj-1.0.0-alpha"
 
@@ -363,6 +363,7 @@ int main(int argc, char **argv)
         {"url", required_argument,  0, 'u'},
         {"version", no_argument,  0, 'v'},
         {"proxy", required_argument,  0, 'p'},
+        {"log", required_argument,  0, 'l'},
         {"help", no_argument,  0, 'h'},
         {0, 0, 0, 0}
     };
@@ -371,16 +372,20 @@ int main(int argc, char **argv)
 
     char *storj_bridge = getenv("STORJ_BRIDGE");
     int c;
+    int log_level = 0;
 
     char *proxy = getenv("STORJ_PROXY");
 
-    while ((c = getopt_long_only(argc, argv, "hp:vVu:", cmd_options, &index)) != -1) {
+    while ((c = getopt_long_only(argc, argv, "hl:p:vVu:", cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
                 storj_bridge = optarg;
                 break;
             case 'p':
                 proxy = optarg;
+                break;
+            case 'l':
+                log_level = atoi(optarg);
                 break;
             case 'V':
             case 'v':
@@ -392,6 +397,11 @@ int main(int argc, char **argv)
                 exit(0);
                 break;
         }
+    }
+
+    if (log_level > 4 || log_level < 0) {
+        printf("Invalid log level\n");
+        return 1;
     }
 
     int command_index = optind;
@@ -421,7 +431,7 @@ int main(int argc, char **argv)
 
     storj_log_options_t log_options = {
         .logger = (storj_logger_fn)printf,
-        .level = 4
+        .level = log_level
     };
 
     if (proxy) {
