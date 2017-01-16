@@ -17,6 +17,16 @@
 #define CHALLENGES 4
 
 typedef struct {
+    char *hash;
+    char *challenges[CHALLENGES][32];
+    char *challenges_as_str[CHALLENGES][64 + 1];
+    // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
+    char *tree[2*CHALLENGES - 1][RIPEMD160_DIGEST_SIZE*2 + 1];
+    int index;
+    uint64_t size;
+} shard_meta_t;
+
+typedef struct {
     storj_env_t *env;
     uint32_t file_concurrency;
     uint32_t shard_concurrency;
@@ -51,17 +61,8 @@ typedef struct {
     storj_finished_upload_cb finished_cb;
     char *mnemonic;
     int error_status;
+    shard_meta_t* shard_meta;
 } storj_upload_state_t;
-
-typedef struct {
-    char *hash;
-    char *challenges[CHALLENGES][32];
-    char *challenges_as_str[CHALLENGES][64 + 1];
-    // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
-    char *tree[2*CHALLENGES - 1][RIPEMD160_DIGEST_SIZE*2 + 1];
-    int index;
-    uint64_t size;
-} shard_meta_t;
 
 typedef struct {
   /* state should not be modified in worker threads */

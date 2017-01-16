@@ -20,13 +20,13 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->file_key);
     }
 
-    // if (state->all_shard_meta) {
-    //     for (int i = 0; i < state->total_shards; i++ ) {
-    //         if (state->all_shard_meta[i]) {
-    //             shard_state_cleanup(state->all_shard_meta[i]);
-    //         }
-    //     }
-    // }
+    if (state->shard_meta) {
+        for (int i = 0; i < state->total_shards; i++ ) {
+            shard_state_cleanup(&state->shard_meta[i]);
+        }
+
+        free(state->shard_meta);
+    }
 
     free(state);
 }
@@ -105,7 +105,8 @@ static void after_create_frame(uv_work_t *work, int status)
         state->completed_shard_hash = true;
     }
 
-    // TODO: set the shard_meta to an array in the state for later use.
+    // set the shard_meta to a struct array in the state for later use.
+    memcpy(&state->shard_meta[shard_meta->index], shard_meta, sizeof(shard_meta_t));
 
     shard_state_cleanup(shard_meta);
     free(frame_builder);
@@ -577,6 +578,7 @@ static void prepare_upload_state(uv_work_t *work)
     // Set Shard calculations
     state->shard_size = determine_shard_size(state, 0);
     state->total_shards = ceil((double)state->file_size / state->shard_size);
+    state->shard_meta = calloc(state->total_shards * sizeof(shard_meta_t), sizeof(char));
 
     // Generate encryption key && Calculate deterministic file id
     char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
