@@ -79,11 +79,18 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     bo->port = options->port;
     bo->user = strdup(options->user);
     bo->pass = strdup(options->pass);
+
+    // prevent bridge password from being swapped unencrypted to disk
+    mlock(bo->pass, strlen(bo->pass));
+
     env->bridge_options = bo;
 
     // deep copy encryption options
     storj_encrypt_options_t *eo = malloc(sizeof(storj_encrypt_options_t));
     eo->mnemonic = strdup(encrypt_options->mnemonic);
+
+    // prevent file encryption mnemonic from being swapped unencrypted to disk
+    mlock(eo->mnemonic, strlen(eo->mnemonic));
     env->encrypt_options = eo;
 
     // deep copy the http options

@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 #include <assert.h>
+#include <sys/mman.h>
 #include <json-c/json.h>
 #include <stdlib.h>
 #include <stdio.h>
