@@ -15,6 +15,7 @@
 #define MAX_SHARD_SIZE 1073741824
 #define SHARD_MULTIPLES_BACK 5
 #define CHALLENGES 4
+#define STORJ_NULL -1
 
 typedef struct {
     char *hash;
@@ -53,6 +54,7 @@ typedef struct {
     bool requesting_token;
     char *frame_id;
     bool requesting_frame;
+    bool pushing_frame;
     int token_request_count;
     int frame_request_count;
     int encrypt_file_count;
@@ -102,6 +104,7 @@ typedef struct {
     char *frame_id;
     int status_code;
     int error_status;
+    int shard_index;
 } frame_request_t;
 
 inline char separator()
@@ -122,15 +125,18 @@ static int queue_request_bucket_token(storj_upload_state_t *state);
 static int queue_request_frame(storj_upload_state_t *state);
 static int queue_encrypt_file(storj_upload_state_t *state);
 static int queue_create_frame(storj_upload_state_t *state);
+static int queue_push_frame(storj_upload_state_t *state);
 
 static void request_token(uv_work_t *work);
 static void request_frame(uv_work_t *work);
 static void encrypt_file(uv_work_t *work);
 static void create_frame(uv_work_t *work);
+static void push_frame(uv_work_t *work);
 
 static void after_request_token(uv_work_t *work, int status);
 static void after_request_frame(uv_work_t *work, int status);
 static void after_encrypt_file(uv_work_t *work, int status);
 static void after_create_frame(uv_work_t *work, int status);
+static void after_push_frame(uv_work_t *work, int status);
 
 #endif /* STORJ_UPLOADER_H */

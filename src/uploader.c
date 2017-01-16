@@ -7,6 +7,27 @@ static uv_work_t *uv_work_new()
     return work;
 }
 
+static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+
+    frame_request_t *req = malloc(sizeof(frame_request_t));
+    assert(req != NULL);
+
+    req->http_options = state->env->http_options;
+    req->options = state->env->bridge_options;
+    req->upload_state = state;
+    req->error_status = 0;
+    if (index != NULL) {
+        req->shard_index = *index;
+    }
+
+    work->data = req;
+
+    return work;
+}
+
+
 static void cleanup_state(storj_upload_state_t *state)
 {
     state->final_callback_called = true;
@@ -22,6 +43,7 @@ static void cleanup_state(storj_upload_state_t *state)
 
     if (state->shard_meta) {
         for (int i = 0; i < state->total_shards; i++ ) {
+            printf("Cleaning up shard %d\n", i);
             shard_state_cleanup(&state->shard_meta[i]);
         }
 
@@ -92,6 +114,71 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
     return determine_shard_size(state, ++accumulator);
 }
 
+static void after_push_frame(uv_work_t *work, int status)
+{
+    frame_request_t *req = work->data;
+
+    queue_next_work(req->upload_state);
+
+    free(req);
+    free(work);
+}
+
+static void push_frame(uv_work_t *work)
+{
+    frame_request_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+    shard_meta_t *shard_meta = &state->shard_meta[req->shard_index];
+    printf("Pushing frame for shard index %d\n", req->shard_index);
+    // frame_request_t *req = work->data;
+    //
+    // printf("[%s] Creating file staging frame... (retry: %d)\n",
+    //         req->upload_state->file_name,
+    //         req->upload_state->frame_request_count);
+    //
+    // struct json_object *body = json_object_new_object();
+    //
+    // int status_code;
+    // struct json_object *response = fetch_json(req->http_options,
+    //                                           req->options,
+    //                                           "POST",
+    //                                           "/frames",
+    //                                           body,
+    //                                           true,
+    //                                           NULL,
+    //                                           &status_code);
+    //
+    // struct json_object *frame_id;
+    // if (!json_object_object_get_ex(response, "id", &frame_id)) {
+    //   req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    // }
+    //
+    // if (!json_object_is_type(frame_id, json_type_string) == 1) {
+    //   req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    // }
+    //
+    // req->frame_id = (char *)json_object_get_string(frame_id);
+    // req->status_code = status_code;
+    //
+    // json_object_put(response);
+    // json_object_put(body);
+}
+
+static int queue_push_frame(storj_upload_state_t *state)
+{
+    uv_work_t *shard_work[state->total_shards];
+
+    for (int index = 0; index < state->total_shards; index++ ) {
+        shard_work[index] = frame_work_new(&index, state);
+        uv_queue_work(state->env->loop, (uv_work_t*) shard_work[index],
+                                        push_frame, after_push_frame);
+    }
+
+    state->pushing_frame = true;
+
+    return 0;
+}
+
 static void after_create_frame(uv_work_t *work, int status)
 {
     frame_builder_t *frame_builder = work->data;
@@ -108,7 +195,9 @@ static void after_create_frame(uv_work_t *work, int status)
     // set the shard_meta to a struct array in the state for later use.
     memcpy(&state->shard_meta[shard_meta->index], shard_meta, sizeof(shard_meta_t));
 
-    shard_state_cleanup(shard_meta);
+    queue_next_work(state);
+
+shard_state_cleanup(shard_meta);
     free(frame_builder);
     free(work);
 }
@@ -211,7 +300,7 @@ static uv_work_t *shard_state_new(int index, storj_upload_state_t *state)
 
 static int queue_create_frame(storj_upload_state_t *state)
 {
-    struct uv_work_t *shard_work[state->total_shards];
+    uv_work_t *shard_work[state->total_shards];
 
     for (int index = 0; index < state->total_shards; index++ ) {
         shard_work[index] = shard_state_new(index, state);
@@ -283,16 +372,7 @@ static void request_frame(uv_work_t *work)
 
 static int queue_request_frame(storj_upload_state_t *state)
 {
-    uv_work_t *work = uv_work_new();
-
-    frame_request_t *req = malloc(sizeof(frame_request_t));
-    assert(req != NULL);
-
-    req->http_options = state->env->http_options;
-    req->options = state->env->bridge_options;
-    req->upload_state = state;
-    req->error_status = 0;
-    work->data = req;
+    uv_work_t *work = frame_work_new(NULL, state);
 
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                request_frame, after_request_frame);
@@ -538,6 +618,9 @@ static void queue_next_work(storj_upload_state_t *state)
         queue_request_frame(state);
     } else if (state->frame_id && state->completed_encryption && !state->hashing_shards && !state->completed_shard_hash) {
         queue_create_frame(state);
+    } else if (state->completed_shard_hash && !state->pushing_frame){
+        queue_push_frame(state);
+        return cleanup_state(state);
     }
 
     // Encrypt the file
@@ -637,6 +720,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->encrypting_file = false;
     state->requesting_frame = false;
     state->requesting_token = false;
+    state->pushing_frame = false;
     state->hashing_shards = false;
     state->token = NULL;
     state->tmp_path = NULL;
