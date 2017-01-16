@@ -263,7 +263,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
     p->report = malloc(
         sizeof(storj_exchange_report_t));
 
-    char *client_id = state->env->bridge_options->user;
+    const char *client_id = state->env->bridge_options->user;
     p->report->reporter_id = client_id;
     p->report->client_id = client_id;
     p->report->data_hash = hash;
