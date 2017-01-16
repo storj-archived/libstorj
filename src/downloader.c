@@ -459,6 +459,9 @@ static void queue_request_pointers(storj_download_state_t *state)
 
             work->data = req;
 
+            state->log->info("Requesting replacement pointer at index: %i\n",
+                             req->pointer_index);
+
             state->pending_work_count++;
             int status = uv_queue_work(state->env->loop,
                                        (uv_work_t*) work,
@@ -499,6 +502,9 @@ static void queue_request_pointers(storj_download_state_t *state)
     req->state = state;
 
     work->data = req;
+
+    state->log->info("Requesting next set of pointers, total pointers: %i\n",
+                     state->total_pointers);
 
     state->pending_work_count++;
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
@@ -686,6 +692,8 @@ static int queue_request_shards(storj_download_state_t *state)
             state->resolving_shards += 1;
             pointer->status = POINTER_BEING_DOWNLOADED;
             pointer->work = work;
+
+            state->log->info("Queue request shard: %s\n", req->shard_hash);
 
             // setup download progress reporting
             shard_download_progress_t *progress =
