@@ -68,10 +68,37 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     }
 
     storj_env_t *env = malloc(sizeof(storj_env_t));
-    env->bridge_options = options;
+
+    // setup the uv event loop
     env->loop = loop;
-    env->encrypt_options = encrypt_options;
-    env->http_options = http_options;
+
+    // deep copy bridge options
+    storj_bridge_options_t *bo = malloc(sizeof(storj_bridge_options_t));
+    bo->proto = strdup(options->proto);
+    bo->host = strdup(options->host);
+    bo->port = options->port;
+    bo->user = strdup(options->user);
+    bo->pass = strdup(options->pass);
+    env->bridge_options = bo;
+
+    // deep copy encryption options
+    storj_encrypt_options_t *eo = malloc(sizeof(storj_encrypt_options_t));
+    eo->mnemonic = strdup(encrypt_options->mnemonic);
+    env->encrypt_options = eo;
+
+    // deep copy the http options
+    storj_http_options_t *ho = malloc(sizeof(storj_http_options_t));
+    ho->user_agent = strdup(http_options->user_agent);
+    ho->proxy_version = http_options->proxy_version;
+    if (http_options->proxy_host) {
+        ho->proxy_host = strdup(http_options->proxy_host);
+    } else {
+        ho->proxy_host = NULL;
+    }
+    ho->proxy_port = http_options->proxy_port;
+    env->http_options = ho;
+
+    // setup the log options
     env->log_options = log_options;
 
     storj_log_levels_t *log = malloc(sizeof(storj_log_levels_t));
@@ -97,6 +124,39 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     env->log = log;
 
     return env;
+}
+
+int storj_destroy_env(storj_env_t *env)
+{
+    // free and destroy all bridge options
+    free(env->bridge_options->proto);
+    free(env->bridge_options->host);
+    free(env->bridge_options->user);
+
+    // zero out password before freeing
+    unsigned int pass_len = strlen(env->bridge_options->pass);
+    bzero(env->bridge_options->pass, pass_len - 1);
+    free(env->bridge_options->pass);
+    free(env->bridge_options);
+
+    // free and destroy all encryption options
+    unsigned int mnemonic_len = strlen(env->encrypt_options->mnemonic);
+
+    // zero out file encryption mnemonic before freeing
+    bzero(env->encrypt_options->mnemonic, mnemonic_len - 1);
+    free(env->encrypt_options->mnemonic);
+    free(env->encrypt_options);
+
+    // free all http options
+    free(env->http_options->user_agent);
+    free(env->http_options->proxy_host);
+    free(env->http_options);
+
+    // free the event loop
+    free(env->loop);
+
+    // free the environment
+    free(env);
 }
 
 char *storj_strerror(int error_code)

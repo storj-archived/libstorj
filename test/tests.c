@@ -368,9 +368,7 @@ int test_download()
         return 1;
     }
 
-
-    free(env->loop);
-    free(env);
+    storj_destroy_env(env);
 
     return OK;
 }
@@ -435,8 +433,7 @@ int test_download_cancel()
         return 1;
     }
 
-    free(env->loop);
-    free(env);
+    storj_destroy_env(env);
 
     return OK;
 }
@@ -558,8 +555,8 @@ int test_api()
 
 
     free(file);
-    free(env->loop);
-    free(env);
+
+    storj_destroy_env(env);
 
     return OK;
 }

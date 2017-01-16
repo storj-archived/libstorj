@@ -75,11 +75,11 @@ extern "C" {
  * basic authentication to a Storj bridge.
  */
 typedef struct {
-    const char *proto;
-    const char *host;
+    char *proto;
+    char *host;
     int port;
-    const char *user;
-    const char *pass;
+    char *user;
+    char *pass;
 } storj_bridge_options_t;
 
 /** @brief File encryption options
@@ -88,7 +88,7 @@ typedef struct {
  * encryption and decryption.
  */
 typedef struct storj_encrypt_options {
-    const char *mnemonic;
+    char *mnemonic;
 } storj_encrypt_options_t;
 
 typedef enum {
@@ -102,9 +102,9 @@ typedef enum {
  * Settings for making HTTP requests
  */
 typedef struct storj_http_options {
-    const char *user_agent;
+    char *user_agent;
     storj_proxy_version_t proxy_version;
-    const char *proxy_host;
+    char *proxy_host;
     int proxy_port;
 } storj_http_options_t;
 
@@ -293,6 +293,19 @@ storj_env_t *storj_init_env(storj_bridge_options_t *options,
                             storj_encrypt_options_t *encrypt_options,
                             storj_http_options_t *http_options,
                             storj_log_options_t *log_options);
+
+
+/**
+ * @brief Destroy a Storj environment
+ *
+ * This will free all memory for the Storj environment and zero out any memory
+ * with sensitive information, such as passwords and encryption keys.
+ *
+ * The event loop must be closed before this method should be used.
+ *
+ * @param [in] env
+ */
+int storj_destroy_env(storj_env_t *env);
 
 /**
  * @brief Get the error message for an error code
