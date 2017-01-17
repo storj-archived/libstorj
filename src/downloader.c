@@ -233,14 +233,6 @@ static void set_pointer_from_json(storj_download_state_t *state,
     }
     char *farmer_id = (char *)json_object_get_string(farmer_id_value);
 
-    free(token_value);
-    free(hash_value);
-    free(size_value);
-    free(index_value);
-    free(address_value);
-    free(port_value);
-    free(farmer_id_value);
-
     if (is_replaced) {
         p->replace_count += 1;
     } else {
@@ -250,24 +242,24 @@ static void set_pointer_from_json(storj_download_state_t *state,
     // reset the status
     p->status = POINTER_CREATED;
 
-    p->token = token;
-    p->shard_hash = hash;
+    p->token = strdup(token);
+    p->shard_hash = strdup(hash);
     p->size = size;
     p->downloaded_size = 0;
     p->index = index;
-    p->farmer_address = address;
+    p->farmer_address = strdup(address);
     p->farmer_port = port;
-    p->farmer_id = farmer_id;
+    p->farmer_id = strdup(farmer_id);
 
     // setup exchange report values
     p->report = malloc(
         sizeof(storj_exchange_report_t));
 
     const char *client_id = state->env->bridge_options->user;
-    p->report->reporter_id = client_id;
-    p->report->client_id = client_id;
-    p->report->data_hash = hash;
-    p->report->farmer_id = farmer_id;
+    p->report->reporter_id = strdup(client_id);
+    p->report->client_id = strdup(client_id);
+    p->report->data_hash = strdup(hash);
+    p->report->farmer_id = strdup(farmer_id);
     p->report->send_status = 0; // not sent
     p->report->send_count = 0;
 
@@ -315,9 +307,6 @@ static void append_pointers_to_state(storj_download_state_t *state,
             struct json_object *json = json_object_array_get_idx(res, i);
 
             set_pointer_from_json(state, &state->pointers[j], json, false);
-
-            free(json);
-
         }
     }
 
@@ -355,6 +344,7 @@ static void after_request_pointers(uv_work_t *work, int status)
 
     queue_next_work(req->state);
 
+    json_object_put(req->response);
     free(work->data);
     free(work);
 }
