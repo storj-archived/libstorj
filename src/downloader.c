@@ -570,10 +570,11 @@ static void free_request_shard_work(uv_handle_t *progress_handle)
 
 static void after_request_shard(uv_work_t *work, int status)
 {
-    // TODO check status
     shard_request_download_t *req = work->data;
 
-    req->state->log->info("Finished downloading shard: %s\n", req->shard_hash);
+    if (status == UV_ECANCELED) {
+        // TODO
+    }
 
     req->state->pending_work_count--;
     req->state->resolving_shards -= 1;
@@ -593,6 +594,11 @@ static void after_request_shard(uv_work_t *work, int status)
     pointer->report->end = req->end;
 
     if (req->error_status) {
+
+        req->state->log->warn("Error downloading shard: %s, reason: %s\n",
+                              req->shard_hash,
+                              storj_strerror(req->error_status));
+
         pointer->status = POINTER_ERROR;
 
         switch(req->error_status) {
@@ -604,13 +610,22 @@ static void after_request_shard(uv_work_t *work, int status)
                 pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
         }
 
+        // TODO don't send error on cancelled download
+
         free(req->shard_data);
 
     } else {
+
+        req->state->log->info("Finished downloading shard: %s\n", req->shard_hash);
+
         pointer->report->code = STORJ_REPORT_SUCCESS;
         pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
         pointer->status = POINTER_DOWNLOADED;
         pointer->shard_data = req->shard_data;
+
+        // TODO if the download is cancelled before this is written to disk
+        // it's possible that it will not be freed, need to free the
+        // shard data in this case.
     }
 
     queue_next_work(req->state);
