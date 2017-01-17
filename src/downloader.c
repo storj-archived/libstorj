@@ -90,7 +90,7 @@ static void after_request_token(uv_work_t *work, int status)
 
 static int queue_request_bucket_token(storj_download_state_t *state)
 {
-    if (state->requesting_token) {
+    if (state->requesting_token || state->cancelled) {
         return 0;
     }
 
@@ -411,7 +411,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
 
 static void queue_request_pointers(storj_download_state_t *state)
 {
-    if (state->requesting_pointers) {
+    if (state->requesting_pointers || state->cancelled) {
         return;
     }
 
@@ -622,10 +622,6 @@ static void after_request_shard(uv_work_t *work, int status)
         pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
         pointer->status = POINTER_DOWNLOADED;
         pointer->shard_data = req->shard_data;
-
-        // TODO if the download is cancelled before this is written to disk
-        // it's possible that it will not be freed, need to free the
-        // shard data in this case.
     }
 
     queue_next_work(req->state);
@@ -661,6 +657,10 @@ static void progress_request_shard(uv_async_t* async)
 
 static int queue_request_shards(storj_download_state_t *state)
 {
+    if (state->cancelled) {
+        return 0;
+    }
+
     int i = 0;
 
     while (state->resolving_shards < STORJ_DOWNLOAD_CONCURRENCY &&
@@ -776,6 +776,10 @@ static void after_write_shard(uv_work_t *work, int status)
 
 static void queue_write_next_shard(storj_download_state_t *state)
 {
+    if (state->cancelled) {
+        return;
+    }
+
     int i = 0;
 
     while (!state->writing && i < state->total_pointers) {
@@ -970,6 +974,10 @@ static void queue_next_work(storj_download_state_t *state)
 
 int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
 {
+    if (state->cancelled) {
+        return 0;
+    }
+
     state->cancelled = true;
     state->error_status = STORJ_TRANSFER_CANCELLED;
 
@@ -980,6 +988,8 @@ int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
         storj_pointer_t *pointer = &state->pointers[i];
         if (pointer->status == POINTER_BEING_DOWNLOADED) {
             uv_cancel((uv_req_t *)pointer->work);
+        } else if (pointer->status == POINTER_DOWNLOADED) {
+            free(pointer->shard_data);
         }
     }
 
