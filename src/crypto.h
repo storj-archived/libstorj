@@ -64,7 +64,7 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer);
  * @param[out] bucket_key 64 byte character array that is the bucket's key
  * @return A non-zero error value on failure and 0 on success.
  */
-int generate_bucket_key(char *mnemonic, char *bucket_id, char **bucket_key);
+int generate_bucket_key(const char *mnemonic, char *bucket_id, char **bucket_key);
 
 /**
  * @brief Generate a file's key
@@ -75,7 +75,7 @@ int generate_bucket_key(char *mnemonic, char *bucket_id, char **bucket_key);
  * @param[out] file_key 64 byte character array that is the bucket's key
  * @return A non-zero error value on failure and 0 on success.
  */
-int generate_file_key(char *mnemonic,
+int generate_file_key(const char *mnemonic,
                       char *bucket_id,
                       char *file_id,
                       char **file_key);

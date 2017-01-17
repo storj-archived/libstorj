@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 #include <assert.h>
+#include <sys/mman.h>
 #include <json-c/json.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -30,7 +31,7 @@ extern "C" {
 
 // File transfer success
 #define STORJ_TRANSFER_OK 0
-#define STORJ_TRANSFER_CANCELLED 1
+#define STORJ_TRANSFER_CANCELED 1
 
 // Bridge related errors 1000 to 1999
 #define STORJ_BRIDGE_REQUEST_ERROR 1000
@@ -108,6 +109,28 @@ typedef struct storj_http_options {
     int proxy_port;
 } storj_http_options_t;
 
+/** @brief A function signature for logging
+ */
+typedef void (*storj_logger_fn)(const char *format, ...);
+
+/** @brief Logging configuration options
+ *
+ * Settings for logging
+ */
+typedef struct storj_log_options {
+    storj_logger_fn logger;
+    int level;
+} storj_log_options_t;
+
+/** @brief Functions for all logging levels
+ */
+typedef struct storj_log_levels {
+    storj_logger_fn debug;
+    storj_logger_fn info;
+    storj_logger_fn warn;
+    storj_logger_fn error;
+} storj_log_levels_t;
+
 /** @brief A structure for a Storj user environment.
  *
  * This is the highest level structure and holds many commonly used options
@@ -117,7 +140,9 @@ typedef struct storj_env {
     storj_bridge_options_t *bridge_options;
     storj_encrypt_options_t *encrypt_options;
     storj_http_options_t *http_options;
+    storj_log_options_t *log_options;
     uv_loop_t *loop;
+    storj_log_levels_t *log;
 } storj_env_t;
 
 /** @brief A structure for queueing json request work
@@ -146,10 +171,10 @@ static const char *BUCKET_OP[] = { "PUSH", "PULL" };
  * performance and reliability of farmers.
  */
 typedef struct {
-    char *data_hash;
-    char *reporter_id;
-    char *farmer_id;
-    char *client_id;
+    const char *data_hash;
+    const char *reporter_id;
+    const char *farmer_id;
+    const char *client_id;
     uint64_t start;
     uint64_t end;
     unsigned int code;
@@ -230,7 +255,7 @@ typedef struct {
     storj_progress_cb progress_cb;
     storj_finished_download_cb finished_cb;
     bool finished;
-    bool cancelled;
+    bool canceled;
     uint64_t shard_size;
     uint32_t total_shards;
     uint32_t completed_shards;
@@ -249,6 +274,7 @@ typedef struct {
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
     uint32_t pending_work_count;
+    storj_log_levels_t *log;
 } storj_download_state_t;
 
 /**
@@ -258,13 +284,29 @@ typedef struct {
  * as define necessary configuration options for communicating with Storj
  * bridge, and for encrypting/decrypting files.
  *
- * @param[in] options
- * @param[in] encrypt_options
+ * @param[in] options - Storj Bridge API options
+ * @param[in] encrypt_options - File encryption options
+ * @param[in] http_options - HTTP settings
+ * @param[in] log_options - Logging settings
  * @return A null value on error, otherwise a storj_env pointer.
  */
 storj_env_t *storj_init_env(storj_bridge_options_t *options,
                             storj_encrypt_options_t *encrypt_options,
-                            storj_http_options_t *http_options);
+                            storj_http_options_t *http_options,
+                            storj_log_options_t *log_options);
+
+
+/**
+ * @brief Destroy a Storj environment
+ *
+ * This will free all memory for the Storj environment and zero out any memory
+ * with sensitive information, such as passwords and encryption keys.
+ *
+ * The event loop must be closed before this method should be used.
+ *
+ * @param [in] env
+ */
+int storj_destroy_env(storj_env_t *env);
 
 /**
  * @brief Get the error message for an error code

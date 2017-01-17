@@ -29,12 +29,10 @@ int fetch_shard(storj_http_options_t *http_options,
                 char *token,
                 int *status_code,
                 uv_async_t *progress_handle,
-                bool *cancelled)
+                bool *canceled)
 {
     struct sha256_ctx ctx;
     sha256_init(&ctx);
-
-    // TODO free memory in this method when returning early
 
     ne_session *sess = ne_session_create(proto, host, port);
 
@@ -81,9 +79,12 @@ int fetch_shard(storj_http_options_t *http_options,
 
     ssize_t bytes_since_progress = 0;
 
+    int error_code = 0;
+
     while ((bytes = ne_read_response_block(req, buf, NE_BUFSIZ)) > 0) {
         if (total + bytes > shard_total_bytes) {
-            return STORJ_FARMER_INTEGRITY_ERROR;
+            error_code = STORJ_FARMER_INTEGRITY_ERROR;
+            break;
         }
 
         sha256_update(&ctx, bytes, buf);
@@ -101,18 +102,23 @@ int fetch_shard(storj_http_options_t *http_options,
             bytes_since_progress = 0;
         }
 
-        if (*cancelled) {
-            return STORJ_TRANSFER_CANCELLED;
+        if (*canceled) {
+            error_code = STORJ_TRANSFER_CANCELED;
+            break;
         }
 
     }
 
-    if (bytes == 0) {
-        ne_end_request(req);
+    ne_end_request(req);
+    clean_up_neon(sess, req);
+    free(buf);
+
+    if (!error_code && total != shard_total_bytes) {
+        error_code = STORJ_FARMER_INTEGRITY_ERROR;
     }
 
-    if (total != shard_total_bytes) {
-        return STORJ_FARMER_INTEGRITY_ERROR;
+    if (error_code) {
+        return error_code;
     }
 
     uint8_t *hash_sha256 = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
@@ -121,6 +127,9 @@ int fetch_shard(storj_http_options_t *http_options,
     struct ripemd160_ctx rctx;
     ripemd160_init(&rctx);
     ripemd160_update(&rctx, SHA256_DIGEST_SIZE, hash_sha256);
+
+    free(hash_sha256);
+
     uint8_t *hash_rmd160 = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
     ripemd160_digest(&rctx, RIPEMD160_DIGEST_SIZE, hash_rmd160);
 
@@ -129,8 +138,16 @@ int fetch_shard(storj_http_options_t *http_options,
         sprintf(&hash[i*2], "%02x", hash_rmd160[i]);
     }
 
+    free(hash_rmd160);
+
     if (strcmp(shard_hash, hash) != 0) {
-        return STORJ_FARMER_INTEGRITY_ERROR;
+        error_code = STORJ_FARMER_INTEGRITY_ERROR;
+    }
+
+    free(hash);
+
+    if (error_code) {
+        return error_code;
     }
 
     // final progress update
@@ -139,9 +156,6 @@ int fetch_shard(storj_http_options_t *http_options,
         progress->bytes = total;
         uv_async_send(progress_handle);
     }
-
-    clean_up_neon(sess, req);
-    free(buf);
 
     return 0;
 }
@@ -197,13 +211,23 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
             sprintf(&pass[i*2], "%02x", pass_hash[i]);
         }
 
+        free(pass_hash);
+
         char *user_pass = ne_concat(options->user, ":", pass, NULL);
+
+        free(pass);
+
         char *user_pass_64 = ne_base64((uint8_t *)user_pass, strlen(user_pass));
+
+        free(user_pass);
 
         int auth_value_len = strlen(user_pass_64) + 6;
         char auth_value[auth_value_len + 1];
         strcpy(auth_value, "Basic ");
         strcat(auth_value, user_pass_64);
+
+        free(user_pass_64);
+
         auth_value[auth_value_len] = '\0';
 
         ne_add_request_header(req, "Authorization", auth_value);

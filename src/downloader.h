@@ -72,7 +72,7 @@ typedef struct {
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
     int error_status;
-    bool *cancelled;
+    bool *canceled;
 } shard_request_download_t;
 
 /** @brief A structure for sharing data with worker threads for sending

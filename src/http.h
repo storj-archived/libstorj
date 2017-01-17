@@ -46,7 +46,7 @@ int fetch_shard(storj_http_options_t *http_options,
                 char *token,
                 int *status_code,
                 uv_async_t *progress_handle,
-                bool *cancelled);
+                bool *canceled);
 
 /**
  * @brief Make a JSON HTTP request
