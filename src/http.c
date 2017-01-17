@@ -29,7 +29,7 @@ int fetch_shard(storj_http_options_t *http_options,
                 char *token,
                 int *status_code,
                 uv_async_t *progress_handle,
-                bool *cancelled)
+                bool *canceled)
 {
     struct sha256_ctx ctx;
     sha256_init(&ctx);
@@ -102,8 +102,8 @@ int fetch_shard(storj_http_options_t *http_options,
             bytes_since_progress = 0;
         }
 
-        if (*cancelled) {
-            error_code = STORJ_TRANSFER_CANCELLED;
+        if (*canceled) {
+            error_code = STORJ_TRANSFER_CANCELED;
             break;
         }
 

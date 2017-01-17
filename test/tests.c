@@ -198,7 +198,7 @@ void check_resolve_file(int status, FILE *fd)
 void check_resolve_file_cancel(int status, FILE *fd)
 {
     fclose(fd);
-    if (status == STORJ_TRANSFER_CANCELLED) {
+    if (status == STORJ_TRANSFER_CANCELED) {
         pass("storj_bridge_resolve_file_cancel");
     } else {
         fail("storj_bridge_resolve_file_cancel");
@@ -386,7 +386,7 @@ int test_download_cancel()
     // resolve file
     char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
     strcpy(download_file, folder);
-    strcat(download_file, "storj-test-download-cancelled.data");
+    strcat(download_file, "storj-test-download-canceled.data");
     FILE *download_fp = fopen(download_file, "w+");
 
     char *bucket_id = "368be0816766b28fd5f43af5";

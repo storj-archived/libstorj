@@ -31,7 +31,7 @@ extern "C" {
 
 // File transfer success
 #define STORJ_TRANSFER_OK 0
-#define STORJ_TRANSFER_CANCELLED 1
+#define STORJ_TRANSFER_CANCELED 1
 
 // Bridge related errors 1000 to 1999
 #define STORJ_BRIDGE_REQUEST_ERROR 1000
@@ -255,7 +255,7 @@ typedef struct {
     storj_progress_cb progress_cb;
     storj_finished_download_cb finished_cb;
     bool finished;
-    bool cancelled;
+    bool canceled;
     uint64_t shard_size;
     uint32_t total_shards;
     uint32_t completed_shards;

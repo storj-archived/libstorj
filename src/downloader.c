@@ -90,7 +90,7 @@ static void after_request_token(uv_work_t *work, int status)
 
 static int queue_request_bucket_token(storj_download_state_t *state)
 {
-    if (state->requesting_token || state->cancelled) {
+    if (state->requesting_token || state->canceled) {
         return 0;
     }
 
@@ -411,7 +411,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
 
 static void queue_request_pointers(storj_download_state_t *state)
 {
-    if (state->requesting_pointers || state->cancelled) {
+    if (state->requesting_pointers || state->canceled) {
         return;
     }
 
@@ -528,7 +528,7 @@ static void request_shard(uv_work_t *work)
                                    req->shard_total_bytes, req->shard_data,
                                    req->token, &status_code,
                                    &req->progress_handle,
-                                   req->cancelled);
+                                   req->canceled);
 
     req->end = get_time_milliseconds();
 
@@ -610,7 +610,7 @@ static void after_request_shard(uv_work_t *work, int status)
                 pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
         }
 
-        // TODO don't send error on cancelled download
+        // TODO don't send error on canceled download
 
         free(req->shard_data);
 
@@ -657,7 +657,7 @@ static void progress_request_shard(uv_async_t* async)
 
 static int queue_request_shards(storj_download_state_t *state)
 {
-    if (state->cancelled) {
+    if (state->canceled) {
         return 0;
     }
 
@@ -700,7 +700,7 @@ static int queue_request_shards(storj_download_state_t *state)
             req->pointer_index = pointer->index;
 
             req->state = state;
-            req->cancelled = &state->cancelled;
+            req->canceled = &state->canceled;
 
             uv_work_t *work = malloc(sizeof(uv_work_t));
             assert(work != NULL);
@@ -776,7 +776,7 @@ static void after_write_shard(uv_work_t *work, int status)
 
 static void queue_write_next_shard(storj_download_state_t *state)
 {
-    if (state->cancelled) {
+    if (state->canceled) {
         return;
     }
 
@@ -974,15 +974,15 @@ static void queue_next_work(storj_download_state_t *state)
 
 int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
 {
-    if (state->cancelled) {
+    if (state->canceled) {
         return 0;
     }
 
-    state->cancelled = true;
-    state->error_status = STORJ_TRANSFER_CANCELLED;
+    state->canceled = true;
+    state->error_status = STORJ_TRANSFER_CANCELED;
 
     // loop over all pointers, and cancel any that are queued to be downloaded
-    // any downloads that are in-progress will monitor the state->cancelled
+    // any downloads that are in-progress will monitor the state->canceled
     // status and exit when set to true
     for (int i = 0; i < state->total_pointers; i++) {
         storj_pointer_t *pointer = &state->pointers[i];
@@ -1030,7 +1030,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->shard_size = 0;
     state->excluded_farmer_ids = NULL;
     state->pending_work_count = 0;
-    state->cancelled = false;
+    state->canceled = false;
     state->log = env->log;
 
     // determine the decryption key
