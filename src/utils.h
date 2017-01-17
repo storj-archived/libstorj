@@ -34,9 +34,9 @@ void random_buffer(uint8_t *buf, size_t len);
 
 uint64_t shard_size(int hops);
 
-char *read_encrypted_file(char *filename, char *key, char *salt);
+int *read_encrypted_file(char *filename, char *key, char *salt, char **result);
 
-void write_encrypted_file(char *filename, char *key, char *salt, char *data);
+int write_encrypted_file(char *filename, char *key, char *salt, char *data);
 
 uint64_t get_time_milliseconds();
 
