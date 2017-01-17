@@ -158,9 +158,13 @@ int mock_bridge_server(void *cls,
         }
     }
 
-    response = MHD_create_response_from_buffer(strlen(page),
-                                               (void *) page,
-                                               MHD_RESPMEM_PERSISTENT);
+    int page_len = strlen(page);
+    char *page_cpy = calloc(page_len + 1, sizeof(char));
+    memcpy(page_cpy, page, page_len);
+
+    response = MHD_create_response_from_buffer(page_len,
+                                               (void *) page_cpy,
+                                               MHD_RESPMEM_MUST_FREE);
 
     *ptr = NULL;
 
@@ -174,7 +178,7 @@ int mock_bridge_server(void *cls,
     MHD_destroy_response(response);
 
     // Free the json_object
-    // json_object_put(responses);
+    json_object_put(responses);
 
     return ret;
 }
