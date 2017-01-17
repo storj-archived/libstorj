@@ -35,7 +35,9 @@ typedef struct {
  * @param[out] out Target for shard data
  * @return A non-zero error value on failure and 0 on success.
  */
-int fetch_shard(char *proto,
+int fetch_shard(storj_http_options_t *http_options,
+                char *farmer_id,
+                char *proto,
                 char *host,
                 int port,
                 char *shard_hash,
@@ -44,7 +46,7 @@ int fetch_shard(char *proto,
                 char *token,
                 int *status_code,
                 uv_async_t *progress_handle,
-                bool *cancelled);
+                bool *canceled);
 
 /**
  * @brief Make a JSON HTTP request
@@ -57,7 +59,8 @@ int fetch_shard(char *proto,
  * @param[out] status_code The resulting status code from the request
  * @return A non-zero error value on failure and 0 on success.
  */
-struct json_object *fetch_json(storj_bridge_options_t *options,
+struct json_object *fetch_json(storj_http_options_t *http_options,
+                               storj_bridge_options_t *options,
                                char *method,
                                char *path,
                                struct json_object *request_body,

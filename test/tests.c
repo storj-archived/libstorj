@@ -15,6 +15,15 @@ storj_encrypt_options_t encrypt_options = {
     .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
 };
 
+storj_http_options_t http_options = {
+    .user_agent = "storj-test"
+};
+
+storj_log_options_t log_options = {
+    .logger = (storj_logger_fn)printf,
+    .level = 0
+};
+
 void fail(char *msg)
 {
     printf("\t" KRED "FAIL" RESET " %s\n", msg);
@@ -189,7 +198,7 @@ void check_resolve_file(int status, FILE *fd)
 void check_resolve_file_cancel(int status, FILE *fd)
 {
     fclose(fd);
-    if (status == STORJ_TRANSFER_CANCELLED) {
+    if (status == STORJ_TRANSFER_CANCELED) {
         pass("storj_bridge_resolve_file_cancel");
     } else {
         fail("storj_bridge_resolve_file_cancel");
@@ -320,7 +329,10 @@ int test_download()
 {
 
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options, &encrypt_options);
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
     assert(env != NULL);
 
     // resolve file
@@ -356,22 +368,25 @@ int test_download()
         return 1;
     }
 
+    storj_destroy_env(env);
 
-    free(env->loop);
-    free(env);
+    return OK;
 }
 
 int test_download_cancel()
 {
 
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options, &encrypt_options);
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
     assert(env != NULL);
 
     // resolve file
     char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
     strcpy(download_file, folder);
-    strcat(download_file, "storj-test-download-cancelled.data");
+    strcat(download_file, "storj-test-download-canceled.data");
     FILE *download_fp = fopen(download_file, "w+");
 
     char *bucket_id = "368be0816766b28fd5f43af5";
@@ -418,8 +433,9 @@ int test_download_cancel()
         return 1;
     }
 
-    free(env->loop);
-    free(env);
+    storj_destroy_env(env);
+
+    return OK;
 }
 
 int test_api()
@@ -433,7 +449,10 @@ int test_api()
     create_test_file(file);
 
     // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options, &encrypt_options);
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
     assert(env != NULL);
 
     int status;
@@ -536,8 +555,8 @@ int test_api()
 
 
     free(file);
-    free(env->loop);
-    free(env);
+
+    storj_destroy_env(env);
 
     return OK;
 }

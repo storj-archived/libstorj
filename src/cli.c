@@ -28,7 +28,12 @@ extern int errno;
     "options:\n"                                                        \
     "  -h, --help                output usage information\n"            \
     "  -v, --version             output the version number\n"           \
-    "  -u, --url <url>           set the base url for the api\n\n"      \
+    "  -u, --url <url>           set the base url for the api\n"        \
+    "  -p, --proxy <url>         set the socks proxy (e.g. socks5://<host>:<port>)\n" \
+    "  -l, --log <level>         set the log level (default 0)\n" \
+    "  -d, --debug               set the debug log level\n\n"
+
+#define CLI_VERSION "libstorj-1.0.0-alpha"
 
 static void get_password(char *password)
 {
@@ -472,6 +477,9 @@ int main(int argc, char **argv)
     static struct option cmd_options[] = {
         {"url", required_argument,  0, 'u'},
         {"version", no_argument,  0, 'v'},
+        {"proxy", required_argument,  0, 'p'},
+        {"log", required_argument,  0, 'l'},
+        {"debug", no_argument,  0, 'd'},
         {"help", no_argument,  0, 'h'},
         {0, 0, 0, 0}
     };
@@ -480,15 +488,27 @@ int main(int argc, char **argv)
 
     char *storj_bridge = getenv("STORJ_BRIDGE");
     int c;
+    int log_level = 0;
 
-    while ((c = getopt_long(argc, argv, "hvVu:", cmd_options, &index)) != -1) {
+    char *proxy = getenv("STORJ_PROXY");
+
+    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:", cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
                 storj_bridge = optarg;
                 break;
+            case 'p':
+                proxy = optarg;
+                break;
+            case 'l':
+                log_level = atoi(optarg);
+                break;
+            case 'd':
+                log_level = 4;
+                break;
             case 'V':
             case 'v':
-                printf("libstorj 1.0.0-alpha\n\n");
+                printf(CLI_VERSION "\n\n");
                 exit(0);
                 break;
             case 'h':
@@ -496,6 +516,11 @@ int main(int argc, char **argv)
                 exit(0);
                 break;
         }
+    }
+
+    if (log_level > 4 || log_level < 0) {
+        printf("Invalid log level\n");
+        return 1;
     }
 
     int command_index = optind;
@@ -524,6 +549,37 @@ int main(int argc, char **argv)
     // initialize event loop and environment
     storj_env_t *env;
 
+    storj_http_options_t http_options = {
+        .user_agent = CLI_VERSION
+    };
+
+    storj_log_options_t log_options = {
+        .logger = (storj_logger_fn)printf,
+        .level = log_level
+    };
+
+    if (proxy) {
+        char proxy_proto[8];
+        char proxy_host[100];
+        int proxy_port = 0;
+        sscanf(proxy, "%7[^://]://%99[^:/]:%99d", proxy_proto,
+               proxy_host, &proxy_port);
+
+        if (strcmp(proxy_proto, "socks5") == 0) {
+            http_options.proxy_version = STORJ_PROXY_SOCKSV5;
+        } else if(strcmp(proxy_proto, "socks4") == 0) {
+            http_options.proxy_version = STORJ_PROXY_SOCKSV4;
+        } else if(strcmp(proxy_proto, "socks4a") == 0) {
+            http_options.proxy_version = STORJ_PROXY_SOCKSV4A;
+        } else {
+            printf("Unsupported proxy protocol\n");
+            return 1;
+        }
+
+        http_options.proxy_host = proxy_host;
+        http_options.proxy_port = proxy_port;
+    }
+
     if (strcmp(command, "get-info") == 0) {
         printf("Storj bridge: %s\n\n", storj_bridge);
 
@@ -535,7 +591,7 @@ int main(int argc, char **argv)
             .pass  = NULL
         };
 
-        env = storj_init_env(&options, NULL);
+        env = storj_init_env(&options, NULL, &http_options, &log_options);
         if (!env) {
             return 1;
         }
@@ -626,7 +682,8 @@ int main(int argc, char **argv)
             .mnemonic = mnemonic
         };
 
-        env = storj_init_env(&options, &encrypt_options);
+        env = storj_init_env(&options, &encrypt_options,
+                             &http_options, &log_options);
         if (!env) {
             status = 1;
             goto end_program;
@@ -730,8 +787,7 @@ int main(int argc, char **argv)
 
 end_program:
     if (env) {
-        free(env->loop);
-        free(env);
+        storj_destroy_env(env);
     }
     return status;
 }

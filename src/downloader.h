@@ -53,6 +53,8 @@ typedef struct {
  * shards from farmers.
  */
 typedef struct {
+    storj_http_options_t *http_options;
+    char *farmer_id;
     char *farmer_proto;
     char *farmer_host;
     int farmer_port;
@@ -70,7 +72,7 @@ typedef struct {
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
     int error_status;
-    bool *cancelled;
+    bool *canceled;
 } shard_request_download_t;
 
 /** @brief A structure for sharing data with worker threads for sending
@@ -78,6 +80,7 @@ typedef struct {
  */
 typedef struct {
     uint32_t pointer_index;
+    storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     int status_code;
     storj_exchange_report_t *report;
@@ -89,6 +92,7 @@ typedef struct {
  * pointer with a new farmer.
  */
 typedef struct {
+    storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     uint32_t pointer_index;
     char *token;
@@ -105,6 +109,7 @@ typedef struct {
  * requests with the bridge.
  */
 typedef struct {
+    storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     char *method;
     char *path;
@@ -121,6 +126,7 @@ typedef struct {
  * a bucket operation token from the bridge.
  */
 typedef struct {
+    storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     char *token;
     char *bucket_id;

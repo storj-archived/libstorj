@@ -13,7 +13,8 @@ static void request_token(uv_work_t *work)
     json_object_object_add(body, "operation", op_string);
 
     int status_code = 0;
-    struct json_object *response = fetch_json(req->options,
+    struct json_object *response = fetch_json(req->http_options,
+                                              req->options,
                                               "POST",
                                               path,
                                               body,
@@ -89,7 +90,7 @@ static void after_request_token(uv_work_t *work, int status)
 
 static int queue_request_bucket_token(storj_download_state_t *state)
 {
-    if (state->requesting_token) {
+    if (state->requesting_token || state->canceled) {
         return 0;
     }
 
@@ -99,6 +100,7 @@ static int queue_request_bucket_token(storj_download_state_t *state)
     token_request_download_t *req = malloc(sizeof(token_request_download_t));
     assert(req != NULL);
 
+    req->http_options = state->env->http_options;
     req->options = state->env->bridge_options;
     req->bucket_id = state->bucket_id;
     req->bucket_op = (char *)BUCKET_OP[BUCKET_PULL];
@@ -121,8 +123,9 @@ static void request_pointers(uv_work_t *work)
     json_request_download_t *req = work->data;
 
     int status_code = 0;
-    req->response = fetch_json(req->options, req->method, req->path, req->body,
-                               req->auth, req->token, &status_code);
+    req->response = fetch_json(req->http_options, req->options, req->method,
+                               req->path, req->body, req->auth, req->token,
+                               &status_code);
 
     req->status_code = status_code;
 
@@ -146,8 +149,8 @@ static void request_replace_pointer(uv_work_t *work)
     char *path = ne_concat("/buckets/", req->bucket_id, "/files/",
                            req->file_id, query_args, NULL);
 
-    req->response = fetch_json(req->options, "GET", path, NULL, NULL,
-                               req->token, &status_code);
+    req->response = fetch_json(req->http_options, req->options, "GET",
+                               path, NULL, NULL, req->token, &status_code);
 
     req->status_code = status_code;
 
@@ -157,7 +160,8 @@ static void request_replace_pointer(uv_work_t *work)
 }
 
 static void set_pointer_from_json(storj_download_state_t *state,
-                                  storj_pointer_t *p, struct json_object *json,
+                                  storj_pointer_t *p,
+                                  struct json_object *json,
                                   bool is_replaced)
 {
     // TODO free existing values if is replaced?
@@ -253,12 +257,13 @@ static void set_pointer_from_json(storj_download_state_t *state,
     p->index = index;
     p->farmer_address = address;
     p->farmer_port = port;
+    p->farmer_id = farmer_id;
 
     // setup exchange report values
     p->report = malloc(
         sizeof(storj_exchange_report_t));
 
-    char *client_id = state->env->bridge_options->user;
+    const char *client_id = state->env->bridge_options->user;
     p->report->reporter_id = client_id;
     p->report->client_id = client_id;
     p->report->data_hash = hash;
@@ -406,7 +411,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
 
 static void queue_request_pointers(storj_download_state_t *state)
 {
-    if (state->requesting_pointers) {
+    if (state->requesting_pointers || state->canceled) {
         return;
     }
 
@@ -444,6 +449,7 @@ static void queue_request_pointers(storj_download_state_t *state)
 
             req->pointer_index = i;
 
+            req->http_options = state->env->http_options;
             req->options = state->env->bridge_options;
             req->token = state->token;
             req->bucket_id = state->bucket_id;
@@ -452,6 +458,9 @@ static void queue_request_pointers(storj_download_state_t *state)
             req->excluded_farmer_ids = state->excluded_farmer_ids;
 
             work->data = req;
+
+            state->log->info("Requesting replacement pointer at index: %i\n",
+                             req->pointer_index);
 
             state->pending_work_count++;
             int status = uv_queue_work(state->env->loop,
@@ -482,6 +491,7 @@ static void queue_request_pointers(storj_download_state_t *state)
     char *path = ne_concat("/buckets/", state->bucket_id, "/files/",
                            state->file_id, query_args, NULL);
 
+    req->http_options = state->env->http_options;
     req->options = state->env->bridge_options;
     req->method = "GET";
     req->path = path;
@@ -492,6 +502,9 @@ static void queue_request_pointers(storj_download_state_t *state)
     req->state = state;
 
     work->data = req;
+
+    state->log->info("Requesting next set of pointers, total pointers: %i\n",
+                     state->total_pointers);
 
     state->pending_work_count++;
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
@@ -509,12 +522,13 @@ static void request_shard(uv_work_t *work)
 
     req->start = get_time_milliseconds();
 
-    int error_status = fetch_shard(req->farmer_proto, req->farmer_host,
+    int error_status = fetch_shard(req->http_options, req->farmer_id,
+                                   req->farmer_proto, req->farmer_host,
                                    req->farmer_port, req->shard_hash,
                                    req->shard_total_bytes, req->shard_data,
                                    req->token, &status_code,
                                    &req->progress_handle,
-                                   req->cancelled);
+                                   req->canceled);
 
     req->end = get_time_milliseconds();
 
@@ -556,9 +570,11 @@ static void free_request_shard_work(uv_handle_t *progress_handle)
 
 static void after_request_shard(uv_work_t *work, int status)
 {
-    // TODO check status
-
     shard_request_download_t *req = work->data;
+
+    if (status == UV_ECANCELED) {
+        // TODO
+    }
 
     req->state->pending_work_count--;
     req->state->resolving_shards -= 1;
@@ -578,6 +594,11 @@ static void after_request_shard(uv_work_t *work, int status)
     pointer->report->end = req->end;
 
     if (req->error_status) {
+
+        req->state->log->warn("Error downloading shard: %s, reason: %s\n",
+                              req->shard_hash,
+                              storj_strerror(req->error_status));
+
         pointer->status = POINTER_ERROR;
 
         switch(req->error_status) {
@@ -588,7 +609,15 @@ static void after_request_shard(uv_work_t *work, int status)
                 pointer->report->code = STORJ_REPORT_FAILURE;
                 pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
         }
+
+        // TODO don't send error on canceled download
+
+        free(req->shard_data);
+
     } else {
+
+        req->state->log->info("Finished downloading shard: %s\n", req->shard_hash);
+
         pointer->report->code = STORJ_REPORT_SUCCESS;
         pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
         pointer->status = POINTER_DOWNLOADED;
@@ -628,6 +657,10 @@ static void progress_request_shard(uv_async_t* async)
 
 static int queue_request_shards(storj_download_state_t *state)
 {
+    if (state->canceled) {
+        return 0;
+    }
+
     int i = 0;
 
     while (state->resolving_shards < STORJ_DOWNLOAD_CONCURRENCY &&
@@ -639,6 +672,8 @@ static int queue_request_shards(storj_download_state_t *state)
             shard_request_download_t *req = malloc(sizeof(shard_request_download_t));
             assert(req != NULL);
 
+            req->http_options = state->env->http_options;
+            req->farmer_id = pointer->farmer_id;
             req->farmer_proto = "http";
             req->farmer_host = pointer->farmer_address;
             req->farmer_port = pointer->farmer_port;
@@ -665,7 +700,7 @@ static int queue_request_shards(storj_download_state_t *state)
             req->pointer_index = pointer->index;
 
             req->state = state;
-            req->cancelled = &state->cancelled;
+            req->canceled = &state->canceled;
 
             uv_work_t *work = malloc(sizeof(uv_work_t));
             assert(work != NULL);
@@ -675,6 +710,8 @@ static int queue_request_shards(storj_download_state_t *state)
             state->resolving_shards += 1;
             pointer->status = POINTER_BEING_DOWNLOADED;
             pointer->work = work;
+
+            state->log->info("Queue request shard: %s\n", req->shard_hash);
 
             // setup download progress reporting
             shard_download_progress_t *progress =
@@ -725,15 +762,11 @@ static void after_write_shard(uv_work_t *work, int status)
     } else if (req->error_status) {
         req->state->error_status = STORJ_FILE_WRITE_ERROR;
     } else {
-        // write success
         req->state->pointers[req->pointer_index].status = POINTER_WRITTEN;
-
         req->state->completed_shards += 1;
-
-        storj_pointer_t *pointer = &req->state->pointers[req->pointer_index];
-
-        free(pointer->shard_data);
     }
+
+    free(req->shard_data);
 
     queue_next_work(req->state);
 
@@ -743,6 +776,10 @@ static void after_write_shard(uv_work_t *work, int status)
 
 static void queue_write_next_shard(storj_download_state_t *state)
 {
+    if (state->canceled) {
+        return;
+    }
+
     int i = 0;
 
     while (!state->writing && i < state->total_pointers) {
@@ -813,7 +850,8 @@ static void send_exchange_report(uv_work_t *work)
     int status_code = 0;
 
     // there should be an empty object in response
-    struct json_object *response = fetch_json(req->options, "POST",
+    struct json_object *response = fetch_json(req->http_options,
+                                              req->options, "POST",
                                               "/reports/exchanges", body,
                                               NULL, NULL, &status_code);
     req->status_code = status_code;
@@ -869,6 +907,7 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
 
             shard_send_report_t *req = malloc(sizeof(shard_send_report_t));
 
+            req->http_options = state->env->http_options;
             req->options = state->env->bridge_options;
             req->status_code = 0;
             req->report = pointer->report;
@@ -935,16 +974,22 @@ static void queue_next_work(storj_download_state_t *state)
 
 int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
 {
-    state->cancelled = true;
-    state->error_status = STORJ_TRANSFER_CANCELLED;
+    if (state->canceled) {
+        return 0;
+    }
+
+    state->canceled = true;
+    state->error_status = STORJ_TRANSFER_CANCELED;
 
     // loop over all pointers, and cancel any that are queued to be downloaded
-    // any downloads that are in-progress will monitor the state->cancelled
+    // any downloads that are in-progress will monitor the state->canceled
     // status and exit when set to true
     for (int i = 0; i < state->total_pointers; i++) {
         storj_pointer_t *pointer = &state->pointers[i];
         if (pointer->status == POINTER_BEING_DOWNLOADED) {
             uv_cancel((uv_req_t *)pointer->work);
+        } else if (pointer->status == POINTER_DOWNLOADED) {
+            free(pointer->shard_data);
         }
     }
 
@@ -985,6 +1030,8 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->shard_size = 0;
     state->excluded_farmer_ids = NULL;
     state->pending_work_count = 0;
+    state->canceled = false;
+    state->log = env->log;
 
     // determine the decryption key
     if (!env->encrypt_options || !env->encrypt_options->mnemonic) {

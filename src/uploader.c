@@ -255,7 +255,8 @@ static void request_frame(uv_work_t *work)
     struct json_object *body = json_object_new_object();
 
     int status_code;
-    struct json_object *response = fetch_json(req->options,
+    struct json_object *response = fetch_json(req->http_options,
+                                              req->options,
                                               "POST",
                                               "/frames",
                                               body,
@@ -286,6 +287,7 @@ static int queue_request_frame(storj_upload_state_t *state)
     frame_request_t *req = malloc(sizeof(frame_request_t));
     assert(req != NULL);
 
+    req->http_options = state->env->http_options;
     req->options = state->env->bridge_options;
     req->upload_state = state;
     req->error_status = 0;
@@ -457,7 +459,8 @@ static void request_token(uv_work_t *work)
     json_object_object_add(body, "operation", op_string);
 
     int status_code;
-    struct json_object *response = fetch_json(req->options,
+    struct json_object *response = fetch_json(req->http_options,
+                                              req->options,
                                               "POST",
                                               path,
                                               body,
@@ -489,6 +492,7 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
     token_request_token_t *req = malloc(sizeof(token_request_token_t));
     assert(req != NULL);
 
+    req->http_options = state->env->http_options;
     req->options = state->env->bridge_options;
     req->bucket_id = state->bucket_id;
     req->bucket_op = (char *)BUCKET_OP[BUCKET_PUSH];

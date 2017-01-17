@@ -82,6 +82,7 @@ typedef struct {
 } encrypt_file_meta_t;
 
 typedef struct {
+    storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     char *token;
     char *bucket_id;
@@ -93,6 +94,7 @@ typedef struct {
 } token_request_token_t;
 
 typedef struct {
+    storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     /* state should not be modified in worker threads */
     storj_upload_state_t *upload_state;
