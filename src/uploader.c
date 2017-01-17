@@ -41,6 +41,14 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->file_key);
     }
 
+    if (state->token) {
+        free(state->token);
+    }
+
+    if (state->frame_id) {
+        free(state->frame_id);
+    }
+
     if (state->shard_meta) {
         for (int i = 0; i < state->total_shards; i++ ) {
             printf("Cleaning up shard %d\n", i);
@@ -130,24 +138,44 @@ static void push_frame(uv_work_t *work)
     storj_upload_state_t *state = req->upload_state;
     shard_meta_t *shard_meta = &state->shard_meta[req->shard_index];
     printf("Pushing frame for shard index %d\n", req->shard_index);
-    // frame_request_t *req = work->data;
-    //
-    // printf("[%s] Creating file staging frame... (retry: %d)\n",
-    //         req->upload_state->file_name,
-    //         req->upload_state->frame_request_count);
-    //
-    // struct json_object *body = json_object_new_object();
-    //
+
+    // Prepare the body
+    struct json_object *body = json_object_new_object();
+
+    // Add shard hash
+    json_object *shard_hash = json_object_new_string(shard_meta->hash);
+    json_object_object_add(body, "hash", shard_hash);
+
+    // Add shard size
+    json_object *shard_size = json_object_new_double(shard_meta->size);
+    json_object_object_add(body, "size", shard_size);
+
+    // Add shard index
+    json_object *shard_index = json_object_new_int(shard_meta->index);
+    json_object_object_add(body, "index", shard_index);
+
+    // Add challenges
+
+    // Add Tree
+
+    // Add exclude
+
+    char resource[strlen(state->frame_id) + 9];
+    memset(resource, '\0', strlen(state->frame_id) + 9);
+    strcpy(resource, "/frames/");
+    strcat(resource, state->frame_id);
+    printf("Resource: %s\n", resource);
+
     // int status_code;
     // struct json_object *response = fetch_json(req->http_options,
     //                                           req->options,
-    //                                           "POST",
-    //                                           "/frames",
+    //                                           "PUT",
+    //                                           resource,
     //                                           body,
     //                                           true,
     //                                           NULL,
     //                                           &status_code);
-    //
+
     // struct json_object *frame_id;
     // if (!json_object_object_get_ex(response, "id", &frame_id)) {
     //   req->error_status = STORJ_BRIDGE_JSON_ERROR;
@@ -193,11 +221,30 @@ static void after_create_frame(uv_work_t *work, int status)
     }
 
     // set the shard_meta to a struct array in the state for later use.
-    memcpy(&state->shard_meta[shard_meta->index], shard_meta, sizeof(shard_meta_t));
+
+    // Add Hash
+    state->shard_meta[shard_meta->index].hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 1, sizeof(char));
+    memcpy(state->shard_meta[shard_meta->index].hash, shard_meta->hash, RIPEMD160_DIGEST_SIZE*2);
+
+    // Add challenges_as_str
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        memcpy(state->shard_meta[shard_meta->index].challenges_as_str[i], shard_meta->challenges_as_str[i], 32);
+    }
+
+    // Add Merkle Tree leaves.
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        memcpy(state->shard_meta[shard_meta->index].tree[i], shard_meta->tree[i], 32);
+    }
+
+    // Add index
+    state->shard_meta[shard_meta->index].index = shard_meta->index;
+
+    // Add size
+    state->shard_meta[shard_meta->index].size = shard_meta->size;
 
     queue_next_work(state);
 
-shard_state_cleanup(shard_meta);
+    shard_state_cleanup(shard_meta);
     free(frame_builder);
     free(work);
 }
@@ -239,7 +286,7 @@ static void create_frame(uv_work_t *work)
     // Calculate Shard Hash
     ripmd160sha256_as_string(shard_data, shard_meta->size, &shard_meta->hash);
 
-    printf("Shard hash: %s\n", shard_meta->hash);
+    printf("Shard (%d) hash: %s\n", shard_meta->index, shard_meta->hash);
 
     // Set the challenges
     for (int i = 0; i < CHALLENGES; i++ ) {
@@ -363,7 +410,9 @@ static void request_frame(uv_work_t *work)
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    req->frame_id = (char *)json_object_get_string(frame_id);
+    char *frame_id_str = (char *)json_object_get_string(frame_id);
+    req->frame_id = calloc(strlen(frame_id_str) + 1, sizeof(char));
+    strcpy(req->frame_id, frame_id_str);
     req->status_code = status_code;
 
     json_object_put(response);
@@ -558,7 +607,9 @@ static void request_token(uv_work_t *work)
         req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    req->token = (char *)json_object_get_string(token_value);
+    char *token_value_str = (char *)json_object_get_string(token_value);
+    req->token = calloc(strlen(token_value_str) + 1, sizeof(char));
+    strcpy(req->token, token_value_str);
     req->status_code = status_code;
 
     free(path);
@@ -620,7 +671,7 @@ static void queue_next_work(storj_upload_state_t *state)
         queue_create_frame(state);
     } else if (state->completed_shard_hash && !state->pushing_frame){
         queue_push_frame(state);
-        return cleanup_state(state);
+        // return cleanup_state(state);
     }
 
     // Encrypt the file
