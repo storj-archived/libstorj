@@ -603,6 +603,9 @@ static void after_request_shard(uv_work_t *work, int status)
                 pointer->report->code = STORJ_REPORT_FAILURE;
                 pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
         }
+
+        free(req->shard_data);
+
     } else {
         pointer->report->code = STORJ_REPORT_SUCCESS;
         pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
@@ -744,15 +747,11 @@ static void after_write_shard(uv_work_t *work, int status)
     } else if (req->error_status) {
         req->state->error_status = STORJ_FILE_WRITE_ERROR;
     } else {
-        // write success
         req->state->pointers[req->pointer_index].status = POINTER_WRITTEN;
-
         req->state->completed_shards += 1;
-
-        storj_pointer_t *pointer = &req->state->pointers[req->pointer_index];
-
-        free(pointer->shard_data);
     }
+
+    free(req->shard_data);
 
     queue_next_work(req->state);
 
