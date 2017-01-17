@@ -634,8 +634,7 @@ int main(int argc, char **argv)
 
 end_program:
     if (env) {
-        free(env->loop);
-        free(env);
+        storj_destroy_env(env);
     }
     return status;
 }
