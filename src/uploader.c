@@ -200,42 +200,44 @@ static void after_push_frame(uv_work_t *work, int status)
     storj_upload_state_t *state = req->upload_state;
     farmer_pointer_t *pointer = req->farmer_pointer;
 
-    // Add hash to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].hash = calloc(strlen(pointer->hash) + 1, sizeof(char));
-    memcpy(state->farmer_pointers[pointer->shard_index].hash, pointer->hash, strlen(pointer->hash));
+    // Check if we got a 201 status and token
+    if (req->error_status == 0 && req->status_code == 201 && pointer->token) {
 
-    // Add token to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].token = calloc(strlen(pointer->token) + 1, sizeof(char));
-    memcpy(state->farmer_pointers[pointer->shard_index].token, pointer->token, strlen(pointer->token));
+        // Add hash to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].hash = calloc(strlen(pointer->hash) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].hash, pointer->hash, strlen(pointer->hash));
 
-    // Add shard_index to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].shard_index = pointer->shard_index;
+        // Add token to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].token = calloc(strlen(pointer->token) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].token, pointer->token, strlen(pointer->token));
 
-    // Add farmer_user_agent to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_user_agent = calloc(strlen(pointer->farmer_user_agent) + 1, sizeof(char));
-    memcpy(state->farmer_pointers[pointer->shard_index].farmer_user_agent, pointer->farmer_user_agent, strlen(pointer->farmer_user_agent));
+        // Add shard_index to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].shard_index = pointer->shard_index;
 
-    // Add farmer_address to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_address = calloc(strlen(pointer->farmer_address) + 1, sizeof(char));
-    memcpy(state->farmer_pointers[pointer->shard_index].farmer_address, pointer->farmer_address, strlen(pointer->farmer_address));
+        // Add farmer_user_agent to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_user_agent = calloc(strlen(pointer->farmer_user_agent) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_user_agent, pointer->farmer_user_agent, strlen(pointer->farmer_user_agent));
 
-    // Add farmer_port to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_port = calloc(strlen(pointer->farmer_port) + 1, sizeof(char));
-    memcpy(state->farmer_pointers[pointer->shard_index].farmer_port, pointer->farmer_port, strlen(pointer->farmer_port));
+        // Add farmer_address to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_address = calloc(strlen(pointer->farmer_address) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_address, pointer->farmer_address, strlen(pointer->farmer_address));
 
-    // Add farmer_protocol to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_protocol = calloc(strlen(pointer->farmer_protocol) + 1, sizeof(char));
-    memcpy(state->farmer_pointers[pointer->shard_index].farmer_protocol, pointer->farmer_protocol, strlen(pointer->farmer_protocol));
+        // Add farmer_port to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_port = calloc(strlen(pointer->farmer_port) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_port, pointer->farmer_port, strlen(pointer->farmer_port));
 
-    // Add farmer_node_id to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_node_id = calloc(strlen(pointer->farmer_node_id) + 1, sizeof(char));
-    memcpy(state->farmer_pointers[pointer->shard_index].farmer_node_id, pointer->farmer_node_id, strlen(pointer->farmer_node_id));
+        // Add farmer_protocol to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_protocol = calloc(strlen(pointer->farmer_protocol) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_protocol, pointer->farmer_protocol, strlen(pointer->farmer_protocol));
 
-    // Add farmer_last_seen to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_last_seen = calloc(strlen(pointer->farmer_last_seen) + 1, sizeof(char));
-    memcpy(state->farmer_pointers[pointer->shard_index].farmer_last_seen, pointer->farmer_last_seen, strlen(pointer->farmer_last_seen));
+        // Add farmer_node_id to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_node_id = calloc(strlen(pointer->farmer_node_id) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_node_id, pointer->farmer_node_id, strlen(pointer->farmer_node_id));
 
-    state->completed_shards+=1;
+        // Add farmer_last_seen to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_last_seen = calloc(strlen(pointer->farmer_last_seen) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_last_seen, pointer->farmer_last_seen, strlen(pointer->farmer_last_seen));
+    }
 
     queue_next_work(req->upload_state);
 
@@ -301,54 +303,65 @@ static void push_frame(uv_work_t *work)
 
     struct json_object *obj_token;
     if (!json_object_object_get_ex(response, "token", &obj_token)) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     struct json_object *obj_hash;
     if (!json_object_object_get_ex(response, "hash", &obj_hash)) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     struct json_object *obj_farmer;
     if (!json_object_object_get_ex(response, "farmer", &obj_farmer)) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     struct json_object *obj_farmer_address;
     if (!json_object_object_get_ex(obj_farmer, "address", &obj_farmer_address)) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     struct json_object *obj_farmer_port;
     if (!json_object_object_get_ex(obj_farmer, "port", &obj_farmer_port)) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     struct json_object *obj_farmer_user_agent;
     if (!json_object_object_get_ex(obj_farmer, "userAgent", &obj_farmer_user_agent)) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     struct json_object *obj_farmer_protocol;
     if (!json_object_object_get_ex(obj_farmer, "protocol", &obj_farmer_protocol)) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     struct json_object *obj_farmer_node_id;
     if (!json_object_object_get_ex(obj_farmer, "nodeID", &obj_farmer_node_id)) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     struct json_object *obj_farmer_last_seen;
     if (!json_object_object_get_ex(obj_farmer, "lastSeen", &obj_farmer_last_seen)) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     if (!json_object_is_type(obj_token, json_type_string) == 1) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     char *token = (char *)json_object_get_string(obj_token);
+
     req->farmer_pointer->token = calloc(strlen(token) + 1, sizeof(char));
     memcpy(req->farmer_pointer->token, token, strlen(token));
 
@@ -384,6 +397,7 @@ static void push_frame(uv_work_t *work)
 
     req->status_code = status_code;
 
+clean_variables:
     json_object_put(response);
     json_object_put(body);
 }
