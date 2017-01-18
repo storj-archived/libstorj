@@ -398,7 +398,7 @@ int test_download_cancel()
     assert(env != NULL);
 
     // resolve file
-    char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
+    char *download_file = calloc(strlen(folder) + 33 + 1, sizeof(char));
     strcpy(download_file, folder);
     strcat(download_file, "storj-test-download-canceled.data");
     FILE *download_fp = fopen(download_file, "w+");
@@ -416,7 +416,6 @@ int test_download_cancel()
                                            check_resolve_file_progress,
                                            check_resolve_file_cancel);
 
-    free(download_file);
     assert(status == 0);
 
     // process the loop one at a time so that we can do other things while
@@ -434,7 +433,7 @@ int test_download_cancel()
 
         count++;
 
-        if (count > 100) {
+        if (count == 100) {
             status = storj_bridge_resolve_file_cancel(state);
             assert(status == 0);
         }
@@ -447,6 +446,7 @@ int test_download_cancel()
         return 1;
     }
 
+    free(download_file);
     storj_destroy_env(env);
 
     return OK;
