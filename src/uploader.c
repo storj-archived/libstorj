@@ -20,8 +20,8 @@ static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state)
     req->error_status = 0;
     if (index != NULL) {
         req->shard_index = *index;
+        req->farmer_pointer = calloc(sizeof(farmer_pointer_t), sizeof(char));
     }
-    req->farmer_pointer = calloc(sizeof(farmer_pointer_t), sizeof(char));
 
     work->data = req;
 
@@ -55,7 +55,7 @@ static void shard_state_cleanup(shard_meta_t *shard_meta)
 }
 
 static void pointer_cleanup(farmer_pointer_t *farmer_pointer)
-{    
+{
     if (farmer_pointer->hash != NULL) {
         free(farmer_pointer->hash);
     }
@@ -201,44 +201,45 @@ static void after_push_frame(uv_work_t *work, int status)
     farmer_pointer_t *pointer = req->farmer_pointer;
 
     // Add hash to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].hash = calloc(strlen(pointer->hash), sizeof(char));
+    state->farmer_pointers[pointer->shard_index].hash = calloc(strlen(pointer->hash) + 1, sizeof(char));
     memcpy(state->farmer_pointers[pointer->shard_index].hash, pointer->hash, strlen(pointer->hash));
 
     // Add token to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].token = calloc(strlen(pointer->token), sizeof(char));
+    state->farmer_pointers[pointer->shard_index].token = calloc(strlen(pointer->token) + 1, sizeof(char));
     memcpy(state->farmer_pointers[pointer->shard_index].token, pointer->token, strlen(pointer->token));
 
     // Add shard_index to farmer_pointers
     state->farmer_pointers[pointer->shard_index].shard_index = pointer->shard_index;
 
     // Add farmer_user_agent to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_user_agent = calloc(strlen(pointer->farmer_user_agent), sizeof(char));
+    state->farmer_pointers[pointer->shard_index].farmer_user_agent = calloc(strlen(pointer->farmer_user_agent) + 1, sizeof(char));
     memcpy(state->farmer_pointers[pointer->shard_index].farmer_user_agent, pointer->farmer_user_agent, strlen(pointer->farmer_user_agent));
 
     // Add farmer_address to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_address = calloc(strlen(pointer->farmer_address), sizeof(char));
+    state->farmer_pointers[pointer->shard_index].farmer_address = calloc(strlen(pointer->farmer_address) + 1, sizeof(char));
     memcpy(state->farmer_pointers[pointer->shard_index].farmer_address, pointer->farmer_address, strlen(pointer->farmer_address));
 
     // Add farmer_port to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_port = calloc(strlen(pointer->farmer_port), sizeof(char));
+    state->farmer_pointers[pointer->shard_index].farmer_port = calloc(strlen(pointer->farmer_port) + 1, sizeof(char));
     memcpy(state->farmer_pointers[pointer->shard_index].farmer_port, pointer->farmer_port, strlen(pointer->farmer_port));
 
     // Add farmer_protocol to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_protocol = calloc(strlen(pointer->farmer_protocol), sizeof(char));
+    state->farmer_pointers[pointer->shard_index].farmer_protocol = calloc(strlen(pointer->farmer_protocol) + 1, sizeof(char));
     memcpy(state->farmer_pointers[pointer->shard_index].farmer_protocol, pointer->farmer_protocol, strlen(pointer->farmer_protocol));
 
     // Add farmer_node_id to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_node_id = calloc(strlen(pointer->farmer_node_id), sizeof(char));
+    state->farmer_pointers[pointer->shard_index].farmer_node_id = calloc(strlen(pointer->farmer_node_id) + 1, sizeof(char));
     memcpy(state->farmer_pointers[pointer->shard_index].farmer_node_id, pointer->farmer_node_id, strlen(pointer->farmer_node_id));
 
     // Add farmer_last_seen to farmer_pointers
-    state->farmer_pointers[pointer->shard_index].farmer_last_seen = calloc(strlen(pointer->farmer_last_seen), sizeof(char));
+    state->farmer_pointers[pointer->shard_index].farmer_last_seen = calloc(strlen(pointer->farmer_last_seen) + 1, sizeof(char));
     memcpy(state->farmer_pointers[pointer->shard_index].farmer_last_seen, pointer->farmer_last_seen, strlen(pointer->farmer_last_seen));
 
+    state->completed_shards+=1;
 
     queue_next_work(req->upload_state);
 
-    free(req->farmer_pointer);
+    pointer_cleanup(req->farmer_pointer);
     free(req);
     free(work);
 }
@@ -298,64 +299,88 @@ static void push_frame(uv_work_t *work)
                                               NULL,
                                               &status_code);
 
-    struct json_object *token;
-    if (!json_object_object_get_ex(response, "token", &token)) {
+    struct json_object *obj_token;
+    if (!json_object_object_get_ex(response, "token", &obj_token)) {
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    struct json_object *hash;
-    if (!json_object_object_get_ex(response, "hash", &hash)) {
+    struct json_object *obj_hash;
+    if (!json_object_object_get_ex(response, "hash", &obj_hash)) {
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    struct json_object *farmer;
-    if (!json_object_object_get_ex(response, "farmer", &farmer)) {
+    struct json_object *obj_farmer;
+    if (!json_object_object_get_ex(response, "farmer", &obj_farmer)) {
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    struct json_object *farmer_address;
-    if (!json_object_object_get_ex(farmer, "address", &farmer_address)) {
+    struct json_object *obj_farmer_address;
+    if (!json_object_object_get_ex(obj_farmer, "address", &obj_farmer_address)) {
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    struct json_object *farmer_port;
-    if (!json_object_object_get_ex(farmer, "port", &farmer_port)) {
+    struct json_object *obj_farmer_port;
+    if (!json_object_object_get_ex(obj_farmer, "port", &obj_farmer_port)) {
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    struct json_object *farmer_user_agent;
-    if (!json_object_object_get_ex(farmer, "userAgent", &farmer_user_agent)) {
+    struct json_object *obj_farmer_user_agent;
+    if (!json_object_object_get_ex(obj_farmer, "userAgent", &obj_farmer_user_agent)) {
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    struct json_object *farmer_protocol;
-    if (!json_object_object_get_ex(farmer, "protocol", &farmer_protocol)) {
+    struct json_object *obj_farmer_protocol;
+    if (!json_object_object_get_ex(obj_farmer, "protocol", &obj_farmer_protocol)) {
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    struct json_object *farmer_node_id;
-    if (!json_object_object_get_ex(farmer, "nodeID", &farmer_node_id)) {
+    struct json_object *obj_farmer_node_id;
+    if (!json_object_object_get_ex(obj_farmer, "nodeID", &obj_farmer_node_id)) {
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    struct json_object *farmer_last_seen;
-    if (!json_object_object_get_ex(farmer, "lastSeen", &farmer_last_seen)) {
+    struct json_object *obj_farmer_last_seen;
+    if (!json_object_object_get_ex(obj_farmer, "lastSeen", &obj_farmer_last_seen)) {
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    if (!json_object_is_type(token, json_type_string) == 1) {
+    if (!json_object_is_type(obj_token, json_type_string) == 1) {
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    req->farmer_pointer->token = (char *)json_object_get_string(token);
-    req->farmer_pointer->hash = (char *)json_object_get_string(hash);
+    char *token = (char *)json_object_get_string(obj_token);
+    req->farmer_pointer->token = calloc(strlen(token) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->token, token, strlen(token));
+
+    char *hash = (char *)json_object_get_string(obj_hash);
+    req->farmer_pointer->hash = calloc(strlen(hash) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->hash, hash, strlen(hash));
+
     req->farmer_pointer->shard_index = shard_meta->index;
-    req->farmer_pointer->farmer_user_agent = (char *)json_object_get_string(farmer_user_agent);
-    req->farmer_pointer->farmer_protocol = (char *)json_object_get_string(farmer_protocol);
-    req->farmer_pointer->farmer_address = (char *)json_object_get_string(farmer_address);
-    req->farmer_pointer->farmer_port = (char *)json_object_get_string(farmer_port);
-    req->farmer_pointer->farmer_node_id = (char *)json_object_get_string(farmer_node_id);
-    req->farmer_pointer->farmer_last_seen = (char *)json_object_get_string(farmer_last_seen);
+
+    char *farmer_user_agent = (char *)json_object_get_string(obj_farmer_user_agent);
+    req->farmer_pointer->farmer_user_agent = calloc(strlen(farmer_user_agent) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_user_agent, farmer_user_agent, strlen(farmer_user_agent));
+
+    char *farmer_protocol = (char *)json_object_get_string(obj_farmer_protocol);
+    req->farmer_pointer->farmer_protocol = calloc(strlen(farmer_protocol) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_protocol, farmer_protocol, strlen(farmer_protocol));
+
+    char *farmer_address = (char *)json_object_get_string(obj_farmer_address);
+    req->farmer_pointer->farmer_address = calloc(strlen(farmer_address) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_address, farmer_address, strlen(farmer_address));
+
+    char *farmer_port = (char *)json_object_get_string(obj_farmer_port);
+    req->farmer_pointer->farmer_port = calloc(strlen(hash) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_port, farmer_port, strlen(farmer_port));
+
+    char *farmer_node_id = (char *)json_object_get_string(obj_farmer_node_id);
+    req->farmer_pointer->farmer_node_id = calloc(strlen(farmer_node_id) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_node_id, farmer_node_id, strlen(farmer_node_id));
+
+    char *farmer_last_seen = (char *)json_object_get_string(obj_farmer_last_seen);
+    req->farmer_pointer->farmer_last_seen = calloc(strlen(farmer_last_seen) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_last_seen, farmer_last_seen, strlen(farmer_last_seen));
 
     req->status_code = status_code;
 
