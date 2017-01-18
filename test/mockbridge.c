@@ -56,7 +56,7 @@ int mock_bridge_server(void *cls,
 
     int ret;
 
-    char *pass;
+    char *pass = NULL;
     char *user = MHD_basic_auth_get_username_password(connection, &pass);
 
     if (0 == strcmp(method, "GET")) {
@@ -179,7 +179,10 @@ int mock_bridge_server(void *cls,
 
     MHD_destroy_response(response);
 
-    // Free the json_object
+    if (pass) {
+        free(pass);
+    }
+    free(user);
     json_object_put(responses);
 
     return ret;
