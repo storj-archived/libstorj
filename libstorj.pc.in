@@ -8,4 +8,4 @@ Description: Library for the Storj protocol.
 Version: @PACKAGE_VERSION@
 Libs: -L${libdir} -lstorj
 Cflags: -I${includedir}
-Requires: neon nettle json-c uv
+Requires: neon nettle json-c libuv
