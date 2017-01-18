@@ -34,8 +34,6 @@ static void request_token(uv_work_t *work)
 
         req->token = (char *)json_object_get_string(token_value);
 
-        free(token_value);
-
     } else if (status_code == 403 || status_code == 401) {
         req->error_status = STORJ_BRIDGE_AUTH_ERROR;
     } else if (status_code == 404) {
@@ -48,8 +46,8 @@ static void request_token(uv_work_t *work)
 
     req->status_code = status_code;
 
-    free(response);
-    free(body);
+    json_object_put(response);
+    json_object_put(body);
 }
 
 static void after_request_token(uv_work_t *work, int status)
@@ -846,7 +844,9 @@ static void send_exchange_report(uv_work_t *work)
                                               NULL, NULL, &status_code);
     req->status_code = status_code;
 
-    free(body);
+    // free all memory for body and response
+    json_object_put(response);
+    json_object_put(body);
 }
 
 static void after_send_exchange_report(uv_work_t *work, int status)

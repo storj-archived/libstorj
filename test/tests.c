@@ -257,6 +257,7 @@ void check_create_frame(uv_work_t *work_req, int status)
     assert(strcmp(id, "d6367831f7f1b117ffdd0015") == 0);
     pass("storj_bridge_create_frame");
 
+    json_object_put(req->response);
     free(req);
     free(work_req);
 }
@@ -277,6 +278,7 @@ void check_get_frames(uv_work_t *work_req, int status)
 
     pass("storj_bridge_get_frames");
 
+    json_object_put(req->response);
     free(req);
     free(work_req);
 }
@@ -296,6 +298,7 @@ void check_get_frame(uv_work_t *work_req, int status)
     assert(strcmp(id, "192f90792f42875a7533340b") == 0);
     pass("storj_bridge_get_frame");
 
+    json_object_put(req->response);
     free(req);
     free(work_req);
 }
@@ -309,6 +312,7 @@ void check_delete_frame(uv_work_t *work_req, int status)
 
     pass("storj_bridge_delete_frame");
 
+    json_object_put(req->response);
     free(req);
     free(work_req);
 }
@@ -328,6 +332,7 @@ void check_file_info(uv_work_t *work_req, int status)
     assert(strcmp(mimetype, "video/ogg") == 0);
     pass("storj_bridge_get_file_info");
 
+    json_object_put(req->response);
     free(req);
     free(work_req);
 }
