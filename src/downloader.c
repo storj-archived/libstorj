@@ -32,7 +32,8 @@ static void request_token(uv_work_t *work)
             req->error_status = STORJ_BRIDGE_JSON_ERROR;
         }
 
-        req->token = (char *)json_object_get_string(token_value);
+        char *token = (char *)json_object_get_string(token_value);
+        req->token = strdup(token);
 
     } else if (status_code == 403 || status_code == 401) {
         req->error_status = STORJ_BRIDGE_AUTH_ERROR;
