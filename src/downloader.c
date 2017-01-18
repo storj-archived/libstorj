@@ -392,6 +392,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
 
     queue_next_work(req->state);
 
+    json_object_put(req->response);
     free(work->data);
     free(work);
 
@@ -542,6 +543,8 @@ static void request_shard(uv_work_t *work)
             ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE, req->decrypt_ctr,
                       req->shard_total_bytes, req->shard_data, req->shard_data);
+
+            free(ctx);
         }
 
         req->error_status = 0;
