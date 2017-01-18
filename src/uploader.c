@@ -54,6 +54,43 @@ static void shard_state_cleanup(shard_meta_t *shard_meta)
     free(shard_meta);
 }
 
+static void pointer_cleanup(farmer_pointer_t *farmer_pointer)
+{    
+    if (farmer_pointer->hash != NULL) {
+        free(farmer_pointer->hash);
+    }
+
+    if (farmer_pointer->token != NULL) {
+        free(farmer_pointer->token);
+    }
+
+    if (farmer_pointer->farmer_user_agent != NULL) {
+        free(farmer_pointer->farmer_user_agent);
+    }
+
+    if (farmer_pointer->farmer_protocol != NULL) {
+        free(farmer_pointer->farmer_protocol);
+    }
+
+    if (farmer_pointer->farmer_address != NULL) {
+        free(farmer_pointer->farmer_address);
+    }
+
+    if (farmer_pointer->farmer_port != NULL) {
+        free(farmer_pointer->farmer_port);
+    }
+
+    if (farmer_pointer->farmer_node_id != NULL) {
+        free(farmer_pointer->farmer_node_id);
+    }
+
+    if (farmer_pointer->farmer_last_seen != NULL) {
+        free(farmer_pointer->farmer_last_seen);
+    }
+
+    free(farmer_pointer);
+}
+
 static void cleanup_state(storj_upload_state_t *state)
 {
     state->final_callback_called = true;
@@ -82,6 +119,15 @@ static void cleanup_state(storj_upload_state_t *state)
         }
 
         free(state->shard_meta);
+    }
+
+    if (state->farmer_pointers) {
+        for (int i = 0; i < state->total_shards; i++ ) {
+            printf("Cleaning up pointers %d\n", i);
+            pointer_cleanup(&state->farmer_pointers[i]);
+        }
+
+        free(state->farmer_pointers);
     }
 
     free(state);
@@ -151,6 +197,44 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
 static void after_push_frame(uv_work_t *work, int status)
 {
     frame_request_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+    farmer_pointer_t *pointer = req->farmer_pointer;
+
+    // Add hash to farmer_pointers
+    state->farmer_pointers[pointer->shard_index].hash = calloc(strlen(pointer->hash), sizeof(char));
+    memcpy(state->farmer_pointers[pointer->shard_index].hash, pointer->hash, strlen(pointer->hash));
+
+    // Add token to farmer_pointers
+    state->farmer_pointers[pointer->shard_index].token = calloc(strlen(pointer->token), sizeof(char));
+    memcpy(state->farmer_pointers[pointer->shard_index].token, pointer->token, strlen(pointer->token));
+
+    // Add shard_index to farmer_pointers
+    state->farmer_pointers[pointer->shard_index].shard_index = pointer->shard_index;
+
+    // Add farmer_user_agent to farmer_pointers
+    state->farmer_pointers[pointer->shard_index].farmer_user_agent = calloc(strlen(pointer->farmer_user_agent), sizeof(char));
+    memcpy(state->farmer_pointers[pointer->shard_index].farmer_user_agent, pointer->farmer_user_agent, strlen(pointer->farmer_user_agent));
+
+    // Add farmer_address to farmer_pointers
+    state->farmer_pointers[pointer->shard_index].farmer_address = calloc(strlen(pointer->farmer_address), sizeof(char));
+    memcpy(state->farmer_pointers[pointer->shard_index].farmer_address, pointer->farmer_address, strlen(pointer->farmer_address));
+
+    // Add farmer_port to farmer_pointers
+    state->farmer_pointers[pointer->shard_index].farmer_port = calloc(strlen(pointer->farmer_port), sizeof(char));
+    memcpy(state->farmer_pointers[pointer->shard_index].farmer_port, pointer->farmer_port, strlen(pointer->farmer_port));
+
+    // Add farmer_protocol to farmer_pointers
+    state->farmer_pointers[pointer->shard_index].farmer_protocol = calloc(strlen(pointer->farmer_protocol), sizeof(char));
+    memcpy(state->farmer_pointers[pointer->shard_index].farmer_protocol, pointer->farmer_protocol, strlen(pointer->farmer_protocol));
+
+    // Add farmer_node_id to farmer_pointers
+    state->farmer_pointers[pointer->shard_index].farmer_node_id = calloc(strlen(pointer->farmer_node_id), sizeof(char));
+    memcpy(state->farmer_pointers[pointer->shard_index].farmer_node_id, pointer->farmer_node_id, strlen(pointer->farmer_node_id));
+
+    // Add farmer_last_seen to farmer_pointers
+    state->farmer_pointers[pointer->shard_index].farmer_last_seen = calloc(strlen(pointer->farmer_last_seen), sizeof(char));
+    memcpy(state->farmer_pointers[pointer->shard_index].farmer_last_seen, pointer->farmer_last_seen, strlen(pointer->farmer_last_seen));
+
 
     queue_next_work(req->upload_state);
 
@@ -773,6 +857,7 @@ static void prepare_upload_state(uv_work_t *work)
     state->shard_size = determine_shard_size(state, 0);
     state->total_shards = ceil((double)state->file_size / state->shard_size);
     state->shard_meta = calloc(state->total_shards * sizeof(shard_meta_t), sizeof(char));
+    state->farmer_pointers = calloc(state->total_shards * sizeof(farmer_pointer_t), sizeof(char));
 
     // Generate encryption key && Calculate deterministic file id
     char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));

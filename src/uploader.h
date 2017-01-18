@@ -76,6 +76,7 @@ typedef struct {
     char *mnemonic;
     int error_status;
     shard_meta_t* shard_meta;
+    farmer_pointer_t *farmer_pointers;
 } storj_upload_state_t;
 
 typedef struct {
@@ -132,7 +133,12 @@ inline char separator()
 }
 
 static uv_work_t *shard_state_new(int index, storj_upload_state_t *state);
+static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state);
+static uv_work_t *uv_work_new();
+
 static void shard_state_cleanup(shard_meta_t *shard_meta);
+static void pointer_cleanup(farmer_pointer_t *farmer_pointer);
+static void cleanup_state(storj_upload_state_t *state);
 
 static void queue_next_work(storj_upload_state_t *state);
 
