@@ -28,6 +28,18 @@ typedef struct {
 } shard_meta_t;
 
 typedef struct {
+    char *hash;
+    char *token;
+    int shard_index;
+    char *farmer_user_agent;
+    char *farmer_protocol;
+    char *farmer_address;
+    char *farmer_port;
+    char *farmer_node_id;
+    char *farmer_last_seen;
+} farmer_pointer_t;
+
+typedef struct {
     storj_env_t *env;
     uint32_t file_concurrency;
     uint32_t shard_concurrency;
@@ -94,7 +106,7 @@ typedef struct {
     storj_upload_state_t *upload_state;
     int status_code;
     int error_status;
-} token_request_token_t;
+} request_token_t;
 
 typedef struct {
     storj_http_options_t *http_options;
@@ -104,7 +116,10 @@ typedef struct {
     char *frame_id;
     int status_code;
     int error_status;
+
+    // Add shard to frame
     int shard_index;
+    farmer_pointer_t *farmer_pointer;
 } frame_request_t;
 
 inline char separator()
@@ -124,8 +139,8 @@ static void queue_next_work(storj_upload_state_t *state);
 static int queue_request_bucket_token(storj_upload_state_t *state);
 static int queue_request_frame(storj_upload_state_t *state);
 static int queue_encrypt_file(storj_upload_state_t *state);
-static int queue_create_frame(storj_upload_state_t *state);
-static int queue_push_frame(storj_upload_state_t *state);
+static int queue_create_frame(storj_upload_state_t *state, int index);
+static int queue_push_frame(storj_upload_state_t *state, int index);
 
 static void request_token(uv_work_t *work);
 static void request_frame(uv_work_t *work);

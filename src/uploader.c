@@ -21,12 +21,38 @@ static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state)
     if (index != NULL) {
         req->shard_index = *index;
     }
+    req->farmer_pointer = calloc(sizeof(farmer_pointer_t), sizeof(char));
 
     work->data = req;
 
     return work;
 }
 
+static uv_work_t *shard_state_new(int index, storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+    frame_builder_t *frame_builder = malloc(sizeof(frame_builder_t));
+    frame_builder->shard_meta = malloc(sizeof(shard_meta_t));
+    frame_builder->upload_state = state;
+
+    assert(frame_builder->shard_meta != NULL);
+
+    frame_builder->shard_meta->index = index;
+    frame_builder->error_status = 0;
+
+    work->data = frame_builder;
+
+    return work;
+}
+
+static void shard_state_cleanup(shard_meta_t *shard_meta)
+{
+    if (shard_meta->hash != NULL) {
+        free(shard_meta->hash);
+    }
+
+    free(shard_meta);
+}
 
 static void cleanup_state(storj_upload_state_t *state)
 {
@@ -128,6 +154,7 @@ static void after_push_frame(uv_work_t *work, int status)
 
     queue_next_work(req->upload_state);
 
+    free(req->farmer_pointer);
     free(req);
     free(work);
 }
@@ -155,52 +182,109 @@ static void push_frame(uv_work_t *work)
     json_object_object_add(body, "index", shard_index);
 
     // Add challenges
+    json_object *challenges = json_object_new_array();
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        json_object_array_add(challenges, json_object_new_string(shard_meta->challenges_as_str[i]));
+    }
+    json_object_object_add(body, "challenges", challenges);
 
     // Add Tree
+    json_object *tree = json_object_new_array();
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        json_object_array_add(tree, json_object_new_string(shard_meta->tree[i]));
+    }
+    json_object_object_add(body, "tree", tree);
 
     // Add exclude
+    json_object *exclude = json_object_new_array();
+    json_object_object_add(body, "exclude", exclude);
 
     char resource[strlen(state->frame_id) + 9];
     memset(resource, '\0', strlen(state->frame_id) + 9);
     strcpy(resource, "/frames/");
     strcat(resource, state->frame_id);
-    printf("Resource: %s\n", resource);
 
-    // int status_code;
-    // struct json_object *response = fetch_json(req->http_options,
-    //                                           req->options,
-    //                                           "PUT",
-    //                                           resource,
-    //                                           body,
-    //                                           true,
-    //                                           NULL,
-    //                                           &status_code);
+    int status_code;
+    struct json_object *response = fetch_json(req->http_options,
+                                              req->options,
+                                              "PUT",
+                                              resource,
+                                              body,
+                                              true,
+                                              NULL,
+                                              &status_code);
 
-    // struct json_object *frame_id;
-    // if (!json_object_object_get_ex(response, "id", &frame_id)) {
-    //   req->error_status = STORJ_BRIDGE_JSON_ERROR;
-    // }
-    //
-    // if (!json_object_is_type(frame_id, json_type_string) == 1) {
-    //   req->error_status = STORJ_BRIDGE_JSON_ERROR;
-    // }
-    //
-    // req->frame_id = (char *)json_object_get_string(frame_id);
-    // req->status_code = status_code;
-    //
-    // json_object_put(response);
-    // json_object_put(body);
+    struct json_object *token;
+    if (!json_object_object_get_ex(response, "token", &token)) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    struct json_object *hash;
+    if (!json_object_object_get_ex(response, "hash", &hash)) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    struct json_object *farmer;
+    if (!json_object_object_get_ex(response, "farmer", &farmer)) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    struct json_object *farmer_address;
+    if (!json_object_object_get_ex(farmer, "address", &farmer_address)) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    struct json_object *farmer_port;
+    if (!json_object_object_get_ex(farmer, "port", &farmer_port)) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    struct json_object *farmer_user_agent;
+    if (!json_object_object_get_ex(farmer, "userAgent", &farmer_user_agent)) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    struct json_object *farmer_protocol;
+    if (!json_object_object_get_ex(farmer, "protocol", &farmer_protocol)) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    struct json_object *farmer_node_id;
+    if (!json_object_object_get_ex(farmer, "nodeID", &farmer_node_id)) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    struct json_object *farmer_last_seen;
+    if (!json_object_object_get_ex(farmer, "lastSeen", &farmer_last_seen)) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    if (!json_object_is_type(token, json_type_string) == 1) {
+      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+    }
+
+    req->farmer_pointer->token = (char *)json_object_get_string(token);
+    req->farmer_pointer->hash = (char *)json_object_get_string(hash);
+    req->farmer_pointer->shard_index = shard_meta->index;
+    req->farmer_pointer->farmer_user_agent = (char *)json_object_get_string(farmer_user_agent);
+    req->farmer_pointer->farmer_protocol = (char *)json_object_get_string(farmer_protocol);
+    req->farmer_pointer->farmer_address = (char *)json_object_get_string(farmer_address);
+    req->farmer_pointer->farmer_port = (char *)json_object_get_string(farmer_port);
+    req->farmer_pointer->farmer_node_id = (char *)json_object_get_string(farmer_node_id);
+    req->farmer_pointer->farmer_last_seen = (char *)json_object_get_string(farmer_last_seen);
+
+    req->status_code = status_code;
+
+    json_object_put(response);
+    json_object_put(body);
 }
 
-static int queue_push_frame(storj_upload_state_t *state)
+static int queue_push_frame(storj_upload_state_t *state, int index)
 {
     uv_work_t *shard_work[state->total_shards];
 
-    for (int index = 0; index < state->total_shards; index++ ) {
-        shard_work[index] = frame_work_new(&index, state);
-        uv_queue_work(state->env->loop, (uv_work_t*) shard_work[index],
-                                        push_frame, after_push_frame);
-    }
+    shard_work[index] = frame_work_new(&index, state);
+    uv_queue_work(state->env->loop, (uv_work_t*) shard_work[index], push_frame, after_push_frame);
 
     state->pushing_frame = true;
 
@@ -319,40 +403,12 @@ static void create_frame(uv_work_t *work)
     free(shard_data);
 }
 
-static void shard_state_cleanup(shard_meta_t *shard_meta)
-{
-    if (shard_meta->hash != NULL) {
-        free(shard_meta->hash);
-    }
-
-    free(shard_meta);
-}
-
-static uv_work_t *shard_state_new(int index, storj_upload_state_t *state)
-{
-    uv_work_t *work = uv_work_new();
-    frame_builder_t *frame_builder = malloc(sizeof(frame_builder_t));
-    frame_builder->shard_meta = malloc(sizeof(shard_meta_t));
-    frame_builder->upload_state = state;
-
-    assert(frame_builder->shard_meta != NULL);
-
-    frame_builder->shard_meta->index = index;
-    frame_builder->error_status = 0;
-
-    work->data = frame_builder;
-
-    return work;
-}
-
-static int queue_create_frame(storj_upload_state_t *state)
+static int queue_create_frame(storj_upload_state_t *state, int index)
 {
     uv_work_t *shard_work[state->total_shards];
 
-    for (int index = 0; index < state->total_shards; index++ ) {
-        shard_work[index] = shard_state_new(index, state);
-        uv_queue_work(state->env->loop, (uv_work_t*) shard_work[index], create_frame, after_create_frame);
-    }
+    shard_work[index] = shard_state_new(index, state);
+    uv_queue_work(state->env->loop, (uv_work_t*) shard_work[index], create_frame, after_create_frame);
 
     state->hashing_shards = true;
 
@@ -552,7 +608,7 @@ static int queue_encrypt_file(storj_upload_state_t *state)
 
 static void after_request_token(uv_work_t *work, int status)
 {
-    token_request_token_t *req = work->data;
+    request_token_t *req = work->data;
 
     req->upload_state->token_request_count += 1;
 
@@ -574,7 +630,7 @@ static void after_request_token(uv_work_t *work, int status)
 
 static void request_token(uv_work_t *work)
 {
-    token_request_token_t *req = work->data;
+    request_token_t *req = work->data;
 
     printf("[%s] Creating storage token... (retry: %d)\n",
             req->upload_state->file_name,
@@ -621,7 +677,7 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
 
-    token_request_token_t *req = malloc(sizeof(token_request_token_t));
+    request_token_t *req = malloc(sizeof(request_token_t));
     assert(req != NULL);
 
     req->http_options = state->env->http_options;
@@ -668,9 +724,13 @@ static void queue_next_work(storj_upload_state_t *state)
     if (!state->frame_id && !state->requesting_frame) {
         queue_request_frame(state);
     } else if (state->frame_id && state->completed_encryption && !state->hashing_shards && !state->completed_shard_hash) {
-        queue_create_frame(state);
+        for (int index = 0; index < state->total_shards; index++ ) {
+            queue_create_frame(state, index);
+        }
     } else if (state->completed_shard_hash && !state->pushing_frame){
-        queue_push_frame(state);
+        for (int index = 0; index < state->total_shards; index++ ) {
+            queue_push_frame(state, index);
+        }
         // return cleanup_state(state);
     }
 
