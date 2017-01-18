@@ -49,6 +49,8 @@ int mock_bridge_server(void *cls,
         exit(1);
     }
 
+    json_tokener_free(tok);
+
     char *page = "Not Found";
     int status_code = MHD_HTTP_NOT_FOUND;
 
