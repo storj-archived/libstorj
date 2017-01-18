@@ -126,6 +126,7 @@ int mock_farmer_shard_server(void *cls,
               total_bytes_sent, crypt_page, page);
 
     free(page);
+    free(ctx);
 
     response = MHD_create_response_from_buffer(total_bytes_sent,
                                                (void *) crypt_page,
