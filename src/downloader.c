@@ -36,6 +36,17 @@ static void free_download_state(storj_download_state_t *state)
     if (state->excluded_farmer_ids) {
         free(state->excluded_farmer_ids);
     }
+
+    if (state->decrypt_key) {
+        bzero(state->decrypt_key, SHA256_DIGEST_SIZE);
+        free(state->decrypt_key);
+    }
+
+    if (state->decrypt_ctr) {
+        bzero(state->decrypt_ctr, AES_BLOCK_SIZE);
+        free(state->decrypt_ctr);
+    }
+
     free(state->pointers);
     free(state);
 }
