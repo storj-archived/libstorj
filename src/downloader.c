@@ -590,8 +590,15 @@ static void request_shard(uv_work_t *work)
 static void free_request_shard_work(uv_handle_t *progress_handle)
 {
     uv_work_t *work = progress_handle->data;
+    shard_request_download_t *req = work->data;
 
-    free(work->data);
+    bzero(req->decrypt_key, SHA256_DIGEST_SIZE);
+    free(req->decrypt_key);
+
+    bzero(req->decrypt_ctr, AES_BLOCK_SIZE);
+    free(req->decrypt_ctr);
+
+    free(req);
     free(work);
 }
 
