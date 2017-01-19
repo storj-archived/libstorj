@@ -143,7 +143,7 @@ int storj_destroy_env(storj_env_t *env)
     // zero out password before freeing
     unsigned int pass_len = strlen(env->bridge_options->pass);
     if (pass_len > 0) {
-        bzero(env->bridge_options->pass, pass_len);
+        memset(env->bridge_options->pass, 0, pass_len);
     }
     free(env->bridge_options->pass);
     free(env->bridge_options);
@@ -153,7 +153,7 @@ int storj_destroy_env(storj_env_t *env)
 
     // zero out file encryption mnemonic before freeing
     if (mnemonic_len > 0) {
-        bzero(env->encrypt_options->mnemonic, mnemonic_len);
+        memset(env->encrypt_options->mnemonic, 0, mnemonic_len);
     }
     free(env->encrypt_options->mnemonic);
     free(env->encrypt_options);

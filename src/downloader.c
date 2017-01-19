@@ -38,12 +38,12 @@ static void free_download_state(storj_download_state_t *state)
     }
 
     if (state->decrypt_key) {
-        bzero(state->decrypt_key, SHA256_DIGEST_SIZE);
+        memset(state->decrypt_key, 0, SHA256_DIGEST_SIZE);
         free(state->decrypt_key);
     }
 
     if (state->decrypt_ctr) {
-        bzero(state->decrypt_ctr, AES_BLOCK_SIZE);
+        memset(state->decrypt_ctr, 0, AES_BLOCK_SIZE);
         free(state->decrypt_ctr);
     }
 
@@ -618,10 +618,10 @@ static void free_request_shard_work(uv_handle_t *progress_handle)
     uv_work_t *work = progress_handle->data;
     shard_request_download_t *req = work->data;
 
-    bzero(req->decrypt_key, SHA256_DIGEST_SIZE);
+    memset(req->decrypt_key, 0, SHA256_DIGEST_SIZE);
     free(req->decrypt_key);
 
-    bzero(req->decrypt_ctr, AES_BLOCK_SIZE);
+    memset(req->decrypt_ctr, 0, AES_BLOCK_SIZE);
     free(req->decrypt_ctr);
 
     free(req);
@@ -1108,7 +1108,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
         sha256_of_str(file_key, DETERMINISTIC_KEY_SIZE, decrypt_key);
         decrypt_key[SHA256_DIGEST_SIZE] = '\0';
 
-        bzero(file_key, DETERMINISTIC_KEY_SIZE + 1);
+        memset(file_key, 0, DETERMINISTIC_KEY_SIZE + 1);
         free(file_key);
 
         state->decrypt_key = decrypt_key;
