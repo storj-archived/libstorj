@@ -95,3 +95,15 @@ uint64_t get_time_milliseconds() {
 
     return milliseconds;
 }
+
+void memset_zero(void *v, size_t n)
+{
+#ifdef _WIN32
+    SecureZeroMemory(v, n);
+#else
+    volatile unsigned char *p = v;
+    while (n--) {
+        *p++ = 0;
+    }
+#endif
+}

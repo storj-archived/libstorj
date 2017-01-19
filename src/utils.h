@@ -35,4 +35,6 @@ uint64_t shard_size(int hops);
 
 uint64_t get_time_milliseconds();
 
+void memset_zero(void *v, size_t n);
+
 #endif /* STORJ_UTILS_H */
