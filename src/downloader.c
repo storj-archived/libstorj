@@ -33,6 +33,9 @@ static void free_download_state(storj_download_state_t *state)
 
     free_bucket_token(state);
 
+    if (state->excluded_farmer_ids) {
+        free(state->excluded_farmer_ids);
+    }
     free(state->pointers);
     free(state);
 }
