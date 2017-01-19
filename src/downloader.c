@@ -1089,6 +1089,9 @@ int storj_bridge_resolve_file(storj_env_t *env,
         sha256_of_str(file_key, DETERMINISTIC_KEY_SIZE, decrypt_key);
         decrypt_key[SHA256_DIGEST_SIZE] = '\0';
 
+        bzero(file_key, DETERMINISTIC_KEY_SIZE + 1);
+        free(file_key);
+
         state->decrypt_key = decrypt_key;
 
         uint8_t *file_id_hash = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
@@ -1097,6 +1100,8 @@ int storj_bridge_resolve_file(storj_env_t *env,
 
         uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
         memcpy(decrypt_ctr, file_id_hash, AES_BLOCK_SIZE);
+
+        free(file_id_hash);
 
         state->decrypt_ctr = decrypt_ctr;
     };
