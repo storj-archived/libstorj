@@ -1,5 +1,13 @@
 #include "downloader.h"
 
+static void free_bucket_token(storj_download_state_t *state)
+{
+    if (state->token) {
+        free(state->token);
+        state->token = NULL;
+    }
+}
+
 static void free_exchange_report(storj_exchange_report_t *report)
 {
     free(report->data_hash);
@@ -21,6 +29,9 @@ static void free_download_state(storj_download_state_t *state)
 
         free_exchange_report(pointer->report);
     }
+
+
+    free_bucket_token(state);
 
     free(state->pointers);
     free(state);
@@ -349,11 +360,7 @@ static void after_request_pointers(uv_work_t *work, int status)
     req->state->pending_work_count--;
     req->state->requesting_pointers = false;
 
-    // expired token, can not be used again
-    if (req->state->token) {
-        free(req->state->token);
-        req->state->token = NULL;
-    }
+    free_bucket_token(req->state);
 
     if (status != 0)  {
         req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
@@ -392,11 +399,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
     req->state->pending_work_count--;
     req->state->requesting_pointers = false;
 
-    // expired token, can not be used again
-    if (req->state->token) {
-        free(req->state->token);
-        req->state->token = NULL;
-    }
+    free_bucket_token(req->state);
 
     if (status != 0) {
         req->state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
