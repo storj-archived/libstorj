@@ -345,8 +345,11 @@ static void after_request_pointers(uv_work_t *work, int status)
     req->state->pending_work_count--;
     req->state->requesting_pointers = false;
 
-    // expired token
-    req->state->token = NULL;
+    // expired token, can not be used again
+    if (req->state->token) {
+        free(req->state->token);
+        req->state->token = NULL;
+    }
 
     if (status != 0)  {
         req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
