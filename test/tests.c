@@ -841,6 +841,8 @@ int test_str2hex()
         pass("test_str2hex");
     }
 
+    free(buffer);
+
     return OK;
 }
 
