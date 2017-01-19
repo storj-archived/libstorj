@@ -870,6 +870,75 @@ int test_increment_ctr_aes_iv()
     return OK;
 }
 
+int test_read_write_encrypted_file()
+{
+    // it should create file passed in if it does not exist
+    char test_file[1024];
+    strcpy(test_file, folder);
+    strcat(test_file, "testfile");
+    if (access(test_file, F_OK) != -1) {
+      fail("read_write_encrypted_file(0)");
+      return ERROR;
+    }
+    write_encrypted_file(test_file, NULL, NULL, "testdata");
+    if (access(test_file, F_OK) == -1) {
+      fail("read_write_encrypted_file(1)");
+      return ERROR;
+    }
+
+    // it should write in plaintext if key and salt are not passed in
+    char *result;
+    read_encrypted_file(test_file, NULL, NULL, &result);
+
+    if (strcmp(result, "testdata") != 0) {
+      fail("read_write_encrypted_file(2)");
+      return ERROR;
+    }
+    free(result);
+
+    // it should successfully encrypt and decrypt a file with the provided key and salt
+    write_encrypted_file(test_file, "testpass", "testsalt", "testdata");
+
+    // it should fail to decrypt if no password or salt is passed in
+    read_encrypted_file(test_file, NULL, NULL, &result);
+
+    if (strcmp(result, "testdata") == 0) {
+      fail("read_write_encrypted_file(3)");
+      return ERROR;
+    }
+    free(result);
+
+    // it should fail to decrypt if the wrong password is passed in
+    read_encrypted_file(test_file, "wrongpass", "testsalt", &result);
+
+    if (strcmp(result, "testdata") == 0) {
+      fail("read_write_encrypted_file(4)");
+      return ERROR;
+    }
+    free(result);
+
+    // it should fail to decrypt if the wrong salt is passed in
+    read_encrypted_file(test_file, "testpass", "wrongsalt", &result);
+
+    if (strcmp(result, "testdata") == 0) {
+      fail("read_write_encrypted_file(5)");
+      return ERROR;
+    }
+    free(result);
+
+    // it should successfully decrypt if the correct password and salt are used
+    read_encrypted_file(test_file, "testpass", "testsalt", &result);
+
+    if (strcmp(result, "testdata") != 0) {
+      fail("read_write_encrypted_file(6)");
+      return ERROR;
+    }
+    free(result);
+    unlink(test_file);
+
+    pass("read_write_encrypted_file");
+    return OK;
+}
 
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
@@ -953,6 +1022,8 @@ int main(void)
     status += test_generate_file_key();
     ++tests_ran;
     status += test_increment_ctr_aes_iv();
+    ++tests_ran;
+    status += test_read_write_encrypted_file();
     ++tests_ran;
     printf("\n");
 

@@ -221,10 +221,10 @@ int read_encrypted_file(char *filename, char *key, char *salt, char **result)
   }
 
   fseek(fp, 0, SEEK_END);
-  uint8_t fsize = ftell(fp) + 1; // TODO why does this have +1?
+  uint8_t fsize = ftell(fp) + 1;
   fseek(fp, 0, SEEK_SET);
 
-  *result = malloc(fsize); // TODO change this to calloc
+  *result = calloc(fsize, sizeof(char));
   if (*result == NULL) {
     return 1;
   }
@@ -257,7 +257,6 @@ int read_encrypted_file(char *filename, char *key, char *salt, char **result)
     return 0;
   }
 
-  (*result)[fsize - 1] = '\0'; // not necessary if calloc is used
   return 0;
 }
 
