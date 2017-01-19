@@ -221,10 +221,10 @@ int read_encrypted_file(char *filename, char *key, char *salt, char **result)
   }
 
   fseek(fp, 0, SEEK_END);
-  uint8_t fsize = ftell(fp) + 1;
+  uint8_t fsize = ftell(fp) + 1; // TODO why does this have +1?
   fseek(fp, 0, SEEK_SET);
 
-  *result = malloc(fsize);
+  *result = malloc(fsize); // TODO change this to calloc
   if (*result == NULL) {
     return 1;
   }
@@ -237,10 +237,10 @@ int read_encrypted_file(char *filename, char *key, char *salt, char **result)
 
   if (key != NULL && salt != NULL) {
     // Convert key to password
-    uint8_t keyLen = strlen(key);
-    uint8_t saltLen = strlen(salt);
+    uint8_t key_len = strlen(key);
+    uint8_t salt_len = strlen(salt);
     uint8_t *pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
-    pbkdf2_hmac_sha256(keyLen, key, 1, saltLen, salt, SHA256_DIGEST_SIZE, pass);
+    pbkdf2_hmac_sha256(key_len, key, 1, salt_len, salt, SHA256_DIGEST_SIZE, pass);
 
     // Decrypt data
     struct aes256_ctx *ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
@@ -257,7 +257,7 @@ int read_encrypted_file(char *filename, char *key, char *salt, char **result)
     return 0;
   }
 
-  (*result)[fsize - 1] = '\0';
+  (*result)[fsize - 1] = '\0'; // not necessary if calloc is used
   return 0;
 }
 
@@ -271,13 +271,13 @@ int write_encrypted_file(char *filename, char *key, char *salt, char *data)
 
   if (key != NULL && salt != NULL) {
     // Convert key to password
-    uint8_t keyLen = strlen(key);
-    uint8_t saltLen = strlen(salt);
+    uint8_t key_len = strlen(key);
+    uint8_t salt_len = strlen(salt);
     uint8_t *pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
     if (pass == NULL) {
       return 1;
     }
-    pbkdf2_hmac_sha256(keyLen, key, 1, saltLen, salt, SHA256_DIGEST_SIZE, pass);
+    pbkdf2_hmac_sha256(key_len, key, 1, salt_len, salt, SHA256_DIGEST_SIZE, pass);
 
     // Encrypt data
     struct aes256_ctx *ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
@@ -286,28 +286,28 @@ int write_encrypted_file(char *filename, char *key, char *salt, char *data)
     }
     aes256_set_encrypt_key(ctx, pass);
 
-    uint8_t dataSize = strlen(data) * sizeof(char) + 1;
-    uint8_t rem = dataSize % AES_BLOCK_SIZE;
-    uint8_t newSize = dataSize + (AES_BLOCK_SIZE - rem);
-    char *dataToStore = malloc(newSize);
-    if (dataToStore == NULL) {
+    uint8_t data_size = strlen(data) * sizeof(char) + 1;
+    uint8_t rem = data_size % AES_BLOCK_SIZE;
+    uint8_t new_size = data_size + (AES_BLOCK_SIZE - rem);
+    char *data_to_store = malloc(new_size);
+    if (data_to_store == NULL) {
       return 1;
     }
-    memcpy(dataToStore, data, dataSize);
+    memcpy(data_to_store, data, data_size);
 
-    char *result = malloc(newSize);
+    char *result = malloc(new_size);
     if (result == NULL) {
       return 1;
     }
-    aes256_encrypt(ctx, newSize, result, dataToStore);
+    aes256_encrypt(ctx, new_size, result, data_to_store);
 
-    fwrite(result, newSize, 1, fp);
+    fwrite(result, new_size, 1, fp);
     fclose(fp);
 
     free(ctx);
     free(pass);
     free(result);
-    free(dataToStore);
+    free(data_to_store);
     return 0;
   }
 
