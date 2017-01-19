@@ -440,9 +440,6 @@ static void queue_request_pointers(storj_download_state_t *state)
         return;
     }
 
-    uv_work_t *work = malloc(sizeof(uv_work_t));
-    assert(work != NULL);
-
     // queue request to replace pointer if any pointers have failure
     for (int i = 0; i < state->total_pointers; i++) {
 
@@ -482,6 +479,8 @@ static void queue_request_pointers(storj_download_state_t *state)
             req->state = state;
             req->excluded_farmer_ids = state->excluded_farmer_ids;
 
+            uv_work_t *work = malloc(sizeof(uv_work_t));
+            assert(work != NULL);
             work->data = req;
 
             state->log->info("Requesting replacement pointer at index: %i\n",
@@ -526,6 +525,8 @@ static void queue_request_pointers(storj_download_state_t *state)
 
     req->state = state;
 
+    uv_work_t *work = malloc(sizeof(uv_work_t));
+    assert(work != NULL);
     work->data = req;
 
     state->log->info("Requesting next set of pointers, total pointers: %i\n",
