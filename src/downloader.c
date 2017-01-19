@@ -712,7 +712,10 @@ static void progress_request_shard(uv_async_t* async)
 
     double total_progress = (double)downloaded_bytes / (double)total_bytes;
 
-    state->progress_cb(total_progress, downloaded_bytes, total_bytes);
+    state->progress_cb(total_progress,
+                       downloaded_bytes,
+                       total_bytes,
+                       state->handle);
 }
 
 static int queue_request_shards(storj_download_state_t *state)
@@ -994,7 +997,9 @@ static void queue_next_work(storj_download_state_t *state)
         if (!state->finished && state->pending_work_count == 0) {
 
             state->finished = true;
-            state->finished_cb(state->error_status, state->destination);
+            state->finished_cb(state->error_status,
+                               state->destination,
+                               state->handle);
 
             free_download_state(state);
         }
@@ -1010,7 +1015,7 @@ static void queue_next_work(storj_download_state_t *state)
 
         if (!state->finished && state->pending_work_count == 0) {
             state->finished = true;
-            state->finished_cb(0, state->destination);
+            state->finished_cb(0, state->destination, state->handle);
 
             free_download_state(state);
         }
@@ -1061,6 +1066,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
                               char *bucket_id,
                               char *file_id,
                               FILE *destination,
+                              void *handle,
                               storj_progress_cb progress_cb,
                               storj_finished_download_cb finished_cb)
 {
@@ -1092,6 +1098,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
+    state->handle = handle;
 
     // determine the decryption key
     if (!env->encrypt_options || !env->encrypt_options->mnemonic) {

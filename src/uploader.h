@@ -77,6 +77,7 @@ typedef struct {
     int error_status;
     shard_meta_t* shard_meta;
     farmer_pointer_t *farmer_pointers;
+    void *handle;
 } storj_upload_state_t;
 
 typedef struct {

@@ -55,12 +55,13 @@ static void get_password(char *password)
 
 static void upload_file_progress(double progress,
                                  uint64_t uploaded_bytes,
-                                 uint64_t total_bytes)
+                                 uint64_t total_bytes,
+                                 void *handle)
 {
     // TODO assersions
 }
 
-static void upload_file_complete(int status)
+static void upload_file_complete(int status, void *handle)
 {
     if (status != 0) {
         printf("Upload failure: %s\n", storj_strerror(status));
@@ -90,8 +91,9 @@ static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
     };
 
     int status = storj_bridge_store_file(env, &upload_opts,
-                                     upload_file_progress,
-                                     upload_file_complete);
+                                         NULL,
+                                         upload_file_progress,
+                                         upload_file_complete);
 
     return status;
 }
@@ -99,7 +101,8 @@ static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 
 static void download_file_progress(double progress,
                                    uint64_t downloaded_bytes,
-                                   uint64_t total_bytes)
+                                   uint64_t total_bytes,
+                                   void *handle)
 {
     int bar_width = 70;
 
@@ -118,7 +121,7 @@ static void download_file_progress(double progress,
     fflush(stdout);
 }
 
-static void download_file_complete(int status, FILE *fd)
+static void download_file_complete(int status, FILE *fd, void *handle)
 {
     printf("\n");
     fclose(fd);
@@ -162,7 +165,8 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
     sig.data = state;
 
-    int status = storj_bridge_resolve_file(env, state, bucket_id, file_id, fd,
+    int status = storj_bridge_resolve_file(env, state, bucket_id,
+                                           file_id, fd, NULL,
                                            download_file_progress,
                                            download_file_complete);
 
@@ -478,7 +482,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        storj_bridge_get_info(env, get_info_callback);
+        storj_bridge_get_info(env, NULL, get_info_callback);
 
     } else {
 
@@ -574,7 +578,7 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            storj_bridge_list_files(env, bucket_id, list_files_callback);
+            storj_bridge_list_files(env, bucket_id, NULL, list_files_callback);
         } else if (strcmp(command, "add-bucket") == 0) {
             char *bucket_name = argv[command_index + 1];
 
@@ -585,7 +589,7 @@ int main(int argc, char **argv)
             }
 
             storj_bridge_create_bucket(env, bucket_name,
-                                       create_bucket_callback);
+                                       NULL, create_bucket_callback);
 
         } else if (strcmp(command, "remove-bucket") == 0) {
             char *bucket_id = argv[command_index + 1];
@@ -596,7 +600,7 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            storj_bridge_delete_bucket(env, bucket_id, delete_bucket_callback);
+            storj_bridge_delete_bucket(env, bucket_id, NULL, delete_bucket_callback);
         } else if (strcmp(command, "remove-file") == 0) {
             char *bucket_id = argv[command_index + 1];
             char *file_id = argv[command_index + 2];
@@ -607,10 +611,10 @@ int main(int argc, char **argv)
                 goto end_program;
             }
             storj_bridge_delete_file(env, bucket_id, file_id,
-                                     delete_file_callback);
+                                     NULL, delete_file_callback);
 
         } else if (strcmp(command, "list-buckets") == 0) {
-            storj_bridge_get_buckets(env, get_buckets_callback);
+            storj_bridge_get_buckets(env, NULL, get_buckets_callback);
         } else {
             printf("'%s' is not a storj command. See 'storj --help'\n\n",
                    command);

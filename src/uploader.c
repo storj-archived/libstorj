@@ -94,7 +94,7 @@ static void pointer_cleanup(farmer_pointer_t *farmer_pointer)
 static void cleanup_state(storj_upload_state_t *state)
 {
     state->final_callback_called = true;
-    state->finished_cb(state->error_status);
+    state->finished_cb(state->error_status, state->handle);
 
     if (state->file_id) {
         free(state->file_id);
@@ -831,7 +831,8 @@ static void queue_next_work(storj_upload_state_t *state)
     if (state->file_size > 0 && state->uploaded_bytes > 0) {
         state->progress_cb(state->uploaded_bytes / state->total_bytes,
                            state->uploaded_bytes,
-                           state->total_bytes);
+                           state->total_bytes,
+                           state->handle);
     }
 
     // report upload complete
@@ -915,6 +916,7 @@ static void prepare_upload_state(uv_work_t *work)
 
 int storj_bridge_store_file(storj_env_t *env,
                             storj_upload_opts_t *opts,
+                            void *handle,
                             storj_progress_cb progress_cb,
                             storj_finished_upload_cb finished_cb)
 {
@@ -964,6 +966,8 @@ int storj_bridge_store_file(storj_env_t *env,
     state->completed_shards = 0;
     state->uploaded_bytes = 0;
     state->final_callback_called = false;
+
+    state->handle = handle;
 
     uv_work_t *work = uv_work_new();
     work->data = state;
