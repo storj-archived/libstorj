@@ -73,6 +73,7 @@ static void request_token(uv_work_t *work)
 
     json_object_put(response);
     json_object_put(body);
+    free(path);
 }
 
 static void after_request_token(uv_work_t *work, int status)
@@ -180,6 +181,9 @@ static void request_replace_pointer(uv_work_t *work)
     if (!req->response) {
         req->status_code = -1;
     }
+
+    free(path);
+
 }
 
 static void set_pointer_from_json(storj_download_state_t *state,
@@ -374,7 +378,8 @@ static void after_request_pointers(uv_work_t *work, int status)
     queue_next_work(req->state);
 
     json_object_put(req->response);
-    free(work->data);
+    free(req->path);
+    free(req);
     free(work);
 }
 

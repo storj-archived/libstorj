@@ -113,6 +113,7 @@ void check_delete_bucket(uv_work_t *work_req, int status)
     pass("storj_bridge_delete_bucket");
 
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
@@ -134,6 +135,7 @@ void check_list_files(uv_work_t *work_req, int status)
     pass("storj_bridge_list_files");
 
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
@@ -158,6 +160,7 @@ void check_bucket_tokens(uv_work_t *work_req, int status)
 
     json_object_put(req->body);
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
@@ -178,6 +181,7 @@ void check_file_pointers(uv_work_t *work_req, int status)
     pass("storj_bridge_get_file_pointers");
 
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
@@ -240,6 +244,7 @@ void check_delete_file(uv_work_t *work_req, int status)
 
     pass("storj_bridge_delete_file");
 
+    free(req->path);
     free(req);
     free(work_req);
 }
@@ -301,6 +306,7 @@ void check_get_frame(uv_work_t *work_req, int status)
     pass("storj_bridge_get_frame");
 
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
@@ -315,6 +321,7 @@ void check_delete_frame(uv_work_t *work_req, int status)
     pass("storj_bridge_delete_frame");
 
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
@@ -335,6 +342,7 @@ void check_file_info(uv_work_t *work_req, int status)
     pass("storj_bridge_get_file_info");
 
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
