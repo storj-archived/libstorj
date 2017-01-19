@@ -112,6 +112,7 @@ int fetch_shard(storj_http_options_t *http_options,
     ne_end_request(req);
     clean_up_neon(sess, req);
     free(buf);
+    free(path);
 
     if (!error_code && total != shard_total_bytes) {
         error_code = STORJ_FARMER_INTEGRITY_ERROR;

@@ -7,10 +7,94 @@ static uv_work_t *uv_work_new()
     return work;
 }
 
+static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+
+    frame_request_t *req = malloc(sizeof(frame_request_t));
+    assert(req != NULL);
+
+    req->http_options = state->env->http_options;
+    req->options = state->env->bridge_options;
+    req->upload_state = state;
+    req->error_status = 0;
+    if (index != NULL) {
+        req->shard_index = *index;
+        req->farmer_pointer = calloc(sizeof(farmer_pointer_t), sizeof(char));
+    }
+
+    work->data = req;
+
+    return work;
+}
+
+static uv_work_t *shard_state_new(int index, storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+    frame_builder_t *frame_builder = malloc(sizeof(frame_builder_t));
+    frame_builder->shard_meta = malloc(sizeof(shard_meta_t));
+    frame_builder->upload_state = state;
+
+    assert(frame_builder->shard_meta != NULL);
+
+    frame_builder->shard_meta->index = index;
+    frame_builder->error_status = 0;
+
+    work->data = frame_builder;
+
+    return work;
+}
+
+static void shard_state_cleanup(shard_meta_t *shard_meta)
+{
+    if (shard_meta->hash != NULL) {
+        free(shard_meta->hash);
+    }
+
+    free(shard_meta);
+}
+
+static void pointer_cleanup(farmer_pointer_t *farmer_pointer)
+{
+    if (farmer_pointer->hash != NULL) {
+        free(farmer_pointer->hash);
+    }
+
+    if (farmer_pointer->token != NULL) {
+        free(farmer_pointer->token);
+    }
+
+    if (farmer_pointer->farmer_user_agent != NULL) {
+        free(farmer_pointer->farmer_user_agent);
+    }
+
+    if (farmer_pointer->farmer_protocol != NULL) {
+        free(farmer_pointer->farmer_protocol);
+    }
+
+    if (farmer_pointer->farmer_address != NULL) {
+        free(farmer_pointer->farmer_address);
+    }
+
+    if (farmer_pointer->farmer_port != NULL) {
+        free(farmer_pointer->farmer_port);
+    }
+
+    if (farmer_pointer->farmer_node_id != NULL) {
+        free(farmer_pointer->farmer_node_id);
+    }
+
+    if (farmer_pointer->farmer_last_seen != NULL) {
+        free(farmer_pointer->farmer_last_seen);
+    }
+
+    free(farmer_pointer);
+}
+
 static void cleanup_state(storj_upload_state_t *state)
 {
     state->final_callback_called = true;
-    state->finished_cb(state->error_status);
+    state->finished_cb(state->error_status, state->handle);
 
     if (state->file_id) {
         free(state->file_id);
@@ -20,13 +104,31 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->file_key);
     }
 
-    // if (state->all_shard_meta) {
-    //     for (int i = 0; i < state->total_shards; i++ ) {
-    //         if (state->all_shard_meta[i]) {
-    //             shard_state_cleanup(state->all_shard_meta[i]);
-    //         }
-    //     }
-    // }
+    if (state->token) {
+        free(state->token);
+    }
+
+    if (state->frame_id) {
+        free(state->frame_id);
+    }
+
+    if (state->shard_meta) {
+        for (int i = 0; i < state->total_shards; i++ ) {
+            printf("Cleaning up shard %d\n", i);
+            shard_state_cleanup(&state->shard_meta[i]);
+        }
+
+        free(state->shard_meta);
+    }
+
+    if (state->farmer_pointers) {
+        for (int i = 0; i < state->total_shards; i++ ) {
+            printf("Cleaning up pointers %d\n", i);
+            pointer_cleanup(&state->farmer_pointers[i]);
+        }
+
+        free(state->farmer_pointers);
+    }
 
     free(state);
 }
@@ -92,6 +194,226 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
     return determine_shard_size(state, ++accumulator);
 }
 
+static void after_push_frame(uv_work_t *work, int status)
+{
+    frame_request_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+    farmer_pointer_t *pointer = req->farmer_pointer;
+
+    // Check if we got a 201 status and token
+    if (req->error_status == 0 && req->status_code == 201 && pointer->token) {
+
+        // Add hash to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].hash = calloc(strlen(pointer->hash) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].hash, pointer->hash, strlen(pointer->hash));
+
+        // Add token to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].token = calloc(strlen(pointer->token) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].token, pointer->token, strlen(pointer->token));
+
+        // Add shard_index to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].shard_index = pointer->shard_index;
+
+        // Add farmer_user_agent to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_user_agent = calloc(strlen(pointer->farmer_user_agent) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_user_agent, pointer->farmer_user_agent, strlen(pointer->farmer_user_agent));
+
+        // Add farmer_address to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_address = calloc(strlen(pointer->farmer_address) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_address, pointer->farmer_address, strlen(pointer->farmer_address));
+
+        // Add farmer_port to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_port = calloc(strlen(pointer->farmer_port) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_port, pointer->farmer_port, strlen(pointer->farmer_port));
+
+        // Add farmer_protocol to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_protocol = calloc(strlen(pointer->farmer_protocol) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_protocol, pointer->farmer_protocol, strlen(pointer->farmer_protocol));
+
+        // Add farmer_node_id to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_node_id = calloc(strlen(pointer->farmer_node_id) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_node_id, pointer->farmer_node_id, strlen(pointer->farmer_node_id));
+
+        // Add farmer_last_seen to farmer_pointers
+        state->farmer_pointers[pointer->shard_index].farmer_last_seen = calloc(strlen(pointer->farmer_last_seen) + 1, sizeof(char));
+        memcpy(state->farmer_pointers[pointer->shard_index].farmer_last_seen, pointer->farmer_last_seen, strlen(pointer->farmer_last_seen));
+    }
+
+    queue_next_work(req->upload_state);
+
+    pointer_cleanup(req->farmer_pointer);
+    free(req);
+    free(work);
+}
+
+static void push_frame(uv_work_t *work)
+{
+    frame_request_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+    shard_meta_t *shard_meta = &state->shard_meta[req->shard_index];
+    printf("Pushing frame for shard index %d\n", req->shard_index);
+
+    // Prepare the body
+    struct json_object *body = json_object_new_object();
+
+    // Add shard hash
+    json_object *shard_hash = json_object_new_string(shard_meta->hash);
+    json_object_object_add(body, "hash", shard_hash);
+
+    // Add shard size
+    json_object *shard_size = json_object_new_double(shard_meta->size);
+    json_object_object_add(body, "size", shard_size);
+
+    // Add shard index
+    json_object *shard_index = json_object_new_int(shard_meta->index);
+    json_object_object_add(body, "index", shard_index);
+
+    // Add challenges
+    json_object *challenges = json_object_new_array();
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        json_object_array_add(challenges, json_object_new_string(shard_meta->challenges_as_str[i]));
+    }
+    json_object_object_add(body, "challenges", challenges);
+
+    // Add Tree
+    json_object *tree = json_object_new_array();
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        json_object_array_add(tree, json_object_new_string(shard_meta->tree[i]));
+    }
+    json_object_object_add(body, "tree", tree);
+
+    // Add exclude
+    json_object *exclude = json_object_new_array();
+    json_object_object_add(body, "exclude", exclude);
+
+    char resource[strlen(state->frame_id) + 9];
+    memset(resource, '\0', strlen(state->frame_id) + 9);
+    strcpy(resource, "/frames/");
+    strcat(resource, state->frame_id);
+
+    int status_code;
+    struct json_object *response = fetch_json(req->http_options,
+                                              req->options,
+                                              "PUT",
+                                              resource,
+                                              body,
+                                              true,
+                                              NULL,
+                                              &status_code);
+
+    struct json_object *obj_token;
+    if (!json_object_object_get_ex(response, "token", &obj_token)) {
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
+    }
+
+    struct json_object *obj_hash;
+    if (!json_object_object_get_ex(response, "hash", &obj_hash)) {
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
+    }
+
+    struct json_object *obj_farmer;
+    if (!json_object_object_get_ex(response, "farmer", &obj_farmer)) {
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
+    }
+
+    struct json_object *obj_farmer_address;
+    if (!json_object_object_get_ex(obj_farmer, "address", &obj_farmer_address)) {
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
+    }
+
+    struct json_object *obj_farmer_port;
+    if (!json_object_object_get_ex(obj_farmer, "port", &obj_farmer_port)) {
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
+    }
+
+    struct json_object *obj_farmer_user_agent;
+    if (!json_object_object_get_ex(obj_farmer, "userAgent", &obj_farmer_user_agent)) {
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
+    }
+
+    struct json_object *obj_farmer_protocol;
+    if (!json_object_object_get_ex(obj_farmer, "protocol", &obj_farmer_protocol)) {
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
+    }
+
+    struct json_object *obj_farmer_node_id;
+    if (!json_object_object_get_ex(obj_farmer, "nodeID", &obj_farmer_node_id)) {
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
+    }
+
+    struct json_object *obj_farmer_last_seen;
+    if (!json_object_object_get_ex(obj_farmer, "lastSeen", &obj_farmer_last_seen)) {
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
+    }
+
+    if (!json_object_is_type(obj_token, json_type_string) == 1) {
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
+    }
+
+    char *token = (char *)json_object_get_string(obj_token);
+
+    req->farmer_pointer->token = calloc(strlen(token) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->token, token, strlen(token));
+
+    char *hash = (char *)json_object_get_string(obj_hash);
+    req->farmer_pointer->hash = calloc(strlen(hash) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->hash, hash, strlen(hash));
+
+    req->farmer_pointer->shard_index = shard_meta->index;
+
+    char *farmer_user_agent = (char *)json_object_get_string(obj_farmer_user_agent);
+    req->farmer_pointer->farmer_user_agent = calloc(strlen(farmer_user_agent) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_user_agent, farmer_user_agent, strlen(farmer_user_agent));
+
+    char *farmer_protocol = (char *)json_object_get_string(obj_farmer_protocol);
+    req->farmer_pointer->farmer_protocol = calloc(strlen(farmer_protocol) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_protocol, farmer_protocol, strlen(farmer_protocol));
+
+    char *farmer_address = (char *)json_object_get_string(obj_farmer_address);
+    req->farmer_pointer->farmer_address = calloc(strlen(farmer_address) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_address, farmer_address, strlen(farmer_address));
+
+    char *farmer_port = (char *)json_object_get_string(obj_farmer_port);
+    req->farmer_pointer->farmer_port = calloc(strlen(hash) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_port, farmer_port, strlen(farmer_port));
+
+    char *farmer_node_id = (char *)json_object_get_string(obj_farmer_node_id);
+    req->farmer_pointer->farmer_node_id = calloc(strlen(farmer_node_id) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_node_id, farmer_node_id, strlen(farmer_node_id));
+
+    char *farmer_last_seen = (char *)json_object_get_string(obj_farmer_last_seen);
+    req->farmer_pointer->farmer_last_seen = calloc(strlen(farmer_last_seen) + 1, sizeof(char));
+    memcpy(req->farmer_pointer->farmer_last_seen, farmer_last_seen, strlen(farmer_last_seen));
+
+    req->status_code = status_code;
+
+clean_variables:
+    json_object_put(response);
+    json_object_put(body);
+}
+
+static int queue_push_frame(storj_upload_state_t *state, int index)
+{
+    uv_work_t *shard_work[state->total_shards];
+
+    shard_work[index] = frame_work_new(&index, state);
+    uv_queue_work(state->env->loop, (uv_work_t*) shard_work[index], push_frame, after_push_frame);
+
+    state->pushing_frame = true;
+
+    return 0;
+}
+
 static void after_create_frame(uv_work_t *work, int status)
 {
     frame_builder_t *frame_builder = work->data;
@@ -105,7 +427,29 @@ static void after_create_frame(uv_work_t *work, int status)
         state->completed_shard_hash = true;
     }
 
-    // TODO: set the shard_meta to an array in the state for later use.
+    // set the shard_meta to a struct array in the state for later use.
+
+    // Add Hash
+    state->shard_meta[shard_meta->index].hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 1, sizeof(char));
+    memcpy(state->shard_meta[shard_meta->index].hash, shard_meta->hash, RIPEMD160_DIGEST_SIZE*2);
+
+    // Add challenges_as_str
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        memcpy(state->shard_meta[shard_meta->index].challenges_as_str[i], shard_meta->challenges_as_str[i], 32);
+    }
+
+    // Add Merkle Tree leaves.
+    for (int i = 0; i < CHALLENGES; i++ ) {
+        memcpy(state->shard_meta[shard_meta->index].tree[i], shard_meta->tree[i], 32);
+    }
+
+    // Add index
+    state->shard_meta[shard_meta->index].index = shard_meta->index;
+
+    // Add size
+    state->shard_meta[shard_meta->index].size = shard_meta->size;
+
+    queue_next_work(state);
 
     shard_state_cleanup(shard_meta);
     free(frame_builder);
@@ -149,7 +493,7 @@ static void create_frame(uv_work_t *work)
     // Calculate Shard Hash
     ripmd160sha256_as_string(shard_data, shard_meta->size, &shard_meta->hash);
 
-    printf("Shard hash: %s\n", shard_meta->hash);
+    printf("Shard (%d) hash: %s\n", shard_meta->index, shard_meta->hash);
 
     // Set the challenges
     for (int i = 0; i < CHALLENGES; i++ ) {
@@ -182,40 +526,12 @@ static void create_frame(uv_work_t *work)
     free(shard_data);
 }
 
-static void shard_state_cleanup(shard_meta_t *shard_meta)
+static int queue_create_frame(storj_upload_state_t *state, int index)
 {
-    if (shard_meta->hash != NULL) {
-        free(shard_meta->hash);
-    }
+    uv_work_t *shard_work[state->total_shards];
 
-    free(shard_meta);
-}
-
-static uv_work_t *shard_state_new(int index, storj_upload_state_t *state)
-{
-    uv_work_t *work = uv_work_new();
-    frame_builder_t *frame_builder = malloc(sizeof(frame_builder_t));
-    frame_builder->shard_meta = malloc(sizeof(shard_meta_t));
-    frame_builder->upload_state = state;
-
-    assert(frame_builder->shard_meta != NULL);
-
-    frame_builder->shard_meta->index = index;
-    frame_builder->error_status = 0;
-
-    work->data = frame_builder;
-
-    return work;
-}
-
-static int queue_create_frame(storj_upload_state_t *state)
-{
-    struct uv_work_t *shard_work[state->total_shards];
-
-    for (int index = 0; index < state->total_shards; index++ ) {
-        shard_work[index] = shard_state_new(index, state);
-        uv_queue_work(state->env->loop, (uv_work_t*) shard_work[index], create_frame, after_create_frame);
-    }
+    shard_work[index] = shard_state_new(index, state);
+    uv_queue_work(state->env->loop, (uv_work_t*) shard_work[index], create_frame, after_create_frame);
 
     state->hashing_shards = true;
 
@@ -273,7 +589,9 @@ static void request_frame(uv_work_t *work)
       req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    req->frame_id = (char *)json_object_get_string(frame_id);
+    char *frame_id_str = (char *)json_object_get_string(frame_id);
+    req->frame_id = calloc(strlen(frame_id_str) + 1, sizeof(char));
+    strcpy(req->frame_id, frame_id_str);
     req->status_code = status_code;
 
     json_object_put(response);
@@ -282,16 +600,7 @@ static void request_frame(uv_work_t *work)
 
 static int queue_request_frame(storj_upload_state_t *state)
 {
-    uv_work_t *work = uv_work_new();
-
-    frame_request_t *req = malloc(sizeof(frame_request_t));
-    assert(req != NULL);
-
-    req->http_options = state->env->http_options;
-    req->options = state->env->bridge_options;
-    req->upload_state = state;
-    req->error_status = 0;
-    work->data = req;
+    uv_work_t *work = frame_work_new(NULL, state);
 
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                request_frame, after_request_frame);
@@ -422,7 +731,7 @@ static int queue_encrypt_file(storj_upload_state_t *state)
 
 static void after_request_token(uv_work_t *work, int status)
 {
-    token_request_token_t *req = work->data;
+    request_token_t *req = work->data;
 
     req->upload_state->token_request_count += 1;
 
@@ -444,7 +753,7 @@ static void after_request_token(uv_work_t *work, int status)
 
 static void request_token(uv_work_t *work)
 {
-    token_request_token_t *req = work->data;
+    request_token_t *req = work->data;
 
     printf("[%s] Creating storage token... (retry: %d)\n",
             req->upload_state->file_name,
@@ -477,7 +786,9 @@ static void request_token(uv_work_t *work)
         req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
-    req->token = (char *)json_object_get_string(token_value);
+    char *token_value_str = (char *)json_object_get_string(token_value);
+    req->token = calloc(strlen(token_value_str) + 1, sizeof(char));
+    strcpy(req->token, token_value_str);
     req->status_code = status_code;
 
     free(path);
@@ -489,7 +800,7 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
 
-    token_request_token_t *req = malloc(sizeof(token_request_token_t));
+    request_token_t *req = malloc(sizeof(request_token_t));
     assert(req != NULL);
 
     req->http_options = state->env->http_options;
@@ -520,7 +831,8 @@ static void queue_next_work(storj_upload_state_t *state)
     if (state->file_size > 0 && state->uploaded_bytes > 0) {
         state->progress_cb(state->uploaded_bytes / state->total_bytes,
                            state->uploaded_bytes,
-                           state->total_bytes);
+                           state->total_bytes,
+                           state->handle);
     }
 
     // report upload complete
@@ -536,7 +848,14 @@ static void queue_next_work(storj_upload_state_t *state)
     if (!state->frame_id && !state->requesting_frame) {
         queue_request_frame(state);
     } else if (state->frame_id && state->completed_encryption && !state->hashing_shards && !state->completed_shard_hash) {
-        queue_create_frame(state);
+        for (int index = 0; index < state->total_shards; index++ ) {
+            queue_create_frame(state, index);
+        }
+    } else if (state->completed_shard_hash && !state->pushing_frame){
+        for (int index = 0; index < state->total_shards; index++ ) {
+            queue_push_frame(state, index);
+        }
+        // return cleanup_state(state);
     }
 
     // Encrypt the file
@@ -577,6 +896,8 @@ static void prepare_upload_state(uv_work_t *work)
     // Set Shard calculations
     state->shard_size = determine_shard_size(state, 0);
     state->total_shards = ceil((double)state->file_size / state->shard_size);
+    state->shard_meta = calloc(state->total_shards * sizeof(shard_meta_t), sizeof(char));
+    state->farmer_pointers = calloc(state->total_shards * sizeof(farmer_pointer_t), sizeof(char));
 
     // Generate encryption key && Calculate deterministic file id
     char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
@@ -595,6 +916,7 @@ static void prepare_upload_state(uv_work_t *work)
 
 int storj_bridge_store_file(storj_env_t *env,
                             storj_upload_opts_t *opts,
+                            void *handle,
                             storj_progress_cb progress_cb,
                             storj_finished_upload_cb finished_cb)
 {
@@ -635,6 +957,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->encrypting_file = false;
     state->requesting_frame = false;
     state->requesting_token = false;
+    state->pushing_frame = false;
     state->hashing_shards = false;
     state->token = NULL;
     state->tmp_path = NULL;
@@ -643,6 +966,8 @@ int storj_bridge_store_file(storj_env_t *env,
     state->completed_shards = 0;
     state->uploaded_bytes = 0;
     state->final_callback_called = false;
+
+    state->handle = handle;
 
     uv_work_t *work = uv_work_new();
     work->data = state;

@@ -1,6 +1,55 @@
 #include "downloader.h"
 
-// TODO memory cleanup
+static void free_bucket_token(storj_download_state_t *state)
+{
+    if (state->token) {
+        free(state->token);
+        state->token = NULL;
+    }
+}
+
+static void free_exchange_report(storj_exchange_report_t *report)
+{
+    free(report->data_hash);
+    free(report->reporter_id);
+    free(report->farmer_id);
+    free(report->client_id);
+    free(report);
+}
+
+static void free_download_state(storj_download_state_t *state)
+{
+    for (int i = 0; i < state->total_pointers; i++) {
+        storj_pointer_t *pointer = &state->pointers[i];
+
+        free(pointer->token);
+        free(pointer->shard_hash);
+        free(pointer->farmer_id);
+        free(pointer->farmer_address);
+
+        free_exchange_report(pointer->report);
+    }
+
+
+    free_bucket_token(state);
+
+    if (state->excluded_farmer_ids) {
+        free(state->excluded_farmer_ids);
+    }
+
+    if (state->decrypt_key) {
+        memset_zero(state->decrypt_key, SHA256_DIGEST_SIZE);
+        free(state->decrypt_key);
+    }
+
+    if (state->decrypt_ctr) {
+        memset_zero(state->decrypt_ctr, AES_BLOCK_SIZE);
+        free(state->decrypt_ctr);
+    }
+
+    free(state->pointers);
+    free(state);
+}
 
 static void request_token(uv_work_t *work)
 {
@@ -32,9 +81,8 @@ static void request_token(uv_work_t *work)
             req->error_status = STORJ_BRIDGE_JSON_ERROR;
         }
 
-        req->token = (char *)json_object_get_string(token_value);
-
-        free(token_value);
+        char *token = (char *)json_object_get_string(token_value);
+        req->token = strdup(token);
 
     } else if (status_code == 403 || status_code == 401) {
         req->error_status = STORJ_BRIDGE_AUTH_ERROR;
@@ -48,8 +96,9 @@ static void request_token(uv_work_t *work)
 
     req->status_code = status_code;
 
-    free(response);
-    free(body);
+    json_object_put(response);
+    json_object_put(body);
+    free(path);
 }
 
 static void after_request_token(uv_work_t *work, int status)
@@ -157,6 +206,9 @@ static void request_replace_pointer(uv_work_t *work)
     if (!req->response) {
         req->status_code = -1;
     }
+
+    free(path);
+
 }
 
 static void set_pointer_from_json(storj_download_state_t *state,
@@ -164,8 +216,6 @@ static void set_pointer_from_json(storj_download_state_t *state,
                                   struct json_object *json,
                                   bool is_replaced)
 {
-    // TODO free existing values if is replaced?
-
     if (!json_object_is_type(json, json_type_object)) {
         state->error_status = STORJ_BRIDGE_JSON_ERROR;
         return;
@@ -233,14 +283,6 @@ static void set_pointer_from_json(storj_download_state_t *state,
     }
     char *farmer_id = (char *)json_object_get_string(farmer_id_value);
 
-    free(token_value);
-    free(hash_value);
-    free(size_value);
-    free(index_value);
-    free(address_value);
-    free(port_value);
-    free(farmer_id_value);
-
     if (is_replaced) {
         p->replace_count += 1;
     } else {
@@ -250,24 +292,34 @@ static void set_pointer_from_json(storj_download_state_t *state,
     // reset the status
     p->status = POINTER_CREATED;
 
-    p->token = token;
-    p->shard_hash = hash;
     p->size = size;
     p->downloaded_size = 0;
     p->index = index;
-    p->farmer_address = address;
     p->farmer_port = port;
-    p->farmer_id = farmer_id;
+
+    if (is_replaced) {
+        free(p->token);
+        free(p->shard_hash);
+        free(p->farmer_address);
+        free(p->farmer_id);
+    }
+    p->token = strdup(token);
+    p->shard_hash = strdup(hash);
+    p->farmer_address = strdup(address);
+    p->farmer_id = strdup(farmer_id);
 
     // setup exchange report values
+    if (is_replaced) {
+        free_exchange_report(p->report);
+    }
     p->report = malloc(
         sizeof(storj_exchange_report_t));
 
     const char *client_id = state->env->bridge_options->user;
-    p->report->reporter_id = client_id;
-    p->report->client_id = client_id;
-    p->report->data_hash = hash;
-    p->report->farmer_id = farmer_id;
+    p->report->reporter_id = strdup(client_id);
+    p->report->client_id = strdup(client_id);
+    p->report->data_hash = strdup(hash);
+    p->report->farmer_id = strdup(farmer_id);
     p->report->send_status = 0; // not sent
     p->report->send_count = 0;
 
@@ -315,9 +367,6 @@ static void append_pointers_to_state(storj_download_state_t *state,
             struct json_object *json = json_object_array_get_idx(res, i);
 
             set_pointer_from_json(state, &state->pointers[j], json, false);
-
-            free(json);
-
         }
     }
 
@@ -330,8 +379,7 @@ static void after_request_pointers(uv_work_t *work, int status)
     req->state->pending_work_count--;
     req->state->requesting_pointers = false;
 
-    // expired token
-    req->state->token = NULL;
+    free_bucket_token(req->state);
 
     if (status != 0)  {
         req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
@@ -355,7 +403,9 @@ static void after_request_pointers(uv_work_t *work, int status)
 
     queue_next_work(req->state);
 
-    free(work->data);
+    json_object_put(req->response);
+    free(req->path);
+    free(req);
     free(work);
 }
 
@@ -368,8 +418,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
     req->state->pending_work_count--;
     req->state->requesting_pointers = false;
 
-    // expired token
-    req->state->token = NULL;
+    free_bucket_token(req->state);
 
     if (status != 0) {
         req->state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
@@ -404,6 +453,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
 
     queue_next_work(req->state);
 
+    json_object_put(req->response);
     free(work->data);
     free(work);
 
@@ -414,9 +464,6 @@ static void queue_request_pointers(storj_download_state_t *state)
     if (state->requesting_pointers || state->canceled) {
         return;
     }
-
-    uv_work_t *work = malloc(sizeof(uv_work_t));
-    assert(work != NULL);
 
     // queue request to replace pointer if any pointers have failure
     for (int i = 0; i < state->total_pointers; i++) {
@@ -457,6 +504,8 @@ static void queue_request_pointers(storj_download_state_t *state)
             req->state = state;
             req->excluded_farmer_ids = state->excluded_farmer_ids;
 
+            uv_work_t *work = malloc(sizeof(uv_work_t));
+            assert(work != NULL);
             work->data = req;
 
             state->log->info("Requesting replacement pointer at index: %i\n",
@@ -501,6 +550,8 @@ static void queue_request_pointers(storj_download_state_t *state)
 
     req->state = state;
 
+    uv_work_t *work = malloc(sizeof(uv_work_t));
+    assert(work != NULL);
     work->data = req;
 
     state->log->info("Requesting next set of pointers, total pointers: %i\n",
@@ -554,6 +605,8 @@ static void request_shard(uv_work_t *work)
             ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE, req->decrypt_ctr,
                       req->shard_total_bytes, req->shard_data, req->shard_data);
+
+            free(ctx);
         }
 
         req->error_status = 0;
@@ -563,8 +616,15 @@ static void request_shard(uv_work_t *work)
 static void free_request_shard_work(uv_handle_t *progress_handle)
 {
     uv_work_t *work = progress_handle->data;
+    shard_request_download_t *req = work->data;
 
-    free(work->data);
+    memset_zero(req->decrypt_key, SHA256_DIGEST_SIZE);
+    free(req->decrypt_key);
+
+    memset_zero(req->decrypt_ctr, AES_BLOCK_SIZE);
+    free(req->decrypt_ctr);
+
+    free(req);
     free(work);
 }
 
@@ -652,7 +712,10 @@ static void progress_request_shard(uv_async_t* async)
 
     double total_progress = (double)downloaded_bytes / (double)total_bytes;
 
-    state->progress_cb(total_progress, downloaded_bytes, total_bytes);
+    state->progress_cb(total_progress,
+                       downloaded_bytes,
+                       total_bytes,
+                       state->handle);
 }
 
 static int queue_request_shards(storj_download_state_t *state)
@@ -856,7 +919,9 @@ static void send_exchange_report(uv_work_t *work)
                                               NULL, NULL, &status_code);
     req->status_code = status_code;
 
-    free(body);
+    // free all memory for body and response
+    json_object_put(response);
+    json_object_put(body);
 }
 
 static void after_send_exchange_report(uv_work_t *work, int status)
@@ -932,10 +997,11 @@ static void queue_next_work(storj_download_state_t *state)
         if (!state->finished && state->pending_work_count == 0) {
 
             state->finished = true;
-            state->finished_cb(state->error_status, state->destination);
+            state->finished_cb(state->error_status,
+                               state->destination,
+                               state->handle);
 
-            free(state->pointers);
-            free(state);
+            free_download_state(state);
         }
 
         return;
@@ -949,10 +1015,9 @@ static void queue_next_work(storj_download_state_t *state)
 
         if (!state->finished && state->pending_work_count == 0) {
             state->finished = true;
-            state->finished_cb(0, state->destination);
+            state->finished_cb(0, state->destination, state->handle);
 
-            free(state->pointers);
-            free(state);
+            free_download_state(state);
         }
 
         return;
@@ -1001,6 +1066,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
                               char *bucket_id,
                               char *file_id,
                               FILE *destination,
+                              void *handle,
                               storj_progress_cb progress_cb,
                               storj_finished_download_cb finished_cb)
 {
@@ -1032,6 +1098,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
+    state->handle = handle;
 
     // determine the decryption key
     if (!env->encrypt_options || !env->encrypt_options->mnemonic) {
@@ -1048,6 +1115,9 @@ int storj_bridge_resolve_file(storj_env_t *env,
         sha256_of_str(file_key, DETERMINISTIC_KEY_SIZE, decrypt_key);
         decrypt_key[SHA256_DIGEST_SIZE] = '\0';
 
+        memset_zero(file_key, DETERMINISTIC_KEY_SIZE + 1);
+        free(file_key);
+
         state->decrypt_key = decrypt_key;
 
         uint8_t *file_id_hash = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
@@ -1056,6 +1126,8 @@ int storj_bridge_resolve_file(storj_env_t *env,
 
         uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
         memcpy(decrypt_ctr, file_id_hash, AES_BLOCK_SIZE);
+
+        free(file_id_hash);
 
         state->decrypt_ctr = decrypt_ctr;
     };

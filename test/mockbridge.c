@@ -49,12 +49,14 @@ int mock_bridge_server(void *cls,
         exit(1);
     }
 
+    json_tokener_free(tok);
+
     char *page = "Not Found";
     int status_code = MHD_HTTP_NOT_FOUND;
 
     int ret;
 
-    char *pass;
+    char *pass = NULL;
     char *user = MHD_basic_auth_get_username_password(connection, &pass);
 
     if (0 == strcmp(method, "GET")) {
@@ -158,9 +160,13 @@ int mock_bridge_server(void *cls,
         }
     }
 
-    response = MHD_create_response_from_buffer(strlen(page),
-                                               (void *) page,
-                                               MHD_RESPMEM_PERSISTENT);
+    int page_len = strlen(page);
+    char *page_cpy = calloc(page_len + 1, sizeof(char));
+    memcpy(page_cpy, page, page_len);
+
+    response = MHD_create_response_from_buffer(page_len,
+                                               (void *) page_cpy,
+                                               MHD_RESPMEM_MUST_FREE);
 
     *ptr = NULL;
 
@@ -173,8 +179,11 @@ int mock_bridge_server(void *cls,
 
     MHD_destroy_response(response);
 
-    // Free the json_object
-    // json_object_put(responses);
+    if (pass) {
+        free(pass);
+    }
+    free(user);
+    json_object_put(responses);
 
     return ret;
 }

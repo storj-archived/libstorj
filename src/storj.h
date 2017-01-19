@@ -156,6 +156,7 @@ typedef struct {
     struct json_object *body;
     struct json_object *response;
     int status_code;
+    void *handle;
 } json_request_t;
 
 typedef enum {
@@ -171,10 +172,10 @@ static const char *BUCKET_OP[] = { "PUSH", "PULL" };
  * performance and reliability of farmers.
  */
 typedef struct {
-    const char *data_hash;
-    const char *reporter_id;
-    const char *farmer_id;
-    const char *client_id;
+    char *data_hash;
+    char *reporter_id;
+    char *farmer_id;
+    char *client_id;
     uint64_t start;
     uint64_t end;
     unsigned int code;
@@ -188,15 +189,16 @@ typedef struct {
  */
 typedef void (*storj_progress_cb)(double progress,
                                   uint64_t bytes,
-                                  uint64_t total_bytes);
+                                  uint64_t total_bytes,
+                                  void *handle);
 
 /** @brief A function signature for a download complete callback
  */
-typedef void (*storj_finished_download_cb)(int status, FILE *fd);
+typedef void (*storj_finished_download_cb)(int status, FILE *fd, void *handle);
 
 /** @brief A function signature for an upload complete callback
  */
-typedef void (*storj_finished_upload_cb)(int error_status);
+typedef void (*storj_finished_upload_cb)(int error_status, void *handle);
 
 /** @brief A structure that represents a pointer to a shard
  *
@@ -275,6 +277,7 @@ typedef struct {
     uint8_t *decrypt_ctr;
     uint32_t pending_work_count;
     storj_log_levels_t *log;
+    void *handle;
 } storj_download_state_t;
 
 /**
@@ -327,141 +330,189 @@ char *storj_strerror(int error_code);
  * response is available in the first argument to the callback function.
  *
  * @param[in] env The storj environment struct
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
-int storj_bridge_get_info(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_get_info(storj_env_t *env,
+                          void *handle,
+                          uv_after_work_cb cb);
 
 /**
  * @brief List available buckets for a user.
  *
  * @param[in] env The storj environment struct
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
-int storj_bridge_get_buckets(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_get_buckets(storj_env_t *env,
+                             void *handle,
+                             uv_after_work_cb cb);
 
 /**
  * @brief Create a bucket.
  *
  * @param[in] env The storj environment struct
+ * @param[in] name The name of the bucket
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_create_bucket(storj_env_t *env,
                                char *name,
+                               void *handle,
                                uv_after_work_cb cb);
 
 /**
  * @brief Delete a bucket.
  *
  * @param[in] env The storj environment struct
+ * @param[in] id The bucket id
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
-int storj_bridge_delete_bucket(storj_env_t *env, char *id, uv_after_work_cb cb);
+int storj_bridge_delete_bucket(storj_env_t *env,
+                               char *id,
+                               void *handle,
+                               uv_after_work_cb cb);
 
 /**
  * @brief Get a list of all files in a bucket.
  *
  * @param[in] env The storj environment struct
+ * @param[in] id The bucket id
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
-int storj_bridge_list_files(storj_env_t *env, char *id, uv_after_work_cb cb);
+int storj_bridge_list_files(storj_env_t *env,
+                            char *id,
+                            void *handle,
+                            uv_after_work_cb cb);
 
 /**
  * @brief Create a PUSH or PULL bucket token.
  *
  * @param[in] env The storj environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] operation The type of operation PUSH or PULL
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_create_bucket_token(storj_env_t *env,
                                      char *bucket_id,
                                      storj_bucket_op_t operation,
+                                     void *handle,
                                      uv_after_work_cb cb);
 
 /**
  * @brief Get pointers with locations to file shards.
  *
  * @param[in] env The storj environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] file_id The bucket id
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_get_file_pointers(storj_env_t *env,
                                    char *bucket_id,
                                    char *file_id,
+                                   void *handle,
                                    uv_after_work_cb cb);
 
 /**
  * @brief Delete a file in a bucket.
  *
  * @param[in] env The storj environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] file_id The bucket id
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_delete_file(storj_env_t *env,
                              char *bucket_id,
                              char *file_id,
+                             void *handle,
                              uv_after_work_cb cb);
 
 /**
  * @brief Create a file frame
  *
  * @param[in] env The storj environment struct
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
-int storj_bridge_create_frame(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_create_frame(storj_env_t *env,
+                              void *handle,
+                              uv_after_work_cb cb);
 
 /**
  * @brief List available file frames
  *
  * @param[in] env The storj environment struct
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
-int storj_bridge_get_frames(storj_env_t *env, uv_after_work_cb cb);
+int storj_bridge_get_frames(storj_env_t *env,
+                            void *handle,
+                            uv_after_work_cb cb);
 
 /**
  * @brief Get information for a file frame
  *
  * @param[in] env The storj environment struct
+ * @param[in] frame_id The frame id
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_get_frame(storj_env_t *env,
                            char *frame_id,
+                           void *handle,
                            uv_after_work_cb cb);
 
 /**
  * @brief Delete a file frame
  *
  * @param[in] env The storj environment struct
+ * @param[in] frame_id The frame id
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_delete_frame(storj_env_t *env,
                               char *frame_id,
+                              void *handle,
                               uv_after_work_cb cb);
 
 /**
  * @brief Get metadata for a file
  *
  * @param[in] env The storj environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] file_id The bucket id
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_get_file_info(storj_env_t *env,
                                char *bucket_id,
                                char *file_id,
+                               void *handle,
                                uv_after_work_cb cb);
 
 int storj_bridge_store_file(storj_env_t *env,
-                           storj_upload_opts_t *opts,
-                           storj_progress_cb progress_cb,
-                           storj_finished_upload_cb finished_cb);
+                            storj_upload_opts_t *opts,
+                            void *handle,
+                            storj_progress_cb progress_cb,
+                            storj_finished_upload_cb finished_cb);
 
 
 /**
@@ -480,6 +531,7 @@ int storj_bridge_resolve_file_cancel(storj_download_state_t *state);
  * @param[in] bucket_id Character array of bucket id
  * @param[in] file_id Character array of file id
  * @param[in] destination File descriptor of the destination
+ * @param[in] handle A pointer that will be available in the callback
  * @param[in] progress_cb Function called with progress updates
  * @param[in] finished_cb Function called when download finished
  * @return A non-zero error value on failure and 0 on success.
@@ -489,6 +541,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
                               char *bucket_id,
                               char *file_id,
                               FILE *destination,
+                              void *handle,
                               storj_progress_cb progress_cb,
                               storj_finished_download_cb finished_cb);
 #ifdef __cplusplus
