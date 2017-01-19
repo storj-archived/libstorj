@@ -1,6 +1,30 @@
 #include "downloader.h"
 
-// TODO memory cleanup
+static void free_exchange_report(storj_exchange_report_t *report)
+{
+    free(report->data_hash);
+    free(report->reporter_id);
+    free(report->farmer_id);
+    free(report->client_id);
+    free(report);
+}
+
+static void free_download_state(storj_download_state_t *state)
+{
+    for (int i = 0; i < state->total_pointers; i++) {
+        storj_pointer_t *pointer = &state->pointers[i];
+
+        free(pointer->token);
+        free(pointer->shard_hash);
+        free(pointer->farmer_id);
+        free(pointer->farmer_address);
+
+        free_exchange_report(pointer->report);
+    }
+
+    free(state->pointers);
+    free(state);
+}
 
 static void request_token(uv_work_t *work)
 {
@@ -251,6 +275,9 @@ static void set_pointer_from_json(storj_download_state_t *state,
     p->farmer_id = strdup(farmer_id);
 
     // setup exchange report values
+    if (is_replaced) {
+        free_exchange_report(p->report);
+    }
     p->report = malloc(
         sizeof(storj_exchange_report_t));
 
@@ -928,8 +955,7 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished = true;
             state->finished_cb(state->error_status, state->destination);
 
-            free(state->pointers);
-            free(state);
+            free_download_state(state);
         }
 
         return;
@@ -945,8 +971,7 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished = true;
             state->finished_cb(0, state->destination);
 
-            free(state->pointers);
-            free(state);
+            free_download_state(state);
         }
 
         return;

@@ -171,10 +171,10 @@ static const char *BUCKET_OP[] = { "PUSH", "PULL" };
  * performance and reliability of farmers.
  */
 typedef struct {
-    const char *data_hash;
-    const char *reporter_id;
-    const char *farmer_id;
-    const char *client_id;
+    char *data_hash;
+    char *reporter_id;
+    char *farmer_id;
+    char *client_id;
     uint64_t start;
     uint64_t end;
     unsigned int code;
