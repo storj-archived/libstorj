@@ -211,3 +211,107 @@ int increment_ctr_aes_iv(uint8_t *iv, uint64_t bytes_position)
 
     return 0;
 }
+
+int read_encrypted_file(char *filename, char *key, char *salt, char **result)
+{
+  FILE *fp;
+  fp = fopen(filename, "r");
+  if (fp == NULL) {
+    return 1;
+  }
+
+  fseek(fp, 0, SEEK_END);
+  uint8_t fsize = ftell(fp) + 1;
+  fseek(fp, 0, SEEK_SET);
+
+  *result = malloc(fsize);
+  if (*result == NULL) {
+    return 1;
+  }
+  fread(*result, fsize, 1, fp);
+
+  if (ferror(fp)) {
+    return 1;
+  }
+  fclose(fp);
+
+  if (key != NULL && salt != NULL) {
+    // Convert key to password
+    uint8_t keyLen = strlen(key);
+    uint8_t saltLen = strlen(salt);
+    uint8_t *pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+    pbkdf2_hmac_sha256(keyLen, key, 1, saltLen, salt, SHA256_DIGEST_SIZE, pass);
+
+    // Decrypt data
+    struct aes256_ctx *ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
+    if (ctx == NULL) {
+      return 1;
+    }
+    aes256_set_decrypt_key(ctx, pass);
+
+    aes256_decrypt(ctx, fsize - 1, *result, *result);
+
+    free(ctx);
+    free(pass);
+
+    return 0;
+  }
+
+  (*result)[fsize - 1] = '\0';
+  return 0;
+}
+
+int write_encrypted_file(char *filename, char *key, char *salt, char *data)
+{
+  FILE *fp;
+  fp = fopen(filename, "w");
+  if (fp == NULL) {
+    return 1;
+  }
+
+  if (key != NULL && salt != NULL) {
+    // Convert key to password
+    uint8_t keyLen = strlen(key);
+    uint8_t saltLen = strlen(salt);
+    uint8_t *pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+    if (pass == NULL) {
+      return 1;
+    }
+    pbkdf2_hmac_sha256(keyLen, key, 1, saltLen, salt, SHA256_DIGEST_SIZE, pass);
+
+    // Encrypt data
+    struct aes256_ctx *ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
+    if (ctx == NULL) {
+      return 1;
+    }
+    aes256_set_encrypt_key(ctx, pass);
+
+    uint8_t dataSize = strlen(data) * sizeof(char) + 1;
+    uint8_t rem = dataSize % AES_BLOCK_SIZE;
+    uint8_t newSize = dataSize + (AES_BLOCK_SIZE - rem);
+    char *dataToStore = malloc(newSize);
+    if (dataToStore == NULL) {
+      return 1;
+    }
+    memcpy(dataToStore, data, dataSize);
+
+    char *result = malloc(newSize);
+    if (result == NULL) {
+      return 1;
+    }
+    aes256_encrypt(ctx, newSize, result, dataToStore);
+
+    fwrite(result, newSize, 1, fp);
+    fclose(fp);
+
+    free(ctx);
+    free(pass);
+    free(result);
+    free(dataToStore);
+    return 0;
+  }
+
+  fputs(data, fp);
+  fclose(fp);
+  return 0;
+}

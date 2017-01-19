@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 
 #include "storj.h"
-#include "utils.h"
+#include "crypto.h"
 
 extern int errno;
 
@@ -77,34 +77,9 @@ static void upload_file_complete(int status)
 
 static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 {
+
+    // TODO get mnemonic from env->encrypt_optons->mnemonic
     char *mnemonic = getenv("STORJ_MNEMONIC");
-
-    char *homedir;
-    if ((homedir = getenv("HOME")) == NULL) {
-        homedir = getpwuid(getuid())->pw_dir;
-    }
-    char rootDir[1024];
-    strcpy(rootDir, homedir);
-    strcat(rootDir, "/.storj");
-
-    char userFile[1024];
-    strcpy(userFile, rootDir);
-    strcat(userFile, "/user");
-    char mnemonicFile[1024];
-    strcpy(mnemonicFile, rootDir);
-    strcat(mnemonicFile, "/mnemonic");
-
-    if (!mnemonic && access(mnemonicFile, F_OK) != -1) {
-      printf("Encryption key: ");
-      char *key = calloc(BUFSIZ, sizeof(char));
-      get_password(key);
-      printf("\n");
-      char *result;
-      read_encrypted_file(userFile, NULL, NULL, &result);
-      char *user = result;
-      read_encrypted_file(mnemonicFile, key, user, &result);
-      mnemonic = result;
-    }
     if (!mnemonic) {
         printf("Set your STORJ_MNEMONIC\n");
         exit(1);

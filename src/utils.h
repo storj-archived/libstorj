@@ -34,10 +34,6 @@ void random_buffer(uint8_t *buf, size_t len);
 
 uint64_t shard_size(int hops);
 
-int *read_encrypted_file(char *filename, char *key, char *salt, char **result);
-
-int write_encrypted_file(char *filename, char *key, char *salt, char *data);
-
 uint64_t get_time_milliseconds();
 
 #endif /* STORJ_UTILS_H */

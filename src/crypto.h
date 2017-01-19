@@ -106,4 +106,8 @@ int get_deterministic_key(char *key, int key_len, char *id, char **buffer);
  */
 int increment_ctr_aes_iv(uint8_t *iv, uint64_t bytes_position);
 
+int read_encrypted_file(char *filename, char *key, char *salt, char **result);
+
+int write_encrypted_file(char *filename, char *key, char *salt, char *data);
+
 #endif /* STORJ_CRYPTO_H */
