@@ -205,8 +205,6 @@ static void set_pointer_from_json(storj_download_state_t *state,
                                   struct json_object *json,
                                   bool is_replaced)
 {
-    // TODO free existing values if is replaced?
-
     if (!json_object_is_type(json, json_type_object)) {
         state->error_status = STORJ_BRIDGE_JSON_ERROR;
         return;
@@ -283,13 +281,20 @@ static void set_pointer_from_json(storj_download_state_t *state,
     // reset the status
     p->status = POINTER_CREATED;
 
-    p->token = strdup(token);
-    p->shard_hash = strdup(hash);
     p->size = size;
     p->downloaded_size = 0;
     p->index = index;
-    p->farmer_address = strdup(address);
     p->farmer_port = port;
+
+    if (is_replaced) {
+        free(p->token);
+        free(p->shard_hash);
+        free(p->farmer_address);
+        free(p->farmer_id);
+    }
+    p->token = strdup(token);
+    p->shard_hash = strdup(hash);
+    p->farmer_address = strdup(address);
     p->farmer_id = strdup(farmer_id);
 
     // setup exchange report values
