@@ -368,85 +368,85 @@ static void get_info_callback(uv_work_t *work_req, int status)
 
 static void set_auth()
 {
-  char *user = NULL;
-  char *user_input = NULL;
-  size_t user_input_size = 1024;
-  size_t num_chars;
-  user_input = calloc(user_input_size, sizeof(char));
-  if (user_input == NULL) {
-      printf("Unable to allocate buffer");
-      exit(1);
-  }
-  printf("Username (email): ");
-  num_chars = getline(&user_input, &user_input_size, stdin);
-  user = calloc(num_chars - 1, sizeof(char));
-  memcpy(user, user_input, num_chars * sizeof(char) - 1);
+    char *user = NULL;
+    char *user_input = NULL;
+    size_t user_input_size = 1024;
+    size_t num_chars;
+    user_input = calloc(user_input_size, sizeof(char));
+    if (user_input == NULL) {
+        printf("Unable to allocate buffer");
+        exit(1);
+    }
+    printf("Username (email): ");
+    num_chars = getline(&user_input, &user_input_size, stdin);
+    user = calloc(num_chars - 1, sizeof(char));
+    memcpy(user, user_input, num_chars * sizeof(char) - 1);
 
-  printf("Password: ");
-  char *pass = calloc(BUFSIZ, sizeof(char));
-  get_password(pass);
-  printf("\n");
+    printf("Password: ");
+    char *pass = calloc(BUFSIZ, sizeof(char));
+    get_password(pass);
+    printf("\n");
 
-  char *mnemonic;
-  char *mnemonic_input;
-  size_t mnemonic_input_size = 1024;
-  mnemonic_input = calloc(mnemonic_input_size, sizeof(char));
-  if (mnemonic_input == NULL) {
-      printf("Unable to allocate buffer");
-      exit(1);
-  }
-  printf("Mnemonic: ");
-  num_chars = getline(&mnemonic_input, &mnemonic_input_size, stdin);
-  mnemonic = calloc(num_chars - 1, sizeof(char));
-  memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char) - 1);
+    char *mnemonic;
+    char *mnemonic_input;
+    size_t mnemonic_input_size = 1024;
+    mnemonic_input = calloc(mnemonic_input_size, sizeof(char));
+    if (mnemonic_input == NULL) {
+        printf("Unable to allocate buffer");
+        exit(1);
+    }
+    printf("Mnemonic: ");
+    num_chars = getline(&mnemonic_input, &mnemonic_input_size, stdin);
+    mnemonic = calloc(num_chars - 1, sizeof(char));
+    memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char) - 1);
 
-  printf("Encryption key: ");
-  char *key = calloc(BUFSIZ, sizeof(char));
-  get_password(key);
-  printf("\n");
+    printf("Encryption key: ");
+    char *key = calloc(BUFSIZ, sizeof(char));
+    get_password(key);
+    printf("\n");
 
 
-  char *home_dir;
-  if ((home_dir = getenv("HOME")) == NULL) {
-      home_dir = getpwuid(getuid())->pw_dir;
-  }
-  char root_dir[1024];
-  strcpy(root_dir, home_dir);
-  strcat(root_dir, "/.storj");
+    char *home_dir;
+    if ((home_dir = getenv("HOME")) == NULL) {
+        home_dir = getpwuid(getuid())->pw_dir;
+    }
+    char root_dir[1024];
+    strcpy(root_dir, home_dir);
+    strcat(root_dir, "/.storj");
 
-  char user_file[1024];
-  strcpy(user_file, root_dir);
-  strcat(user_file, "/user");
-  char pw_file[1024];
-  strcpy(pw_file, root_dir);
-  strcat(pw_file, "/password");
-  char mnemonic_file[1024];
-  strcpy(mnemonic_file, root_dir);
-  strcat(mnemonic_file, "/mnemonic");
+    char user_file[1024];
+    strcpy(user_file, root_dir);
+    strcat(user_file, "/user");
+    char pw_file[1024];
+    strcpy(pw_file, root_dir);
+    strcat(pw_file, "/password");
+    char mnemonic_file[1024];
+    strcpy(mnemonic_file, root_dir);
+    strcat(mnemonic_file, "/mnemonic");
 
-  struct stat st = {0};
-  if (stat(root_dir, &st) == -1) {
-    printf("Creating .storj directory...\n");
-    mkdir(root_dir, 0700);
-  }
+    struct stat st = {0};
+    if (stat(root_dir, &st) == -1) {
+        printf("Creating .storj directory...\n");
+        mkdir(root_dir, 0700);
+    }
 
-  if (user[0] != '\0') {
-    write_encrypted_file(user_file, NULL, NULL, user);
-  }
-  if (pass[0] != '\0') {
-    write_encrypted_file(pw_file, key, user, pass);
-  }
-  if (mnemonic[0] != '\0') {
-    write_encrypted_file(mnemonic_file, key, user, mnemonic);
-  }
+    if (user[0] != '\0') {
+        write_encrypted_file(user_file, NULL, NULL, user);
+    }
+    if (pass[0] != '\0') {
+        write_encrypted_file(pw_file, key, user, pass);
+    }
+    if (mnemonic[0] != '\0') {
+        write_encrypted_file(mnemonic_file, key, user, mnemonic);
+    }
 
-  printf("Successfully stored username, password, and mnemonic.\n");
-  free(user);
-  free(user_input);
-  free(pass);
-  free(mnemonic);
-  free(mnemonic_input);
-  free(key);
+    printf("Successfully stored username, password, and mnemonic.\n");
+    free(user);
+    free(user_input);
+    free(pass);
+    free(mnemonic);
+    free(mnemonic_input);
+    free(key);
 }
 
 int main(int argc, char **argv)
@@ -600,12 +600,12 @@ int main(int argc, char **argv)
         char *encryption_key = calloc(BUFSIZ, sizeof(char));
         char *user = getenv("STORJ_BRIDGE_USER");
         if (!user && access(user_file, F_OK) != -1) {
-          printf("Encryption key: ");
-          get_password(encryption_key);
-          printf("\n");
-          char *result;
-          read_encrypted_file(user_file, NULL, NULL, &result);
-          user = result;
+            printf("Encryption key: ");
+            get_password(encryption_key);
+            printf("\n");
+            char *result;
+            read_encrypted_file(user_file, NULL, NULL, &result);
+            user = result;
         }
         if (!user) {
             char *user_input;
@@ -625,9 +625,9 @@ int main(int argc, char **argv)
         // Get the bridge password
         char *pass = getenv("STORJ_BRIDGE_PASS");
         if (!pass && access(pw_file, F_OK) != -1 && encryption_key != NULL) {
-          char *result;
-          read_encrypted_file(pw_file, encryption_key, user, &result);
-          pass = result;
+            char *result;
+            read_encrypted_file(pw_file, encryption_key, user, &result);
+            pass = result;
         }
         if (!pass) {
             printf("Bridge password: ");
@@ -646,9 +646,9 @@ int main(int argc, char **argv)
 
         char *mnemonic = getenv("STORJ_MNEMONIC");
         if (!mnemonic && access(mnemonic_file, F_OK) != -1 && encryption_key != NULL) {
-          char *result;
-          read_encrypted_file(mnemonic_file, encryption_key, user, &result);
-          mnemonic = result;
+            char *result;
+            read_encrypted_file(mnemonic_file, encryption_key, user, &result);
+            mnemonic = result;
         }
         if (!mnemonic) {
             printf("Encryption mnemonic: ");
