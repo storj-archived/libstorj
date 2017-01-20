@@ -67,8 +67,10 @@ typedef struct {
     char *frame_id;
     bool requesting_frame;
     bool pushing_frame;
+    bool received_all_pointers;
     int token_request_count;
     int frame_request_count;
+    int pointers_received_count;
     int encrypt_file_count;
     bool final_callback_called;
     storj_progress_cb progress_cb;
@@ -118,6 +120,7 @@ typedef struct {
     char *frame_id;
     int status_code;
     int error_status;
+
 
     // Add shard to frame
     int shard_index;

@@ -200,8 +200,14 @@ static void after_push_frame(uv_work_t *work, int status)
     storj_upload_state_t *state = req->upload_state;
     farmer_pointer_t *pointer = req->farmer_pointer;
 
-    // Check if we got a 201 status and token
-    if (req->error_status == 0 && req->status_code == 201 && pointer->token) {
+    // Check if we got a 200 status and token
+    if (req->error_status == 0 && req->status_code == 200 && pointer->token) {
+        state->pointers_received_count += 1;
+
+        if (state->pointers_received_count == state->total_shards) {
+            state->received_all_pointers = true;
+            state->pushing_frame = false;
+        }
 
         // Add hash to farmer_pointers
         state->farmer_pointers[pointer->shard_index].hash = calloc(strlen(pointer->hash) + 1, sizeof(char));
@@ -237,11 +243,14 @@ static void after_push_frame(uv_work_t *work, int status)
         // Add farmer_last_seen to farmer_pointers
         state->farmer_pointers[pointer->shard_index].farmer_last_seen = calloc(strlen(pointer->farmer_last_seen) + 1, sizeof(char));
         memcpy(state->farmer_pointers[pointer->shard_index].farmer_last_seen, pointer->farmer_last_seen, strlen(pointer->farmer_last_seen));
+    } else {
+        // Make sure we don't retry this forever
+        queue_push_frame(state, pointer->shard_index);
     }
 
-    queue_next_work(req->upload_state);
+    queue_next_work(state);
 
-    pointer_cleanup(req->farmer_pointer);
+    pointer_cleanup(pointer);
     free(req);
     free(work);
 }
@@ -851,11 +860,13 @@ static void queue_next_work(storj_upload_state_t *state)
         for (int index = 0; index < state->total_shards; index++ ) {
             queue_create_frame(state, index);
         }
-    } else if (state->completed_shard_hash && !state->pushing_frame){
+    } else if (state->completed_shard_hash && !state->pushing_frame && !state->received_all_pointers){
         for (int index = 0; index < state->total_shards; index++ ) {
             queue_push_frame(state, index);
         }
-        // return cleanup_state(state);
+    } else if (state->received_all_pointers) {
+        // Upload each shard here
+        return cleanup_state(state);
     }
 
     // Encrypt the file
@@ -949,6 +960,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->token_request_count = 0;
     state->frame_request_count = 0;
     state->encrypt_file_count = 0;
+    state->pointers_received_count = 0;
     state->shards_hashed = 0;
     state->completed_encryption = false;
     state->completed_shard_hash = false;
@@ -966,6 +978,8 @@ int storj_bridge_store_file(storj_env_t *env,
     state->completed_shards = 0;
     state->uploaded_bytes = 0;
     state->final_callback_called = false;
+    state->received_all_pointers = false;
+
 
     state->handle = handle;
 
