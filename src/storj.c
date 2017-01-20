@@ -82,19 +82,48 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     bo->host = strdup(options->host);
     bo->port = options->port;
     bo->user = strdup(options->user);
-    bo->pass = strdup(options->pass);
 
+#ifdef _POSIX_MEMLOCK
+    int page_size = sysconf(_SC_PAGESIZE);
+#endif
+
+#ifdef _POSIX_MEMLOCK
     // prevent bridge password from being swapped unencrypted to disk
-    mlock(bo->pass, strlen(bo->pass));
+    int pass_len = strlen(options->pass);
+    bo->pass = aligned_alloc(page_size, page_size);
+    if (bo->pass == NULL) {
+        return NULL;
+    }
+    memcpy(bo->pass, options->pass, pass_len);
+    bo->pass[pass_len] = '\0';
+    if (mlock(bo->pass, pass_len)) {
+        return NULL;
+    }
+#else
+    bo->pass = strdup(options->pass);
+#endif
 
     env->bridge_options = bo;
 
     // deep copy encryption options
     storj_encrypt_options_t *eo = malloc(sizeof(storj_encrypt_options_t));
-    eo->mnemonic = strdup(encrypt_options->mnemonic);
 
+#ifdef _POSIX_MEMLOCK
     // prevent file encryption mnemonic from being swapped unencrypted to disk
-    mlock(eo->mnemonic, strlen(eo->mnemonic));
+    int mnemonic_len = strlen(encrypt_options->mnemonic);
+    eo->mnemonic = aligned_alloc(page_size, page_size);
+    if (bo->pass == NULL) {
+        return NULL;
+    }
+    memcpy(eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
+    eo->mnemonic[mnemonic_len] = '\0';
+    if (mlock(eo->mnemonic, mnemonic_len)) {
+        return NULL;
+    }
+#else
+    eo->mnemonic = strdup(encrypt_options->mnemonic);
+#endif
+
     env->encrypt_options = eo;
 
     // deep copy the http options
@@ -139,6 +168,8 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
 
 int storj_destroy_env(storj_env_t *env)
 {
+    int status = 0;
+
     // free and destroy all bridge options
     free(env->bridge_options->proto);
     free(env->bridge_options->host);
@@ -149,6 +180,9 @@ int storj_destroy_env(storj_env_t *env)
     if (pass_len > 0) {
         memset_zero(env->bridge_options->pass, pass_len);
     }
+#ifdef _POSIX_MEMLOCK
+    status = munlock(env->bridge_options->pass, pass_len);
+#endif
     free(env->bridge_options->pass);
     free(env->bridge_options);
 
@@ -159,6 +193,9 @@ int storj_destroy_env(storj_env_t *env)
     if (mnemonic_len > 0) {
         memset_zero(env->encrypt_options->mnemonic, mnemonic_len);
     }
+#ifdef _POSIX_MEMLOCK
+    status = munlock(env->encrypt_options->mnemonic, mnemonic_len);
+#endif
     free(env->encrypt_options->mnemonic);
     free(env->encrypt_options);
 
@@ -175,6 +212,8 @@ int storj_destroy_env(storj_env_t *env)
 
     // free the environment
     free(env);
+
+    return status;
 }
 
 char *storj_strerror(int error_code)

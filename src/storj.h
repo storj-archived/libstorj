@@ -14,7 +14,6 @@ extern "C" {
 #endif
 
 #include <assert.h>
-#include <sys/mman.h>
 #include <json-c/json.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -24,6 +23,11 @@ extern "C" {
 
 #ifdef _WIN32
 #include <time.h>
+#endif
+
+#ifndef _WIN32
+#include <sys/mman.h>
+#include <unistd.h>
 #endif
 
 #define ERROR 1
