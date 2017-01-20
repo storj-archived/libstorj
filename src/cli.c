@@ -1,8 +1,15 @@
 #include <errno.h>
-#include <termios.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <getopt.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <termios.h>
+#include <unistd.h>
+#endif
 
 #include "storj.h"
 
@@ -33,16 +40,26 @@ extern int errno;
 
 static void get_password(char *password)
 {
+    // do not echo the characters
+#ifdef _WIN32
+    HANDLE hstdin = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode = 0;
+    DWORD prev_mode = 0;
+    GetConsoleMode(hstdin, &mode);
+    GetConsoleMode(hstdin, &prev_mode);
+    SetConsoleMode(hstdin, mode & (~ENABLE_ECHO_INPUT));
+#else
     static struct termios prev_terminal;
     static struct termios terminal;
 
     tcgetattr(STDIN_FILENO, &prev_terminal);
 
-    // do not echo the characters
     terminal = prev_terminal;
     terminal.c_lflag &= ~(ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &terminal);
+#endif
 
+    // get the password
     if (fgets(password, BUFSIZ, stdin) == NULL) {
         password[0] = '\0';
     } else {
@@ -50,7 +67,11 @@ static void get_password(char *password)
     }
 
     // go back to the previous settings
+#ifdef _WIN32
+    SetConsoleMode(hstdin, prev_mode);
+#else
     tcsetattr(STDIN_FILENO, TCSANOW, &prev_terminal);
+#endif
 }
 
 static void upload_file_progress(double progress,
