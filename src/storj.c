@@ -94,6 +94,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     if (bo->pass == NULL) {
         return NULL;
     }
+    memset(bo->pass, 0, page_size);
     memcpy(bo->pass, options->pass, pass_len);
     bo->pass[pass_len] = '\0';
     if (mlock(bo->pass, pass_len)) {
@@ -115,6 +116,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     if (bo->pass == NULL) {
         return NULL;
     }
+    memset(eo->mnemonic, 0, page_size);
     memcpy(eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
     eo->mnemonic[mnemonic_len] = '\0';
     if (mlock(eo->mnemonic, mnemonic_len)) {
