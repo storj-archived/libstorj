@@ -38,6 +38,15 @@ extern int errno;
 
 #define CLI_VERSION "libstorj-1.0.0-alpha"
 
+static void get_input(char *line)
+{
+    if (fgets(line, BUFSIZ, stdin) == NULL) {
+        line[0] = '\0';
+    } else {
+        line[strlen(line)-1] = '\0';
+    }
+}
+
 static void get_password(char *password)
 {
     // do not echo the characters
@@ -510,18 +519,17 @@ int main(int argc, char **argv)
         // Get the bridge user
         char *user = getenv("STORJ_BRIDGE_USER");
         if (!user) {
-            char *user_input;
-            size_t user_input_size = 1024;
-            size_t num_chars;
-            user_input = calloc(user_input_size, sizeof(char));
+            char *user_input = malloc(BUFSIZ);
             if (user_input == NULL) {
                 printf("Unable to allocate buffer");
                 exit(1);
             }
             printf("Bridge username (email): ");
-            num_chars = getline(&user_input, &user_input_size, stdin);
-            user = calloc(num_chars - 1, sizeof(char));
-            memcpy(user, user_input, num_chars * sizeof(char) - 1);
+            get_input(user_input);
+            int num_chars = strlen(user_input);
+            user = calloc(num_chars + 1, sizeof(char));
+            memcpy(user, user_input, num_chars);
+            free(user_input);
         }
 
         // Get the bridge password
