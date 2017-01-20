@@ -129,7 +129,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
 #ifdef _POSIX_MEMLOCK
     int mnemonic_len = strlen(encrypt_options->mnemonic);
     eo->mnemonic = aligned_alloc(page_size, page_size);
-    if (bo->pass == NULL) {
+    if (eo->mnemonic == NULL) {
         return NULL;
     }
     memset(eo->mnemonic, 0, page_size);
@@ -141,7 +141,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
 #elif _WIN32
     int mnemonic_len = strlen(encrypt_options->mnemonic);
     eo->mnemonic = _aligned_malloc(page_size, page_size);
-    if (bo->pass == NULL) {
+    if (eo->mnemonic == NULL) {
         return NULL;
     }
     memset(eo->mnemonic, 0, page_size);
