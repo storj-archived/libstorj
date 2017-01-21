@@ -230,7 +230,7 @@ int storj_destroy_env(storj_env_t *env)
 #ifdef _POSIX_MEMLOCK
     status = munlock(env->encrypt_options->mnemonic, mnemonic_len);
 #elif _WIN32
-    if (!VirtualUnlock(env->bridge_options->mnemonic, mnemonic_len)) {
+    if (!VirtualUnlock(env->encrypt_options->mnemonic, mnemonic_len)) {
         status = 1;
     }
 #endif
