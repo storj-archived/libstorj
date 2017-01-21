@@ -124,7 +124,7 @@ typedef struct {
     farmer_pointer_t *farmer_pointer;
 } frame_request_t;
 
-inline char separator()
+static inline char separator()
 {
 #ifdef _WIN32
     return '\\';
