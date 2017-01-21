@@ -81,7 +81,11 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     bo->proto = strdup(options->proto);
     bo->host = strdup(options->host);
     bo->port = options->port;
-    bo->user = strdup(options->user);
+    if (options->user) {
+        bo->user = strdup(options->user);
+    } else {
+        bo->user = NULL;
+    }
 
 #ifdef _POSIX_MEMLOCK
     int page_size = sysconf(_SC_PAGESIZE);
@@ -91,68 +95,77 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     uintptr_t page_size = si.dwPageSize;
 #endif
 
-    // prevent bridge password from being swapped unencrypted to disk
+    if (options->pass) {
+        // prevent bridge password from being swapped unencrypted to disk
 #ifdef _POSIX_MEMLOCK
-    int pass_len = strlen(options->pass);
-    bo->pass = aligned_alloc(page_size, page_size);
-    if (bo->pass == NULL) {
-        return NULL;
-    }
-    memset(bo->pass, 0, page_size);
-    memcpy(bo->pass, options->pass, pass_len);
-    bo->pass[pass_len] = '\0';
-    if (mlock(bo->pass, pass_len)) {
-        return NULL;
-    }
+        int pass_len = strlen(options->pass);
+        bo->pass = aligned_alloc(page_size, page_size);
+        if (bo->pass == NULL) {
+            return NULL;
+        }
+        memset(bo->pass, 0, page_size);
+        memcpy(bo->pass, options->pass, pass_len);
+        bo->pass[pass_len] = '\0';
+        if (mlock(bo->pass, pass_len)) {
+            return NULL;
+        }
 #elif _WIN32
-    int pass_len = strlen(options->pass);
-    bo->pass = _aligned_malloc(page_size, page_size);
-    if (bo->pass == NULL) {
-        return NULL;
-    }
-    memset(bo->pass, 0, page_size);
-    memcpy(bo->pass, options->pass, pass_len);
-    bo->pass[pass_len] = '\0';
-    if (!VirtualLock(bo->pass, pass_len)) {
-        return NULL;
-    }
+        int pass_len = strlen(options->pass);
+        bo->pass = _aligned_malloc(page_size, page_size);
+        if (bo->pass == NULL) {
+            return NULL;
+        }
+        memset(bo->pass, 0, page_size);
+        memcpy(bo->pass, options->pass, pass_len);
+        bo->pass[pass_len] = '\0';
+        if (!VirtualLock(bo->pass, pass_len)) {
+            return NULL;
+        }
 #else
-    bo->pass = strdup(options->pass);
+        bo->pass = strdup(options->pass);
 #endif
+    } else {
+        bo->pass = NULL;
+    }
 
     env->bridge_options = bo;
 
     // deep copy encryption options
     storj_encrypt_options_t *eo = malloc(sizeof(storj_encrypt_options_t));
 
-    // prevent file encryption mnemonic from being swapped unencrypted to disk
+    if (encrypt_options && encrypt_options->mnemonic) {
+
+        // prevent file encryption mnemonic from being swapped unencrypted to disk
 #ifdef _POSIX_MEMLOCK
-    int mnemonic_len = strlen(encrypt_options->mnemonic);
-    eo->mnemonic = aligned_alloc(page_size, page_size);
-    if (eo->mnemonic == NULL) {
-        return NULL;
-    }
-    memset(eo->mnemonic, 0, page_size);
-    memcpy(eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
-    eo->mnemonic[mnemonic_len] = '\0';
-    if (mlock(eo->mnemonic, mnemonic_len)) {
-        return NULL;
-    }
+        int mnemonic_len = strlen(encrypt_options->mnemonic);
+        eo->mnemonic = aligned_alloc(page_size, page_size);
+        if (eo->mnemonic == NULL) {
+            return NULL;
+        }
+        memset(eo->mnemonic, 0, page_size);
+        memcpy(eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
+        eo->mnemonic[mnemonic_len] = '\0';
+        if (mlock(eo->mnemonic, mnemonic_len)) {
+            return NULL;
+        }
 #elif _WIN32
-    int mnemonic_len = strlen(encrypt_options->mnemonic);
-    eo->mnemonic = _aligned_malloc(page_size, page_size);
-    if (eo->mnemonic == NULL) {
-        return NULL;
-    }
-    memset(eo->mnemonic, 0, page_size);
-    memcpy(eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
-    eo->mnemonic[mnemonic_len] = '\0';
-    if (!VirtualLock(eo->mnemonic, mnemonic_len)) {
-        return NULL;
-    }
+        int mnemonic_len = strlen(encrypt_options->mnemonic);
+        eo->mnemonic = _aligned_malloc(page_size, page_size);
+        if (eo->mnemonic == NULL) {
+            return NULL;
+        }
+        memset(eo->mnemonic, 0, page_size);
+        memcpy(eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
+        eo->mnemonic[mnemonic_len] = '\0';
+        if (!VirtualLock(eo->mnemonic, mnemonic_len)) {
+            return NULL;
+        }
 #else
-    eo->mnemonic = strdup(encrypt_options->mnemonic);
+        eo->mnemonic = strdup(encrypt_options->mnemonic);
 #endif
+    } else {
+        eo->mnemonic = NULL;
+    }
 
     env->encrypt_options = eo;
 
@@ -206,35 +219,39 @@ int storj_destroy_env(storj_env_t *env)
     free(env->bridge_options->user);
 
     // zero out password before freeing
-    unsigned int pass_len = strlen(env->bridge_options->pass);
-    if (pass_len > 0) {
-        memset_zero(env->bridge_options->pass, pass_len);
-    }
+    if (env->bridge_options->pass) {
+        unsigned int pass_len = strlen(env->bridge_options->pass);
+        if (pass_len > 0) {
+            memset_zero(env->bridge_options->pass, pass_len);
+        }
 #ifdef _POSIX_MEMLOCK
-    status = munlock(env->bridge_options->pass, pass_len);
+        status = munlock(env->bridge_options->pass, pass_len);
 #elif _WIN32
-    if (!VirtualUnlock(env->bridge_options->pass, pass_len)) {
-        status = 1;
-    }
+        if (!VirtualUnlock(env->bridge_options->pass, pass_len)) {
+            status = 1;
+        }
 #endif
-    free(env->bridge_options->pass);
+        free(env->bridge_options->pass);
+    }
     free(env->bridge_options);
 
     // free and destroy all encryption options
-    unsigned int mnemonic_len = strlen(env->encrypt_options->mnemonic);
+    if (env->encrypt_options && env->encrypt_options->mnemonic) {
+        unsigned int mnemonic_len = strlen(env->encrypt_options->mnemonic);
 
-    // zero out file encryption mnemonic before freeing
-    if (mnemonic_len > 0) {
-        memset_zero(env->encrypt_options->mnemonic, mnemonic_len);
-    }
+        // zero out file encryption mnemonic before freeing
+        if (mnemonic_len > 0) {
+            memset_zero(env->encrypt_options->mnemonic, mnemonic_len);
+        }
 #ifdef _POSIX_MEMLOCK
-    status = munlock(env->encrypt_options->mnemonic, mnemonic_len);
+        status = munlock(env->encrypt_options->mnemonic, mnemonic_len);
 #elif _WIN32
-    if (!VirtualUnlock(env->encrypt_options->mnemonic, mnemonic_len)) {
-        status = 1;
-    }
+        if (!VirtualUnlock(env->encrypt_options->mnemonic, mnemonic_len)) {
+            status = 1;
+        }
 #endif
-    free(env->encrypt_options->mnemonic);
+        free(env->encrypt_options->mnemonic);
+    }
     free(env->encrypt_options);
 
     // free all http options
