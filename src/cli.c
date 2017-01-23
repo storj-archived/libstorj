@@ -45,7 +45,14 @@ static void get_input(char *line)
     } else {
         int len = strlen(line);
         if (len > 0) {
-            line[len - 1] = '\0';
+            char *last = strrchr(line, '\n');
+            if (last) {
+                last[0] = '\0';
+            }
+            last = strrchr(line, '\r');
+            if (last) {
+                last[0] = '\0';
+            }
         }
     }
 }
