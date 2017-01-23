@@ -30,9 +30,6 @@ extern "C" {
 #include <unistd.h>
 #endif
 
-#define ERROR 1
-#define OK 0
-
 // File transfer success
 #define STORJ_TRANSFER_OK 0
 #define STORJ_TRANSFER_CANCELED 1

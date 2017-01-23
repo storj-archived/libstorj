@@ -20,9 +20,6 @@
 #include <sys/time.h>
 #endif
 
-#define OK 0
-#define ERROR 1
-
 int hex2str(unsigned length, uint8_t *data, char *buffer);
 
 void print_int_array(uint8_t *array, unsigned length);
