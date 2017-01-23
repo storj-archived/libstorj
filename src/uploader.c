@@ -428,6 +428,10 @@ static int queue_push_frame(storj_upload_state_t *state, int index)
 {
     uv_work_t *shard_work[state->total_shards];
 
+    if (state->farmer_pointers[index].token != NULL) {
+        pointer_cleanup(&state->farmer_pointers[index]);
+    }
+
     shard_work[index] = frame_work_new(&index, state);
     uv_queue_work(state->env->loop, (uv_work_t*) shard_work[index], push_frame, after_push_frame);
 
@@ -449,7 +453,7 @@ static void after_create_frame(uv_work_t *work, int status)
         state->completed_shard_hash = true;
     }
 
-    // set the shard_meta to a struct array in the state for later use.
+    /* set the shard_meta to a struct array in the state for later use. */
 
     // Add Hash
     state->shard_meta[shard_meta->index].hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 1, sizeof(char));
@@ -925,7 +929,8 @@ static void prepare_upload_state(uv_work_t *work)
     state->add_shard_to_frame_request_count = calloc(state->total_shards, sizeof(int));
 
     for (int i = 0; i< state->total_shards; i++) {
-        state->add_shard_to_frame_request_count[0] = 0;
+        state->farmer_pointers[i] = (farmer_pointer_t){NULL, NULL};
+        state->add_shard_to_frame_request_count[i] = 0;
     }
 
 
