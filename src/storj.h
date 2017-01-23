@@ -77,11 +77,11 @@ extern "C" {
  * basic authentication to a Storj bridge.
  */
 typedef struct {
-    char *proto;
-    char *host;
+    const char *proto;
+    const char *host;
     int port;
-    char *user;
-    char *pass;
+    const char *user;
+    const char *pass;
 } storj_bridge_options_t;
 
 /** @brief File encryption options
@@ -90,7 +90,7 @@ typedef struct {
  * encryption and decryption.
  */
 typedef struct storj_encrypt_options {
-    char *mnemonic;
+    const char *mnemonic;
 } storj_encrypt_options_t;
 
 typedef enum {
@@ -104,9 +104,9 @@ typedef enum {
  * Settings for making HTTP requests
  */
 typedef struct storj_http_options {
-    char *user_agent;
+    const char *user_agent;
     storj_proxy_version_t proxy_version;
-    char *proxy_host;
+    const char *proxy_host;
     int proxy_port;
 } storj_http_options_t;
 
