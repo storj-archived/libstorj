@@ -80,6 +80,7 @@ typedef struct {
     shard_meta_t* shard_meta;
     farmer_pointer_t *farmer_pointers;
     void *handle;
+    int *add_shard_to_frame_request_count;
 } storj_upload_state_t;
 
 typedef struct {

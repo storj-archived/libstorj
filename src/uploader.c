@@ -18,6 +18,7 @@ static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state)
     req->options = state->env->bridge_options;
     req->upload_state = state;
     req->error_status = 0;
+    req->status_code = 0;
     if (index != NULL) {
         req->shard_index = *index;
         req->farmer_pointer = calloc(sizeof(farmer_pointer_t), sizeof(char));
@@ -93,6 +94,10 @@ static void pointer_cleanup(farmer_pointer_t *farmer_pointer)
 
 static void cleanup_state(storj_upload_state_t *state)
 {
+    if (state->final_callback_called) {
+        return;
+    }
+
     state->final_callback_called = true;
     state->finished_cb(state->error_status, state->handle);
 
@@ -112,13 +117,15 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->frame_id);
     }
 
+    if (state->add_shard_to_frame_request_count) {
+        free(state->add_shard_to_frame_request_count);
+    }
+
     if (state->shard_meta) {
         for (int i = 0; i < state->total_shards; i++ ) {
             printf("Cleaning up shard %d\n", i);
             shard_state_cleanup(&state->shard_meta[i]);
         }
-
-        free(state->shard_meta);
     }
 
     if (state->farmer_pointers) {
@@ -126,8 +133,6 @@ static void cleanup_state(storj_upload_state_t *state)
             printf("Cleaning up pointers %d\n", i);
             pointer_cleanup(&state->farmer_pointers[i]);
         }
-
-        free(state->farmer_pointers);
     }
 
     free(state);
@@ -200,9 +205,16 @@ static void after_push_frame(uv_work_t *work, int status)
     storj_upload_state_t *state = req->upload_state;
     farmer_pointer_t *pointer = req->farmer_pointer;
 
+    // Increment request count every request for retry counts
+    state->add_shard_to_frame_request_count[pointer->shard_index] += 1;
+
     // Check if we got a 200 status and token
-    if (req->error_status == 0 && req->status_code == 200 && pointer->token) {
+    if (req->error_status == 0 && req->status_code == 200 && pointer->token != NULL) {
+        // Maybe remove this and refactor?
         state->pointers_received_count += 1;
+
+        // Reset for if we need to get a new pointer later
+        state->add_shard_to_frame_request_count[pointer->shard_index] = 0;
 
         if (state->pointers_received_count == state->total_shards) {
             state->received_all_pointers = true;
@@ -243,8 +255,9 @@ static void after_push_frame(uv_work_t *work, int status)
         // Add farmer_last_seen to farmer_pointers
         state->farmer_pointers[pointer->shard_index].farmer_last_seen = calloc(strlen(pointer->farmer_last_seen) + 1, sizeof(char));
         memcpy(state->farmer_pointers[pointer->shard_index].farmer_last_seen, pointer->farmer_last_seen, strlen(pointer->farmer_last_seen));
+    } else if (state->add_shard_to_frame_request_count[pointer->shard_index] == 6) {
+        req->upload_state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     } else {
-        // Make sure we don't retry this forever
         queue_push_frame(state, pointer->shard_index);
     }
 
@@ -260,7 +273,7 @@ static void push_frame(uv_work_t *work)
     frame_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
     shard_meta_t *shard_meta = &state->shard_meta[req->shard_index];
-    printf("Pushing frame for shard index %d\n", req->shard_index);
+    printf("Pushing frame for shard index %d... (retry: %d)\n", req->shard_index, state->add_shard_to_frame_request_count[req->shard_index]);
 
     // Prepare the body
     struct json_object *body = json_object_new_object();
@@ -909,6 +922,12 @@ static void prepare_upload_state(uv_work_t *work)
     state->total_shards = ceil((double)state->file_size / state->shard_size);
     state->shard_meta = calloc(state->total_shards * sizeof(shard_meta_t), sizeof(char));
     state->farmer_pointers = calloc(state->total_shards * sizeof(farmer_pointer_t), sizeof(char));
+    state->add_shard_to_frame_request_count = calloc(state->total_shards, sizeof(int));
+
+    for (int i = 0; i< state->total_shards; i++) {
+        state->add_shard_to_frame_request_count[0] = 0;
+    }
+
 
     // Generate encryption key && Calculate deterministic file id
     char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
