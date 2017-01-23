@@ -114,9 +114,9 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         if (bo->pass == NULL) {
             return NULL;
         }
-        memset(bo->pass, 0, page_size);
-        memcpy(bo->pass, options->pass, pass_len);
-        if (!VirtualLock(bo->pass, pass_len)) {
+        memset((char *)bo->pass, 0, page_size);
+        memcpy((char *)bo->pass, options->pass, pass_len);
+        if (!VirtualLock((char *)bo->pass, pass_len)) {
             return NULL;
         }
 #else
@@ -153,7 +153,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         }
         memset((char *)eo->mnemonic, 0, page_size);
         memcpy((char *)eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
-        if (!VirtualLock(eo->mnemonic, mnemonic_len)) {
+        if (!VirtualLock((char *)eo->mnemonic, mnemonic_len)) {
             return NULL;
         }
 #else
@@ -223,7 +223,7 @@ int storj_destroy_env(storj_env_t *env)
 #ifdef _POSIX_MEMLOCK
         status = munlock(env->bridge_options->pass, pass_len);
 #elif _WIN32
-        if (!VirtualUnlock(env->bridge_options->pass, pass_len)) {
+        if (!VirtualUnlock((char *)env->bridge_options->pass, pass_len)) {
             status = 1;
         }
 #endif
@@ -242,7 +242,7 @@ int storj_destroy_env(storj_env_t *env)
 #ifdef _POSIX_MEMLOCK
         status = munlock(env->encrypt_options->mnemonic, mnemonic_len);
 #elif _WIN32
-        if (!VirtualUnlock(env->encrypt_options->mnemonic, mnemonic_len)) {
+        if (!VirtualUnlock((char *)env->encrypt_options->mnemonic, mnemonic_len)) {
             status = 1;
         }
 #endif
