@@ -246,7 +246,10 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
         ne_set_request_body_buffer(req, req_buf, strlen(req_buf));
     }
 
-    if (ne_begin_request(req) != NE_OK) {
+    int request_status = 0;
+    if ((request_status = ne_begin_request(req)) != NE_OK) {
+        // TODO check request status
+        // TODO get details if NE_ERROR(1) with ne_get_error(sess)
         clean_up_neon(sess, req);
         return NULL;
     }

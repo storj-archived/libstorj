@@ -28,3 +28,5 @@ TAGS
 libstorj.pc
 docs
 test/*.json.h
+src/storj.exe
+test/tests.exe
