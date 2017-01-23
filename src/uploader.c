@@ -293,14 +293,14 @@ static void push_frame(uv_work_t *work)
     // Add challenges
     json_object *challenges = json_object_new_array();
     for (int i = 0; i < CHALLENGES; i++ ) {
-        json_object_array_add(challenges, json_object_new_string(shard_meta->challenges_as_str[i]));
+        json_object_array_add(challenges, json_object_new_string((char *)shard_meta->challenges_as_str[i]));
     }
     json_object_object_add(body, "challenges", challenges);
 
     // Add Tree
     json_object *tree = json_object_new_array();
     for (int i = 0; i < CHALLENGES; i++ ) {
-        json_object_array_add(tree, json_object_new_string(shard_meta->tree[i]));
+        json_object_array_add(tree, json_object_new_string((char *)shard_meta->tree[i]));
     }
     json_object_object_add(body, "tree", tree);
 
@@ -883,6 +883,7 @@ static void queue_next_work(storj_upload_state_t *state)
         }
     } else if (state->received_all_pointers) {
         // Upload each shard here
+
         return cleanup_state(state);
     }
 
