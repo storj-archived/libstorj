@@ -71,15 +71,7 @@ static void get_password(char *password)
     tcsetattr(STDIN_FILENO, TCSANOW, &terminal);
 #endif
 
-    // get the password
-    if (fgets(password, BUFSIZ, stdin) == NULL) {
-        password[0] = '\0';
-    } else {
-        int len = strlen(password);
-        if (len > 0) {
-            password[len - 1] = '\0';
-        }
-    }
+    get_input(password);
 
     // go back to the previous settings
 #ifdef _WIN32
