@@ -43,7 +43,10 @@ static void get_input(char *line)
     if (fgets(line, BUFSIZ, stdin) == NULL) {
         line[0] = '\0';
     } else {
-        line[strlen(line)-1] = '\0';
+        int len = strlen(line);
+        if (len > 0) {
+            line[len - 1] = '\0';
+        }
     }
 }
 
@@ -72,7 +75,10 @@ static void get_password(char *password)
     if (fgets(password, BUFSIZ, stdin) == NULL) {
         password[0] = '\0';
     } else {
-        password[strlen(password)-1] = '\0';
+        int len = strlen(password);
+        if (len > 0) {
+            password[len - 1] = '\0';
+        }
     }
 
     // go back to the previous settings
