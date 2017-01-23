@@ -15,6 +15,8 @@
 
 extern int errno;
 
+static inline void noop() {};
+
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
     "working with buckets and files\n"                                  \
@@ -133,7 +135,6 @@ static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
     return status;
 }
 
-
 static void download_file_progress(double progress,
                                    uint64_t downloaded_bytes,
                                    uint64_t total_bytes,
@@ -161,6 +162,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     printf("\n");
     fclose(fd);
     if (status) {
+        // TODO send to stderr
         printf("Download failure: %s\n", storj_strerror(status));
         exit(status);
     }
@@ -185,9 +187,16 @@ void signal_handler(uv_signal_t *req, int signum)
 static int download_file(storj_env_t *env, char *bucket_id,
                          char *file_id, char *path)
 {
-    FILE *fd = fopen(path, "w+");
+    FILE *fd = NULL;
+
+    if (path) {
+        fd = fopen(path, "w+");
+    } else {
+        fd = stdout;
+    }
 
     if (fd == NULL) {
+        // TODO send to stderr
         printf("Unable to open %s: %s\n", path, strerror(errno));
         return 1;
     }
@@ -200,13 +209,16 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
     sig.data = state;
 
+    storj_progress_cb progress_cb = path ?
+        download_file_progress : (storj_progress_cb)noop;
+
+
     int status = storj_bridge_resolve_file(env, state, bucket_id,
                                            file_id, fd, NULL,
-                                           download_file_progress,
+                                           progress_cb,
                                            download_file_complete);
 
     return status;
-
 }
 
 static void list_files_callback(uv_work_t *work_req, int status)
@@ -579,7 +591,7 @@ int main(int argc, char **argv)
             char *file_id = argv[command_index + 2];
             char *path = argv[command_index + 3];
 
-            if (!bucket_id || !file_id || !path) {
+            if (!bucket_id || !file_id) {
                 printf(HELP_TEXT);
                 status = 1;
                 goto end_program;
