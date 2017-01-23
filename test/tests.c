@@ -412,7 +412,7 @@ int test_download()
 
     storj_destroy_env(env);
 
-    return OK;
+    return 0;
 }
 
 int test_download_cancel()
@@ -478,7 +478,7 @@ int test_download_cancel()
     free(download_file);
     storj_destroy_env(env);
 
-    return OK;
+    return 0;
 }
 
 int test_api()
@@ -607,7 +607,7 @@ int test_api()
 
     storj_destroy_env(env);
 
-    return OK;
+    return 0;
 }
 
 
@@ -709,7 +709,7 @@ int test_mnemonic_check()
 
     pass("mnemonic_check");
 
-    return OK;
+    return 0;
 }
 
 
@@ -726,13 +726,13 @@ int test_mnemonic_generate()
         printf("\t\texpected mnemonic check: %i\n", 0);
         printf("\t\tactual mnemonic check:   %i\n", status);
         free(mnemonic);
-        return ERROR;
+        return 1;
     }
     free(mnemonic);
 
     pass("test_mnemonic_check");
 
-    return OK;
+    return 0;
 }
 
 int test_generate_seed()
@@ -751,13 +751,13 @@ int test_generate_seed()
         printf("\t\tactual seed:   %s\n", seed);
 
         free(seed);
-        return ERROR;
+        return 1;
     }
 
     free(seed);
     pass("test_generate_seed");
 
-    return OK;
+    return 0;
 }
 
 int test_generate_bucket_key()
@@ -777,13 +777,13 @@ int test_generate_bucket_key()
         printf("\t\tactual bucket_key:   %s\n", bucket_key);
 
         free(bucket_key);
-        return ERROR;
+        return 1;
     }
 
     free(bucket_key);
     pass("test_generate_bucket_key");
 
-    return OK;
+    return 0;
 }
 
 int test_generate_file_key()
@@ -808,14 +808,14 @@ int test_generate_file_key()
 
         free(file_key);
         free(file_id);
-        return ERROR;
+        return 1;
     }
 
     free(file_key);
     free(file_id);
     pass("test_generate_file_key");
 
-    return OK;
+    return 0;
 }
 
 int test_calculate_file_id()
@@ -834,14 +834,14 @@ int test_calculate_file_id()
         printf("\t\tactual file_id:   %s\n", file_id);
 
         free(file_id);
-        return ERROR;
+        return 1;
     }
 
     pass("test_calculate_file_id");
 
     free(file_id);
 
-    return OK;
+    return 0;
 }
 
 int test_str2hex()
@@ -870,7 +870,7 @@ int test_str2hex()
 
     free(buffer);
 
-    return OK;
+    return 0;
 }
 
 int test_get_time_milliseconds()
@@ -884,7 +884,7 @@ int test_get_time_milliseconds()
         fail("test_get_time_milliseconds");
     }
 
-    return OK;
+    return 0;
 }
 
 int test_increment_ctr_aes_iv()
@@ -894,31 +894,31 @@ int test_increment_ctr_aes_iv()
 
     if (!increment_ctr_aes_iv(iv, 1)) {
         fail("increment_ctr_aes_iv(0)");
-        return ERROR;
+        return 1;
     }
 
     if (increment_ctr_aes_iv(iv, AES_BLOCK_SIZE)) {
         fail("increment_ctr_aes_iv(1)");
-        return ERROR;
+        return 1;
     }
 
     if (iv[15] != 184) {
         fail("increment_ctr_aes_iv(2)");
-        return ERROR;
+        return 1;
     }
 
     if (increment_ctr_aes_iv(iv, AES_BLOCK_SIZE * 72)) {
         fail("increment_ctr_aes_iv(3)");
-        return ERROR;
+        return 1;
     }
 
     if (iv[15] != 0 || iv[14] != 17) {
         fail("increment_ctr_aes_iv(4)");
-        return ERROR;
+        return 1;
     }
 
     pass("increment_ctr_aes_iv");
-    return OK;
+    return 0;
 }
 
 

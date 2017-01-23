@@ -957,14 +957,14 @@ int storj_bridge_store_file(storj_env_t *env,
 {
     if (opts->file_concurrency < 1) {
         printf("\nFile Concurrency (%i) can't be less than 1", opts->file_concurrency);
-        return ERROR;
+        return 1;
     } else if (!opts->file_concurrency) {
         opts->file_concurrency = 1;
     }
 
     if (opts->shard_concurrency < 1) {
         printf("\nShard Concurrency (%i) can't be less than 1", opts->shard_concurrency);
-        return ERROR;
+        return 1;
     } else if (!opts->shard_concurrency) {
         opts->shard_concurrency = 3;
     }

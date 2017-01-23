@@ -5,6 +5,6 @@ libstorj_la_LDFLAGS = -Wall -g
 include_HEADERS = storj.h
 
 bin_PROGRAMS = storj
-storj_SOURCES = cli.c $(top_builddir)/src/storj.h
-storj_LDADD = $(top_builddir)/src/libstorj.la
+storj_SOURCES = cli.c storj.h
+storj_LDADD = libstorj.la
 storj_LDFLAGS = -Wall -g -static

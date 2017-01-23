@@ -43,7 +43,17 @@ static void get_input(char *line)
     if (fgets(line, BUFSIZ, stdin) == NULL) {
         line[0] = '\0';
     } else {
-        line[strlen(line)-1] = '\0';
+        int len = strlen(line);
+        if (len > 0) {
+            char *last = strrchr(line, '\n');
+            if (last) {
+                last[0] = '\0';
+            }
+            last = strrchr(line, '\r');
+            if (last) {
+                last[0] = '\0';
+            }
+        }
     }
 }
 
@@ -68,12 +78,7 @@ static void get_password(char *password)
     tcsetattr(STDIN_FILENO, TCSANOW, &terminal);
 #endif
 
-    // get the password
-    if (fgets(password, BUFSIZ, stdin) == NULL) {
-        password[0] = '\0';
-    } else {
-        password[strlen(password)-1] = '\0';
-    }
+    get_input(password);
 
     // go back to the previous settings
 #ifdef _WIN32

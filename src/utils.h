@@ -16,12 +16,10 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <time.h>
 #else
 #include <sys/time.h>
 #endif
-
-#define OK 0
-#define ERROR 1
 
 int hex2str(unsigned length, uint8_t *data, char *buffer);
 

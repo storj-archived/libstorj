@@ -25,7 +25,7 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
     //Copy the result into buffer
     memcpy(*buffer, ripemd160_str, FILE_ID_SIZE);
 
-    return OK;
+    return 0;
 }
 
 int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
@@ -43,7 +43,7 @@ int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
 
     free(ripemd160_digest);
 
-    return OK;
+    return 0;
 }
 
 int ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
@@ -59,7 +59,7 @@ int ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
     //Copy the result into buffer
     memcpy(*digest, ripemd160_digest, RIPEMD160_DIGEST_SIZE);
 
-    return OK;
+    return 0;
 }
 
 int double_ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
@@ -76,7 +76,7 @@ int double_ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
     free(first_ripemd160_digest);
     free(second_ripemd160_digest);
 
-    return OK;
+    return 0;
 }
 
 int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
@@ -94,7 +94,7 @@ int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **di
 
     free(ripemd160_digest);
 
-    return OK;
+    return 0;
 }
 
 int generate_bucket_key(const char *mnemonic, char *bucket_id, char **bucket_key)
@@ -104,7 +104,7 @@ int generate_bucket_key(const char *mnemonic, char *bucket_id, char **bucket_key
     seed[128] = '\0';
     get_deterministic_key(seed, 128, bucket_id, bucket_key);
     free(seed);
-    return OK;
+    return 0;
 }
 
 int generate_file_key(const char *mnemonic, char *bucket_id, char *file_id, char **file_key)
@@ -114,7 +114,7 @@ int generate_file_key(const char *mnemonic, char *bucket_id, char *file_id, char
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
     get_deterministic_key(bucket_key, 64, file_id, file_key);
     free(bucket_key);
-    return OK;
+    return 0;
 }
 
 int get_deterministic_key(char *key, int key_len, char *id, char **buffer)
@@ -146,7 +146,7 @@ int get_deterministic_key(char *key, int key_len, char *id, char **buffer)
 
     free(sha512input);
 
-    return OK;
+    return 0;
 }
 
 int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest)

@@ -103,9 +103,8 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         if (bo->pass == NULL) {
             return NULL;
         }
-        memset(bo->pass, 0, page_size);
-        memcpy(bo->pass, options->pass, pass_len);
-        bo->pass[pass_len] = '\0';
+        memset((char *)bo->pass, 0, page_size);
+        memcpy((char *)bo->pass, options->pass, pass_len);
         if (mlock(bo->pass, pass_len)) {
             return NULL;
         }
@@ -115,10 +114,9 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         if (bo->pass == NULL) {
             return NULL;
         }
-        memset(bo->pass, 0, page_size);
-        memcpy(bo->pass, options->pass, pass_len);
-        bo->pass[pass_len] = '\0';
-        if (!VirtualLock(bo->pass, pass_len)) {
+        memset((char *)bo->pass, 0, page_size);
+        memcpy((char *)bo->pass, options->pass, pass_len);
+        if (!VirtualLock((char *)bo->pass, pass_len)) {
             return NULL;
         }
 #else
@@ -142,9 +140,8 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         if (eo->mnemonic == NULL) {
             return NULL;
         }
-        memset(eo->mnemonic, 0, page_size);
-        memcpy(eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
-        eo->mnemonic[mnemonic_len] = '\0';
+        memset((char *)eo->mnemonic, 0, page_size);
+        memcpy((char *)eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
         if (mlock(eo->mnemonic, mnemonic_len)) {
             return NULL;
         }
@@ -154,10 +151,9 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         if (eo->mnemonic == NULL) {
             return NULL;
         }
-        memset(eo->mnemonic, 0, page_size);
-        memcpy(eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
-        eo->mnemonic[mnemonic_len] = '\0';
-        if (!VirtualLock(eo->mnemonic, mnemonic_len)) {
+        memset((char *)eo->mnemonic, 0, page_size);
+        memcpy((char *)eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
+        if (!VirtualLock((char *)eo->mnemonic, mnemonic_len)) {
             return NULL;
         }
 #else
@@ -214,24 +210,24 @@ int storj_destroy_env(storj_env_t *env)
     int status = 0;
 
     // free and destroy all bridge options
-    free(env->bridge_options->proto);
-    free(env->bridge_options->host);
-    free(env->bridge_options->user);
+    free((char *)env->bridge_options->proto);
+    free((char *)env->bridge_options->host);
+    free((char *)env->bridge_options->user);
 
     // zero out password before freeing
     if (env->bridge_options->pass) {
         unsigned int pass_len = strlen(env->bridge_options->pass);
         if (pass_len > 0) {
-            memset_zero(env->bridge_options->pass, pass_len);
+            memset_zero((char *)env->bridge_options->pass, pass_len);
         }
 #ifdef _POSIX_MEMLOCK
         status = munlock(env->bridge_options->pass, pass_len);
 #elif _WIN32
-        if (!VirtualUnlock(env->bridge_options->pass, pass_len)) {
+        if (!VirtualUnlock((char *)env->bridge_options->pass, pass_len)) {
             status = 1;
         }
 #endif
-        free(env->bridge_options->pass);
+        free((char *)env->bridge_options->pass);
     }
     free(env->bridge_options);
 
@@ -241,22 +237,22 @@ int storj_destroy_env(storj_env_t *env)
 
         // zero out file encryption mnemonic before freeing
         if (mnemonic_len > 0) {
-            memset_zero(env->encrypt_options->mnemonic, mnemonic_len);
+            memset_zero((char *)env->encrypt_options->mnemonic, mnemonic_len);
         }
 #ifdef _POSIX_MEMLOCK
         status = munlock(env->encrypt_options->mnemonic, mnemonic_len);
 #elif _WIN32
-        if (!VirtualUnlock(env->encrypt_options->mnemonic, mnemonic_len)) {
+        if (!VirtualUnlock((char *)env->encrypt_options->mnemonic, mnemonic_len)) {
             status = 1;
         }
 #endif
-        free(env->encrypt_options->mnemonic);
+        free((char *)env->encrypt_options->mnemonic);
     }
     free(env->encrypt_options);
 
     // free all http options
-    free(env->http_options->user_agent);
-    free(env->http_options->proxy_host);
+    free((char *)env->http_options->user_agent);
+    free((char *)env->http_options->proxy_host);
     free(env->http_options);
 
     // free the event loop
