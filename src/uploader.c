@@ -117,6 +117,10 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->frame_id);
     }
 
+    if (state->tmp_path) {
+        free(state->tmp_path);
+    }
+
     if (state->add_shard_to_frame_request_count) {
         free(state->add_shard_to_frame_request_count);
     }
