@@ -49,6 +49,15 @@ static inline void noop() {};
 
 #define CLI_VERSION "libstorj-1.0.0-alpha"
 
+static char *get_home_dir()
+{
+#ifdef _WIN32
+    return getenv("USERPROFILE");
+#else
+    return getenv("HOME");
+#endif
+}
+
 static void get_input(char *line)
 {
     if (fgets(line, BUFSIZ, stdin) == NULL) {
@@ -444,8 +453,8 @@ static int set_auth()
     get_password(key);
     printf("\n");
 
-    char *home_dir;
-    if ((home_dir = getenv("HOME")) == NULL) {
+    char *home_dir = get_home_dir(home_dir);
+    if (home_dir == NULL) {
         printf("Home directory not available.\n");
         return 1;
     }
@@ -649,9 +658,8 @@ int main(int argc, char **argv)
     } else {
 
         // TODO avoid repeating this same code, as in set_auth
-        char *home_dir;
-        if ((home_dir = getenv("HOME")) == NULL) {
-            // TODO get home env for mingw builds
+        char *home_dir = get_home_dir(home_dir);
+        if (home_dir == NULL) {
             printf("Home directory not available.\n");
             return 1;
         }
