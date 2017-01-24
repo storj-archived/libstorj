@@ -109,6 +109,7 @@ static void cleanup_state(storj_upload_state_t *state)
     }
 
     if (state->file_key) {
+        memset_zero(state->file_key, SHA256_DIGEST_SIZE + 1);
         free(state->file_key);
     }
 
