@@ -221,14 +221,14 @@ int read_encrypted_file(char *filename, char *key, char *salt, char **result)
     }
 
     fseek(fp, 0, SEEK_END);
-    uint8_t fsize = ftell(fp) + 1;
+    uint8_t fsize = ftell(fp);
     fseek(fp, 0, SEEK_SET);
 
-    *result = calloc(fsize, sizeof(char));
-    if (*result == NULL) {
+    char *tmp = calloc(fsize, sizeof(char));
+    if (tmp == NULL) {
         return 1;
     }
-    fread(*result, fsize, 1, fp);
+    fread(tmp, fsize, 1, fp);
 
     if (ferror(fp)) {
         return 1;
@@ -243,18 +243,39 @@ int read_encrypted_file(char *filename, char *key, char *salt, char **result)
         pbkdf2_hmac_sha256(key_len, key, 1, salt_len, salt, SHA256_DIGEST_SIZE, pass);
 
         // Decrypt data
-        struct aes256_ctx *ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
-        if (ctx == NULL) {
+        uint8_t data_size =  fsize - SHA256_DIGEST_SIZE;
+        uint8_t *hash_sha256 = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+        uint8_t *hash_sha256_dup = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+        memcpy(hash_sha256, tmp, SHA256_DIGEST_SIZE);
+        memcpy(hash_sha256_dup, tmp, SHA256_DIGEST_SIZE);
+        uint8_t *to_decrypt = calloc(data_size, sizeof(uint8_t));
+        memcpy(to_decrypt, tmp + SHA256_DIGEST_SIZE, data_size);
+
+        // Encrypt data
+        *result = calloc(data_size, sizeof(uint8_t));
+        struct aes256_ctx *ctx1 = malloc(sizeof(struct aes256_ctx));
+        aes256_set_encrypt_key(ctx1, pass);
+        ctr_crypt(ctx1, (nettle_cipher_func *)aes256_encrypt,
+                  AES_BLOCK_SIZE, hash_sha256,
+                  data_size, *result, to_decrypt);
+
+        struct sha256_ctx_gen *ctx2 = malloc(sizeof(struct sha256_ctx));
+        sha256_init(ctx2);
+        sha256_update(ctx2, data_size, *result);
+        uint8_t *hash_sha256_gen = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+        sha256_digest(ctx2, SHA256_DIGEST_SIZE, hash_sha256_gen);
+        int sha_match = memcmp(hash_sha256_gen, hash_sha256_dup, SHA256_DIGEST_SIZE);
+        if (sha_match != 0) {
             return 1;
         }
-        aes256_set_decrypt_key(ctx, pass);
 
-        aes256_decrypt(ctx, fsize - 1, *result, *result);
-
-        free(ctx);
+        free(ctx1);
+        free(ctx2);
         free(pass);
 
         return 0;
+    } else {
+      *result = tmp;
     }
 
     return 0;
@@ -278,35 +299,29 @@ int write_encrypted_file(char *filename, char *key, char *salt, char *data)
         }
         pbkdf2_hmac_sha256(key_len, key, 1, salt_len, salt, SHA256_DIGEST_SIZE, pass);
 
+        uint8_t data_size = strlen(data);
+        struct sha256_ctx *ctx1 = malloc(sizeof(struct sha256_ctx));
+        sha256_init(ctx1);
+        sha256_update(ctx1, data_size, data);
+        uint8_t *hash_sha256 = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+        sha256_digest(ctx1, SHA256_DIGEST_SIZE, hash_sha256);
+        fwrite(hash_sha256, SHA256_DIGEST_SIZE, 1, fp);
+
         // Encrypt data
-        struct aes256_ctx *ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
-        if (ctx == NULL) {
-            return 1;
-        }
-        aes256_set_encrypt_key(ctx, pass);
+        uint8_t *result = calloc(data_size, sizeof(uint8_t));
+        struct aes256_ctx *ctx2 = malloc(sizeof(struct aes256_ctx));
+        aes256_set_encrypt_key(ctx2, pass);
+        ctr_crypt(ctx2, (nettle_cipher_func *)aes256_encrypt,
+                  AES_BLOCK_SIZE, hash_sha256,
+                  data_size, result, data);
 
-        uint8_t data_size = strlen(data) * sizeof(char) + 1;
-        uint8_t rem = data_size % AES_BLOCK_SIZE;
-        uint8_t new_size = data_size + (AES_BLOCK_SIZE - rem);
-        char *data_to_store = malloc(new_size);
-        if (data_to_store == NULL) {
-            return 1;
-        }
-        memcpy(data_to_store, data, data_size);
-
-        char *result = malloc(new_size);
-        if (result == NULL) {
-            return 1;
-        }
-        aes256_encrypt(ctx, new_size, result, data_to_store);
-
-        fwrite(result, new_size, 1, fp);
+        fwrite(result, data_size, 1, fp);
         fclose(fp);
 
-        free(ctx);
+        free(ctx1);
+        free(ctx2);
         free(pass);
         free(result);
-        free(data_to_store);
         return 0;
     }
 

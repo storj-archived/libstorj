@@ -431,13 +431,22 @@ static void set_auth()
     }
 
     if (user[0] != '\0') {
-        write_encrypted_file(user_file, NULL, NULL, user);
+        if (write_encrypted_file(user_file, NULL, NULL, user)) {
+            printf("Failed to write to user file.\n");
+            exit(0);
+        }
     }
     if (pass[0] != '\0') {
-        write_encrypted_file(pw_file, key, user, pass);
+        if (write_encrypted_file(pw_file, key, user, pass)) {
+            printf("Failed to write to password file (wrong encryption key?).\n");
+            exit(0);
+        }
     }
     if (mnemonic[0] != '\0') {
-        write_encrypted_file(mnemonic_file, key, user, mnemonic);
+        if (write_encrypted_file(mnemonic_file, key, user, mnemonic)) {
+            printf("Failed to write to mnemonic file (wrong encryption key?).\n");
+            exit(0);
+        }
     }
 
     printf("Successfully stored username, password, and mnemonic.\n");
@@ -604,7 +613,10 @@ int main(int argc, char **argv)
             get_password(encryption_key);
             printf("\n");
             char *result;
-            read_encrypted_file(user_file, NULL, NULL, &result);
+            if (read_encrypted_file(user_file, NULL, NULL, &result)) {
+                printf("Failed to read user file.\n");
+                exit(1);
+            }
             user = result;
         }
         if (!user) {
@@ -613,7 +625,7 @@ int main(int argc, char **argv)
             size_t num_chars;
             user_input = calloc(user_input_size, sizeof(char));
             if (user_input == NULL) {
-                printf("Unable to allocate buffer");
+                printf("Unable to allocate buffer\n");
                 exit(1);
             }
             printf("Bridge username (email): ");
@@ -626,7 +638,10 @@ int main(int argc, char **argv)
         char *pass = getenv("STORJ_BRIDGE_PASS");
         if (!pass && access(pw_file, F_OK) != -1 && encryption_key != NULL) {
             char *result;
-            read_encrypted_file(pw_file, encryption_key, user, &result);
+            if (read_encrypted_file(pw_file, encryption_key, user, &result)) {
+                printf("Failed to read password file.\n");
+                exit(1);
+            }
             pass = result;
         }
         if (!pass) {
@@ -647,7 +662,10 @@ int main(int argc, char **argv)
         char *mnemonic = getenv("STORJ_MNEMONIC");
         if (!mnemonic && access(mnemonic_file, F_OK) != -1 && encryption_key != NULL) {
             char *result;
-            read_encrypted_file(mnemonic_file, encryption_key, user, &result);
+            if (read_encrypted_file(mnemonic_file, encryption_key, user, &result)) {
+                printf("Failed to read mnemonic file.\n");
+                exit(1);
+            }
             mnemonic = result;
         }
         if (!mnemonic) {

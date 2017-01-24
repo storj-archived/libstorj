@@ -928,9 +928,9 @@ int test_read_write_encrypted_file()
     strcpy(test_file, folder);
     strcat(test_file, "testfile");
     if (access(test_file, F_OK) != -1) {
-        fail("read_write_encrypted_file(0)");
-        return ERROR;
+        unlink(test_file);
     }
+
     write_encrypted_file(test_file, NULL, NULL, "testdata");
     if (access(test_file, F_OK) == -1) {
         fail("read_write_encrypted_file(1)");
@@ -948,7 +948,9 @@ int test_read_write_encrypted_file()
     free(result);
 
     // it should successfully encrypt and decrypt a file with the provided key and salt
-    write_encrypted_file(test_file, "testpass", "testsalt", "testdata");
+    //const char *test_data = "letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic bless";
+    const char *test_data = "testdata";
+    write_encrypted_file(test_file, "testpass", "testsalt", test_data);
 
     // it should fail to decrypt if no password or salt is passed in
     read_encrypted_file(test_file, NULL, NULL, &result);
@@ -960,32 +962,29 @@ int test_read_write_encrypted_file()
     free(result);
 
     // it should fail to decrypt if the wrong password is passed in
-    read_encrypted_file(test_file, "wrongpass", "testsalt", &result);
-
-    if (strcmp(result, "testdata") == 0) {
+    if (!read_encrypted_file(test_file, "wrongpass", "testsalt", &result)) {
         fail("read_write_encrypted_file(4)");
         return ERROR;
     }
     free(result);
 
     // it should fail to decrypt if the wrong salt is passed in
-    read_encrypted_file(test_file, "testpass", "wrongsalt", &result);
-
-    if (strcmp(result, "testdata") == 0) {
+    if (!read_encrypted_file(test_file, "testpass", "wrongsalt", &result)) {
         fail("read_write_encrypted_file(5)");
         return ERROR;
     }
     free(result);
 
     // it should successfully decrypt if the correct password and salt are used
-    read_encrypted_file(test_file, "testpass", "testsalt", &result);
-
-    if (strcmp(result, "testdata") != 0) {
+    if (read_encrypted_file(test_file, "testpass", "testsalt", &result)) {
         fail("read_write_encrypted_file(6)");
+    }
+
+    if (strcmp(result, test_data) != 0) {
+        fail("read_write_encrypted_file(7)");
         return ERROR;
     }
     free(result);
-    unlink(test_file);
 
     pass("read_write_encrypted_file");
     return OK;
