@@ -244,7 +244,10 @@ int read_encrypted_file(char *filename, char *key, char *salt, char **result)
     if (tmp == NULL) {
         return 1;
     }
-    fread(tmp, fsize, 1, fp);
+    int read_blocks = fread(tmp, fsize, 1, fp);
+    if (read_blocks != 1) {
+      return 1;
+    }
 
     if (ferror(fp)) {
         return 1;
@@ -275,7 +278,7 @@ int read_encrypted_file(char *filename, char *key, char *salt, char **result)
                   AES_BLOCK_SIZE, hash_sha256,
                   data_size, *result, to_decrypt);
 
-        struct sha256_ctx_gen *ctx2 = malloc(sizeof(struct sha256_ctx));
+        struct sha256_ctx *ctx2 = malloc(sizeof(struct sha256_ctx));
         sha256_init(ctx2);
         sha256_update(ctx2, data_size, *result);
         uint8_t *hash_sha256_gen = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));

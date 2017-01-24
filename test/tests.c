@@ -973,7 +973,7 @@ int test_read_write_encrypted_file()
 
     // it should successfully encrypt and decrypt a file with the provided key and salt
     //const char *test_data = "letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic bless";
-    const char *test_data = "testdata";
+    char *test_data = "testdata";
     write_encrypted_file(test_file, "testpass", "testsalt", test_data);
 
     // it should fail to decrypt if no password or salt is passed in
