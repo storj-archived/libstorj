@@ -8,6 +8,7 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <windows.h>
+#include <direct.h>
 #else
 #include <termios.h>
 #include <unistd.h>
@@ -406,13 +407,13 @@ static void get_info_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-static void set_auth()
+static int set_auth()
 {
     char *user;
     char *user_input = calloc(BUFSIZ, sizeof(char));
     if (user_input == NULL) {
         printf("Unable to allocate buffer\n");
-        exit(1);
+        return 1;
     }
     printf("Bridge username (email): ");
     get_input(user_input);
@@ -429,8 +430,9 @@ static void set_auth()
     char *mnemonic_input = calloc(BUFSIZ, sizeof(char));
     if (mnemonic_input == NULL) {
         printf("Unable to allocate buffer");
-        exit(1);
+        return 1;
     }
+
     printf("Mnemonic: ");
     get_input(mnemonic_input);
     num_chars = strlen(mnemonic_input);
@@ -442,11 +444,12 @@ static void set_auth()
     get_password(key);
     printf("\n");
 
-
     char *home_dir;
     if ((home_dir = getenv("HOME")) == NULL) {
-        home_dir = getpwuid(getuid())->pw_dir;
+        printf("Home directory not available.\n");
+        return 1;
     }
+
     int len = strlen(home_dir) + strlen("/.storj");
     char *root_dir = calloc(len + 1, sizeof(char));
     strcpy(root_dir, home_dir);
@@ -456,10 +459,12 @@ static void set_auth()
     char *user_file = calloc(len + 1, sizeof(char));
     strcpy(user_file, root_dir);
     strcat(user_file, "/user");
+
     len = strlen(root_dir) + strlen("/password");
     char *pw_file = calloc(len + 1, sizeof(char));
     strcpy(pw_file, root_dir);
     strcat(pw_file, "/password");
+
     len = strlen(root_dir) + strlen("/mnemonic");
     char *mnemonic_file = calloc(len + 1, sizeof(char));
     strcpy(mnemonic_file, root_dir);
@@ -468,35 +473,42 @@ static void set_auth()
     struct stat st = {0};
     if (stat(root_dir, &st) == -1) {
         printf("Creating .storj directory...\n");
+#if _WIN32
+        _mkdir(root_dir);
+#else
         mkdir(root_dir, 0700);
+#endif
     }
 
     if (user[0] != '\0') {
         if (write_encrypted_file(user_file, NULL, NULL, user)) {
             printf("Failed to write to user file.\n");
-            exit(0);
+            return 1;
         }
     }
     if (pass[0] != '\0') {
         if (write_encrypted_file(pw_file, key, user, pass)) {
             printf("Failed to write to password file (wrong encryption key?).\n");
-            exit(0);
+            return 1;
         }
     }
     if (mnemonic[0] != '\0') {
         if (write_encrypted_file(mnemonic_file, key, user, mnemonic)) {
             printf("Failed to write to mnemonic file (wrong encryption key?).\n");
-            exit(0);
+            return 1;
         }
     }
 
     printf("Successfully stored username, password, and mnemonic.\n");
+
     free(user);
     free(user_input);
     free(pass);
     free(mnemonic);
     free(mnemonic_input);
     free(key);
+
+    return 0;
 }
 
 int main(int argc, char **argv)
@@ -562,8 +574,9 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "set-auth") == 0) {
-      set_auth();
-      exit(0);
+        if (set_auth()) {
+            return 1;
+        }
     }
 
     if (!storj_bridge) {
@@ -629,10 +642,15 @@ int main(int argc, char **argv)
         storj_bridge_get_info(env, NULL, get_info_callback);
 
     } else {
+
+        // TODO avoid repeating this same code, as in set_auth
         char *home_dir;
-        if ((home_dir = getenv("HOME")) == NULL) {
-            home_dir = getpwuid(getuid())->pw_dir;
+        if ((home_dir = getenv("HOME")) != NULL) {
+            // TODO get home env for mingw builds
+            printf("Home directory not available.\n");
+            return 1;
         }
+
         int len = strlen(home_dir) + strlen("/.storj");
         char *root_dir = calloc(len + 1, sizeof(char));
         strcpy(root_dir, home_dir);
@@ -642,10 +660,12 @@ int main(int argc, char **argv)
         char *user_file = calloc(len + 1, sizeof(char));
         strcpy(user_file, root_dir);
         strcat(user_file, "/user");
+
         len = strlen(root_dir) + strlen("/password");
         char *pw_file = calloc(len + 1, sizeof(char));
         strcpy(pw_file, root_dir);
         strcat(pw_file, "/password");
+
         len = strlen(root_dir) + strlen("/mnemonic");
         char *mnemonic_file = calloc(len + 1, sizeof(char));
         strcpy(mnemonic_file, root_dir);
