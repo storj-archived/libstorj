@@ -447,17 +447,25 @@ static void set_auth()
     if ((home_dir = getenv("HOME")) == NULL) {
         home_dir = getpwuid(getuid())->pw_dir;
     }
-    char root_dir[1024];
+    if (strlen(home_dir) >= BUFSIZ - strlen("/.storj")) {
+        printf("HOME directory is too long.\n");
+        exit(1);
+    }
+    char root_dir[BUFSIZ];
     strcpy(root_dir, home_dir);
     strcat(root_dir, "/.storj");
+    if (strlen(root_dir) >= BUFSIZ - strlen("/password")) {
+        printf("Root directory is too long.\n");
+        exit(1);
+    }
 
-    char user_file[1024];
+    char user_file[BUFSIZ];
     strcpy(user_file, root_dir);
     strcat(user_file, "/user");
-    char pw_file[1024];
+    char pw_file[BUFSIZ];
     strcpy(pw_file, root_dir);
     strcat(pw_file, "/password");
-    char mnemonic_file[1024];
+    char mnemonic_file[BUFSIZ];
     strcpy(mnemonic_file, root_dir);
     strcat(mnemonic_file, "/mnemonic");
 
@@ -629,17 +637,25 @@ int main(int argc, char **argv)
         if ((home_dir = getenv("HOME")) == NULL) {
             home_dir = getpwuid(getuid())->pw_dir;
         }
-        char root_dir[1024];
+        if (strlen(home_dir) >= BUFSIZ - strlen("/.storj")) {
+            printf("HOME directory is too long.\n");
+            exit(1);
+        }
+        char root_dir[BUFSIZ];
         strcpy(root_dir, home_dir);
         strcat(root_dir, "/.storj");
+        if (strlen(root_dir) >= BUFSIZ - strlen("/password")) {
+            printf("Root directory is too long.\n");
+            exit(1);
+        }
 
-        char user_file[1024];
+        char user_file[BUFSIZ];
         strcpy(user_file, root_dir);
         strcat(user_file, "/user");
-        char pw_file[1024];
+        char pw_file[BUFSIZ];
         strcpy(pw_file, root_dir);
         strcat(pw_file, "/password");
-        char mnemonic_file[1024];
+        char mnemonic_file[BUFSIZ];
         strcpy(mnemonic_file, root_dir);
         strcat(mnemonic_file, "/mnemonic");
 
