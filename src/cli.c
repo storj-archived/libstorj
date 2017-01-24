@@ -58,6 +58,30 @@ static char *get_home_dir()
 #endif
 }
 
+static int make_user_directory(char *path)
+{
+    struct stat st = {0};
+    if (stat(path, &st) == -1) {
+#if _WIN32
+        int mkdir_status = _mkdir(path);
+        if (mkdir_status) {
+            printf("Unable to create directory %s: code: %i.\n",
+                   path,
+                   mkdir_status);
+            return 1;
+        }
+#else
+        if (mkdir(path, 0700)) {
+            printf("Unable to create directory %s: reason: %s\n",
+                   path,
+                   strerror(errno));
+            return 1;
+        }
+#endif
+    }
+    return 0;
+}
+
 static void get_input(char *line)
 {
     if (fgets(line, BUFSIZ, stdin) == NULL) {
@@ -479,21 +503,9 @@ static int set_auth()
     strcpy(mnemonic_file, root_dir);
     strcat(mnemonic_file, "/mnemonic");
 
-    struct stat st = {0};
-    if (stat(root_dir, &st) == -1) {
-        printf("Creating .storj directory...\n");
-#if _WIN32
-        int mkdir_status = _mkdir(root_dir);
-        if (mkdir_status) {
-            printf("Unable to create directory %s: code: %i.\n", mkdir_status);
-            return 1;
-        }
-#else
-        if (mkdir(root_dir, 0700)) {
-            printf("Unable to create directory %s: %s\n", root_dir,
-                   strerror(errno));
-        }
-#endif
+
+    if (make_user_directory(root_dir)) {
+        return 1;
     }
 
     if (user[0] != '\0') {
