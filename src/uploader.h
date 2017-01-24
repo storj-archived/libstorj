@@ -67,35 +67,40 @@ typedef struct {
     char *frame_id;
     bool requesting_frame;
     bool pushing_frame;
+    bool received_all_pointers;
     int token_request_count;
     int frame_request_count;
+    int pointers_received_count;
     int encrypt_file_count;
     bool final_callback_called;
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;
-    char *mnemonic;
     int error_status;
     shard_meta_t* shard_meta;
     farmer_pointer_t *farmer_pointers;
+    int *add_shard_to_frame_request_count;
+    storj_log_levels_t *log;
     void *handle;
 } storj_upload_state_t;
 
 typedef struct {
-  /* state should not be modified in worker threads */
-  storj_upload_state_t *upload_state;
-  int status_code;
-  int error_status;
-  shard_meta_t *shard_meta;
+    /* state should not be modified in worker threads */
+    storj_upload_state_t *upload_state;
+    int status_code;
+    int error_status;
+    shard_meta_t *shard_meta;
+    storj_log_levels_t *log;
 } frame_builder_t;
 
 typedef struct {
-   char *file_id;
-   char *file_key;
-   char *file_path;
-   char *file_name;
-   char *tmp_path;
-   uint64_t file_size;
-   storj_upload_state_t *upload_state;
+    char *file_id;
+    char *file_key;
+    char *file_path;
+    char *file_name;
+    char *tmp_path;
+    uint64_t file_size;
+    storj_upload_state_t *upload_state;
+    storj_log_levels_t *log;
 } encrypt_file_meta_t;
 
 typedef struct {
@@ -108,6 +113,7 @@ typedef struct {
     storj_upload_state_t *upload_state;
     int status_code;
     int error_status;
+    storj_log_levels_t *log;
 } request_token_t;
 
 typedef struct {
@@ -122,9 +128,11 @@ typedef struct {
     // Add shard to frame
     int shard_index;
     farmer_pointer_t *farmer_pointer;
+
+    storj_log_levels_t *log;
 } frame_request_t;
 
-inline char separator()
+static inline char separator()
 {
 #ifdef _WIN32
     return '\\';

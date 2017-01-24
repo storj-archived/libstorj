@@ -366,6 +366,57 @@ void check_file_info(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+int test_upload()
+{
+
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
+    assert(env != NULL);
+
+    char *file_name = "samplefile.txt";
+    int len = strlen(folder) + strlen(file_name);
+    char *file = calloc(len + 1, sizeof(char));
+    strcpy(file, folder);
+    strcat(file, file_name);
+    file[len] = '\0';
+
+    create_test_file(file);
+
+    // upload file
+    storj_upload_opts_t upload_opts = {
+        .file_concurrency = 1,
+        .shard_concurrency = 3,
+        .bucket_id = "368be0816766b28fd5f43af5",
+        .file_path = file
+    };
+
+    int status = storj_bridge_store_file(env, &upload_opts,
+                                         NULL,
+                                         check_store_file_progress,
+                                         check_store_file);
+    assert(status == 0);
+
+    // run all queued events
+
+    if (uv_run(env->loop, UV_RUN_DEFAULT)) {
+        return 1;
+    }
+
+    // shutdown
+    status = uv_loop_close(env->loop);
+    if (status == UV_EBUSY) {
+        return 1;
+    }
+
+    free(file);
+    storj_destroy_env(env);
+
+    return 0;
+}
+
 int test_download()
 {
 
@@ -412,7 +463,7 @@ int test_download()
 
     storj_destroy_env(env);
 
-    return OK;
+    return 0;
 }
 
 int test_download_cancel()
@@ -478,19 +529,11 @@ int test_download_cancel()
     free(download_file);
     storj_destroy_env(env);
 
-    return OK;
+    return 0;
 }
 
 int test_api()
 {
-    char *file_name = "samplefile.txt";
-    int len = strlen(folder) + strlen(file_name);
-    char *file = calloc(len + 1, sizeof(char));
-    strcpy(file, folder);
-    strcat(file, file_name);
-    file[len] = '\0';
-    create_test_file(file);
-
     // initialize event loop and environment
     storj_env_t *env = storj_init_env(&bridge_options,
                                       &encrypt_options,
@@ -574,23 +617,6 @@ int test_api()
                                             file_id, NULL, check_file_pointers);
     assert(status == 0);
 
-    // upload file
-    storj_upload_opts_t upload_opts = {
-        .file_concurrency = 1,
-        .shard_concurrency = 3,
-        .bucket_id = "368be0816766b28fd5f43af5",
-        .file_path = file,
-        .key_pass = "password",
-        .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
-    };
-
-    // TODO store file test
-    status = storj_bridge_store_file(env, &upload_opts,
-                                     NULL,
-                                     check_store_file_progress,
-                                     check_store_file);
-    assert(status == 0);
-
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return 1;
@@ -603,11 +629,9 @@ int test_api()
     }
 
 
-    free(file);
-
     storj_destroy_env(env);
 
-    return OK;
+    return 0;
 }
 
 
@@ -709,7 +733,7 @@ int test_mnemonic_check()
 
     pass("mnemonic_check");
 
-    return OK;
+    return 0;
 }
 
 
@@ -726,13 +750,13 @@ int test_mnemonic_generate()
         printf("\t\texpected mnemonic check: %i\n", 0);
         printf("\t\tactual mnemonic check:   %i\n", status);
         free(mnemonic);
-        return ERROR;
+        return 1;
     }
     free(mnemonic);
 
     pass("test_mnemonic_check");
 
-    return OK;
+    return 0;
 }
 
 int test_generate_seed()
@@ -751,13 +775,13 @@ int test_generate_seed()
         printf("\t\tactual seed:   %s\n", seed);
 
         free(seed);
-        return ERROR;
+        return 1;
     }
 
     free(seed);
     pass("test_generate_seed");
 
-    return OK;
+    return 0;
 }
 
 int test_generate_bucket_key()
@@ -777,13 +801,13 @@ int test_generate_bucket_key()
         printf("\t\tactual bucket_key:   %s\n", bucket_key);
 
         free(bucket_key);
-        return ERROR;
+        return 1;
     }
 
     free(bucket_key);
     pass("test_generate_bucket_key");
 
-    return OK;
+    return 0;
 }
 
 int test_generate_file_key()
@@ -808,14 +832,14 @@ int test_generate_file_key()
 
         free(file_key);
         free(file_id);
-        return ERROR;
+        return 1;
     }
 
     free(file_key);
     free(file_id);
     pass("test_generate_file_key");
 
-    return OK;
+    return 0;
 }
 
 int test_calculate_file_id()
@@ -834,14 +858,14 @@ int test_calculate_file_id()
         printf("\t\tactual file_id:   %s\n", file_id);
 
         free(file_id);
-        return ERROR;
+        return 1;
     }
 
     pass("test_calculate_file_id");
 
     free(file_id);
 
-    return OK;
+    return 0;
 }
 
 int test_str2hex()
@@ -870,7 +894,7 @@ int test_str2hex()
 
     free(buffer);
 
-    return OK;
+    return 0;
 }
 
 int test_get_time_milliseconds()
@@ -884,7 +908,7 @@ int test_get_time_milliseconds()
         fail("test_get_time_milliseconds");
     }
 
-    return OK;
+    return 0;
 }
 
 int test_increment_ctr_aes_iv()
@@ -894,31 +918,31 @@ int test_increment_ctr_aes_iv()
 
     if (!increment_ctr_aes_iv(iv, 1)) {
         fail("increment_ctr_aes_iv(0)");
-        return ERROR;
+        return 1;
     }
 
     if (increment_ctr_aes_iv(iv, AES_BLOCK_SIZE)) {
         fail("increment_ctr_aes_iv(1)");
-        return ERROR;
+        return 1;
     }
 
     if (iv[15] != 184) {
         fail("increment_ctr_aes_iv(2)");
-        return ERROR;
+        return 1;
     }
 
     if (increment_ctr_aes_iv(iv, AES_BLOCK_SIZE * 72)) {
         fail("increment_ctr_aes_iv(3)");
-        return ERROR;
+        return 1;
     }
 
     if (iv[15] != 0 || iv[14] != 17) {
         fail("increment_ctr_aes_iv(4)");
-        return ERROR;
+        return 1;
     }
 
     pass("increment_ctr_aes_iv");
-    return OK;
+    return 0;
 }
 
 int test_read_write_encrypted_file()
@@ -934,7 +958,7 @@ int test_read_write_encrypted_file()
     write_encrypted_file(test_file, NULL, NULL, "testdata");
     if (access(test_file, F_OK) == -1) {
         fail("read_write_encrypted_file(1)");
-        return ERROR;
+        return 1;
     }
 
     // it should write in plaintext if key and salt are not passed in
@@ -943,7 +967,7 @@ int test_read_write_encrypted_file()
 
     if (strcmp(result, "testdata") != 0) {
         fail("read_write_encrypted_file(2)");
-        return ERROR;
+        return 1;
     }
     free(result);
 
@@ -957,21 +981,21 @@ int test_read_write_encrypted_file()
 
     if (strcmp(result, "testdata") == 0) {
         fail("read_write_encrypted_file(3)");
-        return ERROR;
+        return 1;
     }
     free(result);
 
     // it should fail to decrypt if the wrong password is passed in
     if (!read_encrypted_file(test_file, "wrongpass", "testsalt", &result)) {
         fail("read_write_encrypted_file(4)");
-        return ERROR;
+        return 1;
     }
     free(result);
 
     // it should fail to decrypt if the wrong salt is passed in
     if (!read_encrypted_file(test_file, "testpass", "wrongsalt", &result)) {
         fail("read_write_encrypted_file(5)");
-        return ERROR;
+        return 1;
     }
     free(result);
 
@@ -982,12 +1006,12 @@ int test_read_write_encrypted_file()
 
     if (strcmp(result, test_data) != 0) {
         fail("read_write_encrypted_file(7)");
-        return ERROR;
+        return 1;
     }
     free(result);
 
     pass("read_write_encrypted_file");
-    return OK;
+    return 0;
 }
 
 // Test Bridge Server
@@ -1047,6 +1071,10 @@ int main(void)
     status += test_api();
     ++tests_ran;
     printf("\n");
+
+    printf("Test Suite: Uploads\n");
+    status += test_upload();
+    ++tests_ran;
 
     printf("Test Suite: Downloads\n");
     status += test_download();

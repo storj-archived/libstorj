@@ -14,7 +14,6 @@ extern "C" {
 #endif
 
 #include <assert.h>
-#include <sys/mman.h>
 #include <json-c/json.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -26,8 +25,10 @@ extern "C" {
 #include <time.h>
 #endif
 
-#define ERROR 1
-#define OK 0
+#ifndef _WIN32
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
 
 // File transfer success
 #define STORJ_TRANSFER_OK 0
@@ -76,11 +77,11 @@ extern "C" {
  * basic authentication to a Storj bridge.
  */
 typedef struct {
-    char *proto;
-    char *host;
+    const char *proto;
+    const char *host;
     int port;
-    char *user;
-    char *pass;
+    const char *user;
+    const char *pass;
 } storj_bridge_options_t;
 
 /** @brief File encryption options
@@ -89,7 +90,7 @@ typedef struct {
  * encryption and decryption.
  */
 typedef struct storj_encrypt_options {
-    char *mnemonic;
+    const char *mnemonic;
 } storj_encrypt_options_t;
 
 typedef enum {
@@ -103,9 +104,9 @@ typedef enum {
  * Settings for making HTTP requests
  */
 typedef struct storj_http_options {
-    char *user_agent;
+    const char *user_agent;
     storj_proxy_version_t proxy_version;
-    char *proxy_host;
+    const char *proxy_host;
     int proxy_port;
 } storj_http_options_t;
 
@@ -234,8 +235,6 @@ typedef struct {
     int shard_concurrency;
     char *bucket_id;
     char *file_path;
-    char *key_pass;
-    char *mnemonic;
 } storj_upload_opts_t;
 
 /** @brief A structure that keeps state between multiple worker threads,

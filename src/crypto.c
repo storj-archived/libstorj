@@ -25,7 +25,7 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
     //Copy the result into buffer
     memcpy(*buffer, ripemd160_str, FILE_ID_SIZE);
 
-    return OK;
+    return 0;
 }
 
 int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
@@ -43,7 +43,7 @@ int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
 
     free(ripemd160_digest);
 
-    return OK;
+    return 0;
 }
 
 int ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
@@ -59,7 +59,7 @@ int ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
     //Copy the result into buffer
     memcpy(*digest, ripemd160_digest, RIPEMD160_DIGEST_SIZE);
 
-    return OK;
+    return 0;
 }
 
 int double_ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
@@ -68,7 +68,8 @@ int double_ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
     ripmd160sha256(data, data_size, &first_ripemd160_digest);
 
     char *second_ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
-    ripmd160sha256(first_ripemd160_digest, RIPEMD160_DIGEST_SIZE, &second_ripemd160_digest);
+    ripmd160sha256(first_ripemd160_digest, RIPEMD160_DIGEST_SIZE,
+                   &second_ripemd160_digest);
 
     //Copy the result into buffer
     memcpy(*digest, second_ripemd160_digest, RIPEMD160_DIGEST_SIZE);
@@ -76,10 +77,11 @@ int double_ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
     free(first_ripemd160_digest);
     free(second_ripemd160_digest);
 
-    return OK;
+    return 0;
 }
 
-int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
+int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size,
+                                    char **digest)
 {
     char *ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     double_ripmd160sha256(data, data_size, &ripemd160_digest);
@@ -94,27 +96,36 @@ int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **di
 
     free(ripemd160_digest);
 
-    return OK;
+    return 0;
 }
 
-int generate_bucket_key(const char *mnemonic, char *bucket_id, char **bucket_key)
+int generate_bucket_key(const char *mnemonic, char *bucket_id,
+                        char **bucket_key)
 {
     char *seed = calloc(128 + 1, sizeof(char));
     mnemonic_to_seed(mnemonic, "", &seed);
     seed[128] = '\0';
     get_deterministic_key(seed, 128, bucket_id, bucket_key);
+
+    memset_zero(seed, 128 + 1);
     free(seed);
-    return OK;
+
+    return 0;
 }
 
-int generate_file_key(const char *mnemonic, char *bucket_id, char *file_id, char **file_key)
+int generate_file_key(const char *mnemonic, char *bucket_id, char *file_id,
+                      char **file_key)
 {
     char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     generate_bucket_key(mnemonic, bucket_id, &bucket_key);
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
+
     get_deterministic_key(bucket_key, 64, file_id, file_key);
+
+    memset_zero(bucket_key, DETERMINISTIC_KEY_SIZE + 1);
     free(bucket_key);
-    return OK;
+
+    return 0;
 }
 
 int get_deterministic_key(char *key, int key_len, char *id, char **buffer)
@@ -128,25 +139,30 @@ int get_deterministic_key(char *key, int key_len, char *id, char **buffer)
     sha512input[input_len] = '\0';
 
     // Convert input to hexdata
-    uint8_t sha512input_as_hex[input_len/2 + 1];
-    memset(sha512input_as_hex, '\0', input_len/2 + 1);
+    uint8_t sha512input_as_hex[input_len / 2 + 1];
+    memset(sha512input_as_hex, '\0', input_len / 2 + 1);
     str2hex(input_len, sha512input, sha512input_as_hex);
 
     // Sha512 of hexdata
     uint8_t sha512_digest[SHA512_DIGEST_SIZE];
-    sha512_of_str(sha512input_as_hex, input_len/2, sha512_digest);
+    sha512_of_str(sha512input_as_hex, input_len / 2, sha512_digest);
 
     // Convert Sha512 hex to character array
-    char sha512_str[SHA512_DIGEST_SIZE*2+1];
-    memset(sha512_str, '\0', RIPEMD160_DIGEST_SIZE*2+1);
+    char sha512_str[SHA512_DIGEST_SIZE * 2 + 1];
+    memset(sha512_str, '\0', RIPEMD160_DIGEST_SIZE * 2 + 1);
     hex2str(SHA512_DIGEST_SIZE, sha512_digest, sha512_str);
 
     //First 64 bytes of sha512
     memcpy(*buffer, sha512_str, DETERMINISTIC_KEY_SIZE);
 
+    memset_zero(sha512_str, SHA512_DIGEST_SIZE * 2 + 1);
+    memset_zero(sha512_digest, SHA512_DIGEST_SIZE);
+    memset_zero(sha512input_as_hex, input_len / 2 + 1);
+    memset_zero(sha512input, input_len + 1);
+
     free(sha512input);
 
-    return OK;
+    return 0;
 }
 
 int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest)

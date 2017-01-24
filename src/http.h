@@ -27,12 +27,50 @@ typedef struct {
 } shard_download_progress_t;
 
 /**
+ * @brief Send a shard to a farmer via an HTTP request
+ *
+ * @param[in] http_options The HTTP options including proxy
+ * @param[in] farmer_id The farmer id
+ * @param[in] proto The protocol "http" or "https"
+ * @param[in] host The farmer host address
+ * @param[in] port The farmer port
+ * @param[in] shard_hash The hash of the shard to send
+ * @param[in] shard_total_bytes The total bytes of the shard
+ * @param[in] shard_data The actual bytes
+ * @param[in] token The farmer token for uploading
+ * @param[in] status_code The HTTP response status code
+ * @param[in] progress_handle The async handle for progress updates
+ * @param[in] canceled Pointer for canceling uploads
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int put_shard(storj_http_options_t *http_options,
+              char *farmer_id,
+              char *proto,
+              char *host,
+              int port,
+              char *shard_hash,
+              ssize_t shard_total_bytes,
+              char *shard_data,
+              char *token,
+              int *status_code,
+              uv_async_t *progress_handle,
+              bool *canceled);
+
+/**
  * @brief Make a HTTP request for a shard
  *
- * @param[in] host The farmer host
+ * @param[in] http_options The HTTP options including proxy
+ * @param[in] farmer_id The farmer id
+ * @param[in] proto The protocol "http" or "https"
+ * @param[in] host The farmer host address
  * @param[in] port The farmer port
- * @param[in] shard_hash The hash of the shard to retrieve
- * @param[out] out Target for shard data
+ * @param[in] shard_hash The hash of the shard to fetch
+ * @param[in] shard_total_bytes The total bytes of the shard
+ * @param[in] shard_data The actual bytes
+ * @param[in] token The farmer token for downloading
+ * @param[in] status_code The HTTP response status code
+ * @param[in] progress_handle The async handle for progress updates
+ * @param[in] canceled Pointer for canceling downloads
  * @return A non-zero error value on failure and 0 on success.
  */
 int fetch_shard(storj_http_options_t *http_options,

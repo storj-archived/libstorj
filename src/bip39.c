@@ -72,7 +72,8 @@ int mnemonic_from_data(const uint8_t *data, int len, char **buffer)
         idx = 0;
         for (j = 0; j < 11; j++) {
             idx <<= 1;
-            idx += (bits[(i * 11 + j) / 8] & (1 << (7 - ((i * 11 + j) % 8)))) > 0;
+            idx += (bits[(i * 11 + j) / 8] &
+                    (1 << (7 - ((i * 11 + j) % 8)))) > 0;
         }
         strcpy(p, wordlist[idx]);
         p += strlen(wordlist[idx]);
@@ -107,7 +108,8 @@ const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len)
         idx = 0;
         for (j = 0; j < 11; j++) {
             idx <<= 1;
-            idx += (bits[(i * 11 + j) / 8] & (1 << (7 - ((i * 11 + j) % 8)))) > 0;
+            idx += (bits[(i * 11 + j) / 8] &
+                    (1 << (7 - ((i * 11 + j) % 8)))) > 0;
         }
         mnemo[i] = idx;
     }
@@ -158,7 +160,8 @@ int mnemonic_check(const char *mnemonic)
             if (!wordlist[k]) { // word not found
                 return 0;
             }
-            if (strcmp(current_word, wordlist[k]) == 0) { // word found on index k
+            // word found on index k
+            if (strcmp(current_word, wordlist[k]) == 0) {
                 for (ki = 0; ki < 11; ki++) {
                     if (k & (1 << (10 - ki))) {
                         bits[bi / 8] |= 1 << (7 - (bi % 8));
@@ -179,7 +182,8 @@ int mnemonic_check(const char *mnemonic)
         return (bits[0] & 0xF0) == (bits[32] & 0xF0); // compare first 4 bits
     } else
         if (n == 18) {
-            return (bits[0] & 0xFC) == (bits[32] & 0xFC); // compare first 6 bits
+            // compare first 6 bits
+            return (bits[0] & 0xFC) == (bits[32] & 0xFC);
         } else
             if (n == 24) {
                 return bits[0] == bits[32]; // compare 8 bits
@@ -187,7 +191,8 @@ int mnemonic_check(const char *mnemonic)
     return 0;
 }
 
-int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer)
+int mnemonic_to_seed(const char *mnemonic, const char *passphrase,
+                     char **buffer)
 {
     int passphraselen = strlen(passphrase);
 
@@ -208,13 +213,17 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer
         strlen(salt), salt,
         SHA512_DIGEST_SIZE, seed);
 
-    char sha512_str[SHA512_DIGEST_SIZE*2 + 1];
-    memset(sha512_str, '\0', SHA512_DIGEST_SIZE*2 + 1);
+    char sha512_str[SHA512_DIGEST_SIZE * 2 + 1];
+    memset(sha512_str, '\0', SHA512_DIGEST_SIZE * 2 + 1);
 
     hex2str(SHA512_DIGEST_SIZE, seed, sha512_str);
-    sha512_str[SHA512_DIGEST_SIZE*2] = '\0';
+    sha512_str[SHA512_DIGEST_SIZE * 2] = '\0';
 
     memcpy(*buffer, sha512_str, SHA512_DIGEST_SIZE*2);
+
+    memset_zero(&sha512_str, SHA512_DIGEST_SIZE * 2 + 1);
+    memset_zero(seed, SHA512_DIGEST_SIZE + 1);
+    memset_zero(salt, 8 + 256);
 
     free(seed);
     free(salt);

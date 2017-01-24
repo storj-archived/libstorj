@@ -56,7 +56,8 @@ int mnemonic_check(const char *mnemonic);
  * @param[out] buffer Character array of sha512 hash of the mnemonic
  * @return A non-zero error value on failure and 0 on success.
  */
-int mnemonic_to_seed(const char *mnemonic, const char *passphrase, char **buffer);
+int mnemonic_to_seed(const char *mnemonic, const char *passphrase,
+                     char **buffer);
 
 const char * const *mnemonic_wordlist(void);
 

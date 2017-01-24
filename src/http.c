@@ -17,6 +17,72 @@ static void clean_up_neon(ne_session *s, ne_request *r)
     ne_session_destroy(s);
 }
 
+int put_shard(storj_http_options_t *http_options,
+              char *farmer_id,
+              char *proto,
+              char *host,
+              int port,
+              char *shard_hash,
+              ssize_t shard_total_bytes,
+              char *shard_data,
+              char *token,
+              int *status_code,
+              uv_async_t *progress_handle,
+              bool *canceled)
+{
+
+    ne_session *sess = ne_session_create(proto, host, port);
+
+    if (http_options->user_agent) {
+        ne_set_useragent(sess, http_options->user_agent);
+    }
+
+    if (http_options->proxy_version &&
+        http_options->proxy_host &&
+        http_options->proxy_port) {
+
+        ne_session_socks_proxy(sess,
+                               http_options->proxy_version,
+                               http_options->proxy_host,
+                               http_options->proxy_port,
+                               "",
+                               "");
+    }
+
+    char query_args[80];
+    ne_snprintf(query_args, 80, "?token=%s", token);
+
+    char *path = ne_concat("/shards/", shard_hash, query_args, NULL);
+
+    ne_request *req = ne_request_create(sess, "POST", path);
+
+    ne_add_request_header(req, "x-storj-node-id", farmer_id);
+
+    if (0 == strcmp(proto, "https")) {
+        ne_ssl_trust_default_ca(sess);
+    }
+
+    if (shard_data && shard_total_bytes) {
+        ne_add_request_header(req, "Content-Type", "application/octet-stream");
+        ne_set_request_body_buffer(req, shard_data, shard_total_bytes);
+    }
+
+    int request_status = ne_request_dispatch(req);
+
+    if (request_status != NE_OK) {
+        return request_status;
+    }
+
+    // set the status code
+    *status_code = ne_get_status(req)->code;
+
+    // clean up memory
+    free(path);
+    clean_up_neon(sess, req);
+
+    return 0;
+}
+
 /* shard_data must be allocated for shard_total_bytes */
 int fetch_shard(storj_http_options_t *http_options,
                 char *farmer_id,
@@ -246,7 +312,10 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
         ne_set_request_body_buffer(req, req_buf, strlen(req_buf));
     }
 
-    if (ne_begin_request(req) != NE_OK) {
+    int request_status = 0;
+    if ((request_status = ne_begin_request(req)) != NE_OK) {
+        // TODO check request status
+        // TODO get details if NE_ERROR(1) with ne_get_error(sess)
         clean_up_neon(sess, req);
         return NULL;
     }

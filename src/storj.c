@@ -81,20 +81,88 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     bo->proto = strdup(options->proto);
     bo->host = strdup(options->host);
     bo->port = options->port;
-    bo->user = strdup(options->user);
-    bo->pass = strdup(options->pass);
+    if (options->user) {
+        bo->user = strdup(options->user);
+    } else {
+        bo->user = NULL;
+    }
 
-    // prevent bridge password from being swapped unencrypted to disk
-    mlock(bo->pass, strlen(bo->pass));
+#ifdef _POSIX_MEMLOCK
+    int page_size = sysconf(_SC_PAGESIZE);
+#elif _WIN32
+    SYSTEM_INFO si;
+    GetSystemInfo (&si);
+    uintptr_t page_size = si.dwPageSize;
+#endif
+
+    if (options->pass) {
+        // prevent bridge password from being swapped unencrypted to disk
+#ifdef _POSIX_MEMLOCK
+        int pass_len = strlen(options->pass);
+        bo->pass = aligned_alloc(page_size, page_size);
+        if (bo->pass == NULL) {
+            return NULL;
+        }
+        memset((char *)bo->pass, 0, page_size);
+        memcpy((char *)bo->pass, options->pass, pass_len);
+        if (mlock(bo->pass, pass_len)) {
+            return NULL;
+        }
+#elif _WIN32
+        int pass_len = strlen(options->pass);
+        bo->pass = _aligned_malloc(page_size, page_size);
+        if (bo->pass == NULL) {
+            return NULL;
+        }
+        memset((char *)bo->pass, 0, page_size);
+        memcpy((char *)bo->pass, options->pass, pass_len);
+        if (!VirtualLock((char *)bo->pass, pass_len)) {
+            return NULL;
+        }
+#else
+        bo->pass = strdup(options->pass);
+#endif
+    } else {
+        bo->pass = NULL;
+    }
 
     env->bridge_options = bo;
 
     // deep copy encryption options
     storj_encrypt_options_t *eo = malloc(sizeof(storj_encrypt_options_t));
-    eo->mnemonic = strdup(encrypt_options->mnemonic);
 
-    // prevent file encryption mnemonic from being swapped unencrypted to disk
-    mlock(eo->mnemonic, strlen(eo->mnemonic));
+    if (encrypt_options && encrypt_options->mnemonic) {
+
+        // prevent file encryption mnemonic from being swapped unencrypted to disk
+#ifdef _POSIX_MEMLOCK
+        int mnemonic_len = strlen(encrypt_options->mnemonic);
+        eo->mnemonic = aligned_alloc(page_size, page_size);
+        if (eo->mnemonic == NULL) {
+            return NULL;
+        }
+        memset((char *)eo->mnemonic, 0, page_size);
+        memcpy((char *)eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
+        if (mlock(eo->mnemonic, mnemonic_len)) {
+            return NULL;
+        }
+#elif _WIN32
+        int mnemonic_len = strlen(encrypt_options->mnemonic);
+        eo->mnemonic = _aligned_malloc(page_size, page_size);
+        if (eo->mnemonic == NULL) {
+            return NULL;
+        }
+        memset((char *)eo->mnemonic, 0, page_size);
+        memcpy((char *)eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
+        if (!VirtualLock((char *)eo->mnemonic, mnemonic_len)) {
+            return NULL;
+        }
+#else
+        eo->mnemonic = strdup(encrypt_options->mnemonic);
+#endif
+    } else {
+        eo->mnemonic = NULL;
+    }
+
     env->encrypt_options = eo;
 
     // deep copy the http options
@@ -139,32 +207,52 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
 
 int storj_destroy_env(storj_env_t *env)
 {
+    int status = 0;
+
     // free and destroy all bridge options
-    free(env->bridge_options->proto);
-    free(env->bridge_options->host);
-    free(env->bridge_options->user);
+    free((char *)env->bridge_options->proto);
+    free((char *)env->bridge_options->host);
+    free((char *)env->bridge_options->user);
 
     // zero out password before freeing
-    unsigned int pass_len = strlen(env->bridge_options->pass);
-    if (pass_len > 0) {
-        memset_zero(env->bridge_options->pass, pass_len);
+    if (env->bridge_options->pass) {
+        unsigned int pass_len = strlen(env->bridge_options->pass);
+        if (pass_len > 0) {
+            memset_zero((char *)env->bridge_options->pass, pass_len);
+        }
+#ifdef _POSIX_MEMLOCK
+        status = munlock(env->bridge_options->pass, pass_len);
+#elif _WIN32
+        if (!VirtualUnlock((char *)env->bridge_options->pass, pass_len)) {
+            status = 1;
+        }
+#endif
+        free((char *)env->bridge_options->pass);
     }
-    free(env->bridge_options->pass);
     free(env->bridge_options);
 
     // free and destroy all encryption options
-    unsigned int mnemonic_len = strlen(env->encrypt_options->mnemonic);
+    if (env->encrypt_options && env->encrypt_options->mnemonic) {
+        unsigned int mnemonic_len = strlen(env->encrypt_options->mnemonic);
 
-    // zero out file encryption mnemonic before freeing
-    if (mnemonic_len > 0) {
-        memset_zero(env->encrypt_options->mnemonic, mnemonic_len);
+        // zero out file encryption mnemonic before freeing
+        if (mnemonic_len > 0) {
+            memset_zero((char *)env->encrypt_options->mnemonic, mnemonic_len);
+        }
+#ifdef _POSIX_MEMLOCK
+        status = munlock(env->encrypt_options->mnemonic, mnemonic_len);
+#elif _WIN32
+        if (!VirtualUnlock((char *)env->encrypt_options->mnemonic, mnemonic_len)) {
+            status = 1;
+        }
+#endif
+        free((char *)env->encrypt_options->mnemonic);
     }
-    free(env->encrypt_options->mnemonic);
     free(env->encrypt_options);
 
     // free all http options
-    free(env->http_options->user_agent);
-    free(env->http_options->proxy_host);
+    free((char *)env->http_options->user_agent);
+    free((char *)env->http_options->proxy_host);
     free(env->http_options);
 
     // free the event loop
@@ -175,6 +263,8 @@ int storj_destroy_env(storj_env_t *env)
 
     // free the environment
     free(env);
+
+    return status;
 }
 
 char *storj_strerror(int error_code)

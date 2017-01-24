@@ -1,14 +1,26 @@
 #include <errno.h>
-#include <termios.h>
-#include <stdio.h>
-#include <unistd.h>
 #include <getopt.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <windows.h>
+#else
+#include <termios.h>
+#include <unistd.h>
+#endif
 
 #include "storj.h"
 #include "crypto.h"
 
+#ifndef errno
 extern int errno;
+#endif
+
+static inline void noop() {};
 
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
@@ -29,32 +41,61 @@ extern int errno;
     "  -h, --help                output usage information\n"            \
     "  -v, --version             output the version number\n"           \
     "  -u, --url <url>           set the base url for the api\n"        \
-    "  -p, --proxy <url>         set the socks proxy (e.g. socks5://<host>:<port>)\n" \
-    "  -l, --log <level>         set the log level (default 0)\n" \
+    "  -p, --proxy <url>         set the socks proxy "                  \
+    "(e.g. socks5://<host>:<port>)\n"                                   \
+    "  -l, --log <level>         set the log level (default 0)\n"       \
     "  -d, --debug               set the debug log level\n\n"
 
 #define CLI_VERSION "libstorj-1.0.0-alpha"
 
+static void get_input(char *line)
+{
+    if (fgets(line, BUFSIZ, stdin) == NULL) {
+        line[0] = '\0';
+    } else {
+        int len = strlen(line);
+        if (len > 0) {
+            char *last = strrchr(line, '\n');
+            if (last) {
+                last[0] = '\0';
+            }
+            last = strrchr(line, '\r');
+            if (last) {
+                last[0] = '\0';
+            }
+        }
+    }
+}
+
 static void get_password(char *password)
 {
+    // do not echo the characters
+#ifdef _WIN32
+    HANDLE hstdin = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD mode = 0;
+    DWORD prev_mode = 0;
+    GetConsoleMode(hstdin, &mode);
+    GetConsoleMode(hstdin, &prev_mode);
+    SetConsoleMode(hstdin, mode & (~ENABLE_ECHO_INPUT));
+#else
     static struct termios prev_terminal;
     static struct termios terminal;
 
     tcgetattr(STDIN_FILENO, &prev_terminal);
 
-    // do not echo the characters
     terminal = prev_terminal;
     terminal.c_lflag &= ~(ECHO);
     tcsetattr(STDIN_FILENO, TCSANOW, &terminal);
+#endif
 
-    if (fgets(password, BUFSIZ, stdin) == NULL) {
-        password[0] = '\0';
-    } else {
-        password[strlen(password)-1] = '\0';
-    }
+    get_input(password);
 
     // go back to the previous settings
+#ifdef _WIN32
+    SetConsoleMode(hstdin, prev_mode);
+#else
     tcsetattr(STDIN_FILENO, TCSANOW, &prev_terminal);
+#endif
 }
 
 static void upload_file_progress(double progress,
@@ -78,22 +119,11 @@ static void upload_file_complete(int status, void *handle)
 
 static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 {
-
-    // TODO get mnemonic from env->encrypt_optons->mnemonic
-    char *mnemonic = getenv("STORJ_MNEMONIC");
-    if (!mnemonic) {
-        printf("Set your STORJ_MNEMONIC\n");
-        exit(1);
-        // "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
-    }
-
     storj_upload_opts_t upload_opts = {
         .file_concurrency = 1,
         .shard_concurrency = 3,
         .bucket_id = bucket_id,
-        .file_path = file_path,
-        .key_pass = "password",
-        .mnemonic = mnemonic
+        .file_path = file_path
     };
 
     int status = storj_bridge_store_file(env, &upload_opts,
@@ -103,7 +133,6 @@ static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 
     return status;
 }
-
 
 static void download_file_progress(double progress,
                                    uint64_t downloaded_bytes,
@@ -132,6 +161,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     printf("\n");
     fclose(fd);
     if (status) {
+        // TODO send to stderr
         printf("Download failure: %s\n", storj_strerror(status));
         exit(status);
     }
@@ -156,9 +186,16 @@ void signal_handler(uv_signal_t *req, int signum)
 static int download_file(storj_env_t *env, char *bucket_id,
                          char *file_id, char *path)
 {
-    FILE *fd = fopen(path, "w+");
+    FILE *fd = NULL;
+
+    if (path) {
+        fd = fopen(path, "w+");
+    } else {
+        fd = stdout;
+    }
 
     if (fd == NULL) {
+        // TODO send to stderr
         printf("Unable to open %s: %s\n", path, strerror(errno));
         return 1;
     }
@@ -171,13 +208,16 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
     sig.data = state;
 
+    storj_progress_cb progress_cb = path ?
+        download_file_progress : (storj_progress_cb)noop;
+
+
     int status = storj_bridge_resolve_file(env, state, bucket_id,
                                            file_id, fd, NULL,
-                                           download_file_progress,
+                                           progress_cb,
                                            download_file_complete);
 
     return status;
-
 }
 
 static void list_files_callback(uv_work_t *work_req, int status)
@@ -480,7 +520,8 @@ int main(int argc, char **argv)
 
     char *proxy = getenv("STORJ_PROXY");
 
-    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:", cmd_options, &index)) != -1) {
+    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:",
+                                 cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
                 storj_bridge = optarg;
@@ -620,18 +661,17 @@ int main(int argc, char **argv)
             user = result;
         }
         if (!user) {
-            char *user_input;
-            size_t user_input_size = 1024;
-            size_t num_chars;
-            user_input = calloc(user_input_size, sizeof(char));
+            char *user_input = malloc(BUFSIZ);
             if (user_input == NULL) {
                 printf("Unable to allocate buffer\n");
                 exit(1);
             }
             printf("Bridge username (email): ");
-            num_chars = getline(&user_input, &user_input_size, stdin);
-            user = calloc(num_chars - 1, sizeof(char));
-            memcpy(user, user_input, num_chars * sizeof(char) - 1);
+            get_input(user_input);
+            int num_chars = strlen(user_input);
+            user = calloc(num_chars + 1, sizeof(char));
+            memcpy(user, user_input, num_chars);
+            free(user_input);
         }
 
         // Get the bridge password
@@ -691,7 +731,7 @@ int main(int argc, char **argv)
             char *file_id = argv[command_index + 2];
             char *path = argv[command_index + 3];
 
-            if (!bucket_id || !file_id || !path) {
+            if (!bucket_id || !file_id) {
                 printf(HELP_TEXT);
                 status = 1;
                 goto end_program;
@@ -746,7 +786,9 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            storj_bridge_delete_bucket(env, bucket_id, NULL, delete_bucket_callback);
+            storj_bridge_delete_bucket(env, bucket_id, NULL,
+                                       delete_bucket_callback);
+
         } else if (strcmp(command, "remove-file") == 0) {
             char *bucket_id = argv[command_index + 1];
             char *file_id = argv[command_index + 2];
