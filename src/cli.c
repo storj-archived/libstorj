@@ -408,19 +408,17 @@ static void get_info_callback(uv_work_t *work_req, int status)
 
 static void set_auth()
 {
-    char *user = NULL;
-    char *user_input = NULL;
-    size_t user_input_size = 1024;
-    size_t num_chars;
-    user_input = calloc(user_input_size, sizeof(char));
+    char *user;
+    char *user_input = calloc(BUFSIZ, sizeof(char));
     if (user_input == NULL) {
-        printf("Unable to allocate buffer");
+        printf("Unable to allocate buffer\n");
         exit(1);
     }
-    printf("Username (email): ");
-    num_chars = getline(&user_input, &user_input_size, stdin);
-    user = calloc(num_chars - 1, sizeof(char));
-    memcpy(user, user_input, num_chars * sizeof(char) - 1);
+    printf("Bridge username (email): ");
+    get_input(user_input);
+    int num_chars = strlen(user_input);
+    user = calloc(num_chars + 1, sizeof(char));
+    memcpy(user, user_input, num_chars * sizeof(char));
 
     printf("Password: ");
     char *pass = calloc(BUFSIZ, sizeof(char));
@@ -428,17 +426,16 @@ static void set_auth()
     printf("\n");
 
     char *mnemonic;
-    char *mnemonic_input;
-    size_t mnemonic_input_size = 1024;
-    mnemonic_input = calloc(mnemonic_input_size, sizeof(char));
+    char *mnemonic_input = calloc(BUFSIZ, sizeof(char));
     if (mnemonic_input == NULL) {
         printf("Unable to allocate buffer");
         exit(1);
     }
     printf("Mnemonic: ");
-    num_chars = getline(&mnemonic_input, &mnemonic_input_size, stdin);
-    mnemonic = calloc(num_chars - 1, sizeof(char));
-    memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char) - 1);
+    get_input(mnemonic_input);
+    num_chars = strlen(mnemonic_input);
+    mnemonic = calloc(num_chars + 1, sizeof(char));
+    memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
 
     printf("Encryption key: ");
     char *key = calloc(BUFSIZ, sizeof(char));
