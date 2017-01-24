@@ -581,9 +581,7 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "set-auth") == 0) {
-        if (set_auth()) {
-            return 1;
-        }
+        return set_auth();
     }
 
     if (!storj_bridge) {
@@ -652,7 +650,7 @@ int main(int argc, char **argv)
 
         // TODO avoid repeating this same code, as in set_auth
         char *home_dir;
-        if ((home_dir = getenv("HOME")) != NULL) {
+        if ((home_dir = getenv("HOME")) == NULL) {
             // TODO get home env for mingw builds
             printf("Home directory not available.\n");
             return 1;
