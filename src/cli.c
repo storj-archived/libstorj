@@ -221,7 +221,6 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
 static void list_mirrors_callback(uv_work_t *work_req, int status)
 {
-    // TODO free things in this function
     assert(status == 0);
     json_request_t *req = work_req->data;
 
@@ -237,7 +236,6 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
         exit(1);
     }
 
-    //printf("%s\n", json_object_to_json_string(req->response));
     int num_mirrors = json_object_array_length(req->response);
 
     struct json_object *shard;
@@ -264,8 +262,7 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
             if (j == 0) {
                 json_object_object_get_ex(item, "shardHash",
                                           &hash);
-                printf("Hash: %s\n",
-                       json_object_to_json_string(hash));
+                printf("Hash: %s\n", json_object_get_string(hash));
             }
             json_object_object_get_ex(item, "contact", &contact);
             json_object_object_get_ex(contact, "address",
@@ -273,15 +270,14 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
             json_object_object_get_ex(contact, "port", &port);
             json_object_object_get_ex(contact, "nodeID", &node_id);
             const char *address_str =
-                json_object_to_json_string(address);
-            const char *port_str =
-                json_object_to_json_string(port);
+                json_object_get_string(address);
+            const char *port_str = json_object_get_string(port);
             const char *node_id_str =
-                json_object_to_json_string(node_id);
-            const char *contact_url = ne_concat("\tstorj://",
-                                                address_str, ":",
-                                                port_str, "/",
-                                                node_id_str, NULL);
+                json_object_get_string(node_id);
+            char *contact_url = ne_concat("\tstorj://",
+                                          address_str, ":",
+                                          port_str, "/",
+                                          node_id_str, NULL);
             printf("%s\n", contact_url);
         }
 
@@ -297,8 +293,7 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
             if (j == 0) {
                 json_object_object_get_ex(item, "shardHash",
                                           &hash);
-                printf("Hash: %s\n",
-                       json_object_to_json_string(hash));
+                printf("Hash: %s\n", json_object_get_string(hash));
             }
             json_object_object_get_ex(item, "contact", &contact);
             json_object_object_get_ex(contact, "address",
@@ -306,15 +301,14 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
             json_object_object_get_ex(contact, "port", &port);
             json_object_object_get_ex(contact, "nodeID", &node_id);
             const char *address_str =
-                json_object_to_json_string(address);
-            const char *port_str =
-                json_object_to_json_string(port);
+                json_object_get_string(address);
+            const char *port_str = json_object_get_string(port);
             const char *node_id_str =
-                json_object_to_json_string(node_id);
-            const char *contact_url = ne_concat("\tstorj://",
-                                                address_str, ":",
-                                                port_str, "/",
-                                                node_id_str, NULL);
+                json_object_get_string(node_id);
+            char *contact_url = ne_concat("\tstorj://",
+                                          address_str, ":",
+                                          port_str, "/",
+                                          node_id_str, NULL);
             printf("%s\n", contact_url);
         }
     }
