@@ -34,8 +34,9 @@ static inline void noop() {};
     "  -h, --help                output usage information\n"            \
     "  -v, --version             output the version number\n"           \
     "  -u, --url <url>           set the base url for the api\n"        \
-    "  -p, --proxy <url>         set the socks proxy (e.g. socks5://<host>:<port>)\n" \
-    "  -l, --log <level>         set the log level (default 0)\n" \
+    "  -p, --proxy <url>         set the socks proxy "                  \
+    "(e.g. socks5://<host>:<port>)\n"                                   \
+    "  -l, --log <level>         set the log level (default 0)\n"       \
     "  -d, --debug               set the debug log level\n\n"
 
 #define CLI_VERSION "libstorj-1.0.0-alpha"
