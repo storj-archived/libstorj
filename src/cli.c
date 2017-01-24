@@ -474,9 +474,16 @@ static int set_auth()
     if (stat(root_dir, &st) == -1) {
         printf("Creating .storj directory...\n");
 #if _WIN32
-        _mkdir(root_dir);
+        int mkdir_status = _mkdir(root_dir);
+        if (mkdir_status) {
+            printf("Unable to create directory %s: code: %i.\n", mkdir_status);
+            return 1;
+        }
 #else
-        mkdir(root_dir, 0700);
+        if (mkdir(root_dir, 0700)) {
+            printf("Unable to create directory %s: %s\n", root_dir,
+                   strerror(errno));
+        }
 #endif
     }
 
