@@ -420,7 +420,8 @@ int main(int argc, char **argv)
 
     char *proxy = getenv("STORJ_PROXY");
 
-    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:", cmd_options, &index)) != -1) {
+    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:",
+                                 cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
                 storj_bridge = optarg;
@@ -637,7 +638,9 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            storj_bridge_delete_bucket(env, bucket_id, NULL, delete_bucket_callback);
+            storj_bridge_delete_bucket(env, bucket_id, NULL,
+                                       delete_bucket_callback);
+
         } else if (strcmp(command, "remove-file") == 0) {
             char *bucket_id = argv[command_index + 1];
             char *file_id = argv[command_index + 2];
