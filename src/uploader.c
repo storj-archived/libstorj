@@ -1019,11 +1019,11 @@ static void prepare_upload_state(uv_work_t *work)
     state->shard_size = determine_shard_size(state, 0);
     state->total_shards = ceil((double)state->file_size / state->shard_size);
 
-    state->shard_meta = calloc(state->total_shards *
-                               sizeof(shard_meta_t), sizeof(char));
+    state->shard_meta = calloc(state->total_shards * sizeof(shard_meta_t),
+                               sizeof(char));
 
-    state->farmer_pointers = calloc(state->total_shards *
-                                    sizeof(farmer_pointer_t), sizeof(char));
+    int calloc_amount = state->total_shards * sizeof(farmer_pointer_t);
+    state->farmer_pointers = calloc(calloc_amount, sizeof(char));
 
     state->add_shard_to_frame_request_count = calloc(state->total_shards,
                                                      sizeof(int));
