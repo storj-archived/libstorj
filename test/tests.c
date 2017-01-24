@@ -366,6 +366,59 @@ void check_file_info(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+int test_upload()
+{
+
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
+    assert(env != NULL);
+
+    char *file_name = "samplefile.txt";
+    int len = strlen(folder) + strlen(file_name);
+    char *file = calloc(len + 1, sizeof(char));
+    strcpy(file, folder);
+    strcat(file, file_name);
+    file[len] = '\0';
+
+    create_test_file(file);
+
+    // upload file
+    storj_upload_opts_t upload_opts = {
+        .file_concurrency = 1,
+        .shard_concurrency = 3,
+        .bucket_id = "368be0816766b28fd5f43af5",
+        .file_path = file,
+        .key_pass = "password",
+        .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+    };
+
+    int status = storj_bridge_store_file(env, &upload_opts,
+                                         NULL,
+                                         check_store_file_progress,
+                                         check_store_file);
+    assert(status == 0);
+
+    // run all queued events
+
+    if (uv_run(env->loop, UV_RUN_DEFAULT)) {
+        return 1;
+    }
+
+    // shutdown
+    status = uv_loop_close(env->loop);
+    if (status == UV_EBUSY) {
+        return 1;
+    }
+
+    free(file);
+    storj_destroy_env(env);
+
+    return 0;
+}
+
 int test_download()
 {
 
@@ -483,14 +536,6 @@ int test_download_cancel()
 
 int test_api()
 {
-    char *file_name = "samplefile.txt";
-    int len = strlen(folder) + strlen(file_name);
-    char *file = calloc(len + 1, sizeof(char));
-    strcpy(file, folder);
-    strcat(file, file_name);
-    file[len] = '\0';
-    create_test_file(file);
-
     // initialize event loop and environment
     storj_env_t *env = storj_init_env(&bridge_options,
                                       &encrypt_options,
@@ -574,23 +619,6 @@ int test_api()
                                             file_id, NULL, check_file_pointers);
     assert(status == 0);
 
-    // upload file
-    storj_upload_opts_t upload_opts = {
-        .file_concurrency = 1,
-        .shard_concurrency = 3,
-        .bucket_id = "368be0816766b28fd5f43af5",
-        .file_path = file,
-        .key_pass = "password",
-        .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
-    };
-
-    // TODO store file test
-    status = storj_bridge_store_file(env, &upload_opts,
-                                     NULL,
-                                     check_store_file_progress,
-                                     check_store_file);
-    assert(status == 0);
-
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return 1;
@@ -602,8 +630,6 @@ int test_api()
         return 1;
     }
 
-
-    free(file);
 
     storj_destroy_env(env);
 
@@ -979,6 +1005,10 @@ int main(void)
     status += test_api();
     ++tests_ran;
     printf("\n");
+
+    printf("Test Suite: Uploads\n");
+    status += test_upload();
+    ++tests_ran;
 
     printf("Test Suite: Downloads\n");
     status += test_download();
