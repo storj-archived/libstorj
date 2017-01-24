@@ -812,14 +812,14 @@ static void encrypt_file(uv_work_t *work)
     memset(cphr_txt, '\0', 513);
 
     if (original_file) {
-        size_t bytesRead = 0;
+        size_t bytes_read = 0;
         // read up to sizeof(buffer) bytes
-        while ((bytesRead = fread(clr_txt, 1, AES_BLOCK_SIZE * 30,
-                                  original_file)) > 0) {
+        while ((bytes_read = fread(clr_txt, 1, AES_BLOCK_SIZE * 30,
+                                   original_file)) > 0) {
             ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
-                      AES_BLOCK_SIZE, iv, bytesRead, cphr_txt, clr_txt);
+                      AES_BLOCK_SIZE, iv, bytes_read, cphr_txt, clr_txt);
 
-            fwrite(cphr_txt, bytesRead, 1, encrypted_file);
+            fwrite(cphr_txt, bytes_read, 1, encrypted_file);
 
             memset(clr_txt, '\0', 513);
             memset(cphr_txt, '\0', 513);
