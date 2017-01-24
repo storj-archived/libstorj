@@ -267,6 +267,25 @@ int storj_destroy_env(storj_env_t *env)
     return status;
 }
 
+int storj_write_auth(const char *filepath,
+                     const char *passhrase,
+                     const char *bridge_user,
+                     const char *bridge_pass,
+                     const char *mnemonic)
+{
+
+}
+
+int storj_read_auth(const char *filepath,
+                    const char *passphrase,
+                    char *bridge_user,
+                    char *bridge_pass,
+                    char *mnemonic)
+{
+
+}
+
+
 char *storj_strerror(int error_code)
 {
     switch(error_code) {

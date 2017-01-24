@@ -311,6 +311,44 @@ storj_env_t *storj_init_env(storj_bridge_options_t *options,
 int storj_destroy_env(storj_env_t *env);
 
 /**
+ * @brief Will encrypt and write options to disk
+ *
+ * This will encrypt bridge and encryption options to disk using a key
+ * derivation function on a passphrase.
+ *
+ * @param[in] filepath - The file path to save the options
+ * @param[in] passphrase - Used to encrypt options to disk
+ * @param[in] bridge_user - The bridge username
+ * @param[in] bridge_pass - The bridge password
+ * @param[in] mnemonic - The file encryption mnemonic
+ * @return A null value on error, zero on success.
+ */
+int storj_write_auth(const char *filepath,
+                     const char *passhrase,
+                     const char *bridge_user,
+                     const char *bridge_pass,
+                     const char *mnemonic);
+
+/**
+ * @brief Will read and decrypt options from disk
+ *
+ * This will decrypt bridge and encryption options from disk from
+ * the passphrase.
+ *
+ * @param[in] filepath - The file path to save the options
+ * @param[in] passphrase - Used to encrypt options to disk
+ * @param[out] bridge_user - The bridge username
+ * @param[out] bridge_pass - The bridge password
+ * @param[out] mnemonic - The file encryption mnemonic
+ * @return A null value on error, zero on success.
+ */
+int storj_read_auth(const char *filepath,
+                    const char *passphrase,
+                    char *bridge_user,
+                    char *bridge_pass,
+                    char *mnemonic);
+
+/**
  * @brief Get the error message for an error code
  *
  * This function will return a error message associated with a storj
