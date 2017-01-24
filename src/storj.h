@@ -507,6 +507,22 @@ int storj_bridge_get_file_info(storj_env_t *env,
                                void *handle,
                                uv_after_work_cb cb);
 
+/**
+ * @brief Get mirror data for a file
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] file_id The bucket id
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int storj_bridge_list_mirrors(storj_env_t *env,
+                              char *bucket_id,
+                              char *file_id,
+                              void *handle,
+                              uv_after_work_cb cb);
+
 int storj_bridge_store_file(storj_env_t *env,
                             storj_upload_opts_t *opts,
                             void *handle,

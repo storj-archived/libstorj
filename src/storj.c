@@ -476,3 +476,18 @@ int storj_bridge_get_file_info(storj_env_t *env,
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
+
+int storj_bridge_list_mirrors(storj_env_t *env,
+                              char *bucket_id,
+                              char *file_id,
+                              void *handle,
+                              uv_after_work_cb cb)
+{
+    char *path = ne_concat("/buckets/", bucket_id, "/files/", file_id,
+                           "/mirrors", NULL);
+
+    uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
+                                           true, handle);
+
+    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+}

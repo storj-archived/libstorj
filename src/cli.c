@@ -13,6 +13,8 @@
 #endif
 
 #include "storj.h"
+// TODO remove this
+#include "http.h"
 
 #ifndef errno
 extern int errno;
@@ -214,6 +216,111 @@ static int download_file(storj_env_t *env, char *bucket_id,
                                            download_file_complete);
 
     return status;
+}
+
+static void list_mirrors_callback(uv_work_t *work_req, int status)
+{
+    // TODO free things in this function
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    if (req->status_code != 200) {
+        printf("Request failed with status code: %i\n",
+               req->status_code);
+    }
+
+    if (req->response == NULL) {
+        free(req);
+        free(work_req);
+        printf("Failed to list mirrors.\n");
+        exit(1);
+    }
+
+    //printf("%s\n", json_object_to_json_string(req->response));
+    int num_mirrors = json_object_array_length(req->response);
+
+    struct json_object *shard;
+    struct json_object *established;
+    struct json_object *available;
+    struct json_object *item;
+    struct json_object *hash;
+    struct json_object *contact;
+    struct json_object *address;
+    struct json_object *port;
+    struct json_object *node_id;
+
+    for (int i = 0; i < num_mirrors; i++) {
+        printf("Established\n");
+        printf("-----------\n");
+        printf("Shard: %i\n", i);
+        shard = json_object_array_get_idx(req->response, i);
+        json_object_object_get_ex(shard, "established",
+                                 &established);
+        int num_established =
+            json_object_array_length(established);
+        for (int j = 0; j < num_established; j++) {
+            item = json_object_array_get_idx(established, j);
+            if (j == 0) {
+                json_object_object_get_ex(item, "shardHash",
+                                          &hash);
+                printf("Hash: %s\n",
+                       json_object_to_json_string(hash));
+            }
+            json_object_object_get_ex(item, "contact", &contact);
+            json_object_object_get_ex(contact, "address",
+                                      &address);
+            json_object_object_get_ex(contact, "port", &port);
+            json_object_object_get_ex(contact, "nodeID", &node_id);
+            const char *address_str =
+                json_object_to_json_string(address);
+            const char *port_str =
+                json_object_to_json_string(port);
+            const char *node_id_str =
+                json_object_to_json_string(node_id);
+            const char *contact_url = ne_concat("\tstorj://",
+                                                address_str, ":",
+                                                port_str, "/",
+                                                node_id_str, NULL);
+            printf("%s\n", contact_url);
+        }
+
+        printf("\nAvailable\n");
+        printf("---------\n");
+        printf("Shard: %i\n", i);
+        json_object_object_get_ex(shard, "available",
+                                 &available);
+        int num_available =
+            json_object_array_length(established);
+        for (int j = 0; j < num_available; j++) {
+            item = json_object_array_get_idx(available, j);
+            if (j == 0) {
+                json_object_object_get_ex(item, "shardHash",
+                                          &hash);
+                printf("Hash: %s\n",
+                       json_object_to_json_string(hash));
+            }
+            json_object_object_get_ex(item, "contact", &contact);
+            json_object_object_get_ex(contact, "address",
+                                      &address);
+            json_object_object_get_ex(contact, "port", &port);
+            json_object_object_get_ex(contact, "nodeID", &node_id);
+            const char *address_str =
+                json_object_to_json_string(address);
+            const char *port_str =
+                json_object_to_json_string(port);
+            const char *node_id_str =
+                json_object_to_json_string(node_id);
+            const char *contact_url = ne_concat("\tstorj://",
+                                                address_str, ":",
+                                                port_str, "/",
+                                                node_id_str, NULL);
+            printf("%s\n", contact_url);
+        }
+    }
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
 }
 
 static void list_files_callback(uv_work_t *work_req, int status)
@@ -659,6 +766,17 @@ int main(int argc, char **argv)
 
         } else if (strcmp(command, "list-buckets") == 0) {
             storj_bridge_get_buckets(env, NULL, get_buckets_callback);
+        } else if (strcmp(command, "list-mirrors") == 0) {
+            char *bucket_id = argv[command_index + 1];
+            char *file_id = argv[command_index + 2];
+
+            if (!bucket_id || !file_id) {
+                printf(HELP_TEXT);
+                status = 1;
+                goto end_program;
+            }
+            storj_bridge_list_mirrors(env, bucket_id, file_id,
+                                      NULL, list_mirrors_callback);
         } else {
             printf("'%s' is not a storj command. See 'storj --help'\n\n",
                    command);
