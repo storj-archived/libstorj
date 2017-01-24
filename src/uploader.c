@@ -772,8 +772,8 @@ static void encrypt_file(uv_work_t *work)
     encrypt_file_meta_t *req = work->data;
 
     req->log->info("[%s] Encrypting file... (retry: %d)\n",
-                    req->upload_state->file_name,
-                    req->upload_state->encrypt_file_count);
+                   req->upload_state->file_name,
+                   req->upload_state->encrypt_file_count);
 
     // Set tmp file
     int tmp_len = strlen(req->file_path) + strlen(".crypt");
