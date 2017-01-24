@@ -262,28 +262,24 @@ static void after_push_frame(uv_work_t *work, int status)
 
         // Add farmer_port to farmer_pointers
         p->farmer_port = calloc(strlen(pointer->farmer_port) + 1, sizeof(char));
-
         memcpy(p->farmer_port, pointer->farmer_port,
                strlen(pointer->farmer_port));
 
         // Add farmer_protocol to farmer_pointers
         p->farmer_protocol = calloc(strlen(pointer->farmer_protocol) + 1,
                                     sizeof(char));
-
         memcpy(p->farmer_protocol, pointer->farmer_protocol,
                strlen(pointer->farmer_protocol));
 
         // Add farmer_node_id to farmer_pointers
         p->farmer_node_id = calloc(strlen(pointer->farmer_node_id) + 1,
                                    sizeof(char));
-
         memcpy(p->farmer_node_id, pointer->farmer_node_id,
                strlen(pointer->farmer_node_id));
 
         // Add farmer_last_seen to farmer_pointers
         p->farmer_last_seen = calloc(strlen(pointer->farmer_last_seen) + 1,
                                      sizeof(char));
-
         memcpy(p->farmer_last_seen, pointer->farmer_last_seen,
                strlen(pointer->farmer_last_seen));
 
