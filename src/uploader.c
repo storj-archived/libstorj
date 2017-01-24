@@ -34,17 +34,17 @@ static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state)
 static uv_work_t *shard_state_new(int index, storj_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
-    frame_builder_t *frame_builder = malloc(sizeof(frame_builder_t));
-    frame_builder->shard_meta = malloc(sizeof(shard_meta_t));
-    frame_builder->upload_state = state;
-    frame_builder->log = state->log;
+    frame_builder_t *req = malloc(sizeof(frame_builder_t));
+    req->shard_meta = malloc(sizeof(shard_meta_t));
+    req->upload_state = state;
+    req->log = state->log;
 
-    assert(frame_builder->shard_meta != NULL);
+    assert(req->shard_meta != NULL);
 
-    frame_builder->shard_meta->index = index;
-    frame_builder->error_status = 0;
+    req->shard_meta->index = index;
+    req->error_status = 0;
 
-    work->data = frame_builder;
+    work->data = req;
 
     return work;
 }
@@ -452,9 +452,9 @@ static int queue_push_frame(storj_upload_state_t *state, int index)
 
 static void after_create_frame(uv_work_t *work, int status)
 {
-    frame_builder_t *frame_builder = work->data;
-    shard_meta_t *shard_meta = frame_builder->shard_meta;
-    storj_upload_state_t *state = frame_builder->upload_state;
+    frame_builder_t *req = work->data;
+    shard_meta_t *shard_meta = req->shard_meta;
+    storj_upload_state_t *state = req->upload_state;
 
     state->shards_hashed += 1;
 
@@ -488,20 +488,20 @@ static void after_create_frame(uv_work_t *work, int status)
     queue_next_work(state);
 
     shard_state_cleanup(shard_meta);
-    free(frame_builder);
+    free(req);
     free(work);
 }
 
 static void create_frame(uv_work_t *work)
 {
-    frame_builder_t *frame_builder = work->data;
-    shard_meta_t *shard_meta = frame_builder->shard_meta;
-    storj_upload_state_t *state = frame_builder->upload_state;
+    frame_builder_t *req = work->data;
+    shard_meta_t *shard_meta = req->shard_meta;
+    storj_upload_state_t *state = req->upload_state;
 
     // Open encrypted file
     FILE *encrypted_file = fopen(state->tmp_path, "r");
     if (NULL == encrypted_file) {
-        frame_builder->error_status = STORJ_FILE_INTEGRITY_ERROR;
+        req->error_status = STORJ_FILE_INTEGRITY_ERROR;
         return;
     }
 
@@ -512,8 +512,8 @@ static void create_frame(uv_work_t *work)
     // Bytes read from file
     uint64_t read_bytes;
 
-    frame_builder->log->info("Creating frame for shard index %d\n",
-                             shard_meta->index);
+    req->log->info("Creating frame for shard index %d\n",
+                   shard_meta->index);
 
     read_bytes = 0;
 
@@ -530,8 +530,8 @@ static void create_frame(uv_work_t *work)
     // Calculate Shard Hash
     ripmd160sha256_as_string(shard_data, shard_meta->size, &shard_meta->hash);
 
-    frame_builder->log->info("Shard (%d) hash: %s\n", shard_meta->index,
-                             shard_meta->hash);
+    req->log->info("Shard (%d) hash: %s\n", shard_meta->index,
+                   shard_meta->hash);
 
     // Set the challenges
     for (int i = 0; i < CHALLENGES; i++ ) {
@@ -673,27 +673,27 @@ static void after_encrypt_file(uv_work_t *work, int status)
 
 static void encrypt_file(uv_work_t *work)
 {
-    encrypt_file_meta_t *meta = work->data;
+    encrypt_file_meta_t *req = work->data;
 
-    meta->log->info("[%s] Encrypting file... (retry: %d)\n",
-                    meta->upload_state->file_name,
-                    meta->upload_state->encrypt_file_count);
+    req->log->info("[%s] Encrypting file... (retry: %d)\n",
+                    req->upload_state->file_name,
+                    req->upload_state->encrypt_file_count);
 
     // Set tmp file
-    int tmp_len = strlen(meta->file_path) + strlen(".crypt");
+    int tmp_len = strlen(req->file_path) + strlen(".crypt");
     char *tmp_path = calloc(tmp_len + 1, sizeof(char));
-    strcpy(tmp_path, meta->file_path);
+    strcpy(tmp_path, req->file_path);
     strcat(tmp_path, ".crypt");
-    meta->tmp_path = tmp_path;
+    req->tmp_path = tmp_path;
 
     // Convert file key to password
     uint8_t *pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(char));
-    sha256_of_str(meta->file_key, DETERMINISTIC_KEY_SIZE, pass);
+    sha256_of_str(req->file_key, DETERMINISTIC_KEY_SIZE, pass);
     pass[SHA256_DIGEST_SIZE] = '\0';
 
     // Convert file id to salt
     uint8_t *salt = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(char));
-    ripemd160_of_str(meta->file_id, FILE_ID_SIZE, salt);
+    ripemd160_of_str(req->file_id, FILE_ID_SIZE, salt);
     salt[RIPEMD160_DIGEST_SIZE] = '\0';
 
     // Encrypt file
@@ -706,8 +706,8 @@ static void encrypt_file(uv_work_t *work)
     // Load original file and tmp file
     FILE *original_file;
     FILE *encrypted_file;
-    original_file = fopen(meta->file_path, "r");
-    encrypted_file = fopen(meta->tmp_path, "w+");
+    original_file = fopen(req->file_path, "r");
+    encrypted_file = fopen(req->tmp_path, "w+");
 
     char clr_txt[512 + 1];
     char cphr_txt[512 + 1];
@@ -747,18 +747,18 @@ static int queue_encrypt_file(storj_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
 
-    encrypt_file_meta_t *meta = malloc(sizeof(encrypt_file_meta_t));
-    assert(meta != NULL);
+    encrypt_file_meta_t *req = malloc(sizeof(encrypt_file_meta_t));
+    assert(req != NULL);
 
-    meta->file_id = state->file_id;
-    meta->file_key = state->file_key;
-    meta->file_name = state->file_name;
-    meta->file_path = state->file_path;
-    meta->file_size = state->file_size;
-    meta->upload_state = state;
-    meta->log = state->log;
+    req->file_id = state->file_id;
+    req->file_key = state->file_key;
+    req->file_name = state->file_name;
+    req->file_path = state->file_path;
+    req->file_size = state->file_size;
+    req->upload_state = state;
+    req->log = state->log;
 
-    work->data = meta;
+    work->data = req;
 
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                encrypt_file, after_encrypt_file);
