@@ -14,7 +14,9 @@
 
 #include "storj.h"
 
+#ifndef errno
 extern int errno;
+#endif
 
 static inline void noop() {};
 
