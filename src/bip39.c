@@ -213,13 +213,17 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase,
         strlen(salt), salt,
         SHA512_DIGEST_SIZE, seed);
 
-    char sha512_str[SHA512_DIGEST_SIZE*2 + 1];
-    memset(sha512_str, '\0', SHA512_DIGEST_SIZE*2 + 1);
+    char sha512_str[SHA512_DIGEST_SIZE * 2 + 1];
+    memset(sha512_str, '\0', SHA512_DIGEST_SIZE * 2 + 1);
 
     hex2str(SHA512_DIGEST_SIZE, seed, sha512_str);
-    sha512_str[SHA512_DIGEST_SIZE*2] = '\0';
+    sha512_str[SHA512_DIGEST_SIZE * 2] = '\0';
 
     memcpy(*buffer, sha512_str, SHA512_DIGEST_SIZE*2);
+
+    memset_zero(&sha512_str, SHA512_DIGEST_SIZE * 2 + 1);
+    memset_zero(seed, SHA512_DIGEST_SIZE + 1);
+    memset_zero(salt, 8 + 256);
 
     free(seed);
     free(salt);

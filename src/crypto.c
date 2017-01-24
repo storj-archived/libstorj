@@ -106,7 +106,10 @@ int generate_bucket_key(const char *mnemonic, char *bucket_id,
     mnemonic_to_seed(mnemonic, "", &seed);
     seed[128] = '\0';
     get_deterministic_key(seed, 128, bucket_id, bucket_key);
+
+    memset_zero(seed, 128 + 1);
     free(seed);
+
     return 0;
 }
 
@@ -117,6 +120,8 @@ int generate_file_key(const char *mnemonic, char *bucket_id, char *file_id,
     generate_bucket_key(mnemonic, bucket_id, &bucket_key);
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
     get_deterministic_key(bucket_key, 64, file_id, file_key);
+
+    memset_zero(bucket_key, DETERMINISTIC_KEY_SIZE + 1);
     free(bucket_key);
     return 0;
 }
