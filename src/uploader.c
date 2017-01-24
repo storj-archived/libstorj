@@ -948,7 +948,8 @@ static void prepare_upload_state(uv_work_t *work)
     file_id[FILE_ID_SIZE] = '\0';
     state->file_id = file_id;
 
-    generate_file_key(state->mnemonic, state->bucket_id, state->file_id, &file_key);
+    generate_file_key(state->env->encrypt_options->mnemonic, state->bucket_id,
+                      state->file_id, &file_key);
 
     file_key[DETERMINISTIC_KEY_SIZE] = '\0';
     state->file_key = file_key;
@@ -983,7 +984,6 @@ int storj_bridge_store_file(storj_env_t *env,
     state->bucket_id = opts->bucket_id;
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
-    state->mnemonic = opts->mnemonic;
 
     // TODO: find a way to default
     state->token_request_count = 0;

@@ -111,20 +111,11 @@ static void upload_file_complete(int status, void *handle)
 
 static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 {
-    char *mnemonic = getenv("STORJ_MNEMONIC");
-    if (!mnemonic) {
-        printf("Set your STORJ_MNEMONIC\n");
-        exit(1);
-        // "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
-    }
-
     storj_upload_opts_t upload_opts = {
         .file_concurrency = 1,
         .shard_concurrency = 3,
         .bucket_id = bucket_id,
-        .file_path = file_path,
-        .key_pass = "password",
-        .mnemonic = mnemonic
+        .file_path = file_path
     };
 
     int status = storj_bridge_store_file(env, &upload_opts,

@@ -390,9 +390,7 @@ int test_upload()
         .file_concurrency = 1,
         .shard_concurrency = 3,
         .bucket_id = "368be0816766b28fd5f43af5",
-        .file_path = file,
-        .key_pass = "password",
-        .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+        .file_path = file
     };
 
     int status = storj_bridge_store_file(env, &upload_opts,

@@ -235,8 +235,6 @@ typedef struct {
     int shard_concurrency;
     char *bucket_id;
     char *file_path;
-    char *key_pass;
-    char *mnemonic;
 } storj_upload_opts_t;
 
 /** @brief A structure that keeps state between multiple worker threads,

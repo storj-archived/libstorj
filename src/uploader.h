@@ -75,7 +75,6 @@ typedef struct {
     bool final_callback_called;
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;
-    char *mnemonic;
     int error_status;
     shard_meta_t* shard_meta;
     farmer_pointer_t *farmer_pointers;
