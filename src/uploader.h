@@ -84,23 +84,23 @@ typedef struct {
 } storj_upload_state_t;
 
 typedef struct {
-  /* state should not be modified in worker threads */
-  storj_upload_state_t *upload_state;
-  int status_code;
-  int error_status;
-  shard_meta_t *shard_meta;
-  storj_log_levels_t *log;
+    /* state should not be modified in worker threads */
+    storj_upload_state_t *upload_state;
+    int status_code;
+    int error_status;
+    shard_meta_t *shard_meta;
+    storj_log_levels_t *log;
 } frame_builder_t;
 
 typedef struct {
-   char *file_id;
-   char *file_key;
-   char *file_path;
-   char *file_name;
-   char *tmp_path;
-   uint64_t file_size;
-   storj_upload_state_t *upload_state;
-   storj_log_levels_t *log;
+    char *file_id;
+    char *file_key;
+    char *file_path;
+    char *file_name;
+    char *tmp_path;
+    uint64_t file_size;
+    storj_upload_state_t *upload_state;
+    storj_log_levels_t *log;
 } encrypt_file_meta_t;
 
 typedef struct {

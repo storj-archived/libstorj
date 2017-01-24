@@ -170,17 +170,17 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
     uint64_t file_size;
 
     if (!state->file_size) {
-      // TODO: Log the error
-      state->log->error("Cannot determine shard size when there is no file size.\n");
-      return 0;
+        // TODO: Log the error
+        state->log->error("Cannot determine shard size when there is no file size.\n");
+        return 0;
     } else {
-      file_size = state->file_size;
+        file_size = state->file_size;
     }
 
     if (!state->shard_concurrency) {
-      shard_concurrency = 3;
+        shard_concurrency = 3;
     } else {
-      shard_concurrency = state->shard_concurrency;
+        shard_concurrency = state->shard_concurrency;
     }
 
     accumulator = accumulator ? accumulator : 0;
@@ -192,15 +192,15 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
     // Determine if bytemultiple is highest bytemultiple that is still <= size
     if (check > 0 && check <= 1) {
 
-      // Certify the number of concurrency * shard_size doesn't exceed freemem
-      while (
-        hops > 0 &&
-        (MAX_SHARD_SIZE / shard_size(hops) <= shard_concurrency) //TODO: 1GB max memory
-      ) {
-        hops = hops - 1 <= 0 ? 0 : hops - 1;
-      }
+        // Certify the number of concurrency * shard_size doesn't exceed freemem
+        while (
+            hops > 0 &&
+            (MAX_SHARD_SIZE / shard_size(hops) <= shard_concurrency) //TODO: 1GB max memory
+            ) {
+            hops = hops - 1 <= 0 ? 0 : hops - 1;
+        }
 
-      return shard_size(hops);
+        return shard_size(hops);
     }
 
     return determine_shard_size(state, ++accumulator);
@@ -620,11 +620,11 @@ static void request_frame(uv_work_t *work)
 
     struct json_object *frame_id;
     if (!json_object_object_get_ex(response, "id", &frame_id)) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
     if (!json_object_is_type(frame_id, json_type_string) == 1) {
-      req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        req->error_status = STORJ_BRIDGE_JSON_ERROR;
     }
 
     char *frame_id_str = (char *)json_object_get_string(frame_id);
