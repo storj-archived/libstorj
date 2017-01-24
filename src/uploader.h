@@ -89,6 +89,7 @@ typedef struct {
   int status_code;
   int error_status;
   shard_meta_t *shard_meta;
+  storj_log_levels_t *log;
 } frame_builder_t;
 
 typedef struct {
@@ -99,6 +100,7 @@ typedef struct {
    char *tmp_path;
    uint64_t file_size;
    storj_upload_state_t *upload_state;
+   storj_log_levels_t *log;
 } encrypt_file_meta_t;
 
 typedef struct {
@@ -111,6 +113,7 @@ typedef struct {
     storj_upload_state_t *upload_state;
     int status_code;
     int error_status;
+    storj_log_levels_t *log;
 } request_token_t;
 
 typedef struct {
@@ -122,10 +125,11 @@ typedef struct {
     int status_code;
     int error_status;
 
-
     // Add shard to frame
     int shard_index;
     farmer_pointer_t *farmer_pointer;
+
+    storj_log_levels_t *log;
 } frame_request_t;
 
 static inline char separator()

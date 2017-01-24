@@ -19,6 +19,8 @@ static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state)
     req->upload_state = state;
     req->error_status = 0;
     req->status_code = 0;
+    req->log = state->log;
+
     if (index != NULL) {
         req->shard_index = *index;
         req->farmer_pointer = calloc(sizeof(farmer_pointer_t), sizeof(char));
@@ -35,6 +37,7 @@ static uv_work_t *shard_state_new(int index, storj_upload_state_t *state)
     frame_builder_t *frame_builder = malloc(sizeof(frame_builder_t));
     frame_builder->shard_meta = malloc(sizeof(shard_meta_t));
     frame_builder->upload_state = state;
+    frame_builder->log = state->log;
 
     assert(frame_builder->shard_meta != NULL);
 
@@ -277,7 +280,10 @@ static void push_frame(uv_work_t *work)
     frame_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
     shard_meta_t *shard_meta = &state->shard_meta[req->shard_index];
-    printf("Pushing frame for shard index %d... (retry: %d)\n", req->shard_index, state->add_shard_to_frame_request_count[req->shard_index]);
+
+    req->log->info("Pushing frame for shard index %d... (retry: %d)\n",
+                   req->shard_index,
+                   state->add_shard_to_frame_request_count[req->shard_index]);
 
     // Prepare the body
     struct json_object *body = json_object_new_object();
@@ -506,7 +512,8 @@ static void create_frame(uv_work_t *work)
     // Bytes read from file
     uint64_t read_bytes;
 
-    printf("Creating frame for shard index %d\n", shard_meta->index);
+    frame_builder->log->info("Creating frame for shard index %d\n",
+                             shard_meta->index);
 
     read_bytes = 0;
 
@@ -523,7 +530,8 @@ static void create_frame(uv_work_t *work)
     // Calculate Shard Hash
     ripmd160sha256_as_string(shard_data, shard_meta->size, &shard_meta->hash);
 
-    printf("Shard (%d) hash: %s\n", shard_meta->index, shard_meta->hash);
+    frame_builder->log->info("Shard (%d) hash: %s\n", shard_meta->index,
+                             shard_meta->hash);
 
     // Set the challenges
     for (int i = 0; i < CHALLENGES; i++ ) {
@@ -594,9 +602,9 @@ static void request_frame(uv_work_t *work)
 {
     frame_request_t *req = work->data;
 
-    printf("[%s] Creating file staging frame... (retry: %d)\n",
-            req->upload_state->file_name,
-            req->upload_state->frame_request_count);
+    req->log->info("[%s] Creating file staging frame... (retry: %d)\n",
+                   req->upload_state->file_name,
+                   req->upload_state->frame_request_count);
 
     struct json_object *body = json_object_new_object();
 
@@ -667,9 +675,9 @@ static void encrypt_file(uv_work_t *work)
 {
     encrypt_file_meta_t *meta = work->data;
 
-    printf("[%s] Encrypting file... (retry: %d)\n",
-            meta->upload_state->file_name,
-            meta->upload_state->encrypt_file_count);
+    meta->log->info("[%s] Encrypting file... (retry: %d)\n",
+                    meta->upload_state->file_name,
+                    meta->upload_state->encrypt_file_count);
 
     // Set tmp file
     int tmp_len = strlen(meta->file_path) + strlen(".crypt");
@@ -748,6 +756,8 @@ static int queue_encrypt_file(storj_upload_state_t *state)
     meta->file_path = state->file_path;
     meta->file_size = state->file_size;
     meta->upload_state = state;
+    meta->log = state->log;
+
     work->data = meta;
 
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
@@ -785,9 +795,9 @@ static void request_token(uv_work_t *work)
 {
     request_token_t *req = work->data;
 
-    printf("[%s] Creating storage token... (retry: %d)\n",
-            req->upload_state->file_name,
-            req->upload_state->token_request_count);
+    req->log->info("[%s] Creating storage token... (retry: %d)\n",
+                   req->upload_state->file_name,
+                   req->upload_state->token_request_count);
 
     int path_len = strlen(req->bucket_id) + 17;
     char *path = calloc(path_len + 1, sizeof(char));
@@ -839,6 +849,8 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
     req->bucket_op = (char *)BUCKET_OP[BUCKET_PUSH];
     req->upload_state = state;
     req->error_status = 0;
+    req->log = state->log;
+
     work->data = req;
 
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
