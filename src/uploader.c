@@ -127,14 +127,14 @@ static void cleanup_state(storj_upload_state_t *state)
 
     if (state->shard_meta) {
         for (int i = 0; i < state->total_shards; i++ ) {
-            printf("Cleaning up shard %d\n", i);
+            state->log->info("Cleaning up shard %d\n", i);
             shard_state_cleanup(&state->shard_meta[i]);
         }
     }
 
     if (state->farmer_pointers) {
         for (int i = 0; i < state->total_shards; i++ ) {
-            printf("Cleaning up pointers %d\n", i);
+            state->log->info("Cleaning up pointers %d\n", i);
             pointer_cleanup(&state->farmer_pointers[i]);
         }
     }
@@ -168,7 +168,7 @@ static uint64_t determine_shard_size(storj_upload_state_t *state, int accumulato
 
     if (!state->file_size) {
       // TODO: Log the error
-      printf("Cannot determine shard size when there is no file size.\n");
+      state->log->error("Cannot determine shard size when there is no file size.\n");
       return 0;
     } else {
       file_size = state->file_size;
@@ -962,14 +962,16 @@ int storj_bridge_store_file(storj_env_t *env,
                             storj_finished_upload_cb finished_cb)
 {
     if (opts->file_concurrency < 1) {
-        printf("\nFile Concurrency (%i) can't be less than 1", opts->file_concurrency);
+        env->log->error("\nFile Concurrency (%i) can't be less than 1",
+                        opts->file_concurrency);
         return 1;
     } else if (!opts->file_concurrency) {
         opts->file_concurrency = 1;
     }
 
     if (opts->shard_concurrency < 1) {
-        printf("\nShard Concurrency (%i) can't be less than 1", opts->shard_concurrency);
+        env->log->error("\nShard Concurrency (%i) can't be less than 1",
+                        opts->shard_concurrency);
         return 1;
     } else if (!opts->shard_concurrency) {
         opts->shard_concurrency = 3;
@@ -1008,8 +1010,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->uploaded_bytes = 0;
     state->final_callback_called = false;
     state->received_all_pointers = false;
-
-
+    state->log = env->log;
     state->handle = handle;
 
     uv_work_t *work = uv_work_new();
