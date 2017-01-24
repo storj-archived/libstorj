@@ -235,72 +235,56 @@ static void after_push_frame(uv_work_t *work, int status)
             state->pushing_frame = false;
         }
 
-        // Add hash to farmer_pointers
-        state->farmer_pointers[pointer->shard_index].hash =
-            calloc(strlen(pointer->hash) + 1, sizeof(char));
+        farmer_pointer_t *p = &state->farmer_pointers[pointer->shard_index];
 
-        memcpy(state->farmer_pointers[pointer->shard_index].hash,
-               pointer->hash,
-               strlen(pointer->hash));
+        // Add hash to farmer_pointers
+        p->hash = calloc(strlen(pointer->hash) + 1, sizeof(char));
+        memcpy(p->hash, pointer->hash, strlen(pointer->hash));
 
         // Add token to farmer_pointers
-        state->farmer_pointers[pointer->shard_index].token =
-            calloc(strlen(pointer->token) + 1, sizeof(char));
-
-        memcpy(state->farmer_pointers[pointer->shard_index].token,
-               pointer->token,
-               strlen(pointer->token));
+        p->token = calloc(strlen(pointer->token) + 1, sizeof(char));
+        memcpy(p->token, pointer->token, strlen(pointer->token));
 
         // Add shard_index to farmer_pointers
-        state->farmer_pointers[pointer->shard_index].shard_index =
-            pointer->shard_index;
+        p->shard_index = pointer->shard_index;
 
         // Add farmer_user_agent to farmer_pointers
-        state->farmer_pointers[pointer->shard_index].farmer_user_agent =
-            calloc(strlen(pointer->farmer_user_agent) + 1, sizeof(char));
-
-        memcpy(state->farmer_pointers[pointer->shard_index].farmer_user_agent,
-               pointer->farmer_user_agent,
+        p->farmer_user_agent = calloc(strlen(pointer->farmer_user_agent) + 1,
+                                      sizeof(char));
+        memcpy(p->farmer_user_agent, pointer->farmer_user_agent,
                strlen(pointer->farmer_user_agent));
 
         // Add farmer_address to farmer_pointers
-        state->farmer_pointers[pointer->shard_index].farmer_address =
-            calloc(strlen(pointer->farmer_address) + 1, sizeof(char));
-
-        memcpy(state->farmer_pointers[pointer->shard_index].farmer_address,
-               pointer->farmer_address,
+        p->farmer_address = calloc(strlen(pointer->farmer_address) + 1,
+                                   sizeof(char));
+        memcpy(p->farmer_address, pointer->farmer_address,
                strlen(pointer->farmer_address));
 
         // Add farmer_port to farmer_pointers
-        state->farmer_pointers[pointer->shard_index].farmer_port =
-            calloc(strlen(pointer->farmer_port) + 1, sizeof(char));
+        p->farmer_port = calloc(strlen(pointer->farmer_port) + 1, sizeof(char));
 
-        memcpy(state->farmer_pointers[pointer->shard_index].farmer_port,
-               pointer->farmer_port,
+        memcpy(p->farmer_port, pointer->farmer_port,
                strlen(pointer->farmer_port));
 
         // Add farmer_protocol to farmer_pointers
-        state->farmer_pointers[pointer->shard_index].farmer_protocol =
-            calloc(strlen(pointer->farmer_protocol) + 1, sizeof(char));
+        p->farmer_protocol = calloc(strlen(pointer->farmer_protocol) + 1,
+                                    sizeof(char));
 
-        memcpy(state->farmer_pointers[pointer->shard_index].farmer_protocol,
-               pointer->farmer_protocol,
+        memcpy(p->farmer_protocol, pointer->farmer_protocol,
                strlen(pointer->farmer_protocol));
 
         // Add farmer_node_id to farmer_pointers
-        state->farmer_pointers[pointer->shard_index].farmer_node_id =
-            calloc(strlen(pointer->farmer_node_id) + 1, sizeof(char));
+        p->farmer_node_id = calloc(strlen(pointer->farmer_node_id) + 1,
+                                   sizeof(char));
 
-        memcpy(state->farmer_pointers[pointer->shard_index].farmer_node_id,
-               pointer->farmer_node_id,
+        memcpy(p->farmer_node_id, pointer->farmer_node_id,
                strlen(pointer->farmer_node_id));
 
         // Add farmer_last_seen to farmer_pointers
-        state->farmer_pointers[pointer->shard_index].farmer_last_seen =
-            calloc(strlen(pointer->farmer_last_seen) + 1, sizeof(char));
+        p->farmer_last_seen = calloc(strlen(pointer->farmer_last_seen) + 1,
+                                     sizeof(char));
 
-        memcpy(state->farmer_pointers[pointer->shard_index].farmer_last_seen,
-               pointer->farmer_last_seen,
+        memcpy(p->farmer_last_seen, pointer->farmer_last_seen,
                strlen(pointer->farmer_last_seen));
 
     } else if (state->add_shard_to_frame_request_count[pointer->shard_index] == 6) {
