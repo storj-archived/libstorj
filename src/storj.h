@@ -344,9 +344,9 @@ int storj_write_auth(const char *filepath,
  */
 int storj_read_auth(const char *filepath,
                     const char *passphrase,
-                    char *bridge_user,
-                    char *bridge_pass,
-                    char *mnemonic);
+                    char **bridge_user,
+                    char **bridge_pass,
+                    char **mnemonic);
 
 /**
  * @brief Get the error message for an error code

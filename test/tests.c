@@ -950,67 +950,56 @@ int test_read_write_encrypted_file()
     // it should create file passed in if it does not exist
     char test_file[1024];
     strcpy(test_file, folder);
-    strcat(test_file, "testfile");
+    strcat(test_file, "storj-test-user.json");
     if (access(test_file, F_OK) != -1) {
         unlink(test_file);
     }
 
-    write_encrypted_file(test_file, NULL, NULL, "testdata");
-    if (access(test_file, F_OK) == -1) {
-        fail("read_write_encrypted_file(1)");
-        return 1;
-    }
-
-    // it should write in plaintext if key and salt are not passed in
-    char *result;
-    read_encrypted_file(test_file, NULL, NULL, &result);
-
-    if (strcmp(result, "testdata") != 0) {
-        fail("read_write_encrypted_file(2)");
-        return 1;
-    }
-    free(result);
-
     // it should successfully encrypt and decrypt a file with the provided key and salt
-    //const char *test_data = "letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic bless";
-    char *test_data = "testdata";
-    write_encrypted_file(test_file, "testpass", "testsalt", test_data);
+    char *expected_mnemonic = "letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic bless";
+    storj_write_auth(test_file, "testpass",
+                     "testuser@storj.io", "bridgepass", expected_mnemonic);
 
-    // it should fail to decrypt if no password or salt is passed in
-    read_encrypted_file(test_file, NULL, NULL, &result);
-
-    if (strcmp(result, "testdata") == 0) {
-        fail("read_write_encrypted_file(3)");
+    char *bridge_user = NULL;
+    char *bridge_pass = NULL;
+    char *mnemonic = NULL;
+    if (storj_read_auth(test_file, "testpass",
+                        &bridge_user, &bridge_pass, &mnemonic)) {
+        fail("test_storj_write_read_auth(0)");
         return 1;
     }
-    free(result);
 
-    // it should fail to decrypt if the wrong password is passed in
-    if (!read_encrypted_file(test_file, "wrongpass", "testsalt", &result)) {
-        fail("read_write_encrypted_file(4)");
+    if (strcmp(bridge_user, "testuser@storj.io") != 0) {
+        fail("test_storj_write_read_auth(1)");
         return 1;
     }
-    free(result);
 
-    // it should fail to decrypt if the wrong salt is passed in
-    if (!read_encrypted_file(test_file, "testpass", "wrongsalt", &result)) {
-        fail("read_write_encrypted_file(5)");
+    if (strcmp(bridge_pass, "bridgepass") != 0) {
+        fail("test_storj_write_read_auth(2)");
         return 1;
     }
-    free(result);
 
-    // it should successfully decrypt if the correct password and salt are used
-    if (read_encrypted_file(test_file, "testpass", "testsalt", &result)) {
-        fail("read_write_encrypted_file(6)");
-    }
-
-    if (strcmp(result, test_data) != 0) {
-        fail("read_write_encrypted_file(7)");
+    if (strcmp(mnemonic, expected_mnemonic) != 0) {
+        fail("test_storj_write_read_auth(3)");
         return 1;
     }
-    free(result);
 
-    pass("read_write_encrypted_file");
+    free(bridge_user);
+    free(bridge_pass);
+    free(mnemonic);
+
+    // it should fail to decrypt if the wrong password
+    if (!storj_read_auth(test_file, "wrongpass",
+                        &bridge_user, &bridge_pass, &mnemonic)) {
+        fail("test_storj_write_read_auth(4)");
+        return 1;
+    }
+
+    free(bridge_user);
+    free(bridge_pass);
+
+    pass("test_storj_write_read_auth");
+
     return 0;
 }
 
