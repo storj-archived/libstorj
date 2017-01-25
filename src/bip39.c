@@ -118,7 +118,7 @@ const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len)
 }
 
 // if doesn't return 1 then it failed.
-int mnemonic_check(const char *mnemonic)
+bool mnemonic_check(const char *mnemonic)
 {
     if (!mnemonic) {
         return 0;

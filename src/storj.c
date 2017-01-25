@@ -392,6 +392,16 @@ clean_up:
     return status;
 }
 
+int storj_mnemonic_generate(int strength, char **buffer)
+{
+    return mnemonic_generate(strength, buffer);
+}
+
+bool storj_mnemonic_check(const char *mnemonic)
+{
+    return mnemonic_check(mnemonic);
+}
+
 char *storj_strerror(int error_code)
 {
     switch(error_code) {

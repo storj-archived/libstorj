@@ -370,7 +370,7 @@ int storj_mnemonic_generate(int strength, char **buffer);
  * @param[in] strength - The bits of entropy
  * @return Will return true on success and false failure
  */
-int storj_mnemonic_check(const char *mnemonic);
+bool storj_mnemonic_check(const char *mnemonic);
 
 /**
  * @brief Get the error message for an error code
