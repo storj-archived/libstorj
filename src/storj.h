@@ -348,6 +348,30 @@ int storj_read_auth(const char *filepath,
                     char **bridge_pass,
                     char **mnemonic);
 
+
+/**
+ * @brief Will generate a new random mnemonic
+ *
+ * This will generate a new random mnemonic with 128 to 256 bits
+ * of entropy.
+ *
+ * @param[in] strength - The bits of entropy
+ * @param[out] buffer - The destination of the mnemonic
+ * @return A null value on error, zero on success.
+ */
+int storj_mnemonic_generate(int strength, char **buffer);
+
+/**
+ * @brief Will check that a mnemonic is valid
+ *
+ * This will check that a mnemonic has been entered correctly by verifying
+ * the checksum, and that words are a part of the list.
+ *
+ * @param[in] strength - The bits of entropy
+ * @return Will return true on success and false failure
+ */
+int storj_mnemonic_check(const char *mnemonic);
+
 /**
  * @brief Get the error message for an error code
  *
