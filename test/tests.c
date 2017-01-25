@@ -718,16 +718,21 @@ int test_mnemonic_check()
 
     const char **m;
     int r;
+    int r2;
     m = vectors_ok;
     while (*m) {
         r = mnemonic_check(*m);
+        r2 = storj_mnemonic_check(*m);
         assert(r == 1);
+        assert(r2 == 1);
         m++;
     }
     m = vectors_fail;
     while (*m) {
         r = mnemonic_check(*m);
+        r2 = mnemonic_check(*m);
         assert(r == 0);
+        assert(r2 == 0);
         m++;
     }
 
@@ -736,6 +741,49 @@ int test_mnemonic_check()
     return 0;
 }
 
+int test_storj_mnemonic_generate_256()
+{
+    int status;
+    int stren = 256;
+    char *mnemonic = calloc(250 * 2, sizeof(char));
+    storj_mnemonic_generate(stren, &mnemonic);
+    status = storj_mnemonic_check(mnemonic);
+
+    if (status != 1) {
+        fail("test_mnemonic_generate");
+        printf("\t\texpected mnemonic check: %i\n", 0);
+        printf("\t\tactual mnemonic check:   %i\n", status);
+        free(mnemonic);
+        return 1;
+    }
+    free(mnemonic);
+
+    pass("test_storj_mnemonic_check_256");
+
+    return 0;
+}
+
+int test_storj_mnemonic_generate()
+{
+    int status;
+    int stren = 128;
+    char *mnemonic = calloc(250, sizeof(char));
+    storj_mnemonic_generate(stren, &mnemonic);
+    status = storj_mnemonic_check(mnemonic);
+
+    if (status != 1) {
+        fail("test_mnemonic_generate");
+        printf("\t\texpected mnemonic check: %i\n", 0);
+        printf("\t\tactual mnemonic check:   %i\n", status);
+        free(mnemonic);
+        return 1;
+    }
+    free(mnemonic);
+
+    pass("test_storj_mnemonic_check");
+
+    return 0;
+}
 
 int test_mnemonic_generate()
 {
@@ -1076,6 +1124,10 @@ int main(void)
     status += test_mnemonic_check();
     ++tests_ran;
     status += test_mnemonic_generate();
+    ++tests_ran;
+    status += test_storj_mnemonic_generate();
+    ++tests_ran;
+    status += test_storj_mnemonic_generate_256();
     ++tests_ran;
     status += test_generate_seed();
     ++tests_ran;
