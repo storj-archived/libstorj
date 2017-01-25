@@ -45,6 +45,7 @@ typedef struct {
     bool pushed_frame;
     bool pushing_frame;
     int pushing_frame_request_count;
+    int pushing_shard_request_count;
     int index;
     farmer_pointer_t *pointer;
     shard_meta_t *meta;
@@ -67,8 +68,11 @@ typedef struct {
     uint64_t shard_size;
     uint64_t total_bytes;
     uint64_t uploaded_bytes;
+    bool completed_upload;
     bool encrypting_file;
     bool completed_encryption;
+    bool creating_bucket_entry;
+    int add_bucket_entry_count;
     char *token;
     bool requesting_token;
     char *frame_id;
@@ -109,6 +113,18 @@ typedef struct {
 typedef struct {
     storj_http_options_t *http_options;
     storj_bridge_options_t *options;
+    int status_code;
+    int error_status;
+    storj_log_levels_t *log;
+    int shard_index;
+
+    /* state should not be modified in worker threads */
+    storj_upload_state_t *upload_state;
+} push_shard_request_t;
+
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_bridge_options_t *options;
     char *token;
     char *bucket_id;
     char *bucket_op;
@@ -134,6 +150,16 @@ typedef struct {
 
     storj_log_levels_t *log;
 } frame_request_t;
+
+typedef struct {
+  storj_http_options_t *http_options;
+  storj_bridge_options_t *options;
+  /* state should not be modified in worker threads */
+  storj_upload_state_t *upload_state;
+  int status_code;
+  int error_status;
+  storj_log_levels_t *log;
+} post_to_bucket_request_t;
 
 static inline char separator()
 {
@@ -162,6 +188,7 @@ static int queue_encrypt_file(storj_upload_state_t *state);
 static int queue_create_frame(storj_upload_state_t *state, int index);
 static int queue_push_frame(storj_upload_state_t *state, int index);
 static int queue_push_shard(storj_upload_state_t *state, int index);
+static int queue_create_bucket_entry(storj_upload_state_t *state);
 
 static void request_token(uv_work_t *work);
 static void request_frame(uv_work_t *work);
@@ -169,6 +196,7 @@ static void encrypt_file(uv_work_t *work);
 static void create_frame(uv_work_t *work);
 static void push_frame(uv_work_t *work);
 static void push_shard(uv_work_t *work);
+static void create_bucket_entry(uv_work_t *work);
 
 static void after_request_token(uv_work_t *work, int status);
 static void after_request_frame(uv_work_t *work, int status);
@@ -176,5 +204,6 @@ static void after_encrypt_file(uv_work_t *work, int status);
 static void after_create_frame(uv_work_t *work, int status);
 static void after_push_frame(uv_work_t *work, int status);
 static void after_push_shard(uv_work_t *work, int status);
+static void after_create_bucket_entry(uv_work_t *work, int status);
 
 #endif /* STORJ_UPLOADER_H */
