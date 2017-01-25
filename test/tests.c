@@ -945,6 +945,63 @@ int test_increment_ctr_aes_iv()
     return 0;
 }
 
+int test_read_write_encrypted_file()
+{
+    // it should create file passed in if it does not exist
+    char test_file[1024];
+    strcpy(test_file, folder);
+    strcat(test_file, "storj-test-user.json");
+    if (access(test_file, F_OK) != -1) {
+        unlink(test_file);
+    }
+
+    // it should successfully encrypt and decrypt a file with the provided key and salt
+    char *expected_mnemonic = "letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic bless";
+    storj_write_auth(test_file, "testpass",
+                     "testuser@storj.io", "bridgepass", expected_mnemonic);
+
+    char *bridge_user = NULL;
+    char *bridge_pass = NULL;
+    char *mnemonic = NULL;
+    if (storj_read_auth(test_file, "testpass",
+                        &bridge_user, &bridge_pass, &mnemonic)) {
+        fail("test_storj_write_read_auth(0)");
+        return 1;
+    }
+
+    if (strcmp(bridge_user, "testuser@storj.io") != 0) {
+        fail("test_storj_write_read_auth(1)");
+        return 1;
+    }
+
+    if (strcmp(bridge_pass, "bridgepass") != 0) {
+        fail("test_storj_write_read_auth(2)");
+        return 1;
+    }
+
+    if (strcmp(mnemonic, expected_mnemonic) != 0) {
+        fail("test_storj_write_read_auth(3)");
+        return 1;
+    }
+
+    free(bridge_user);
+    free(bridge_pass);
+    free(mnemonic);
+
+    // it should fail to decrypt if the wrong password
+    if (!storj_read_auth(test_file, "wrongpass",
+                        &bridge_user, &bridge_pass, &mnemonic)) {
+        fail("test_storj_write_read_auth(4)");
+        return 1;
+    }
+
+    free(bridge_user);
+    free(bridge_pass);
+
+    pass("test_storj_write_read_auth");
+
+    return 0;
+}
 
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
@@ -1032,6 +1089,8 @@ int main(void)
     status += test_generate_file_key();
     ++tests_ran;
     status += test_increment_ctr_aes_iv();
+    ++tests_ran;
+    status += test_read_write_encrypted_file();
     ++tests_ran;
     printf("\n");
 

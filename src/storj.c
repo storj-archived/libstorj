@@ -1,6 +1,7 @@
 #include "storj.h"
 #include "http.h"
 #include "utils.h"
+#include "crypto.h"
 
 static inline void noop() {};
 
@@ -263,6 +264,130 @@ int storj_destroy_env(storj_env_t *env)
 
     // free the environment
     free(env);
+
+    return status;
+}
+
+int storj_write_auth(const char *filepath,
+                     const char *passphrase,
+                     const char *bridge_user,
+                     const char *bridge_pass,
+                     const char *mnemonic)
+{
+    FILE *fp;
+    fp = fopen(filepath, "w");
+    if (fp == NULL) {
+        return 1;
+    }
+
+    char *pass_encrypted;
+    int pass_length = strlen(bridge_pass);
+
+    if (encrypt_data(passphrase, bridge_user, bridge_pass,
+                     &pass_encrypted)) {
+        fclose(fp);
+        return 1;
+    }
+
+    char *mnemonic_encrypted;
+    int mnemonic_length = strlen(mnemonic);
+
+    if (encrypt_data(passphrase, bridge_user, mnemonic,
+                     &mnemonic_encrypted)) {
+        fclose(fp);
+        return 1;
+    }
+
+    struct json_object *body = json_object_new_object();
+    json_object *user_str = json_object_new_string(bridge_user);
+
+    json_object *pass_str = json_object_new_string(pass_encrypted);
+    json_object *mnemonic_str = json_object_new_string(mnemonic_encrypted);
+
+    json_object_object_add(body, "user", user_str);
+    json_object_object_add(body, "pass", pass_str);
+    json_object_object_add(body, "mnemonic", mnemonic_str);
+
+    const char *body_str = json_object_to_json_string(body);
+
+    fwrite(body_str, strlen(body_str), sizeof(char), fp);
+    fwrite("\n", 1, sizeof(char), fp);
+
+    json_object_put(body);
+    free(mnemonic_encrypted);
+    free(pass_encrypted);
+
+    fclose(fp);
+
+    return 0;
+}
+
+int storj_read_auth(const char *filepath,
+                    const char *passphrase,
+                    char **bridge_user,
+                    char **bridge_pass,
+                    char **mnemonic)
+{
+    FILE *fp;
+    fp = fopen(filepath, "r");
+    if (fp == NULL) {
+        return 1;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    int fsize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    char *data = calloc(fsize + 1, sizeof(char));
+    if (data == NULL) {
+        return 1;
+    }
+    int read_blocks = fread(data, fsize, 1, fp);
+    if (read_blocks != 1) {
+        free(data);
+        return 1;
+    }
+    fclose(fp);
+
+    int status = 0;
+
+    json_object *body = json_tokener_parse(data);
+
+    struct json_object *user_value;
+    if (!json_object_object_get_ex(body, "user", &user_value)) {
+        status = 1;
+        goto clean_up;
+    }
+
+    *bridge_user = strdup((char *)json_object_get_string(user_value));
+
+    struct json_object *pass_value;
+    if (!json_object_object_get_ex(body, "pass", &pass_value)) {
+        status = 1;
+        goto clean_up;
+    }
+    char *pass_enc = (char *)json_object_get_string(pass_value);
+
+    struct json_object *mnemonic_value;
+    if (!json_object_object_get_ex(body, "mnemonic", &mnemonic_value)) {
+        status = 1;
+        goto clean_up;
+    }
+    char *mnemonic_enc = (char *)json_object_get_string(mnemonic_value);
+
+    if (decrypt_data(passphrase, *bridge_user, pass_enc, bridge_pass)) {
+        status = 1;
+        goto clean_up;
+    }
+
+    if (decrypt_data(passphrase, *bridge_user, mnemonic_enc, mnemonic)) {
+        status = 1;
+        goto clean_up;
+    }
+
+clean_up:
+    json_object_put(body);
+    free(data);
 
     return status;
 }
