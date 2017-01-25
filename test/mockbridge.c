@@ -58,11 +58,13 @@ int mock_bridge_server(void *cls,
 
     json_object *responses = NULL;
     if (parse_json(mockbridge_json, &responses)) {
+        printf("Failed to parse JSON responses.\n");
         exit(1);
     }
 
     json_object *responses_info = NULL;
     if (parse_json(mockbridgeinfo_json, &responses_info)) {
+        printf("Failed to parse JSON info response.\n");
         exit(1);
     }
 
