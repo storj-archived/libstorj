@@ -159,6 +159,33 @@ static void get_password(char *password)
 #endif
 }
 
+static int get_password_verify(char *prompt, char *password, int count)
+{
+    printf("%s", prompt);
+    char first_password[BUFSIZ];
+    get_password(first_password);
+
+    printf("\nAgain to verify: ");
+    char second_password[BUFSIZ];
+    get_password(second_password);
+
+    int match = strcmp(first_password, second_password);
+    strncpy(password, first_password, BUFSIZ);
+
+    if (match == 0) {
+        return 0;
+    } else {
+        printf("\nPassphrases did not match. ");
+        count++;
+        if (count > 3) {
+            printf("\n");
+            return 1;
+        }
+        printf("Try again...\n");
+        return get_password_verify(prompt, password, count);
+    }
+}
+
 static void upload_file_progress(double progress,
                                  uint64_t uploaded_bytes,
                                  uint64_t total_bytes,
@@ -499,11 +526,12 @@ static int set_auth()
     mnemonic = calloc(num_chars + 1, sizeof(char));
     memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
 
-    printf("Encryption key: ");
     char *key = calloc(BUFSIZ, sizeof(char));
-    get_password(key);
+    if (get_password_verify("Encryption passphrase: ", key, 0)) {
+        printf("Unable to store encrypted authentication.\n");
+        return 1;
+    }
     printf("\n");
-
 
     char *user_file = NULL;
     char *root_dir = NULL;
@@ -678,7 +706,7 @@ int main(int argc, char **argv)
         if ((!user || !pass || !mnemonic) && access(user_file, F_OK) != -1) {
 
             char *key = calloc(BUFSIZ, sizeof(char));
-            printf("Encryption key: ");
+            printf("Encryption passphrase: ");
             get_password(key);
             printf("\n");
             char *file_user = NULL;
