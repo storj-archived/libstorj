@@ -913,10 +913,12 @@ static void request_token(uv_work_t *work)
     struct json_object *token_value;
     if (!json_object_object_get_ex(response, "token", &token_value)) {
         req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     if (!json_object_is_type(token_value, json_type_string) == 1) {
         req->error_status = STORJ_BRIDGE_JSON_ERROR;
+        goto clean_variables;
     }
 
     char *token_value_str = (char *)json_object_get_string(token_value);
@@ -924,6 +926,7 @@ static void request_token(uv_work_t *work)
     strcpy(req->token, token_value_str);
     req->status_code = status_code;
 
+clean_variables:
     free(path);
     json_object_put(response);
     json_object_put(body);
