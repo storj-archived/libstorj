@@ -23,6 +23,27 @@ bool check_auth(char *user, char *pass, int *status_code, char *page)
     return false;
 }
 
+int parse_json(const char *json, json_object **responses)
+{
+    json_tokener *tok = json_tokener_new();
+
+    int stringlen = 0;
+    enum json_tokener_error jerr;
+    do {
+        stringlen = strlen(json);
+        *responses = json_tokener_parse_ex(tok, json, stringlen);
+    } while ((jerr = json_tokener_get_error(tok)) == json_tokener_continue);
+
+    if (jerr != json_tokener_success) {
+        fprintf(stderr, "JSON Error: %s\n", json_tokener_error_desc(jerr));
+        return 1;
+    }
+
+    json_tokener_free(tok);
+
+    return 0;
+}
+
 int mock_bridge_server(void *cls,
                        struct MHD_Connection *connection,
                        const char *url,
@@ -35,21 +56,15 @@ int mock_bridge_server(void *cls,
 
     struct MHD_Response *response;
 
-    json_tokener *tok = json_tokener_new();
     json_object *responses = NULL;
-    int stringlen = 0;
-    enum json_tokener_error jerr;
-    do {
-        stringlen = strlen(mockbridge_json);
-        responses = json_tokener_parse_ex(tok, mockbridge_json, stringlen);
-    } while ((jerr = json_tokener_get_error(tok)) == json_tokener_continue);
-
-    if (jerr != json_tokener_success) {
-        fprintf(stderr, "Error: %s\n", json_tokener_error_desc(jerr));
+    if (parse_json(mockbridge_json, &responses)) {
         exit(1);
     }
 
-    json_tokener_free(tok);
+    json_object *responses_info = NULL;
+    if (parse_json(mockbridgeinfo_json, &responses_info)) {
+        exit(1);
+    }
 
     char *page = "Not Found";
     int status_code = MHD_HTTP_NOT_FOUND;
@@ -61,7 +76,7 @@ int mock_bridge_server(void *cls,
 
     if (0 == strcmp(method, "GET")) {
         if (0 == strcmp(url, "/")) {
-            page = get_response_string(responses, "info");
+            page = get_response_string(responses_info, "info");
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/buckets")) {
             if (check_auth(user, pass, &status_code, page)) {
@@ -139,6 +154,14 @@ int mock_bridge_server(void *cls,
                 status_code = 201;
             }
         }
+    } else if (0 == strcmp(method, "PUT")) {
+        if (0 == strcmp(url, "/frames/d6367831f7f1b117ffdd0015")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                // TODO check post body
+                page = get_response_string(responses, "putframe");
+                status_code = MHD_HTTP_OK;
+            }
+        }
     } else if (0 == strcmp(method, "DELETE")) {
         if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5")) {
             if (check_auth(user, pass, &status_code, page)) {
@@ -184,6 +207,7 @@ int mock_bridge_server(void *cls,
     }
     free(user);
     json_object_put(responses);
+    json_object_put(responses_info);
 
     return ret;
 }
