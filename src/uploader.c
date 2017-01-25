@@ -324,6 +324,10 @@ static void push_frame(uv_work_t *work)
     // Prepare the body
     struct json_object *body = json_object_new_object();
 
+    // Add shard hash
+    json_object *shard_hash = json_object_new_string(shard_meta->hash);
+    json_object_object_add(body, "hash", shard_hash);
+
     // Add shard size
     json_object *shard_size = json_object_new_double(shard_meta->size);
     json_object_object_add(body, "size", shard_size);
