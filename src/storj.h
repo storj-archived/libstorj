@@ -321,7 +321,7 @@ int storj_destroy_env(storj_env_t *env);
  * @param[in] bridge_user - The bridge username
  * @param[in] bridge_pass - The bridge password
  * @param[in] mnemonic - The file encryption mnemonic
- * @return A null value on error, zero on success.
+ * @return A non-zero value on error, zero on success.
  */
 int storj_write_auth(const char *filepath,
                      const char *passhrase,
@@ -340,13 +340,37 @@ int storj_write_auth(const char *filepath,
  * @param[out] bridge_user - The bridge username
  * @param[out] bridge_pass - The bridge password
  * @param[out] mnemonic - The file encryption mnemonic
- * @return A null value on error, zero on success.
+ * @return A non-zero value on error, zero on success.
  */
 int storj_read_auth(const char *filepath,
                     const char *passphrase,
                     char **bridge_user,
                     char **bridge_pass,
                     char **mnemonic);
+
+
+/**
+ * @brief Will generate a new random mnemonic
+ *
+ * This will generate a new random mnemonic with 128 to 256 bits
+ * of entropy.
+ *
+ * @param[in] strength - The bits of entropy
+ * @param[out] buffer - The destination of the mnemonic
+ * @return A non-zero value on error, zero on success.
+ */
+int storj_mnemonic_generate(int strength, char **buffer);
+
+/**
+ * @brief Will check that a mnemonic is valid
+ *
+ * This will check that a mnemonic has been entered correctly by verifying
+ * the checksum, and that words are a part of the list.
+ *
+ * @param[in] strength - The bits of entropy
+ * @return Will return true on success and false failure
+ */
+bool storj_mnemonic_check(const char *mnemonic);
 
 /**
  * @brief Get the error message for an error code

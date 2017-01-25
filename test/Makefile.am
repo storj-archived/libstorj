@@ -1,12 +1,12 @@
 noinst_PROGRAMS = tests
-tests_SOURCES = mockbridge.c mockfarmer.c tests.c storjtests.h $(top_builddir)/src/storj.h mockbridge.json.h
+tests_SOURCES = mockbridge.c mockfarmer.c tests.c storjtests.h $(top_builddir)/src/storj.h mockbridge.json.h mockbridgeinfo.json.h
 tests_LDADD = $(top_builddir)/src/libstorj.la
 tests_LDFLAGS = -Wall -g -static -lmicrohttpd
 TESTS = tests
 
-CLEANFILES = mockbridge.json.h
+CLEANFILES = mockbridge.json.h mockbridgeinfo.json.h
 
-mockbridge.c: mockbridge.json.h
+mockbridge.c: mockbridge.json.h mockbridgeinfo.json.h
 
 %.json.h: %.json
 	@$(MKDIR_P) $(@D)
