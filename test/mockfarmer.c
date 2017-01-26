@@ -119,6 +119,74 @@ int mock_farmer_shard_server(void *cls,
         }
     }
 
+    if (0 == strcmp(method, "POST")) {
+        // TODO verify upload data
+
+        if (0 == strcmp(url, "/")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/10f5c5300bd82edf4f779596f2abfc0e73850bb4")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/1aa592ff1658b62f3e46e3a0523bb3e475192231")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/2782b8a1e2ca93d4c2ecba7c5f8d14534a4da136")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/2b612a8b9119ddfb5086ff9531fd5982f37f4235")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/38e6c43cc958daa999de968b87ea45dbb0715a36")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/5d8ad8720a3123969ef157032fd9d43f0767f859")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/5e6004890307b74d84f560d5b77ca90803ebbb80")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/5f56ef65b4efa94e76c5e370fe3cec045f78d6ee")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/612d7f13db894124b077ae9c5ab4a2ddfca770e3")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/64024717efb0d64e8c3305628828d5bd47592f2a")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/64d5cd6b463fdb2da5a0b30b1aecf2325d87a703")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/6674b562fff319bf1d604d3be0741d0610c20b7b")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/673bcea20dce8b05ee7e854f45ccd87086035c3c")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/6e22510c1ea87e4b6aa68b781651e5d91f021a9d")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/720856fcc241c05f9fd28d33981d8a417206f468")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/72dda673fe94d9a019bc0ffe51f0bfbdef2b52d0")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/78f448e3e4828b9799431976b91f3ee5c4a1023a")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/7af774d76021178e104a57dc9e5a014f871c5d96")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/8d1f89a5139fd0959a47e7ffcde3c228fb5dacff")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/9c670c19b3830a5c7d362aabeeffe3e14d9a1c83")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/a4547c124afb1b6459bdfdebf1cc2da411cbccbb")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/b44976cba53ec814caa460d8aa6f0ba7668082b2")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/c1a21245a6786ae9ca55fefcd3b8f27721a9d561")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/cdc18b4ef951e8d1468b1c9c0b8b15f187b7609c")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/cdc7246ba4c9766a148447eab431ede0f3f5343c")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/f1e392a29ce661967c6aa7a2e57e9e1447c1e6ee")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/febcc72c25b3b693484d54c0393a50168b055309")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/ff481fc3fa7ab4d74ad631b54c76f81602b9b0f2")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/ff481fc3fa7ab4d74ad631b54c76f81602b9b0f2")) {
+            status_code = MHD_HTTP_OK;
+        } else {
+            printf("url: %s\n", url);
+        }
+    }
+
     char *crypt_page = NULL;
 
     if (page) {

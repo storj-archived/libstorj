@@ -409,7 +409,7 @@ int create_test_upload_file(char *filepath)
 
     int shard_size = 16777216;
     char *bytes = "abcdefghijklmn";
-    for (int i = 0; i < 14; i++) {
+    for (int i = 0; i < strlen(bytes); i++) {
         char *page = calloc(shard_size + 1, sizeof(char));
         memset(page, bytes[i], shard_size);
         fputs(page, fp);
