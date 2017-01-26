@@ -15,8 +15,6 @@
 #endif
 
 #include "storj.h"
-// TODO remove this
-#include "http.h"
 
 #ifndef errno
 extern int errno;
@@ -367,11 +365,7 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
             const char *port_str = json_object_get_string(port);
             const char *node_id_str =
                 json_object_get_string(node_id);
-            char *contact_url = ne_concat("\tstorj://",
-                                          address_str, ":",
-                                          port_str, "/",
-                                          node_id_str, NULL);
-            printf("%s\n", contact_url);
+            printf("\tstorj://%s:%s/%s\n", address_str, port_str, node_id_str);
         }
 
         printf("\nAvailable\n");
@@ -380,7 +374,7 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
         json_object_object_get_ex(shard, "available",
                                  &available);
         int num_available =
-            json_object_array_length(established);
+            json_object_array_length(available);
         for (int j = 0; j < num_available; j++) {
             item = json_object_array_get_idx(available, j);
             if (j == 0) {
@@ -398,11 +392,7 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
             const char *port_str = json_object_get_string(port);
             const char *node_id_str =
                 json_object_get_string(node_id);
-            char *contact_url = ne_concat("\tstorj://",
-                                          address_str, ":",
-                                          port_str, "/",
-                                          node_id_str, NULL);
-            printf("%s\n", contact_url);
+            printf("\tstorj://%s:%s/%s\n", address_str, port_str, node_id_str);
         }
     }
 
