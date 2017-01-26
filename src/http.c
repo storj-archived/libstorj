@@ -67,6 +67,8 @@ int put_shard(storj_http_options_t *http_options,
         ne_set_request_body_buffer(req, shard_data, shard_total_bytes);
     }
 
+    signal(SIGPIPE, SIG_IGN);
+
     int request_status = ne_request_dispatch(req);
 
     if (request_status != NE_OK) {

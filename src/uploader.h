@@ -40,8 +40,8 @@ typedef struct {
 typedef struct {
     bool pushed_shard;
     bool pushing_shard;
-    bool creating_frame;
-    bool created_frame;
+    bool preparing_frame;
+    bool prepared_frame;
     bool pushed_frame;
     bool pushing_frame;
     int pushing_frame_request_count;
@@ -70,7 +70,6 @@ typedef struct {
     uint64_t uploaded_bytes;
     bool completed_upload;
     bool encrypting_file;
-    bool completed_encryption;
     bool creating_bucket_entry;
     int add_bucket_entry_count;
     char *token;
@@ -184,25 +183,25 @@ static void cleanup_state(storj_upload_state_t *state);
 static void queue_next_work(storj_upload_state_t *state);
 
 static int queue_request_bucket_token(storj_upload_state_t *state);
-static int queue_request_frame(storj_upload_state_t *state);
+static int queue_request_frame_id(storj_upload_state_t *state);
 static int queue_encrypt_file(storj_upload_state_t *state);
-static int queue_create_frame(storj_upload_state_t *state, int index);
+static int queue_prepare_frame(storj_upload_state_t *state, int index);
 static int queue_push_frame(storj_upload_state_t *state, int index);
 static int queue_push_shard(storj_upload_state_t *state, int index);
 static int queue_create_bucket_entry(storj_upload_state_t *state);
 
 static void request_token(uv_work_t *work);
-static void request_frame(uv_work_t *work);
+static void request_frame_id(uv_work_t *work);
 static void encrypt_file(uv_work_t *work);
-static void create_frame(uv_work_t *work);
+static void prepare_frame(uv_work_t *work);
 static void push_frame(uv_work_t *work);
 static void push_shard(uv_work_t *work);
 static void create_bucket_entry(uv_work_t *work);
 
 static void after_request_token(uv_work_t *work, int status);
-static void after_request_frame(uv_work_t *work, int status);
+static void after_request_frame_id(uv_work_t *work, int status);
 static void after_encrypt_file(uv_work_t *work, int status);
-static void after_create_frame(uv_work_t *work, int status);
+static void after_prepare_frame(uv_work_t *work, int status);
 static void after_push_frame(uv_work_t *work, int status);
 static void after_push_shard(uv_work_t *work, int status);
 static void after_create_bucket_entry(uv_work_t *work, int status);
