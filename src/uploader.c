@@ -140,6 +140,10 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->frame_id);
     }
 
+    if (state->exclude) {
+        free(state->exclude);
+    }
+
     if (state->tmp_path) {
         // Delete the tmp_path file
         if( access( state->tmp_path, F_OK ) != -1 ) {
@@ -280,7 +284,6 @@ static void create_bucket_entry(uv_work_t *work)
                                               NULL,
                                               &status_code);
 
-cleanup:
     req->status_code = status_code;
 
     json_object_put(response);
@@ -314,21 +317,31 @@ static void after_push_shard(uv_work_t *work, int status)
 {
     push_shard_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
-
-    printf("Status Code: %d\n", req->status_code);
+    shard_tracker_t shard = state->shard[req->shard_index];
 
     // Check if we got a 200 status and token
     if (req->status_code == 200) {
         printf("Successfully transfered shard index %d\n", req->shard_index);
-        state->shard[req->shard_index].pushing_shard = false;
-        state->shard[req->shard_index].pushed_shard = true;
+        shard.pushing_shard = false;
+        shard.pushed_shard = true;
         state->completed_shards += 1;
-    } else if (state->shard[req->shard_index].pushing_shard_request_count == 6) {
+    } else if (shard.pushing_shard_request_count == 6) {
         state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     } else {
-        state->shard[req->shard_index].pushing_shard = false;
-        state->shard[req->shard_index].pushed_frame = false;
-        state->shard[req->shard_index].pushing_shard_request_count += 1;
+        shard.pushing_shard = false;
+        shard.pushed_frame = false;
+        shard.pushing_shard_request_count += 1;
+
+        if (state->exclude == NULL) {
+            state->exclude = calloc(strlen(shard.pointer->farmer_node_id) + 1, sizeof(char));
+            strcpy(state->exclude, shard.pointer->farmer_node_id);
+        } else {
+            int new_len = strlen(state->exclude) + strlen(shard.pointer->farmer_node_id) + 1;
+            state->exclude = realloc(state->exclude, new_len + 1);
+            strcat(state->exclude, ",");
+            strcat(state->exclude, shard.pointer->farmer_node_id);
+            state->exclude[new_len] = '\0';
+        }
     }
 
     queue_next_work(state);
@@ -347,7 +360,7 @@ static void push_shard(uv_work_t *work)
                    req->shard_index,
                    state->shard[req->shard_index].pushing_shard_request_count);
 
-    int status_code;
+    int status_code = 0;
 
     //get shard_data
     FILE *encrypted_file = fopen(state->tmp_path, "r");
@@ -551,6 +564,15 @@ static void push_frame(uv_work_t *work)
     // TODO: Make this update on retries
     // Add exclude
     json_object *exclude = json_object_new_array();
+    if (state->exclude) {
+        char *node_id = strtok (state->exclude,",");
+        while (node_id != NULL)
+        {
+          json_object_array_add(exclude, json_object_new_string(node_id));
+          node_id = strtok (NULL, ",");
+        }
+    }
+
     json_object_object_add(body, "exclude", exclude);
 
     char resource[strlen(state->frame_id) + 9];
@@ -558,7 +580,7 @@ static void push_frame(uv_work_t *work)
     strcpy(resource, "/frames/");
     strcat(resource, state->frame_id);
 
-    // req->log->debug("JSON body: %s\n", json_object_to_json_string(body));
+    req->log->debug("JSON body: %s\n", json_object_to_json_string(body));
 
     int status_code;
     struct json_object *response = fetch_json(req->http_options,
@@ -1317,6 +1339,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->token = NULL;
     state->tmp_path = NULL;
     state->frame_id = NULL;
+    state->exclude = NULL;
     state->total_shards = 0;
     state->completed_shards = 0;
     state->uploaded_bytes = 0;

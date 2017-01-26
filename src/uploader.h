@@ -74,6 +74,7 @@ typedef struct {
     bool creating_bucket_entry;
     int add_bucket_entry_count;
     char *token;
+    char *exclude;
     bool requesting_token;
     char *frame_id;
     bool requesting_frame;
