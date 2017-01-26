@@ -35,22 +35,6 @@ void pass(char *msg)
 }
 
 
-int create_test_file(char *file) {
-    FILE *fp;
-    fp = fopen(file, "w+");
-
-    if (fp == NULL) {
-        printf(KRED "Could not create Sample file: %s\n" RESET, file);
-        exit(0);
-    }
-
-    char *sample_text = "It's in that place where I put that thing that time";
-    fputs(sample_text, fp);
-
-    fclose(fp);
-    return 0;
-}
-
 void check_bridge_get_info(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -413,6 +397,28 @@ void check_register(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+int create_test_upload_file(char *filepath)
+{
+    FILE *fp;
+    fp = fopen(filepath, "w+");
+
+    if (fp == NULL) {
+        printf(KRED "Could not create upload file: %s\n" RESET, filepath);
+        exit(0);
+    }
+
+    int shard_size = 16777216;
+    char *bytes = "abcdefghijklmn";
+    for (int i = 0; i < 14; i++) {
+        char *page = calloc(shard_size + 1, sizeof(char));
+        memset(page, bytes[i], shard_size);
+        fputs(page, fp);
+    }
+
+    fclose(fp);
+    return 0;
+}
+
 int test_upload()
 {
 
@@ -423,14 +429,14 @@ int test_upload()
                                       &log_options);
     assert(env != NULL);
 
-    char *file_name = "samplefile.txt";
+    char *file_name = "storj-test-upload.data";
     int len = strlen(folder) + strlen(file_name);
     char *file = calloc(len + 1, sizeof(char));
     strcpy(file, folder);
     strcat(file, file_name);
     file[len] = '\0';
 
-    create_test_file(file);
+    create_test_upload_file(file);
 
     // upload file
     storj_upload_opts_t upload_opts = {
