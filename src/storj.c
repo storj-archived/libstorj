@@ -100,7 +100,21 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         // prevent bridge password from being swapped unencrypted to disk
 #ifdef _POSIX_MEMLOCK
         int pass_len = strlen(options->pass);
+        if (pass_len >= page_size) {
+            return NULL;
+        }
+
+#ifdef HAVE_ALIGNED_ALLOC
         bo->pass = aligned_alloc(page_size, page_size);
+#elif HAVE_POSIX_MEMALIGN
+        bo->pass = NULL;
+        if (posix_memalign((void *)&bo->pass, page_size, page_size)) {
+            return NULL;
+        }
+#else
+        bo->pass = malloc(page_size);
+#endif
+
         if (bo->pass == NULL) {
             return NULL;
         }
@@ -137,10 +151,25 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         // prevent file encryption mnemonic from being swapped unencrypted to disk
 #ifdef _POSIX_MEMLOCK
         int mnemonic_len = strlen(encrypt_options->mnemonic);
+        if (mnemonic_len >= page_size) {
+            return NULL;
+        }
+
+#ifdef HAVE_ALIGNED_ALLOC
         eo->mnemonic = aligned_alloc(page_size, page_size);
+#elif HAVE_POSIX_MEMALIGN
+        eo->mnemonic = NULL;
+        if (posix_memalign((void *)&eo->mnemonic, page_size, page_size)) {
+            return NULL;
+        }
+#else
+        eo->mnemonic = malloc(page_size);
+#endif
+
         if (eo->mnemonic == NULL) {
             return NULL;
         }
+
         memset((char *)eo->mnemonic, 0, page_size);
         memcpy((char *)eo->mnemonic, encrypt_options->mnemonic, mnemonic_len);
         if (mlock(eo->mnemonic, mnemonic_len)) {
