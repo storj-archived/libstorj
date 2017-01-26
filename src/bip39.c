@@ -208,9 +208,9 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase,
 
     pbkdf2_hmac_sha512 (
         strlen(mnemonic),
-        mnemonic,
+        (uint8_t *)mnemonic,
         BIP39_PBKDF2_ROUNDS,
-        strlen(salt), salt,
+        strlen((char *)salt), salt,
         SHA512_DIGEST_SIZE, seed);
 
     char sha512_str[SHA512_DIGEST_SIZE * 2 + 1];

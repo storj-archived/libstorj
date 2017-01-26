@@ -11,7 +11,7 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
 
     // Get the sha256 of the file_name + bucket+id
     uint8_t sha256_digest[SHA256_DIGEST_SIZE];
-    sha256_of_str(name, name_len, sha256_digest);
+    sha256_of_str((uint8_t *)name, name_len, sha256_digest);
 
     // Get the ripemd160 of the sha256
     uint8_t ripemd160_digest[RIPEMD160_DIGEST_SIZE];
@@ -30,7 +30,7 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer)
 
 int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
 {
-    char *ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
+    uint8_t *ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     ripmd160sha256(data, data_size, &ripemd160_digest);
 
     // Convert ripemd160 hex to character array
@@ -46,7 +46,7 @@ int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
     return 0;
 }
 
-int ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
+int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest)
 {
     // Get the sha256 of the data
     uint8_t sha256_digest[SHA256_DIGEST_SIZE];
@@ -62,12 +62,12 @@ int ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
     return 0;
 }
 
-int double_ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
+int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest)
 {
-    char *first_ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
+    uint8_t *first_ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     ripmd160sha256(data, data_size, &first_ripemd160_digest);
 
-    char *second_ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
+    uint8_t *second_ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     ripmd160sha256(first_ripemd160_digest, RIPEMD160_DIGEST_SIZE,
                    &second_ripemd160_digest);
 
@@ -83,7 +83,7 @@ int double_ripmd160sha256(uint8_t *data, uint64_t data_size, char **digest)
 int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size,
                                     char **digest)
 {
-    char *ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
+    uint8_t *ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     double_ripmd160sha256(data, data_size, &ripemd160_digest);
 
     // Convert ripemd160 hex to character array
@@ -237,8 +237,8 @@ uint8_t *key_from_passphrase(const char *passphrase, const char *salt)
         return NULL;
     }
     int rounds = 200000;
-    pbkdf2_hmac_sha256(passphrase_len, passphrase, rounds, salt_len, salt,
-                       SHA256_DIGEST_SIZE, key);
+    pbkdf2_hmac_sha256(passphrase_len, (uint8_t *)passphrase, rounds, salt_len,
+                       (uint8_t *)salt, SHA256_DIGEST_SIZE, key);
 
     return key;
 }
@@ -277,15 +277,15 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
 
     ctr_crypt(ctx1, (nettle_cipher_func *)aes256_encrypt,
               AES_BLOCK_SIZE, data_hash_ctr,
-              data_size, *result, enc + SHA256_DIGEST_SIZE);
+              data_size, (uint8_t *)*result, enc + SHA256_DIGEST_SIZE);
 
     free(ctx1);
 
     // Check that decryption matches expected hash
     struct sha256_ctx *ctx2 = malloc(sizeof(struct sha256_ctx));
     sha256_init(ctx2);
-    sha256_update(ctx2, data_size, *result);
-    sha256_update(ctx2, strlen(salt), salt);
+    sha256_update(ctx2, data_size, (uint8_t *)*result);
+    sha256_update(ctx2, strlen(salt), (uint8_t *)salt);
     uint8_t *decrypted_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
     sha256_digest(ctx2, SHA256_DIGEST_SIZE, decrypted_hash);
 
@@ -308,7 +308,7 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
 int encrypt_data(const char *passphrase, const char *salt, const char *data,
                  char **result)
 {
-    char *key = key_from_passphrase(passphrase, salt);
+    uint8_t *key = key_from_passphrase(passphrase, salt);
     if (!key) {
         return 1;
     }
@@ -323,8 +323,8 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
 
     struct sha256_ctx *ctx1 = malloc(sizeof(struct sha256_ctx));
     sha256_init(ctx1);
-    sha256_update(ctx1, data_size, data);
-    sha256_update(ctx1, strlen(salt), salt);
+    sha256_update(ctx1, data_size, (uint8_t *)data);
+    sha256_update(ctx1, strlen(salt), (uint8_t *)salt);
     uint8_t *data_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
     sha256_digest(ctx1, SHA256_DIGEST_SIZE, data_hash);
 
@@ -336,7 +336,7 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
     aes256_set_encrypt_key(ctx2, key);
     ctr_crypt(ctx2, (nettle_cipher_func *)aes256_encrypt,
               AES_BLOCK_SIZE, data_hash,
-              data_size, buffer + SHA256_DIGEST_SIZE, data);
+              data_size, buffer + SHA256_DIGEST_SIZE, (uint8_t *)data);
 
 
     // Convert to hex string
