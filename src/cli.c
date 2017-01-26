@@ -416,15 +416,16 @@ static void register_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
 
-    if (req->status_code != 200) {
+    if (req->status_code != 201) {
         printf("Request failed with status code: %i\n",
                req->status_code);
-
-
-        const char *jsonStr = json_object_to_json_string(req->response);
-        printf("%s\n", jsonStr);
+        struct json_object *error;
+        json_object_object_get_ex(req->response, "error", &error);
+        printf("Error: %s\n", json_object_get_string(error));
     } else {
-        printf("Successfully registered user.\n");
+        struct json_object *email;
+        json_object_object_get_ex(req->response, "email", &email);
+        printf("Successfully registered %s\n", json_object_get_string(email));
     }
 
     json_object_put(req->response);

@@ -637,6 +637,7 @@ int storj_bridge_register(storj_env_t *env,
     sha256_of_str((uint8_t *)password, strlen(password), sha256_digest);
     char *hex_str = calloc(2 * SHA256_DIGEST_SIZE + 1, sizeof(char));
     hex2str(SHA256_DIGEST_SIZE, sha256_digest, hex_str);
+    hex_str[2 * SHA256_DIGEST_SIZE] = '\0';
 
     struct json_object *body = json_object_new_object();
     json_object *email_str = json_object_new_string(email);
