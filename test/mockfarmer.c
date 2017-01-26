@@ -123,7 +123,7 @@ int mock_farmer_shard_server(void *cls,
 
     ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
               AES_BLOCK_SIZE, ctr,
-              total_bytes_sent, crypt_page, page);
+              total_bytes_sent, (uint8_t *)crypt_page, (uint8_t *)page);
 
     free(page);
     free(ctx);
