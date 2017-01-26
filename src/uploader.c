@@ -155,9 +155,9 @@ static void cleanup_state(storj_upload_state_t *state)
 
     if (state->shard) {
         for (int i = 0; i < state->total_shards; i++ ) {
-            state->log->info("Cleaning up shard %d\n", i);
+            state->log->debug("Cleaning up shard %d\n", i);
             shard_meta_cleanup(state->shard[i].meta);
-            state->log->info("Cleaning up pointers %d\n", i);
+            state->log->debug("Cleaning up pointers %d\n", i);
             pointer_cleanup(state->shard[i].pointer);
         }
     }
@@ -325,9 +325,10 @@ static void after_push_shard(uv_work_t *work, int status)
         shard->pushed_shard = true;
         state->completed_shards += 1;
     } else if (shard->pushing_shard_request_count == 6) {
+        req->log->error("Failed to push shard %d\n", req->shard_index);
         state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     } else {
-        printf("push shard failed, resetting\n");
+        req->log->warn("Failed to push shard %d... Retrying...\n", req->shard_index);
         shard->pushing_shard = false;
         shard->pushed_frame = false;
         shard->pushing_shard_request_count += 1;
@@ -1018,11 +1019,11 @@ static void encrypt_file(uv_work_t *work)
     original_file = fopen(req->file_path, "r");
     encrypted_file = fopen(req->tmp_path, "w+");
 
-    char clr_txt[512 + 1];
-    char cphr_txt[512 + 1];
+    char clr_txt[480 + 1];
+    char cphr_txt[480 + 1];
 
-    memset(clr_txt, '\0', 513);
-    memset(cphr_txt, '\0', 513);
+    memset(clr_txt, '\0', 481);
+    memset(cphr_txt, '\0', 481);
 
     if (original_file) {
         size_t bytes_read = 0;
@@ -1034,15 +1035,31 @@ static void encrypt_file(uv_work_t *work)
                       AES_BLOCK_SIZE, (uint8_t *)iv, bytes_read,
                       (uint8_t *)cphr_txt, (uint8_t *)clr_txt);
 
-            fwrite(cphr_txt, bytes_read, 1, encrypted_file);
+            if (!encrypted_file) {
+                req->log->warn("Pointer to %s dropped.\n", req->tmp_path);
+                goto clean_variables;
+            }
 
-            memset(clr_txt, '\0', 513);
-            memset(cphr_txt, '\0', 513);
+            fwrite(
+                cphr_txt,
+                bytes_read,
+                1,
+                encrypted_file
+            );
+
+            memset(clr_txt, '\0', 481);
+            memset(cphr_txt, '\0', 481);
         }
     }
 
-    fclose(original_file);
-    fclose(encrypted_file);
+clean_variables:
+    if (original_file) {
+        fclose(original_file);
+    }
+
+    if (encrypted_file) {
+        fclose(encrypted_file);
+    }
 
     free(ctx);
     free(iv);
