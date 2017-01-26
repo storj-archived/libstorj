@@ -642,6 +642,7 @@ int storj_bridge_register(storj_env_t *env,
     struct json_object *body = json_object_new_object();
     json_object *email_str = json_object_new_string(email);
     json_object *pass_str = json_object_new_string(hex_str);
+    free(hex_str);
     json_object_object_add(body, "email", email_str);
     json_object_object_add(body, "password", pass_str);
 

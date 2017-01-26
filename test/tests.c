@@ -366,6 +366,51 @@ void check_file_info(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+void check_list_mirrors(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+
+    assert(json_object_is_type(req->response, json_type_array) == 1);
+    struct json_object *firstShard = json_object_array_get_idx(req->response,
+                                                               0);
+    struct json_object *established;
+    struct json_object *available;
+    json_object_object_get_ex(firstShard, "established", &established);
+    json_object_object_get_ex(firstShard, "available", &available);
+    assert(json_object_is_type(established, json_type_array) == 1);
+    assert(json_object_is_type(established, json_type_array) == 1);
+
+    json_object_put(req->response);
+    free(req->path);
+    free(req);
+    free(work_req);
+}
+
+void check_register(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(req->status_code == 201);
+
+    struct json_object *value;
+    int success = json_object_object_get_ex(req->response, "email", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char *email = json_object_get_string(value);
+
+    assert(strcmp(email, "test@test.com") == 0);
+    pass("storj_bridge_register");
+
+    json_object_put(req->body);
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
 int test_upload()
 {
 
@@ -615,6 +660,16 @@ int test_api()
     // get file pointers
     status = storj_bridge_get_file_pointers(env, bucket_id,
                                             file_id, NULL, check_file_pointers);
+    assert(status == 0);
+
+    // get mirrors
+    status = storj_bridge_list_mirrors(env, bucket_id, file_id, NULL,
+                                       check_list_mirrors);
+    assert(status == 0);
+
+    // register a user
+    status = storj_bridge_register(env, "testuser@test.com", "asdf", NULL,
+                                   check_register);
     assert(status == 0);
 
     // run all queued events

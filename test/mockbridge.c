@@ -129,6 +129,11 @@ int mock_bridge_server(void *cls,
                 page = get_response_string(responses, "getframe");
                 status_code = MHD_HTTP_OK;
             }
+        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/files/998960317b6725a3f8080c2b/mirrors")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                page = get_response_string(responses, "listmirrors");
+                status_code = MHD_HTTP_OK;
+            }
         }
 
     } else if (0 == strcmp(method, "POST")) {
@@ -155,6 +160,9 @@ int mock_bridge_server(void *cls,
                 page = get_response_string(responses, "createbuckettoken");
                 status_code = 201;
             }
+        } else if (0 == strcmp(url, "/users")) {
+            page = get_response_string(responses, "createuser");
+            status_code = 201;
         }
     } else if (0 == strcmp(method, "PUT")) {
         if (0 == strcmp(url, "/frames/d6367831f7f1b117ffdd0015")) {

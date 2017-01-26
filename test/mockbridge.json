@@ -489,5 +489,146 @@
       "index": 4,
       "size": 16777216
     }
+  ],
+  "createuser": {
+    "isFreeTier": true,
+    "activated": false,
+    "created": "2017-01-26T19:06:51.045Z",
+    "defaultPaymentProcessor": null,
+    "email": "test@test.com",
+    "id": "test@test.com"
+  },
+  "listmirrors": [
+    {
+      "established": [
+        {
+          "shardHash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+          "contact": {
+            "protocol": "1.0.0",
+            "address": "storj04.prybil.com",
+            "port": 4040,
+            "lastSeen": "2017-01-24T11:43:39.540Z",
+            "userAgent": "6.0.11",
+            "lastTimeout": "2017-01-23T17:20:51.739Z",
+            "responseTime": 8845.665080981631,
+            "timeoutRate": 0.24837207175925927,
+            "nodeID": "3b5e44403ef9d53c9336a6f82adf3a51f57a2c90"
+          },
+          "contract": {
+            "audit_count": 3,
+            "data_hash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+            "data_size": 12,
+            "farmer_id": "3b5e44403ef9d53c9336a6f82adf3a51f57a2c90",
+            "farmer_signature": "H3h8d0CFeZ3s+l+Fzu4VztEqeIGCol6OaoB0CMMc08FzTwmLXFlL1+ozj+gZnn2XPR591ONBheCXTeEb4R21INg=",
+            "payment_destination": "1DAFL2mDpCLceAQ72Rq3dQzfKmBa2FNc6J",
+            "payment_download_price": 0,
+            "payment_storage_price": 0,
+            "renter_hd_index": 4792918,
+            "renter_hd_key": "xpub6AHweYHAxk1EhJSBctQD1nLWPog6Sy2eTpKQLExR1hfzTyyZQWvU4EYNXv1NJN7GpLYXnDLt4PzN874g6zSjAQdFCHZN7U7nbYKYVDUzD42",
+            "renter_id": "363703b24803489b156d5e78ef2951dd40440c8c",
+            "renter_signature": "IBW+KgE9EdllgwQTOrKviMXeQPN0ydVh8RszXp8rDGu5DH4MDxg9XKlFdohp5rRWK7f\/4l\/PxwFSUvUV9bD0vys=",
+            "store_begin": 1482778989402,
+            "store_end": 1490554989402,
+            "version": 0
+          },
+          "isEstablished": true,
+          "id": "5861696e6e527d78e232d3f4"
+        },
+        {
+          "shardHash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+          "contact": {
+            "protocol": "1.1.0",
+            "address": "011s.storjlt.xyz",
+            "port": 3801,
+            "lastSeen": "2017-01-24T20:17:49.152Z",
+            "userAgent": "6.0.15",
+            "lastTimeout": "2017-01-18T01:42:32.385Z",
+            "nodeID": "392ea1b3909a80d784a4ca3232b9f099b1d40312"
+          },
+          "contract": {
+            "audit_count": 3,
+            "data_hash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+            "data_size": 12,
+            "farmer_id": "392ea1b3909a80d784a4ca3232b9f099b1d40312",
+            "farmer_signature": "H5LMAJWkhvZVU0Yr8ZEVi1pzCmyPFTZ899SbCVPT8IN6O\/DGj5QdPbHpZO\/gVQZ7WWkXV1bWsKUDAAdCE\/gaxbg=",
+            "payment_destination": "1J14szQGQoKcCf14ALSZBPL8dy1zgEW2C8",
+            "payment_download_price": 0,
+            "payment_storage_price": 0,
+            "renter_hd_index": 4792918,
+            "renter_hd_key": "xpub6AHweYHAxk1EhJSBctQD1nLWPog6Sy2eTpKQLExR1hfzTyyZQWvU4EYNXv1NJN7GpLYXnDLt4PzN874g6zSjAQdFCHZN7U7nbYKYVDUzD42",
+            "renter_id": "363703b24803489b156d5e78ef2951dd40440c8c",
+            "renter_signature": "H+\/zEohkeih\/S9zYcLFipGohsrXDIJKFFNdH6umJW1fqTJgfMYJBdrfRVH0hwKxiYGKJ5euFMljuYOFhDF0iSDY=",
+            "store_begin": 1482778989402,
+            "store_end": 1490554989402,
+            "version": 0
+          },
+          "isEstablished": true,
+          "id": "5861696e6e527d78e232d3f5"
+        }
+      ],
+      "available": [
+        {
+          "shardHash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+          "contact": {
+            "lastSeen": "2017-01-01T09:15:59.903Z",
+            "port": 15049,
+            "address": "client018.storj.dk",
+            "userAgent": "6.0.11",
+            "protocol": "1.0.0",
+            "nodeID": "39614d0ea75b956797e5ed903f4ed684d5ca8aa6"
+          },
+          "contract": {
+            "audit_count": 3,
+            "data_hash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+            "data_size": 12,
+            "farmer_id": "39614d0ea75b956797e5ed903f4ed684d5ca8aa6",
+            "farmer_signature": "H+VUeZcZ80+NeXJRhhDnk5yKZkhSj\/eZWOJjbv9QFrE8Fz3Fc0yxBUtJaoHgnwEhNtCgT8M5Lop+ZVsC2TEEjq4=",
+            "payment_destination": "13A9pNsK1SWPkzzHZTgoQZjVyZdxKB1KGB",
+            "payment_download_price": 0,
+            "payment_storage_price": 0,
+            "renter_hd_index": 4792918,
+            "renter_hd_key": "xpub6AHweYHAxk1EhJSBctQD1nLWPog6Sy2eTpKQLExR1hfzTyyZQWvU4EYNXv1NJN7GpLYXnDLt4PzN874g6zSjAQdFCHZN7U7nbYKYVDUzD42",
+            "renter_id": "363703b24803489b156d5e78ef2951dd40440c8c",
+            "renter_signature": "IKeZWCSosRhUb4iJNm9ojiLorlCIxqu5SlDVPbe9xXfXPd+yBUjU5+4u2KA8OWCv29p2DB5kQDKWm\/9k7fQoISE=",
+            "store_begin": 1482778989402,
+            "store_end": 1490554989402,
+            "version": 0
+          },
+          "isEstablished": false,
+          "id": "5861696e6e527d78e232d3f9"
+        },
+        {
+          "shardHash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+          "contact": {
+            "lastSeen": "2017-01-22T00:49:14.331Z",
+            "port": 15024,
+            "address": "client013.storj.dk",
+            "userAgent": "6.0.11",
+            "protocol": "1.0.0",
+            "lastTimeout": "2016-12-28T18:13:13.729Z",
+            "nodeID": "3b7c33c6648b094e7950cb4b25fe777d49fd3bb6"
+          },
+          "contract": {
+            "audit_count": 3,
+            "data_hash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+            "data_size": 12,
+            "farmer_id": "3b7c33c6648b094e7950cb4b25fe777d49fd3bb6",
+            "farmer_signature": "H88eeX3oe16BlJ8ffUKM21THgiPfVT\/06330losJi9wFBGW+H\/TgCloVsbwFCch0nB0GMsmohJ2HNn+cnx5OdCk=",
+            "payment_destination": "13DYoH5MBm2LWVb1UziCy6L1ex6PPypyvu",
+            "payment_download_price": 0,
+            "payment_storage_price": 0,
+            "renter_hd_index": 4792918,
+            "renter_hd_key": "xpub6AHweYHAxk1EhJSBctQD1nLWPog6Sy2eTpKQLExR1hfzTyyZQWvU4EYNXv1NJN7GpLYXnDLt4PzN874g6zSjAQdFCHZN7U7nbYKYVDUzD42",
+            "renter_id": "363703b24803489b156d5e78ef2951dd40440c8c",
+            "renter_signature": "H2fCafYjCVrWsyloWif38tcPbTUpcq8Sq6K7taIKa4Q1MhtsTgLTchXRWOaOgjYn7oJOYT0MfaMHFrkVDH6gCXI=",
+            "store_begin": 1482778989402,
+            "store_end": 1490554989402,
+            "version": 0
+          },
+          "isEstablished": false,
+          "id": "5861696e6e527d78e232d3fa"
+        }
+      ]
+    }
   ]
 }
