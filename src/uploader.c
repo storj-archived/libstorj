@@ -365,7 +365,7 @@ static void push_shard(uv_work_t *work)
     // TODO: make sure we only loop a certain number of times
     do {
         // Seek to shard's location in file
-        fseek(encrypted_file, req->shard_index*shard.meta->size, SEEK_SET);
+        fseek(encrypted_file, req->shard_index*state->shard_size, SEEK_SET);
         // Read shard data from file
         read_bytes = fread(shard_data, 1, shard.meta->size, encrypted_file);
     } while(read_bytes < shard.meta->size);
