@@ -664,6 +664,8 @@ int storj_bridge_register(storj_env_t *env,
 {
     uint8_t sha256_digest[SHA256_DIGEST_SIZE];
     sha256_of_str((uint8_t *)password, strlen(password), sha256_digest);
+    // TODO refactor hex2str, to make it more clear how much space needs
+    // to be allocated for hex_str
     char *hex_str = calloc(2 * SHA256_DIGEST_SIZE + 2, sizeof(char));
     hex2str(SHA256_DIGEST_SIZE, sha256_digest, hex_str);
     hex_str[2 * SHA256_DIGEST_SIZE] = '\0';
