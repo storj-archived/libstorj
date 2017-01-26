@@ -438,7 +438,7 @@ static void push_frame(uv_work_t *work)
         goto clean_variables;
     }
 
-    if (!json_object_is_type(obj_token, json_type_string) == 1) {
+    if (!json_object_is_type(obj_token, json_type_string)) {
 
         req->error_status = STORJ_BRIDGE_JSON_ERROR;
         goto clean_variables;
@@ -712,7 +712,7 @@ static void request_frame(uv_work_t *work)
         goto cleanup;
     }
 
-    if (!json_object_is_type(frame_id, json_type_string) == 1) {
+    if (!json_object_is_type(frame_id, json_type_string)) {
         req->error_status = STORJ_BRIDGE_JSON_ERROR;
         goto cleanup;
     }
@@ -783,12 +783,12 @@ static void encrypt_file(uv_work_t *work)
 
     // Convert file key to password
     uint8_t *pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(char));
-    sha256_of_str(req->file_key, DETERMINISTIC_KEY_SIZE, pass);
+    sha256_of_str((uint8_t *)req->file_key, DETERMINISTIC_KEY_SIZE, pass);
     pass[SHA256_DIGEST_SIZE] = '\0';
 
     // Convert file id to salt
     uint8_t *salt = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(char));
-    ripemd160_of_str(req->file_id, FILE_ID_SIZE, salt);
+    ripemd160_of_str((uint8_t *)req->file_id, FILE_ID_SIZE, salt);
     salt[RIPEMD160_DIGEST_SIZE] = '\0';
 
     // Encrypt file
@@ -815,8 +815,10 @@ static void encrypt_file(uv_work_t *work)
         // read up to sizeof(buffer) bytes
         while ((bytes_read = fread(clr_txt, 1, AES_BLOCK_SIZE * 30,
                                    original_file)) > 0) {
+
             ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
-                      AES_BLOCK_SIZE, iv, bytes_read, cphr_txt, clr_txt);
+                      AES_BLOCK_SIZE, (uint8_t *)iv, bytes_read,
+                      (uint8_t *)cphr_txt, (uint8_t *)clr_txt);
 
             fwrite(cphr_txt, bytes_read, 1, encrypted_file);
 
@@ -916,7 +918,7 @@ static void request_token(uv_work_t *work)
         goto clean_variables;
     }
 
-    if (!json_object_is_type(token_value, json_type_string) == 1) {
+    if (!json_object_is_type(token_value, json_type_string)) {
         req->error_status = STORJ_BRIDGE_JSON_ERROR;
         goto clean_variables;
     }
