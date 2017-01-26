@@ -100,6 +100,9 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         // prevent bridge password from being swapped unencrypted to disk
 #ifdef _POSIX_MEMLOCK
         int pass_len = strlen(options->pass);
+        if (pass_len >= page_size) {
+            return NULL;
+        }
 
 #ifdef HAVE_ALIGNED_ALLOC
         bo->pass = aligned_alloc(page_size, page_size);
@@ -148,6 +151,9 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         // prevent file encryption mnemonic from being swapped unencrypted to disk
 #ifdef _POSIX_MEMLOCK
         int mnemonic_len = strlen(encrypt_options->mnemonic);
+        if (mnemonic_len >= page_size) {
+            return NULL;
+        }
 
 #ifdef HAVE_ALIGNED_ALLOC
         eo->mnemonic = aligned_alloc(page_size, page_size);
