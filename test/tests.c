@@ -382,6 +382,8 @@ void check_list_mirrors(uv_work_t *work_req, int status)
     assert(json_object_is_type(established, json_type_array) == 1);
     assert(json_object_is_type(established, json_type_array) == 1);
 
+    pass("storj_bridge_list_mirrors");
+
     json_object_put(req->response);
     free(req->path);
     free(req);
