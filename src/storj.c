@@ -626,3 +626,25 @@ int storj_bridge_list_mirrors(storj_env_t *env,
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
+
+int storj_bridge_register(storj_env_t *env,
+                              char *email,
+                              char *password,
+                              void *handle,
+                              uv_after_work_cb cb)
+{
+    uint8_t sha256_digest[SHA256_DIGEST_SIZE];
+    sha256_of_str((uint8_t *)password, strlen(password), sha256_digest);
+    char *hex_str = calloc(2 * SHA256_DIGEST_SIZE + 1, sizeof(char));
+    hex2str(SHA256_DIGEST_SIZE, sha256_digest, hex_str);
+
+    struct json_object *body = json_object_new_object();
+    json_object *email_str = json_object_new_string(email);
+    json_object *pass_str = json_object_new_string(hex_str);
+    json_object_object_add(body, "email", email_str);
+    json_object_object_add(body, "password", pass_str);
+
+    uv_work_t *work = json_request_work_new(env, "POST", "/users", body, true,
+                                            handle);
+    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+}

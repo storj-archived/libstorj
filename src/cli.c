@@ -26,6 +26,9 @@ static inline void noop() {};
 
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
+    "account\n"                                                         \
+    "  register\n"                                                      \
+    "  set-auth\n\n"                                                    \
     "working with buckets and files\n"                                  \
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
@@ -36,8 +39,6 @@ static inline void noop() {};
     "downloading and uploading files\n"                                 \
     "  upload-file <bucket-id> <path>\n"                                \
     "  download-file <bucket-id> <file-id> <path>\n\n"                  \
-    "setting authentication information\n"                              \
-    "  set-auth\n\n"                                                    \
     "bridge api information\n"                                          \
     "  get-info\n\n"                                                    \
     "options:\n"                                                        \
@@ -403,6 +404,27 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
                                           node_id_str, NULL);
             printf("%s\n", contact_url);
         }
+    }
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
+static void register_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    if (req->status_code != 200) {
+        printf("Request failed with status code: %i\n",
+               req->status_code);
+
+
+        const char *jsonStr = json_object_to_json_string(req->response);
+        printf("%s\n", jsonStr);
+    } else {
+        printf("Successfully registered user.\n");
     }
 
     json_object_put(req->response);
@@ -790,6 +812,30 @@ int main(int argc, char **argv)
 
         storj_bridge_get_info(env, NULL, get_info_callback);
 
+    } else if(strcmp(command, "register") == 0) {
+        storj_bridge_options_t options = {
+            .proto = proto,
+            .host  = host,
+            .port  = port,
+            .user  = NULL,
+            .pass  = NULL
+        };
+
+        env = storj_init_env(&options, NULL, &http_options, &log_options);
+        if (!env) {
+            return 1;
+        }
+
+        char *user = calloc(BUFSIZ, sizeof(char));
+        printf("Bridge username (email): ");
+        get_input(user);
+
+        printf("Password: ");
+        char *pass = calloc(BUFSIZ, sizeof(char));
+        get_password(pass);
+        printf("\n");
+
+        storj_bridge_register(env, user, pass, NULL, register_callback);
     } else {
 
         char *user_file = NULL;

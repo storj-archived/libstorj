@@ -621,6 +621,23 @@ int storj_bridge_resolve_file(storj_env_t *env,
                               void *handle,
                               storj_progress_cb progress_cb,
                               storj_finished_download_cb finished_cb);
+
+/**
+ * @brief Register a user
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] email the user's email
+ * @param[in] password the user's password
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int storj_bridge_register(storj_env_t *env,
+                              char *email,
+                              char *password,
+                              void *handle,
+                              uv_after_work_cb cb);
+
 #ifdef __cplusplus
 }
 #endif
