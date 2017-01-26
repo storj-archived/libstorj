@@ -28,9 +28,7 @@ typedef struct {
 } shard_meta_t;
 
 typedef struct {
-    char *hash;
     char *token;
-    int shard_index;
     char *farmer_user_agent;
     char *farmer_protocol;
     char *farmer_address;
@@ -38,6 +36,19 @@ typedef struct {
     char *farmer_node_id;
     char *farmer_last_seen;
 } farmer_pointer_t;
+
+typedef struct {
+    bool pushed_shard;
+    bool pushing_shard;
+    bool creating_frame;
+    bool created_frame;
+    bool pushed_frame;
+    bool pushing_frame;
+    int pushing_frame_request_count;
+    int index;
+    farmer_pointer_t *pointer;
+    shard_meta_t *meta;
+} shard_tracker_t;
 
 typedef struct {
     storj_env_t *env;
@@ -56,31 +67,23 @@ typedef struct {
     uint64_t shard_size;
     uint64_t total_bytes;
     uint64_t uploaded_bytes;
-    int shards_hashed;
-    bool hashing_shards;
-    bool completed_shard_hash;
-    bool writing;
     bool encrypting_file;
     bool completed_encryption;
     char *token;
     bool requesting_token;
     char *frame_id;
     bool requesting_frame;
-    bool pushing_frame;
     bool received_all_pointers;
     int token_request_count;
     int frame_request_count;
-    int pointers_received_count;
     int encrypt_file_count;
     bool final_callback_called;
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;
     int error_status;
-    shard_meta_t* shard_meta;
-    farmer_pointer_t *farmer_pointers;
-    int *add_shard_to_frame_request_count;
     storj_log_levels_t *log;
     void *handle;
+    shard_tracker_t *shard;
 } storj_upload_state_t;
 
 typedef struct {
@@ -141,11 +144,13 @@ static inline char separator()
 #endif
 }
 
-static uv_work_t *shard_state_new(int index, storj_upload_state_t *state);
+static farmer_pointer_t *farmer_pointer_new();
+static shard_meta_t *shard_meta_new();
+static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state);
 static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state);
 static uv_work_t *uv_work_new();
 
-static void shard_state_cleanup(shard_meta_t *shard_meta);
+static void shard_meta_cleanup(shard_meta_t *shard_meta);
 static void pointer_cleanup(farmer_pointer_t *farmer_pointer);
 static void cleanup_state(storj_upload_state_t *state);
 
@@ -156,17 +161,20 @@ static int queue_request_frame(storj_upload_state_t *state);
 static int queue_encrypt_file(storj_upload_state_t *state);
 static int queue_create_frame(storj_upload_state_t *state, int index);
 static int queue_push_frame(storj_upload_state_t *state, int index);
+static int queue_push_shard(storj_upload_state_t *state, int index);
 
 static void request_token(uv_work_t *work);
 static void request_frame(uv_work_t *work);
 static void encrypt_file(uv_work_t *work);
 static void create_frame(uv_work_t *work);
 static void push_frame(uv_work_t *work);
+static void push_shard(uv_work_t *work);
 
 static void after_request_token(uv_work_t *work, int status);
 static void after_request_frame(uv_work_t *work, int status);
 static void after_encrypt_file(uv_work_t *work, int status);
 static void after_create_frame(uv_work_t *work, int status);
 static void after_push_frame(uv_work_t *work, int status);
+static void after_push_shard(uv_work_t *work, int status);
 
 #endif /* STORJ_UPLOADER_H */

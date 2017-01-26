@@ -77,7 +77,7 @@ static void request_token(uv_work_t *work)
             req->error_status = STORJ_BRIDGE_JSON_ERROR;
         }
 
-        if (!json_object_is_type(token_value, json_type_string) == 1) {
+        if (!json_object_is_type(token_value, json_type_string)) {
             req->error_status = STORJ_BRIDGE_JSON_ERROR;
         }
 
@@ -604,7 +604,9 @@ static void request_shard(uv_work_t *work)
             aes256_set_encrypt_key(ctx, req->decrypt_key);
             ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE, req->decrypt_ctr,
-                      req->shard_total_bytes, req->shard_data, req->shard_data);
+                      req->shard_total_bytes,
+                      (uint8_t *)req->shard_data,
+                      (uint8_t *)req->shard_data);
 
             free(ctx);
         }
@@ -797,6 +799,8 @@ static int queue_request_shards(storj_download_state_t *state)
 
         i++;
     }
+
+    return 0;
 }
 
 static void write_shard(uv_work_t *work)
@@ -1112,7 +1116,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
         file_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
         uint8_t *decrypt_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
-        sha256_of_str(file_key, DETERMINISTIC_KEY_SIZE, decrypt_key);
+        sha256_of_str((uint8_t *)file_key, DETERMINISTIC_KEY_SIZE, decrypt_key);
         decrypt_key[SHA256_DIGEST_SIZE] = '\0';
 
         memset_zero(file_key, DETERMINISTIC_KEY_SIZE + 1);
@@ -1121,7 +1125,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
         state->decrypt_key = decrypt_key;
 
         uint8_t *file_id_hash = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
-        ripemd160_of_str(file_id, FILE_ID_SIZE, file_id_hash);
+        ripemd160_of_str((uint8_t *)file_id, FILE_ID_SIZE, file_id_hash);
         file_id_hash[RIPEMD160_DIGEST_SIZE] = '\0';
 
         uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));

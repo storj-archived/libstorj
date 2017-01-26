@@ -118,7 +118,7 @@ const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len)
 }
 
 // if doesn't return 1 then it failed.
-int mnemonic_check(const char *mnemonic)
+bool mnemonic_check(const char *mnemonic)
 {
     if (!mnemonic) {
         return 0;
@@ -208,9 +208,9 @@ int mnemonic_to_seed(const char *mnemonic, const char *passphrase,
 
     pbkdf2_hmac_sha512 (
         strlen(mnemonic),
-        mnemonic,
+        (uint8_t *)mnemonic,
         BIP39_PBKDF2_ROUNDS,
-        strlen(salt), salt,
+        strlen((char *)salt), salt,
         SHA512_DIGEST_SIZE, seed);
 
     char sha512_str[SHA512_DIGEST_SIZE * 2 + 1];

@@ -718,16 +718,21 @@ int test_mnemonic_check()
 
     const char **m;
     int r;
+    int r2;
     m = vectors_ok;
     while (*m) {
         r = mnemonic_check(*m);
+        r2 = storj_mnemonic_check(*m);
         assert(r == 1);
+        assert(r2 == 1);
         m++;
     }
     m = vectors_fail;
     while (*m) {
         r = mnemonic_check(*m);
+        r2 = mnemonic_check(*m);
         assert(r == 0);
+        assert(r2 == 0);
         m++;
     }
 
@@ -736,6 +741,49 @@ int test_mnemonic_check()
     return 0;
 }
 
+int test_storj_mnemonic_generate_256()
+{
+    int status;
+    int stren = 256;
+    char *mnemonic = calloc(250 * 2, sizeof(char));
+    storj_mnemonic_generate(stren, &mnemonic);
+    status = storj_mnemonic_check(mnemonic);
+
+    if (status != 1) {
+        fail("test_mnemonic_generate");
+        printf("\t\texpected mnemonic check: %i\n", 0);
+        printf("\t\tactual mnemonic check:   %i\n", status);
+        free(mnemonic);
+        return 1;
+    }
+    free(mnemonic);
+
+    pass("test_storj_mnemonic_check_256");
+
+    return 0;
+}
+
+int test_storj_mnemonic_generate()
+{
+    int status;
+    int stren = 128;
+    char *mnemonic = calloc(250, sizeof(char));
+    storj_mnemonic_generate(stren, &mnemonic);
+    status = storj_mnemonic_check(mnemonic);
+
+    if (status != 1) {
+        fail("test_mnemonic_generate");
+        printf("\t\texpected mnemonic check: %i\n", 0);
+        printf("\t\tactual mnemonic check:   %i\n", status);
+        free(mnemonic);
+        return 1;
+    }
+    free(mnemonic);
+
+    pass("test_storj_mnemonic_check");
+
+    return 0;
+}
 
 int test_mnemonic_generate()
 {
@@ -945,6 +993,63 @@ int test_increment_ctr_aes_iv()
     return 0;
 }
 
+int test_read_write_encrypted_file()
+{
+    // it should create file passed in if it does not exist
+    char test_file[1024];
+    strcpy(test_file, folder);
+    strcat(test_file, "storj-test-user.json");
+    if (access(test_file, F_OK) != -1) {
+        unlink(test_file);
+    }
+
+    // it should successfully encrypt and decrypt a file with the provided key and salt
+    char *expected_mnemonic = "letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic bless";
+    storj_write_auth(test_file, "testpass",
+                     "testuser@storj.io", "bridgepass", expected_mnemonic);
+
+    char *bridge_user = NULL;
+    char *bridge_pass = NULL;
+    char *mnemonic = NULL;
+    if (storj_read_auth(test_file, "testpass",
+                        &bridge_user, &bridge_pass, &mnemonic)) {
+        fail("test_storj_write_read_auth(0)");
+        return 1;
+    }
+
+    if (strcmp(bridge_user, "testuser@storj.io") != 0) {
+        fail("test_storj_write_read_auth(1)");
+        return 1;
+    }
+
+    if (strcmp(bridge_pass, "bridgepass") != 0) {
+        fail("test_storj_write_read_auth(2)");
+        return 1;
+    }
+
+    if (strcmp(mnemonic, expected_mnemonic) != 0) {
+        fail("test_storj_write_read_auth(3)");
+        return 1;
+    }
+
+    free(bridge_user);
+    free(bridge_pass);
+    free(mnemonic);
+
+    // it should fail to decrypt if the wrong password
+    if (!storj_read_auth(test_file, "wrongpass",
+                        &bridge_user, &bridge_pass, &mnemonic)) {
+        fail("test_storj_write_read_auth(4)");
+        return 1;
+    }
+
+    free(bridge_user);
+    free(bridge_pass);
+
+    pass("test_storj_write_read_auth");
+
+    return 0;
+}
 
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
@@ -1020,6 +1125,10 @@ int main(void)
     ++tests_ran;
     status += test_mnemonic_generate();
     ++tests_ran;
+    status += test_storj_mnemonic_generate();
+    ++tests_ran;
+    status += test_storj_mnemonic_generate_256();
+    ++tests_ran;
     status += test_generate_seed();
     ++tests_ran;
     printf("\n");
@@ -1032,6 +1141,8 @@ int main(void)
     status += test_generate_file_key();
     ++tests_ran;
     status += test_increment_ctr_aes_iv();
+    ++tests_ran;
+    status += test_read_write_encrypted_file();
     ++tests_ran;
     printf("\n");
 

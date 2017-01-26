@@ -42,7 +42,7 @@ int put_shard(storj_http_options_t *http_options,
         http_options->proxy_port) {
 
         ne_session_socks_proxy(sess,
-                               http_options->proxy_version,
+                               (enum ne_sock_sversion)http_options->proxy_version,
                                http_options->proxy_host,
                                http_options->proxy_port,
                                "",
@@ -111,7 +111,7 @@ int fetch_shard(storj_http_options_t *http_options,
         http_options->proxy_port) {
 
         ne_session_socks_proxy(sess,
-                               http_options->proxy_version,
+                               (enum ne_sock_sversion)http_options->proxy_version,
                                http_options->proxy_host,
                                http_options->proxy_port,
                                "",
@@ -153,7 +153,7 @@ int fetch_shard(storj_http_options_t *http_options,
             break;
         }
 
-        sha256_update(&ctx, bytes, buf);
+        sha256_update(&ctx, bytes, (uint8_t *)buf);
 
         memcpy(shard_data + total, buf, bytes);
         total += bytes;
@@ -250,7 +250,7 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
         http_options->proxy_port) {
 
         ne_session_socks_proxy(sess,
-                               http_options->proxy_version,
+                               (enum ne_sock_sversion)http_options->proxy_version,
                                http_options->proxy_host,
                                http_options->proxy_port,
                                "",
@@ -272,7 +272,7 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
         char *pass = calloc(SHA256_DIGEST_SIZE * 2 + 1, sizeof(char));
         struct sha256_ctx ctx;
         sha256_init(&ctx);
-        sha256_update(&ctx, strlen(options->pass), options->pass);
+        sha256_update(&ctx, strlen(options->pass), (uint8_t *)options->pass);
         sha256_digest(&ctx, SHA256_DIGEST_SIZE, pass_hash);
         for (unsigned i = 0; i < SHA256_DIGEST_SIZE; i++) {
             sprintf(&pass[i*2], "%02x", pass_hash[i]);
@@ -330,7 +330,7 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
     ssize_t bytes = 0;
     ssize_t total = 0;
 
-    while (bytes = ne_read_response_block(req, buf, NE_BUFSIZ)) {
+    while ((bytes = ne_read_response_block(req, buf, NE_BUFSIZ))) {
         if (bytes < 0) {
             // TODO: error. careful with cleanup
         }

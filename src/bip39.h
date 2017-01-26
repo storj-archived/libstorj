@@ -46,7 +46,7 @@ int mnemonic_from_data(const uint8_t *data, int len, char **buffer);
 
 const uint16_t *mnemonic_from_data_indexes(const uint8_t *data, int len);
 
-int mnemonic_check(const char *mnemonic);
+bool mnemonic_check(const char *mnemonic);
 
 /**
  * @brief Generate seed from Mnemonic
