@@ -24,7 +24,7 @@ int mock_farmer_shard_server(void *cls,
 
     int total_bytes = 16777216;
     int total_bytes_sent = 16777216;
-    char *page = "Not Found";
+    char *page = NULL;
 
     struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
 
@@ -119,11 +119,20 @@ int mock_farmer_shard_server(void *cls,
         }
     }
 
-    char *crypt_page = malloc(total_bytes_sent + 1);
+    char *crypt_page = NULL;
 
-    ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
-              AES_BLOCK_SIZE, ctr,
-              total_bytes_sent, (uint8_t *)crypt_page, (uint8_t *)page);
+    if (page) {
+
+        crypt_page = malloc(total_bytes_sent + 1);
+
+        ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
+                  AES_BLOCK_SIZE, ctr,
+                  total_bytes_sent, (uint8_t *)crypt_page, (uint8_t *)page);
+    } else {
+        total_bytes_sent = 9;
+        crypt_page = calloc(total_bytes_sent + 1, sizeof(char));
+        strcat(crypt_page, "Not Found");
+    }
 
     free(page);
     free(ctx);
