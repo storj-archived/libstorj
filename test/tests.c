@@ -218,7 +218,10 @@ void check_store_file_progress(double progress,
                                uint64_t total_bytes,
                                void *handle)
 {
-    // TODO assersions
+    assert(handle == NULL);
+    if (progress == (double)1) {
+        pass("storj_bridge_store_file (progress finished)");
+    }
 }
 
 void check_store_file(int error_code, void *handle)
