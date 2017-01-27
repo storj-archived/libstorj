@@ -72,6 +72,7 @@ int put_shard(storj_http_options_t *http_options,
     int request_status = ne_request_dispatch(req);
 
     if (request_status != NE_OK) {
+        // TODO log using logger
         printf("Put shard request error: %s\n", ne_get_error(sess));
         return request_status;
     }
