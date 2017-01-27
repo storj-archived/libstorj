@@ -312,11 +312,28 @@ static int queue_create_bucket_entry(storj_upload_state_t *state)
     return status;
 }
 
+static void free_push_shard_work(uv_handle_t *progress_handle)
+{
+    uv_work_t *work = progress_handle->data;
+    push_shard_request_t *req = work->data;
+
+    free(req);
+    free(work);
+}
+
 static void after_push_shard(uv_work_t *work, int status)
 {
     push_shard_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
     shard_tracker_t *shard = &state->shard[req->shard_index];
+
+    uv_handle_t *progress_handle = (uv_handle_t *) &req->progress_handle;
+
+    // free the upload progress
+    free(progress_handle->data);
+
+    // assign work so that we can free after progress_handle is closed
+    progress_handle->data = work;
 
     // Check if we got a 200 status and token
     if (req->status_code == 200 || req->status_code == 201 || req->status_code == 304) {
@@ -347,8 +364,8 @@ static void after_push_shard(uv_work_t *work, int status)
 
     queue_next_work(state);
 
-    free(req);
-    free(work);
+    // close the async progress handle
+    uv_close(progress_handle, free_push_shard_work);
 }
 
 static void push_shard(uv_work_t *work)
@@ -384,7 +401,6 @@ static void push_shard(uv_work_t *work)
         read_bytes = fread(shard_data, 1, shard.meta->size, encrypted_file);
     } while(read_bytes < shard.meta->size);
 
-
     put_shard(req->http_options,
               shard.pointer->farmer_node_id,
               shard.pointer->farmer_protocol,
@@ -395,7 +411,7 @@ static void push_shard(uv_work_t *work)
               shard_data,
               shard.pointer->token,
               &status_code,
-              NULL,
+              &req->progress_handle,
               false);
 
 
@@ -403,6 +419,34 @@ static void push_shard(uv_work_t *work)
 
     fclose(encrypted_file);
     free(shard_data);
+}
+
+static void progress_put_shard(uv_async_t* async)
+{
+
+    shard_upload_progress_t *progress = async->data;
+
+    storj_upload_state_t *state = progress->state;
+
+    state->shard[progress->pointer_index].uploaded_size = progress->bytes;
+
+    uint64_t uploaded_bytes = 0;
+    uint64_t total_bytes = 0;
+
+    for (int i = 0; i < state->total_shards; i++) {
+
+        shard_tracker_t *shard = &state->shard[i];
+
+        uploaded_bytes += shard->uploaded_size;
+        total_bytes += shard->meta->size;
+    }
+
+    double total_progress = (double)uploaded_bytes / (double)total_bytes;
+
+    state->progress_cb(total_progress,
+                       uploaded_bytes,
+                       total_bytes,
+                       state->handle);
 }
 
 static int queue_push_shard(storj_upload_state_t *state, int index)
@@ -418,6 +462,21 @@ static int queue_push_shard(storj_upload_state_t *state, int index)
     req->error_status = 0;
     req->log = state->log;
     req->shard_index = index;
+
+
+    // setup upload progress reporting
+    shard_upload_progress_t *progress =
+        malloc(sizeof(shard_upload_progress_t));
+
+    progress->pointer_index = index;
+    progress->bytes = 0;
+    progress->state = state;
+
+    req->progress_handle.data = progress;
+
+    uv_async_init(state->env->loop, &req->progress_handle,
+                  progress_put_shard);
+
     work->data = req;
 
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
@@ -1194,14 +1253,6 @@ static void queue_next_work(storj_upload_state_t *state)
     // report any errors
     if (state->error_status != 0) {
         return cleanup_state(state);
-    }
-
-    // report progress of upload
-    if (state->file_size > 0 && state->uploaded_bytes > 0) {
-        state->progress_cb(state->uploaded_bytes / state->total_bytes,
-                           state->uploaded_bytes,
-                           state->total_bytes,
-                           state->handle);
     }
 
     // report upload complete

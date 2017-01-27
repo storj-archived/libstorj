@@ -42,7 +42,6 @@ static long int body_shard_send(void *userdata, char *buffer,
     if (body->progress_handle &&
         body->bytes_since_progress > SHARD_PROGRESS_INTERVAL) {
 
-
         shard_download_progress_t *progress = body->progress_handle->data;
         progress->bytes = body->total_sent;
         uv_async_send(body->progress_handle);

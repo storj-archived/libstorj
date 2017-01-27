@@ -17,7 +17,7 @@
 
 #define SHARD_PROGRESS_INTERVAL NE_BUFSIZ * 150
 
-/** @brief A structure for sharing progress state between threads.
+/** @brief A structure for sharing download progress state between threads.
  *
  * This structure is used to send async updates from a worker thread
  * back to the event loop thread, to report the bytes that have been
@@ -29,6 +29,19 @@ typedef struct {
     /* state should not be modified in worker threads */
     void *state;
 } shard_download_progress_t;
+
+/** @brief A structure for sharing upload progress state between threads.
+ *
+ * This structure is used to send async updates from a worker thread
+ * back to the event loop thread, to report the bytes that have been
+ * received for a shard.
+ */
+typedef struct {
+    uint32_t pointer_index;
+    uint64_t bytes;
+    /* state should not be modified in worker threads */
+    void *state;
+} shard_upload_progress_t;
 
 typedef struct {
     char *shard_data;

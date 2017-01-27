@@ -49,6 +49,7 @@ typedef struct {
     int index;
     farmer_pointer_t *pointer;
     shard_meta_t *meta;
+    uint64_t uploaded_size;
 } shard_tracker_t;
 
 typedef struct {
@@ -117,6 +118,7 @@ typedef struct {
     int error_status;
     storj_log_levels_t *log;
     int shard_index;
+    uv_async_t progress_handle;
 
     /* state should not be modified in worker threads */
     storj_upload_state_t *upload_state;
