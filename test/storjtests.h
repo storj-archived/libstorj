@@ -35,4 +35,6 @@ int mock_farmer_shard_server(void *cls,
                              size_t *upload_data_size,
                              void **ptr);
 
+struct MHD_Daemon *start_farmer_server();
+
 int create_test_file(char *file);

@@ -1127,22 +1127,6 @@ struct MHD_Daemon *start_test_server()
                             MHD_OPTION_END);
 }
 
-// Test Farmer
-struct MHD_Daemon *start_farmer_server()
-{
-    // spin up farmer test shard server
-    return MHD_start_daemon(MHD_USE_THREAD_PER_CONNECTION,
-                            8092,
-                            NULL,
-                            NULL,
-                            &mock_farmer_shard_server,
-                            NULL,
-                            MHD_OPTION_END);
-}
-
-
-
-
 int main(void)
 {
     // Make sure we have a tmp folder

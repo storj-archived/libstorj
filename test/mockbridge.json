@@ -72,6 +72,8 @@
       "id": "85fb0ed00de1196dc22e0f6d"
     }
   ],
+  "createfile": {
+  },
   "createbuckettoken": {
     "bucket": "845f106ddfc234054eee274a",
     "operation": "PULL",

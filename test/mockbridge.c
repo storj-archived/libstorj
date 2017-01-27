@@ -160,6 +160,12 @@ int mock_bridge_server(void *cls,
                 page = get_response_string(responses, "createbuckettoken");
                 status_code = 201;
             }
+        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/files")) {
+            // For test upload
+            if (check_auth(user, pass, &status_code, page)) {
+                page = get_response_string(responses, "createfile");
+                status_code = 201;
+            }
         } else if (0 == strcmp(url, "/users")) {
             page = get_response_string(responses, "createuser");
             status_code = 201;

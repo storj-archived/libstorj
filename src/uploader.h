@@ -13,7 +13,7 @@
 #include "crypto.h"
 
 #define MAX_SHARD_SIZE 1073741824
-#define SHARD_MULTIPLES_BACK 5
+#define SHARD_MULTIPLES_BACK 4
 #define CHALLENGES 4
 #define STORJ_NULL -1
 
