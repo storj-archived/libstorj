@@ -17,13 +17,33 @@ static void clean_up_neon(ne_session *s, ne_request *r)
     ne_session_destroy(s);
 }
 
+static long int body_shard_send(void *userdata, char *buffer,
+                                long unsigned int buflen)
+{
+    shard_body_t *body = userdata;
+
+    if (buflen == 0) {
+        body->remain = body->length;
+        body->pnt = body->shard_data;
+    } else {
+        if (body->remain < buflen) {
+            buflen = body->remain;
+        }
+        memcpy(buffer, body->pnt, buflen);
+        body->pnt += buflen;
+        body->remain -= buflen;
+    }
+
+    return buflen;
+}
+
 int put_shard(storj_http_options_t *http_options,
               char *farmer_id,
               char *proto,
               char *host,
               int port,
               char *shard_hash,
-              ssize_t shard_total_bytes,
+              uint64_t shard_total_bytes,
               char *shard_data,
               char *token,
               int *status_code,
@@ -63,8 +83,19 @@ int put_shard(storj_http_options_t *http_options,
     }
 
     if (shard_data && shard_total_bytes) {
+
+        // Set the content header
         ne_add_request_header(req, "Content-Type", "application/octet-stream");
-        ne_set_request_body_buffer(req, shard_data, shard_total_bytes);
+
+        shard_body_t *shard_body = malloc(sizeof(shard_body_t));
+        shard_body->shard_data = shard_data;
+        shard_body->length = shard_total_bytes;
+        shard_body->remain = shard_total_bytes;
+        shard_body->pnt = shard_data;
+
+        ne_set_request_body_provider(req, shard_total_bytes,
+                                     body_shard_send, shard_body);
+
     }
 
 #ifdef _WIN32
@@ -98,7 +129,7 @@ int fetch_shard(storj_http_options_t *http_options,
                 char *host,
                 int port,
                 char *shard_hash,
-                ssize_t shard_total_bytes,
+                uint64_t shard_total_bytes,
                 char *shard_data,
                 char *token,
                 int *status_code,

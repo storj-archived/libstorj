@@ -30,6 +30,13 @@ typedef struct {
     void *state;
 } shard_download_progress_t;
 
+typedef struct {
+    char *shard_data;
+    uint64_t length;
+    uint64_t remain;
+    void *pnt;
+} shard_body_t;
+
 /**
  * @brief Send a shard to a farmer via an HTTP request
  *
@@ -53,7 +60,7 @@ int put_shard(storj_http_options_t *http_options,
               char *host,
               int port,
               char *shard_hash,
-              ssize_t shard_total_bytes,
+              uint64_t shard_total_bytes,
               char *shard_data,
               char *token,
               int *status_code,
@@ -83,7 +90,7 @@ int fetch_shard(storj_http_options_t *http_options,
                 char *host,
                 int port,
                 char *shard_hash,
-                ssize_t shard_total_bytes,
+                uint64_t shard_total_bytes,
                 char *shard_data,
                 char *token,
                 int *status_code,
