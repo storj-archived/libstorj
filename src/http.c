@@ -67,7 +67,11 @@ int put_shard(storj_http_options_t *http_options,
         ne_set_request_body_buffer(req, shard_data, shard_total_bytes);
     }
 
+#ifdef _WIN32
+    signal(WSAECONNRESET, SIG_IGN);
+#else
     signal(SIGPIPE, SIG_IGN);
+#endif
 
     int request_status = ne_request_dispatch(req);
 
