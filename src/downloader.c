@@ -1067,8 +1067,8 @@ int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
 
 int storj_bridge_resolve_file(storj_env_t *env,
                               storj_download_state_t *state,
-                              char *bucket_id,
-                              char *file_id,
+                              const char *bucket_id,
+                              const char *file_id,
                               FILE *destination,
                               void *handle,
                               storj_progress_cb progress_cb,

@@ -99,7 +99,7 @@ int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size,
     return 0;
 }
 
-int generate_bucket_key(const char *mnemonic, char *bucket_id,
+int generate_bucket_key(const char *mnemonic, const char *bucket_id,
                         char **bucket_key)
 {
     char *seed = calloc(128 + 1, sizeof(char));
@@ -113,8 +113,8 @@ int generate_bucket_key(const char *mnemonic, char *bucket_id,
     return 0;
 }
 
-int generate_file_key(const char *mnemonic, char *bucket_id, char *file_id,
-                      char **file_key)
+int generate_file_key(const char *mnemonic, const char *bucket_id,
+                      const char *file_id, char **file_key)
 {
     char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     generate_bucket_key(mnemonic, bucket_id, &bucket_key);
@@ -128,7 +128,8 @@ int generate_file_key(const char *mnemonic, char *bucket_id, char *file_id,
     return 0;
 }
 
-int get_deterministic_key(char *key, int key_len, char *id, char **buffer)
+int get_deterministic_key(const char *key, int key_len,
+                          const char *id, char **buffer)
 {
     int input_len = key_len + strlen(id);
     char *sha512input = calloc(input_len + 1, sizeof(char));

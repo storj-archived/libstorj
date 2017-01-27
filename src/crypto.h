@@ -65,7 +65,7 @@ int calculate_file_id(char *bucket, char *file_name, char **buffer);
  * @param[out] bucket_key 64 byte character array that is the bucket's key
  * @return A non-zero error value on failure and 0 on success.
  */
-int generate_bucket_key(const char *mnemonic, char *bucket_id,
+int generate_bucket_key(const char *mnemonic, const char *bucket_id,
                         char **bucket_key);
 
 /**
@@ -78,8 +78,8 @@ int generate_bucket_key(const char *mnemonic, char *bucket_id,
  * @return A non-zero error value on failure and 0 on success.
  */
 int generate_file_key(const char *mnemonic,
-                      char *bucket_id,
-                      char *file_id,
+                      const char *bucket_id,
+                      const char *file_id,
                       char **file_key);
 
 /**
@@ -91,7 +91,8 @@ int generate_file_key(const char *mnemonic,
  * @param[out] buffer 64 byte character array of the deterministic key
  * @return A non-zero error value on failure and 0 on success.
  */
-int get_deterministic_key(char *key, int key_len, char *id, char **buffer);
+int get_deterministic_key(const char *key, int key_len,
+                          const char *id, char **buffer);
 
 /**
  * @brief Increment the iv for ctr decryption/encryption

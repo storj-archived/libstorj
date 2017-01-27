@@ -498,7 +498,7 @@ int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb
 }
 
 int storj_bridge_create_bucket(storj_env_t *env,
-                               char *name,
+                               const char *name,
                                void *handle,
                                uv_after_work_cb cb)
 {
@@ -514,7 +514,7 @@ int storj_bridge_create_bucket(storj_env_t *env,
 }
 
 int storj_bridge_delete_bucket(storj_env_t *env,
-                               char *id,
+                               const char *id,
                                void *handle,
                                uv_after_work_cb cb)
 {
@@ -526,7 +526,7 @@ int storj_bridge_delete_bucket(storj_env_t *env,
 }
 
 int storj_bridge_list_files(storj_env_t *env,
-                            char *id,
+                            const char *id,
                             void *handle,
                             uv_after_work_cb cb)
 {
@@ -538,7 +538,7 @@ int storj_bridge_list_files(storj_env_t *env,
 }
 
 int storj_bridge_create_bucket_token(storj_env_t *env,
-                                     char *bucket_id,
+                                     const char *bucket_id,
                                      storj_bucket_op_t operation,
                                      void *handle,
                                      uv_after_work_cb cb)
@@ -556,8 +556,8 @@ int storj_bridge_create_bucket_token(storj_env_t *env,
 }
 
 int storj_bridge_get_file_pointers(storj_env_t *env,
-                                   char *bucket_id,
-                                   char *file_id,
+                                   const char *bucket_id,
+                                   const char *file_id,
                                    void *handle,
                                    uv_after_work_cb cb)
 {
@@ -569,8 +569,8 @@ int storj_bridge_get_file_pointers(storj_env_t *env,
 }
 
 int storj_bridge_delete_file(storj_env_t *env,
-                             char *bucket_id,
-                             char *file_id,
+                             const char *bucket_id,
+                             const char *file_id,
                              void *handle,
                              uv_after_work_cb cb)
 {
@@ -602,7 +602,7 @@ int storj_bridge_get_frames(storj_env_t *env,
 }
 
 int storj_bridge_get_frame(storj_env_t *env,
-                           char *frame_id,
+                           const char *frame_id,
                            void *handle,
                            uv_after_work_cb cb)
 {
@@ -615,7 +615,7 @@ int storj_bridge_get_frame(storj_env_t *env,
 }
 
 int storj_bridge_delete_frame(storj_env_t *env,
-                              char *frame_id,
+                              const char *frame_id,
                               void *handle,
                               uv_after_work_cb cb)
 {
@@ -627,8 +627,8 @@ int storj_bridge_delete_frame(storj_env_t *env,
 }
 
 int storj_bridge_get_file_info(storj_env_t *env,
-                               char *bucket_id,
-                               char *file_id,
+                               const char *bucket_id,
+                               const char *file_id,
                                void *handle,
                                uv_after_work_cb cb)
 {
@@ -642,8 +642,8 @@ int storj_bridge_get_file_info(storj_env_t *env,
 }
 
 int storj_bridge_list_mirrors(storj_env_t *env,
-                              char *bucket_id,
-                              char *file_id,
+                              const char *bucket_id,
+                              const char *file_id,
                               void *handle,
                               uv_after_work_cb cb)
 {
@@ -657,10 +657,10 @@ int storj_bridge_list_mirrors(storj_env_t *env,
 }
 
 int storj_bridge_register(storj_env_t *env,
-                              char *email,
-                              char *password,
-                              void *handle,
-                              uv_after_work_cb cb)
+                          const char *email,
+                          const char *password,
+                          void *handle,
+                          uv_after_work_cb cb)
 {
     uint8_t sha256_digest[SHA256_DIGEST_SIZE];
     sha256_of_str((uint8_t *)password, strlen(password), sha256_digest);

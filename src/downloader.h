@@ -96,8 +96,8 @@ typedef struct {
     storj_bridge_options_t *options;
     uint32_t pointer_index;
     char *token;
-    char *bucket_id;
-    char *file_id;
+    const char *bucket_id;
+    const char *file_id;
     char *excluded_farmer_ids;
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
@@ -129,7 +129,7 @@ typedef struct {
     storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     char *token;
-    char *bucket_id;
+    const char *bucket_id;
     char *bucket_op;
     /* state should not be modified in worker threads */
     storj_download_state_t *state;

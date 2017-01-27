@@ -250,8 +250,8 @@ typedef struct {
 typedef struct {
     uint64_t total_bytes;
     storj_env_t *env;
-    char *file_id;
-    char *bucket_id;
+    const char *file_id;
+    const char *bucket_id;
     FILE *destination;
     storj_progress_cb progress_cb;
     storj_finished_download_cb finished_cb;
@@ -421,7 +421,7 @@ int storj_bridge_get_buckets(storj_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_create_bucket(storj_env_t *env,
-                               char *name,
+                               const char *name,
                                void *handle,
                                uv_after_work_cb cb);
 
@@ -435,7 +435,7 @@ int storj_bridge_create_bucket(storj_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_delete_bucket(storj_env_t *env,
-                               char *id,
+                               const char *id,
                                void *handle,
                                uv_after_work_cb cb);
 
@@ -449,7 +449,7 @@ int storj_bridge_delete_bucket(storj_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_list_files(storj_env_t *env,
-                            char *id,
+                            const char *id,
                             void *handle,
                             uv_after_work_cb cb);
 
@@ -464,7 +464,7 @@ int storj_bridge_list_files(storj_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_create_bucket_token(storj_env_t *env,
-                                     char *bucket_id,
+                                     const char *bucket_id,
                                      storj_bucket_op_t operation,
                                      void *handle,
                                      uv_after_work_cb cb);
@@ -480,8 +480,8 @@ int storj_bridge_create_bucket_token(storj_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_get_file_pointers(storj_env_t *env,
-                                   char *bucket_id,
-                                   char *file_id,
+                                   const char *bucket_id,
+                                   const char *file_id,
                                    void *handle,
                                    uv_after_work_cb cb);
 
@@ -496,8 +496,8 @@ int storj_bridge_get_file_pointers(storj_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_delete_file(storj_env_t *env,
-                             char *bucket_id,
-                             char *file_id,
+                             const char *bucket_id,
+                             const char *file_id,
                              void *handle,
                              uv_after_work_cb cb);
 
@@ -535,7 +535,7 @@ int storj_bridge_get_frames(storj_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_get_frame(storj_env_t *env,
-                           char *frame_id,
+                           const char *frame_id,
                            void *handle,
                            uv_after_work_cb cb);
 
@@ -549,7 +549,7 @@ int storj_bridge_get_frame(storj_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_delete_frame(storj_env_t *env,
-                              char *frame_id,
+                              const char *frame_id,
                               void *handle,
                               uv_after_work_cb cb);
 
@@ -564,8 +564,8 @@ int storj_bridge_delete_frame(storj_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_get_file_info(storj_env_t *env,
-                               char *bucket_id,
-                               char *file_id,
+                               const char *bucket_id,
+                               const char *file_id,
                                void *handle,
                                uv_after_work_cb cb);
 
@@ -580,8 +580,8 @@ int storj_bridge_get_file_info(storj_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_list_mirrors(storj_env_t *env,
-                              char *bucket_id,
-                              char *file_id,
+                              const char *bucket_id,
+                              const char *file_id,
                               void *handle,
                               uv_after_work_cb cb);
 
@@ -615,8 +615,8 @@ int storj_bridge_resolve_file_cancel(storj_download_state_t *state);
  */
 int storj_bridge_resolve_file(storj_env_t *env,
                               storj_download_state_t *state,
-                              char *bucket_id,
-                              char *file_id,
+                              const char *bucket_id,
+                              const char *file_id,
                               FILE *destination,
                               void *handle,
                               storj_progress_cb progress_cb,
@@ -633,10 +633,10 @@ int storj_bridge_resolve_file(storj_env_t *env,
  * @return A non-zero error value on failure and 0 on success.
  */
 int storj_bridge_register(storj_env_t *env,
-                              char *email,
-                              char *password,
-                              void *handle,
-                              uv_after_work_cb cb);
+                          const char *email,
+                          const char *password,
+                          void *handle,
+                          uv_after_work_cb cb);
 
 #ifdef __cplusplus
 }
