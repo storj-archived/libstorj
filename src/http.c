@@ -30,8 +30,24 @@ static long int body_shard_send(void *userdata, char *buffer,
             buflen = body->remain;
         }
         memcpy(buffer, body->pnt, buflen);
+
         body->pnt += buflen;
+        body->total_sent += buflen;
+        body->bytes_since_progress += buflen;
+
         body->remain -= buflen;
+    }
+
+    // give progress updates at set interval
+    if (body->progress_handle &&
+        body->bytes_since_progress > SHARD_PROGRESS_INTERVAL) {
+
+
+        shard_download_progress_t *progress = body->progress_handle->data;
+        progress->bytes = body->total_sent;
+        uv_async_send(body->progress_handle);
+
+        body->bytes_since_progress = 0;
     }
 
     return buflen;
@@ -92,6 +108,9 @@ int put_shard(storj_http_options_t *http_options,
         shard_body->length = shard_total_bytes;
         shard_body->remain = shard_total_bytes;
         shard_body->pnt = shard_data;
+        shard_body->total_sent = 0;
+        shard_body->bytes_since_progress = 0;
+        shard_body->progress_handle = progress_handle;
 
         ne_set_request_body_provider(req, shard_total_bytes,
                                      body_shard_send, shard_body);

@@ -34,6 +34,9 @@ typedef struct {
     char *shard_data;
     uint64_t length;
     uint64_t remain;
+    uint64_t total_sent;
+    uint64_t bytes_since_progress;
+    uv_async_t *progress_handle;
     void *pnt;
 } shard_body_t;
 
