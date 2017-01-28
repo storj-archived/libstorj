@@ -111,6 +111,7 @@ int put_shard(storj_http_options_t *http_options,
         shard_body->total_sent = 0;
         shard_body->bytes_since_progress = 0;
         shard_body->progress_handle = progress_handle;
+        shard_body->canceled = canceled;
 
         ne_set_request_body_provider(req, shard_total_bytes,
                                      body_shard_send, shard_body);

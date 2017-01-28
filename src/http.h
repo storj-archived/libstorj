@@ -51,6 +51,7 @@ typedef struct {
     uint64_t bytes_since_progress;
     uv_async_t *progress_handle;
     void *pnt;
+    bool *canceled;
 } shard_body_t;
 
 /**

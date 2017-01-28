@@ -430,7 +430,7 @@ static void push_shard(uv_work_t *work)
               shard->pointer->token,
               &status_code,
               &req->progress_handle,
-              false);
+              req->canceled);
 
     req->end = get_time_milliseconds();
 
@@ -492,6 +492,8 @@ static int queue_push_shard(storj_upload_state_t *state, int index)
     req->log = state->log;
     req->shard_index = index;
 
+    req->canceled = &state->canceled;
+
     // setup upload progress reporting
     shard_upload_progress_t *progress =
         malloc(sizeof(shard_upload_progress_t));
@@ -529,6 +531,7 @@ static int queue_push_shard(storj_upload_state_t *state, int index)
     report->pointer_index = index;
 
     shard->report = report;
+    shard->work = work;
 
     return status;
 }
@@ -1493,6 +1496,7 @@ static void prepare_upload_state(uv_work_t *work)
         state->shard[i].index = i;
         state->shard[i].pushing_frame_request_count = 0;
         state->shard[i].report = NULL;
+        state->shard[i].work = NULL;
     }
 
 
@@ -1510,6 +1514,28 @@ static void prepare_upload_state(uv_work_t *work)
 
     file_key[DETERMINISTIC_KEY_SIZE] = '\0';
     state->file_key = file_key;
+}
+
+int storj_bridge_store_file_cancel(storj_upload_state_t *state)
+{
+    if (state->canceled) {
+        return 0;
+    }
+
+    state->canceled = true;
+    state->error_status = STORJ_TRANSFER_CANCELED;
+
+    // loop over all shards, and cancel any that are queued to be uploaded
+    // any uploads that are in-progress will monitor the state->canceled
+    // status and exit when set to true
+    for (int i = 0; i < state->total_shards; i++) {
+        shard_tracker_t *shard = &state->shard[i];
+        if (shard->pushing_shard) {
+            uv_cancel((uv_req_t *)shard->work);
+        }
+    }
+
+    return 0;
 }
 
 int storj_bridge_store_file(storj_env_t *env,

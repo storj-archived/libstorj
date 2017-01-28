@@ -316,6 +316,7 @@ typedef struct {
     shard_meta_t *meta;
     storj_exchange_report_t *report;
     uint64_t uploaded_size;
+    uv_work_t *work;
 } shard_tracker_t;
 
 typedef struct {

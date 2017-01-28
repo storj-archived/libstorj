@@ -50,6 +50,7 @@ typedef struct {
 
     /* state should not be modified in worker threads */
     storj_upload_state_t *upload_state;
+    bool *canceled;
 } push_shard_request_t;
 
 typedef struct {
