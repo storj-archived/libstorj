@@ -503,6 +503,7 @@ static int queue_push_shard(storj_upload_state_t *state, int index)
     req->error_status = 0;
     req->log = state->log;
     req->shard_index = index;
+    req->status_code = 0;
 
     req->canceled = &state->canceled;
 
