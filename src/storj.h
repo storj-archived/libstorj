@@ -665,6 +665,25 @@ int storj_bridge_list_mirrors(storj_env_t *env,
                               void *handle,
                               uv_after_work_cb cb);
 
+/**
+ * @brief Will cancel an upload
+ *
+ * @param[in] state A pointer to the the upload state
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int storj_bridge_store_file_cancel(storj_download_state_t *state);
+
+/**
+ * @brief Upload a file
+ *
+ * @param[in] env A pointer to environment
+ * @param[in] state A pointer to the the upload state
+ * @param[in] opts The options for the upload
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] progress_cb Function called with progress updates
+ * @param[in] finished_cb Function called when download finished
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int storj_bridge_store_file(storj_env_t *env,
                             storj_upload_state_t *state,
                             storj_upload_opts_t *opts,
