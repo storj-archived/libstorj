@@ -22,6 +22,10 @@ static long int body_shard_send(void *userdata, char *buffer,
 {
     shard_body_t *body = userdata;
 
+    if (*body->canceled) {
+        return buflen;
+    }
+
     if (buflen == 0) {
         body->remain = body->length;
         body->pnt = body->shard_data;
@@ -126,6 +130,10 @@ int put_shard(storj_http_options_t *http_options,
 
     int request_status = ne_request_dispatch(req);
 
+    if (*canceled) {
+        goto clean_up;
+    }
+
     if (request_status != NE_OK) {
         // TODO log using logger
         printf("Put shard request error: %s\n", ne_get_error(sess));
@@ -134,6 +142,8 @@ int put_shard(storj_http_options_t *http_options,
 
     // set the status code
     *status_code = ne_get_status(req)->code;
+
+clean_up:
 
     // clean up memory
     free(path);

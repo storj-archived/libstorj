@@ -235,6 +235,17 @@ void check_store_file(int error_code, void *handle)
     }
 }
 
+void check_store_file_cancel(int error_code, void *handle)
+{
+    assert(handle == NULL);
+    if (error_code == STORJ_TRANSFER_CANCELED) {
+        pass("storj_bridge_store_file_cancel");
+    } else {
+        fail("storj_bridge_store_file_cancel");
+        printf("\t\tERROR:   %s\n", storj_strerror(error_code));
+    }
+}
+
 void check_delete_file(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -464,6 +475,78 @@ int test_upload()
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return 1;
     }
+
+    // shutdown
+    status = uv_loop_close(env->loop);
+    if (status == UV_EBUSY) {
+        return 1;
+    }
+
+    free(file);
+    storj_destroy_env(env);
+
+    return 0;
+}
+
+int test_upload_cancel()
+{
+
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
+    assert(env != NULL);
+
+    char *file_name = "storj-test-upload.data";
+    int len = strlen(folder) + strlen(file_name);
+    char *file = calloc(len + 1, sizeof(char));
+    strcpy(file, folder);
+    strcat(file, file_name);
+    file[len] = '\0';
+
+    create_test_upload_file(file);
+
+    // upload file
+    storj_upload_opts_t upload_opts = {
+        .file_concurrency = 1,
+        .shard_concurrency = 3,
+        .bucket_id = "368be0816766b28fd5f43af5",
+        .file_path = file
+    };
+
+    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
+
+    int status = storj_bridge_store_file(env,
+                                         state,
+                                         &upload_opts,
+                                         NULL,
+                                         check_store_file_progress,
+                                         check_store_file_cancel);
+    assert(status == 0);
+
+
+    // process the loop one at a time so that we can do other things while
+    // the loop is processing, such as cancel the download
+    int count = 0;
+    bool more;
+    do {
+        more = uv_run(env->loop, UV_RUN_ONCE);
+        if (more == false) {
+            more = uv_loop_alive(env->loop);
+            if (uv_run(env->loop, UV_RUN_NOWAIT) != 0) {
+                more = true;
+            }
+        }
+
+        count++;
+
+        if (count == 100) {
+            status = storj_bridge_store_file_cancel(state);
+            assert(status == 0);
+        }
+
+    } while (more == true);
 
     // shutdown
     status = uv_loop_close(env->loop);
@@ -1165,6 +1248,8 @@ int main(void)
 
     printf("Test Suite: Uploads\n");
     status += test_upload();
+    ++tests_ran;
+    status += test_upload_cancel();
     ++tests_ran;
 
     printf("Test Suite: Downloads\n");

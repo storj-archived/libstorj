@@ -119,7 +119,9 @@ static void cleanup_state(storj_upload_state_t *state)
         return;
     }
 
-    // TODO: Pause everything else when here
+    if (state->pending_work_count > 0) {
+        return;
+    }
 
     state->final_callback_called = true;
 
@@ -236,6 +238,8 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
     post_to_bucket_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
 
+    state->pending_work_count -= 1;
+
     state->add_bucket_entry_count += 1;
     state->creating_bucket_entry = false;
 
@@ -304,6 +308,7 @@ static int queue_create_bucket_entry(storj_upload_state_t *state)
     req->log = state->log;
     work->data = req;
 
+    state->pending_work_count += 1;
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                create_bucket_entry, after_create_bucket_entry);
 
@@ -325,6 +330,13 @@ static void after_push_shard(uv_work_t *work, int status)
 {
     push_shard_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
+
+    state->pending_work_count -= 1;
+
+    if (status == UV_ECANCELED) {
+        // TODO
+    }
+
     shard_tracker_t *shard = &state->shard[req->shard_index];
 
     // Update times on exchange report
@@ -509,6 +521,7 @@ static int queue_push_shard(storj_upload_state_t *state, int index)
 
     work->data = req;
 
+    state->pending_work_count += 1;
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                push_shard, after_push_shard);
 
@@ -540,9 +553,10 @@ static void after_push_frame(uv_work_t *work, int status)
 {
     frame_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
+
+    state->pending_work_count -= 1;
+
     farmer_pointer_t *pointer = req->farmer_pointer;
-
-
 
     state->shard[req->shard_index].pushing_frame = false;
 
@@ -841,8 +855,10 @@ static int queue_push_frame(storj_upload_state_t *state, int index)
 
     uv_work_t *shard_work = frame_work_new(&index, state);
 
+    state->pending_work_count += 1;
     uv_queue_work(state->env->loop, (uv_work_t*) shard_work,
                   push_frame, after_push_frame);
+    // TODO check status
 
     state->shard[index].pushing_frame = true;
 
@@ -855,7 +871,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
     shard_meta_t *shard_meta = req->shard_meta;
     storj_upload_state_t *state = req->upload_state;
 
-
+    state->pending_work_count -= 1;
 
     state->shard[shard_meta->index].prepared_frame = true;
     state->shard[shard_meta->index].preparing_frame = false;
@@ -982,8 +998,11 @@ static int queue_prepare_frame(storj_upload_state_t *state, int index)
 {
     uv_work_t *shard_work = shard_meta_work_new(index, state);
 
+    state->pending_work_count += 1;
     uv_queue_work(state->env->loop, (uv_work_t*) shard_work,
                   prepare_frame, after_prepare_frame);
+
+    // TODO check queue status
 
     state->shard[index].preparing_frame = true;
 
@@ -993,6 +1012,8 @@ static int queue_prepare_frame(storj_upload_state_t *state, int index)
 static void after_request_frame_id(uv_work_t *work, int status)
 {
     frame_request_t *req = work->data;
+
+    req->upload_state->pending_work_count -= 1;
 
     req->upload_state->frame_request_count += 1;
     req->upload_state->requesting_frame = false;
@@ -1057,8 +1078,10 @@ static int queue_request_frame_id(storj_upload_state_t *state)
 {
     uv_work_t *work = frame_work_new(NULL, state);
 
+    state->pending_work_count += 1;
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                request_frame_id, after_request_frame_id);
+    // TODO check queue status
 
     state->requesting_frame = true;
 
@@ -1069,6 +1092,8 @@ static void after_encrypt_file(uv_work_t *work, int status)
 {
     encrypt_file_meta_t *meta = work->data;
     storj_upload_state_t *state = meta->upload_state;
+
+    state->pending_work_count -= 1;
 
     state->encrypt_file_count += 1;
     state->encrypting_file = false;
@@ -1192,6 +1217,7 @@ static int queue_encrypt_file(storj_upload_state_t *state)
 
     work->data = req;
 
+    state->pending_work_count += 1;
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                encrypt_file, after_encrypt_file);
 
@@ -1204,6 +1230,8 @@ static int queue_encrypt_file(storj_upload_state_t *state)
 static void after_request_token(uv_work_t *work, int status)
 {
     request_token_t *req = work->data;
+
+    req->upload_state->pending_work_count -= 1;
 
     req->upload_state->token_request_count += 1;
     req->upload_state->requesting_token = false;
@@ -1274,6 +1302,9 @@ clean_variables:
 static void after_send_exchange_report(uv_work_t *work, int status)
 {
     shard_send_report_t *req = work->data;
+
+
+    req->state->pending_work_count -= 1;
 
     // TODO set status before retrying shard
 
@@ -1351,6 +1382,7 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
 
     work->data = req;
 
+    state->pending_work_count += 1;
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                request_token, after_request_token);
 
@@ -1389,6 +1421,7 @@ static void queue_send_exchange_reports(storj_upload_state_t *state)
 
             work->data = req;
 
+            state->pending_work_count += 1;
             uv_queue_work(state->env->loop, (uv_work_t*) work,
                           send_exchange_report, after_send_exchange_report);
         }
@@ -1453,6 +1486,7 @@ static void begin_work_queue(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
 
+    state->pending_work_count -= 1;
     queue_next_work(state);
 
     free(work);
@@ -1593,10 +1627,13 @@ int storj_bridge_store_file(storj_env_t *env,
     state->creating_bucket_entry = false;
     state->log = env->log;
     state->handle = handle;
+    state->canceled = false;
+    state->pending_work_count = 0;
 
     uv_work_t *work = uv_work_new();
     work->data = state;
 
+    state->pending_work_count += 1;
     return uv_queue_work(env->loop, (uv_work_t*) work,
                          prepare_upload_state, begin_work_queue);
 }

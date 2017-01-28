@@ -357,6 +357,7 @@ typedef struct {
     storj_log_levels_t *log;
     void *handle;
     shard_tracker_t *shard;
+    int pending_work_count;
     bool canceled;
 } storj_upload_state_t;
 
