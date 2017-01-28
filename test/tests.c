@@ -427,6 +427,7 @@ int create_test_upload_file(char *filepath)
         char *page = calloc(shard_size + 1, sizeof(char));
         memset(page, bytes[i], shard_size);
         fputs(page, fp);
+        free(page);
     }
 
     fclose(fp);

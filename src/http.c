@@ -72,6 +72,7 @@ int put_shard(storj_http_options_t *http_options,
 {
 
     ne_session *sess = ne_session_create(proto, host, port);
+    shard_body_t *shard_body = NULL;
 
     if (http_options->user_agent) {
         ne_set_useragent(sess, http_options->user_agent);
@@ -107,7 +108,7 @@ int put_shard(storj_http_options_t *http_options,
         // Set the content header
         ne_add_request_header(req, "Content-Type", "application/octet-stream");
 
-        shard_body_t *shard_body = malloc(sizeof(shard_body_t));
+        shard_body = malloc(sizeof(shard_body_t));
         shard_body->shard_data = shard_data;
         shard_body->length = shard_total_bytes;
         shard_body->remain = shard_total_bytes;
@@ -146,6 +147,9 @@ int put_shard(storj_http_options_t *http_options,
 clean_up:
 
     // clean up memory
+    if (shard_body) {
+        free(shard_body);
+    }
     free(path);
     clean_up_neon(sess, req);
 
