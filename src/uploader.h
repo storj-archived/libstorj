@@ -16,6 +16,7 @@
 #define SHARD_MULTIPLES_BACK 4
 #define CHALLENGES 4
 #define STORJ_NULL -1
+#define STORJ_MAX_REPORT_TRIES 2
 
 typedef struct {
     char *hash;
@@ -166,6 +167,16 @@ typedef struct {
   int error_status;
   storj_log_levels_t *log;
 } post_to_bucket_request_t;
+
+typedef struct {
+    uint32_t pointer_index;
+    storj_http_options_t *http_options;
+    storj_bridge_options_t *options;
+    int status_code;
+    storj_exchange_report_t *report;
+    /* state should not be modified in worker threads */
+    storj_upload_state_t *state;
+} shard_send_report_t;
 
 static inline char separator()
 {

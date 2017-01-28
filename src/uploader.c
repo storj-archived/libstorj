@@ -1268,6 +1268,69 @@ clean_variables:
     json_object_put(body);
 }
 
+static void after_send_exchange_report(uv_work_t *work, int status)
+{
+    shard_send_report_t *req = work->data;
+
+    // TODO set status before retrying shard
+
+    if (req->status_code == 201) {
+        req->report->send_status = 2; // report has been sent
+    } else {
+        req->report->send_status = 0; // reset report back to unsent
+    }
+
+    queue_next_work(req->state);
+
+    free(work->data);
+    free(work);
+
+}
+
+static void send_exchange_report(uv_work_t *work)
+{
+    shard_send_report_t *req = work->data;
+
+    struct json_object *body = json_object_new_object();
+
+    json_object_object_add(body, "dataHash",
+                           json_object_new_string(req->report->data_hash));
+
+    json_object_object_add(body, "reporterId",
+                           json_object_new_string(req->report->reporter_id));
+
+    json_object_object_add(body, "farmerId",
+                           json_object_new_string(req->report->farmer_id));
+
+    json_object_object_add(body, "clientId",
+                           json_object_new_string(req->report->client_id));
+
+    json_object_object_add(body, "exchangeStart",
+                           json_object_new_int64(req->report->start));
+
+    json_object_object_add(body, "exchangeEnd",
+                           json_object_new_int64(req->report->end));
+
+    json_object_object_add(body, "exchangeResultCode",
+                           json_object_new_int(req->report->code));
+
+    json_object_object_add(body, "exchangeResultMessage",
+                           json_object_new_string(req->report->message));
+
+    int status_code = 0;
+
+    // there should be an empty object in response
+    struct json_object *response = fetch_json(req->http_options,
+                                              req->options, "POST",
+                                              "/reports/exchanges", body,
+                                              NULL, NULL, &status_code);
+    req->status_code = status_code;
+
+    // free all memory for body and response
+    json_object_put(response);
+    json_object_put(body);
+}
+
 static int queue_request_bucket_token(storj_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
@@ -1292,6 +1355,41 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
     state->requesting_token = true;
 
     return status;
+}
+
+static void queue_send_exchange_reports(storj_upload_state_t *state)
+{
+
+    for (int i = 0; i < state->total_shards; i++) {
+
+        shard_tracker_t *shard = &state->shard[i];
+
+        if (shard->report &&
+            shard->report->send_status < 1 &&
+            shard->report->send_count < STORJ_MAX_REPORT_TRIES &&
+            shard->report->start > 0 &&
+            shard->report->end > 0) {
+
+            uv_work_t *work = malloc(sizeof(uv_work_t));
+            assert(work != NULL);
+
+            shard_send_report_t *req = malloc(sizeof(shard_send_report_t));
+
+            req->http_options = state->env->http_options;
+            req->options = state->env->bridge_options;
+            req->status_code = 0;
+            req->report = shard->report;
+            req->report->send_status = 1; // being reported
+            req->report->send_count += 1;
+            req->state = state;
+            req->pointer_index = i;
+
+            work->data = req;
+
+            uv_queue_work(state->env->loop, (uv_work_t*) work,
+                          send_exchange_report, after_send_exchange_report);
+        }
+    }
 }
 
 static void queue_next_work(storj_upload_state_t *state)
@@ -1345,6 +1443,7 @@ static void queue_next_work(storj_upload_state_t *state)
         queue_create_bucket_entry(state);
     }
 
+    queue_send_exchange_reports(state);
 }
 
 static void begin_work_queue(uv_work_t *work, int status)
