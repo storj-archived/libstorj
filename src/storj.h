@@ -671,7 +671,7 @@ int storj_bridge_list_mirrors(storj_env_t *env,
  * @param[in] state A pointer to the the upload state
  * @return A non-zero error value on failure and 0 on success.
  */
-int storj_bridge_store_file_cancel(storj_download_state_t *state);
+int storj_bridge_store_file_cancel(storj_upload_state_t *state);
 
 /**
  * @brief Upload a file
