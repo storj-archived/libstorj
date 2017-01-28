@@ -14,85 +14,8 @@
 
 #define MAX_SHARD_SIZE 1073741824
 #define SHARD_MULTIPLES_BACK 4
-#define CHALLENGES 4
 #define STORJ_NULL -1
 #define STORJ_MAX_REPORT_TRIES 2
-
-typedef struct {
-    char *hash;
-    char *challenges[CHALLENGES][32];
-    char *challenges_as_str[CHALLENGES][64 + 1];
-    // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
-    char *tree[2*CHALLENGES - 1][RIPEMD160_DIGEST_SIZE*2 + 1];
-    int index;
-    uint64_t size;
-} shard_meta_t;
-
-typedef struct {
-    char *token;
-    char *farmer_user_agent;
-    char *farmer_protocol;
-    char *farmer_address;
-    char *farmer_port;
-    char *farmer_node_id;
-    char *farmer_last_seen;
-} farmer_pointer_t;
-
-typedef struct {
-    bool pushed_shard;
-    bool pushing_shard;
-    bool preparing_frame;
-    bool prepared_frame;
-    bool pushed_frame;
-    bool pushing_frame;
-    int pushing_frame_request_count;
-    int pushing_shard_request_count;
-    int index;
-    farmer_pointer_t *pointer;
-    shard_meta_t *meta;
-    storj_exchange_report_t *report;
-    uint64_t uploaded_size;
-} shard_tracker_t;
-
-typedef struct {
-    storj_env_t *env;
-    uint32_t file_concurrency;
-    uint32_t shard_concurrency;
-    char *file_id;
-    char *file_name;
-    char *file_path;
-    char *file_key;
-    uint64_t file_size;
-    char *tmp_path;
-    char *bucket_id;
-    char *bucket_key;
-    uint32_t completed_shards;
-    uint32_t total_shards;
-    uint64_t shard_size;
-    uint64_t total_bytes;
-    uint64_t uploaded_bytes;
-    bool completed_upload;
-    bool encrypting_file;
-    bool creating_bucket_entry;
-    int add_bucket_entry_count;
-    char *token;
-    char *exclude;
-    bool requesting_token;
-    char *frame_id;
-    bool requesting_frame;
-    bool received_all_pointers;
-    int token_request_count;
-    int frame_request_count;
-    int encrypt_file_count;
-    bool final_callback_called;
-    storj_progress_cb progress_cb;
-    bool progress_finished;
-    storj_finished_upload_cb finished_cb;
-    int error_status;
-    storj_log_levels_t *log;
-    void *handle;
-    shard_tracker_t *shard;
-} storj_upload_state_t;
 
 typedef struct {
     /* state should not be modified in worker threads */

@@ -216,7 +216,11 @@ static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
         .file_path = file_path
     };
 
-    int status = storj_bridge_store_file(env, &upload_opts,
+    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
+
+    int status = storj_bridge_store_file(env,
+                                         state,
+                                         &upload_opts,
                                          NULL,
                                          upload_file_progress,
                                          upload_file_complete);

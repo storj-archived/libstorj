@@ -449,7 +449,11 @@ int test_upload()
         .file_path = file
     };
 
-    int status = storj_bridge_store_file(env, &upload_opts,
+    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
+
+    int status = storj_bridge_store_file(env,
+                                         state,
+                                         &upload_opts,
                                          NULL,
                                          check_store_file_progress,
                                          check_store_file);

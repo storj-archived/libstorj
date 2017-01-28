@@ -650,7 +650,7 @@ static void push_frame(uv_work_t *work)
 
     // Add challenges
     json_object *challenges = json_object_new_array();
-    for (int i = 0; i < CHALLENGES; i++ ) {
+    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         json_object_array_add(challenges,
                               json_object_new_string(
                                   (char *)shard_meta->challenges_as_str[i]));
@@ -659,7 +659,7 @@ static void push_frame(uv_work_t *work)
 
     // Add Tree
     json_object *tree = json_object_new_array();
-    for (int i = 0; i < CHALLENGES; i++ ) {
+    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         json_object_array_add(tree,
                               json_object_new_string(
                                   (char *)shard_meta->tree[i]));
@@ -869,7 +869,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
 
     // Add challenges_as_str
     state->log->debug("Challenges for shard index %d\n", shard_meta->index);
-    for (int i = 0; i < CHALLENGES; i++ ) {
+    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[shard_meta->index].meta->challenges_as_str[i],
                shard_meta->challenges_as_str[i],
                32);
@@ -879,7 +879,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
 
     // Add Merkle Tree leaves.
     state->log->debug("Tree for shard index %d\n", shard_meta->index);
-    for (int i = 0; i < CHALLENGES; i++ ) {
+    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[shard_meta->index].meta->tree[i],
                shard_meta->tree[i],
                32);
@@ -945,7 +945,7 @@ static void prepare_frame(uv_work_t *work)
                    shard_meta->hash);
 
     // Set the challenges
-    for (int i = 0; i < CHALLENGES; i++ ) {
+    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         uint8_t *buff = malloc(32);
         random_buffer(buff, 32);
         memcpy(shard_meta->challenges[i], buff, 32);
@@ -957,7 +957,7 @@ static void prepare_frame(uv_work_t *work)
     }
 
     // Calculate the merkle tree with challenges
-    for (int i = 0; i < CHALLENGES; i++ ) {
+    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         int preleaf_size = 32 + shard_meta->size;
         uint8_t *preleaf = calloc(preleaf_size, sizeof(char));
         memcpy(preleaf, shard_meta->challenges[i], 32);
@@ -1513,6 +1513,7 @@ static void prepare_upload_state(uv_work_t *work)
 }
 
 int storj_bridge_store_file(storj_env_t *env,
+                            storj_upload_state_t *state,
                             storj_upload_opts_t *opts,
                             void *handle,
                             storj_progress_cb progress_cb,
@@ -1535,7 +1536,6 @@ int storj_bridge_store_file(storj_env_t *env,
     }
 
     // setup upload state
-    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
     state->file_concurrency = opts->file_concurrency;
     state->shard_concurrency = opts->shard_concurrency;
     state->env = env;
