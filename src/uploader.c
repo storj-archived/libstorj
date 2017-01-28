@@ -327,6 +327,10 @@ static void after_push_shard(uv_work_t *work, int status)
     storj_upload_state_t *state = req->upload_state;
     shard_tracker_t *shard = &state->shard[req->shard_index];
 
+    // Update times on exchange report
+    shard->report->start = req->start;
+    shard->report->end = req->end;
+
     uv_handle_t *progress_handle = (uv_handle_t *) &req->progress_handle;
 
     // free the upload progress
@@ -341,24 +345,36 @@ static void after_push_shard(uv_work_t *work, int status)
         shard->pushing_shard = false;
         shard->pushed_shard = true;
         state->completed_shards += 1;
-    } else if (shard->pushing_shard_request_count == 6) {
-        req->log->error("Failed to push shard %d\n", req->shard_index);
-        state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
-    } else {
-        req->log->warn("Failed to push shard %d... Retrying...\n", req->shard_index);
-        shard->pushing_shard = false;
-        shard->pushed_frame = false;
-        shard->pushing_shard_request_count += 1;
 
-        if (state->exclude == NULL) {
-            state->exclude = calloc(strlen(shard->pointer->farmer_node_id) + 1, sizeof(char));
-            strcpy(state->exclude, shard->pointer->farmer_node_id);
+        // Update the exchange report with success
+        shard->report->code = STORJ_REPORT_SUCCESS;
+        shard->report->message = STORJ_REPORT_SHARD_UPLOADED;
+
+    } else {
+
+        // Update the exchange report with failure
+        shard->report->code = STORJ_REPORT_FAILURE;
+        shard->report->message = STORJ_REPORT_UPLOAD_ERROR;
+
+        if (shard->pushing_shard_request_count == 6) {
+            req->log->error("Failed to push shard %d\n", req->shard_index);
+            state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
         } else {
-            int new_len = strlen(state->exclude) + strlen(shard->pointer->farmer_node_id) + 1;
-            state->exclude = realloc(state->exclude, new_len + 1);
-            strcat(state->exclude, ",");
-            strcat(state->exclude, shard->pointer->farmer_node_id);
-            state->exclude[new_len] = '\0';
+            req->log->warn("Failed to push shard %d... Retrying...\n", req->shard_index);
+            shard->pushing_shard = false;
+            shard->pushed_frame = false;
+            shard->pushing_shard_request_count += 1;
+
+            if (state->exclude == NULL) {
+                state->exclude = calloc(strlen(shard->pointer->farmer_node_id) + 1, sizeof(char));
+                strcpy(state->exclude, shard->pointer->farmer_node_id);
+            } else {
+                int new_len = strlen(state->exclude) + strlen(shard->pointer->farmer_node_id) + 1;
+                state->exclude = realloc(state->exclude, new_len + 1);
+                strcat(state->exclude, ",");
+                strcat(state->exclude, shard->pointer->farmer_node_id);
+                state->exclude[new_len] = '\0';
+            }
         }
     }
 
@@ -372,7 +388,7 @@ static void push_shard(uv_work_t *work)
 {
     push_shard_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
-    shard_tracker_t shard = state->shard[req->shard_index];
+    shard_tracker_t *shard = &state->shard[req->shard_index];
 
     req->log->info("Transfering Shard index %d... (retry: %d)\n",
                    req->shard_index,
@@ -388,7 +404,7 @@ static void push_shard(uv_work_t *work)
     }
 
     // Encrypted shard read from file
-    uint8_t *shard_data = calloc(shard.meta->size, sizeof(char));
+    uint8_t *shard_data = calloc(shard->meta->size, sizeof(char));
 
     // Bytes read from file
     uint64_t read_bytes = 0;
@@ -398,22 +414,25 @@ static void push_shard(uv_work_t *work)
         // Seek to shard's location in file
         fseek(encrypted_file, req->shard_index*state->shard_size, SEEK_SET);
         // Read shard data from file
-        read_bytes = fread(shard_data, 1, shard.meta->size, encrypted_file);
-    } while(read_bytes < shard.meta->size);
+        read_bytes = fread(shard_data, 1, shard->meta->size, encrypted_file);
+    } while(read_bytes < shard->meta->size);
+
+    req->start = get_time_milliseconds();
 
     put_shard(req->http_options,
-              shard.pointer->farmer_node_id,
-              shard.pointer->farmer_protocol,
-              shard.pointer->farmer_address,
-              atoi(shard.pointer->farmer_port),
-              shard.meta->hash,
-              shard.meta->size,
+              shard->pointer->farmer_node_id,
+              shard->pointer->farmer_protocol,
+              shard->pointer->farmer_address,
+              atoi(shard->pointer->farmer_port),
+              shard->meta->hash,
+              shard->meta->size,
               shard_data,
-              shard.pointer->token,
+              shard->pointer->token,
               &status_code,
               &req->progress_handle,
               false);
 
+    req->end = get_time_milliseconds();
 
     req->status_code = status_code;
 
@@ -473,7 +492,6 @@ static int queue_push_shard(storj_upload_state_t *state, int index)
     req->log = state->log;
     req->shard_index = index;
 
-
     // setup upload progress reporting
     shard_upload_progress_t *progress =
         malloc(sizeof(shard_upload_progress_t));
@@ -492,7 +510,25 @@ static int queue_push_shard(storj_upload_state_t *state, int index)
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                push_shard, after_push_shard);
 
-    state->shard[index].pushing_shard = true;
+    shard_tracker_t *shard = &state->shard[index];
+
+    shard->pushing_shard = true;
+
+    // setup the exchange report
+    storj_exchange_report_t *report = malloc(sizeof(storj_exchange_report_t));
+    report->data_hash = shard->meta->hash;
+    report->reporter_id = (char *)state->env->bridge_options->user;
+    report->farmer_id = shard->pointer->farmer_node_id;
+    report->client_id = (char *)state->env->bridge_options->user;
+    report->start = 0;
+    report->end = 0;
+    report->code = 0;
+    report->message = NULL;
+    report->send_status = 0; // not sent
+    report->send_count = 0;
+    report->pointer_index = index;
+
+    shard->report = report;
 
     return status;
 }
@@ -1357,6 +1393,7 @@ static void prepare_upload_state(uv_work_t *work)
         state->shard[i].pushing_frame = false;
         state->shard[i].index = i;
         state->shard[i].pushing_frame_request_count = 0;
+        state->shard[i].report = NULL;
     }
 
 
