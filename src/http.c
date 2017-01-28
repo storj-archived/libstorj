@@ -39,8 +39,9 @@ static long int body_shard_send(void *userdata, char *buffer,
     }
 
     // give progress updates at set interval
-    if (body->progress_handle &&
-        body->bytes_since_progress > SHARD_PROGRESS_INTERVAL) {
+    if (body->progress_handle && buflen &&
+        (body->bytes_since_progress > SHARD_PROGRESS_INTERVAL ||
+         body->remain == 0)) {
 
         shard_upload_progress_t *progress = body->progress_handle->data;
         progress->bytes = body->total_sent;

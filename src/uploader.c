@@ -443,10 +443,20 @@ static void progress_put_shard(uv_async_t* async)
 
     double total_progress = (double)uploaded_bytes / (double)total_bytes;
 
+    if (state->progress_finished) {
+        return;
+    }
+
+    if (uploaded_bytes == total_bytes) {
+        state->progress_finished = true;
+    }
+
     state->progress_cb(total_progress,
                        uploaded_bytes,
                        total_bytes,
                        state->handle);
+
+
 }
 
 static int queue_push_shard(storj_upload_state_t *state, int index)
@@ -1396,6 +1406,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->file_path = opts->file_path;
     state->bucket_id = opts->bucket_id;
     state->progress_cb = progress_cb;
+    state->progress_finished = false;
     state->finished_cb = finished_cb;
 
     // TODO: find a way to default

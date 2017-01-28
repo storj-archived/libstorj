@@ -84,6 +84,7 @@ typedef struct {
     int encrypt_file_count;
     bool final_callback_called;
     storj_progress_cb progress_cb;
+    bool progress_finished;
     storj_finished_upload_cb finished_cb;
     int error_status;
     storj_log_levels_t *log;
