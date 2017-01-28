@@ -161,7 +161,11 @@ static void cleanup_state(storj_upload_state_t *state)
             shard_meta_cleanup(state->shard[i].meta);
             state->log->debug("Cleaning up pointers %d\n", i);
             pointer_cleanup(state->shard[i].pointer);
+            if (state->shard[i].report) {
+                free(state->shard[i].report);
+            }
         }
+        free(state->shard);
     }
 
     state->finished_cb(state->error_status, state->handle);
