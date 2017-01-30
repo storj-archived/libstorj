@@ -17,6 +17,16 @@
 #define STORJ_NULL -1
 #define STORJ_MAX_REPORT_TRIES 2
 
+typedef enum {
+    AWAITING_PREPARE_FRAME = 1,
+    PREPARING_FRAME = 2,
+    AWAITING_PUSH_FRAME = 3,
+    PUSHING_FRAME = 4,
+    AWAITING_PUSH_SHARD = 5,
+    PUSHING_SHARD = 6,
+    COMPLETED_PUSH_SHARD = 7
+} storj_state_progress_t;
+
 typedef struct {
     /* state should not be modified in worker threads */
     storj_upload_state_t *upload_state;
@@ -130,6 +140,7 @@ static int queue_prepare_frame(storj_upload_state_t *state, int index);
 static int queue_push_frame(storj_upload_state_t *state, int index);
 static int queue_push_shard(storj_upload_state_t *state, int index);
 static int queue_create_bucket_entry(storj_upload_state_t *state);
+static int queue_request_bucket_token(storj_upload_state_t *state);
 
 static void request_token(uv_work_t *work);
 static void request_frame_id(uv_work_t *work);
@@ -138,6 +149,7 @@ static void prepare_frame(uv_work_t *work);
 static void push_frame(uv_work_t *work);
 static void push_shard(uv_work_t *work);
 static void create_bucket_entry(uv_work_t *work);
+static void send_exchange_report(uv_work_t *work);
 
 static void after_request_token(uv_work_t *work, int status);
 static void after_request_frame_id(uv_work_t *work, int status);
@@ -146,5 +158,6 @@ static void after_prepare_frame(uv_work_t *work, int status);
 static void after_push_frame(uv_work_t *work, int status);
 static void after_push_shard(uv_work_t *work, int status);
 static void after_create_bucket_entry(uv_work_t *work, int status);
+static void after_send_exchange_report(uv_work_t *work, int status);
 
 #endif /* STORJ_UPLOADER_H */

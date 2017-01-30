@@ -146,6 +146,7 @@ typedef struct storj_env {
     storj_log_options_t *log_options;
     uv_loop_t *loop;
     storj_log_levels_t *log;
+    char *temp_path;
 } storj_env_t;
 
 /** @brief A structure for queueing json request work
@@ -303,14 +304,9 @@ typedef struct {
 } farmer_pointer_t;
 
 typedef struct {
-    bool pushed_shard;
-    bool pushing_shard;
-    bool preparing_frame;
-    bool prepared_frame;
-    bool pushed_frame;
-    bool pushing_frame;
-    int pushing_frame_request_count;
-    int pushing_shard_request_count;
+    int progress;
+    int push_frame_request_count;
+    int push_shard_request_count;
     int index;
     farmer_pointer_t *pointer;
     shard_meta_t *meta;
@@ -336,29 +332,33 @@ typedef struct {
     uint64_t shard_size;
     uint64_t total_bytes;
     uint64_t uploaded_bytes;
-    bool completed_upload;
-    bool encrypting_file;
-    bool creating_bucket_entry;
-    int add_bucket_entry_count;
     char *token;
     char *exclude;
-    bool requesting_token;
     char *frame_id;
+
     bool requesting_frame;
+    bool completed_upload;
+    bool encrypting_file;
+    bool requesting_token;
+    bool creating_bucket_entry;
     bool received_all_pointers;
+    bool final_callback_called;
+    bool canceled;
+
+    bool progress_finished;
+
     int token_request_count;
     int frame_request_count;
     int encrypt_file_count;
-    bool final_callback_called;
+    int add_bucket_entry_count;
+
     storj_progress_cb progress_cb;
-    bool progress_finished;
     storj_finished_upload_cb finished_cb;
     int error_status;
     storj_log_levels_t *log;
     void *handle;
     shard_tracker_t *shard;
     int pending_work_count;
-    bool canceled;
 } storj_upload_state_t;
 
 /**
