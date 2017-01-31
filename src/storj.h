@@ -152,7 +152,6 @@ typedef struct storj_env {
     storj_log_options_t *log_options;
     uv_loop_t *loop;
     storj_log_levels_t *log;
-    char *temp_path;
 } storj_env_t;
 
 /** @brief A structure for queueing json request work
