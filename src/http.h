@@ -53,6 +53,11 @@ typedef struct {
     bool *canceled;
 } shard_body_t;
 
+typedef struct {
+    uint8_t *data;
+    size_t length;
+} http_body_t;
+
 /**
  * @brief Send a shard to a farmer via an HTTP request
  *

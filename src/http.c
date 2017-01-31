@@ -5,20 +5,18 @@
 
 // TODO error check the calloc and realloc calls
 
-static size_t body_shard_send(void *contents, size_t size, size_t nmemb, void *userp)
+static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
+                              void *userp)
 {
     shard_body_t *body = userp;
 
     if (*body->canceled) {
-        uint64_t remain = body->remain;
-        body->remain = 0;
-        return remain;
+        return CURL_READFUNC_ABORT;
     }
 
-    if (buflen == 0) {
-        body->remain = body->length;
-        body->pnt = body->shard_data;
-    } else {
+    size_t buflen = size * nmemb;
+
+    if (buflen > 0) {
         if (body->remain < buflen) {
             buflen = body->remain;
         }
@@ -70,9 +68,9 @@ int put_shard(storj_http_options_t *http_options,
 
     int url_len = strlen(proto) + 3 + strlen(host) + 1 + 10 + 8
         + strlen(shard_hash) + strlen(query_args);
-    char url = calloc(url_len + 1, sizeof(char));
+    char *url = calloc(url_len + 1, sizeof(char));
 
-    snprintf(url, "%s://%s:%i/shards/%s%s", proto, host, port,
+    snprintf(url, url_len, "%s://%s:%i/shards/%s%s", proto, host, port,
              shard_hash, query_args);
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -141,7 +139,7 @@ int put_shard(storj_http_options_t *http_options,
     }
 
     // set the status code
-    *status_code = ne_get_status(req)->code;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, *status_code);
 
 clean_up:
 
@@ -150,7 +148,7 @@ clean_up:
         free(shard_body);
     }
     free(path);
-    curl_easy_cleanup(cleanup);
+    curl_easy_cleanup(curl);
 
     return 0;
 }
@@ -172,44 +170,48 @@ int fetch_shard(storj_http_options_t *http_options,
     struct sha256_ctx ctx;
     sha256_init(&ctx);
 
-    ne_session *sess = ne_session_create(proto, host, port);
-
-    if (http_options->user_agent) {
-        ne_set_useragent(sess, http_options->user_agent);
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        return 1;
     }
 
-    if (http_options->proxy_version &&
-        http_options->proxy_host &&
-        http_options->proxy_port) {
+    if (http_options->user_agent) {
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, http_options->user_agent);
+    }
 
-        ne_session_socks_proxy(sess,
-                               (enum ne_sock_sversion)http_options->proxy_version,
-                               http_options->proxy_host,
-                               http_options->proxy_port,
-                               "",
-                               "");
+    if (http_options->proxy_url) {
+        curl_easy_setopt(curl, CURLOPT_PROXY, http_options->proxy_url);
     }
 
     char query_args[80];
-    ne_snprintf(query_args, 80, "?token=%s", token);
+    snprintf(query_args, 80, "?token=%s", token);
 
-    char *path = ne_concat("/shards/", shard_hash, query_args, NULL);
+    char *path = calloc(8 + strlen(shard_hash) + strlen(query_args) + 1);
+    strcat(path, "/shards/");
+    strcat(path, shard_hash);
+    strcat(path, query_args);
 
-    ne_request *req = ne_request_create(sess, "GET", path);
+    //ne_request *req = ne_request_create(sess, "GET", path);
 
-    ne_add_request_header(req, "x-storj-node-id", farmer_id);
+    struct curl_slist *node_chunk = NULL;
+    char *header = calloc(17 + 40 + 1, sizeof(char));
+    strcat(header, "x-storj-node-id: ");
+    strncat(header, farmer_id, 40);
+    chunk = curl_slist_append(node_chunk, header);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 
-    if (0 == strcmp(proto, "https")) {
-        ne_ssl_trust_default_ca(sess);
-    }
+    int req = curl_easy_perform(curl);
 
-    if (ne_begin_request(req) != NE_OK) {
-        clean_up_neon(sess, req);
+    if (req != CURLE_OK) {
+        curl_easy_cleanup(curl);
         return STORJ_FARMER_REQUEST_ERROR;
     }
 
-    *status_code = ne_get_status(req)->code;
+    // Set the status code
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, *status_code);
 
+
+    // TODO XXX
     char *buf = calloc(NE_BUFSIZ, sizeof(char));
 
     ssize_t bytes = 0;
@@ -299,6 +301,25 @@ int fetch_shard(storj_http_options_t *http_options,
     return 0;
 }
 
+static size_t body_memory_receive(void *buffer, size_t size, size_t nmemb,
+                                  void *userp)
+{
+    size_t buflen = size * nmemb;
+    http_body_t *body = (http_body_t *)userp;
+
+    body->data = realloc(body->data, body->length + buflen + 1);
+    if (body->data == NULL) {
+        return 0;
+    }
+
+    memcpy(&(mem->data[mem->length]), buffer, buflen);
+
+    body->length += buflen;
+    body>data[mem->length] = 0;
+
+    return buflen;
+}
+
 struct json_object *fetch_json(storj_http_options_t *http_options,
                                storj_bridge_options_t *options,
                                char *method,
@@ -308,37 +329,40 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
                                char *token,
                                int *status_code)
 {
-    // TODO: reuse an existing session and socket to the bridge
 
-    ne_session *sess = ne_session_create(options->proto, options->host,
-                                         options->port);
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        return 1;
+    }
 
+    // Set the url
+    int url_len = strlen(options->proto) + 3 + strlen(options->host) +
+        1 + 10 + 1 + strlen(path);
+    char *url = calloc(url_len + 1, sizeof(char));
+    snprintf(url, url_len, "%s://%s:%i/%s", options->proto, options->host,
+             options->port, path);
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+
+    // Set the user agent
     if (http_options->user_agent) {
-        ne_set_useragent(sess, http_options->user_agent);
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, http_options->user_agent);
     }
 
-    if (http_options->proxy_version &&
-        http_options->proxy_host &&
-        http_options->proxy_port) {
-
-        ne_session_socks_proxy(sess,
-                               (enum ne_sock_sversion)http_options->proxy_version,
-                               http_options->proxy_host,
-                               http_options->proxy_port,
-                               "",
-                               "");
+    // Set the proxy
+    if (http_options->proxy_url) {
+        curl_easy_setopt(curl, CURLOPT_PROXY, http_options->proxy_url);
     }
 
-    // TODO: error check the ne calls in this function
+    // Setup the body handler
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_memory_receive);
+    http_body_t *body = malloc(sizeof(http_body_t));
+    body->data = NULL;
+    body->length = 0;
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
 
-    if (0 == strcmp(options->proto, "https")) {
-        ne_ssl_trust_default_ca(sess);
-    }
-
-    ne_request *req = ne_request_create(sess, method, path);
-
-    // include authentication headers if info is provided
+    // Include authentication headers if info is provided
     if (auth && options->user && options->pass) {
+
         // Hash password
         uint8_t *pass_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
         char *pass = calloc(SHA256_DIGEST_SIZE * 2 + 1, sizeof(char));
@@ -352,77 +376,71 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
 
         free(pass_hash);
 
-        char *user_pass = ne_concat(options->user, ":", pass, NULL);
+        int user_pass_len = strlen(options->user) + 1 + strlen(pass);
+        char *user_pass = calloc(user_pass_len + 1, sizeof(char));
+        strcat(user_pass, options->user);
+        strcat(user_pass, ":");
 
         free(pass);
 
-        char *user_pass_64 = ne_base64((uint8_t *)user_pass, strlen(user_pass));
+        // TODO fix this XXX
+        char *user_pass_64 = curl_base64_encode((uint8_t *)user_pass, strlen(user_pass));
 
         free(user_pass);
 
         int auth_value_len = strlen(user_pass_64) + 6;
         char auth_value[auth_value_len + 1];
-        strcpy(auth_value, "Basic ");
+        strcpy(auth_value, "Authorization: Basic ");
         strcat(auth_value, user_pass_64);
 
         free(user_pass_64);
 
         auth_value[auth_value_len] = '\0';
 
-        ne_add_request_header(req, "Authorization", auth_value);
+        struct curl_slist *auth_chunk = NULL;
+        auth_chunk = curl_slist_append(auth_chunk, auth_value);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, auth_chunk);
     }
 
     if (token) {
-        ne_add_request_header(req, "X-Token", token);
+        struct curl_slist *token_chunk = NULL;
+        char *token_header = calloc(9 + strlen(token) + 1, sizeof(char));
+        strcat(token_header, "X-Token: ");
+        strcat(token_header, token);
+        token_chunk = curl_slist_append(token_chunk, token_header);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, token_chunk);
     }
 
-    // include body if request body json is provided
+    // Include body if request body json is provided
     if (request_body) {
         const char *req_buf = json_object_to_json_string(request_body);
 
-        ne_add_request_header(req, "Content-Type", "application/json");
+
+        struct curl_slist *json_chunk = NULL;
+        json_chunk = curl_slist_append(json_chunk,
+                                       "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, json_chunk);
+
+        // TODO XXX
         ne_set_request_body_buffer(req, req_buf, strlen(req_buf));
     }
 
-    int request_status = 0;
-    if ((request_status = ne_begin_request(req)) != NE_OK) {
+    int req = curl_easy_perform(curl);
+
+    if (req != CURLE_OK) {
         // TODO check request status
-        // TODO get details if NE_ERROR(1) with ne_get_error(sess)
-        clean_up_neon(sess, req);
+        // TODO get details with curl_easy_strerror(req)
+        curl_easy_cleanup(curl);
         return NULL;
     }
 
     // set the status code
-    *status_code = ne_get_status(req)->code;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, *status_code);
 
-    int body_sz = NE_BUFSIZ * 4;
-    char *body = calloc(NE_BUFSIZ * 4, sizeof(char));
-    char *buf = calloc(NE_BUFSIZ, sizeof(char));
+    json_object *j = json_tokener_parse(body->data);
 
-    ssize_t bytes = 0;
-    ssize_t total = 0;
-
-    while ((bytes = ne_read_response_block(req, buf, NE_BUFSIZ))) {
-        if (bytes < 0) {
-            // TODO: error. careful with cleanup
-        }
-
-        if (total + bytes + 1 > body_sz) {
-            body_sz += bytes + 1;
-            body = (char *) realloc(body, body_sz);
-        }
-
-        memcpy(body + total, buf, bytes);
-        total += bytes;
-    }
-
-    clean_up_neon(sess, req);
-
-    json_object *j = json_tokener_parse(body);
-    // TODO: Error checking
-
+    curl_easy_cleanup(curl);
     free(body);
-    free(buf);
 
     return j;
 }
