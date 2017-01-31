@@ -120,6 +120,7 @@ int put_shard(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_READDATA, (void *)shard_body);
     }
 
+    // TODO is this still needed?
 #ifdef _WIN32
     signal(WSAECONNRESET, SIG_IGN);
 #else
