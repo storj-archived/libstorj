@@ -89,29 +89,30 @@ static int make_user_directory(char *path)
     return 0;
 }
 
-static int get_user_auth_location(char **root_dir, char **user_file)
+static int get_user_auth_location(char *host, char **root_dir, char **user_file)
 {
     char *home_dir = get_home_dir();
     if (home_dir == NULL) {
         return 1;
     }
 
-    int len = strlen(home_dir) + strlen("/.storj");
+    int len = strlen(home_dir) + strlen("/.storj/");
     *root_dir = calloc(len + 1, sizeof(char));
     if (!*root_dir) {
         return 1;
     }
 
     strcpy(*root_dir, home_dir);
-    strcat(*root_dir, "/.storj");
+    strcat(*root_dir, "/.storj/");
 
-    len = strlen(*root_dir) + strlen("/user.json");
+    len = strlen(*root_dir) + strlen(host) + strlen("/user.json");
     *user_file = calloc(len + 1, sizeof(char));
     if (!*user_file) {
         return 1;
     }
 
     strcpy(*user_file, *root_dir);
+    strcat(*user_file, host);
     strcat(*user_file, "/user.json");
 
     return 0;
@@ -633,7 +634,7 @@ static void get_info_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-static int set_auth()
+static int set_auth(char *host)
 {
     char *user;
     char *user_input = calloc(BUFSIZ, sizeof(char));
@@ -674,7 +675,7 @@ static int set_auth()
 
     char *user_file = NULL;
     char *root_dir = NULL;
-    if (get_user_auth_location(&root_dir, &user_file)) {
+    if (get_user_auth_location(host, &root_dir, &user_file)) {
         printf("Unable to determine user auth filepath.\n");
         return 1;
     }
@@ -761,10 +762,6 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    if (strcmp(command, "set-auth") == 0) {
-        return set_auth();
-    }
-
     if (!storj_bridge) {
         storj_bridge = "https://api.storj.io:443/";
     }
@@ -774,6 +771,10 @@ int main(int argc, char **argv)
     char host[100];
     int port = 443;
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
+
+    if (strcmp(command, "set-auth") == 0) {
+        return set_auth(host);
+    }
 
     // initialize event loop and environment
     storj_env_t *env;
@@ -855,7 +856,7 @@ int main(int argc, char **argv)
 
         char *user_file = NULL;
         char *root_dir = NULL;
-        if (get_user_auth_location(&root_dir, &user_file)) {
+        if (get_user_auth_location(host, &root_dir, &user_file)) {
             printf("Unable to determine user auth filepath.\n");
             return 1;
         }
