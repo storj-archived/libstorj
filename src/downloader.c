@@ -55,7 +55,11 @@ static void request_token(uv_work_t *work)
 {
     token_request_download_t *req = work->data;
 
-    char *path = ne_concat("/buckets/", req->bucket_id, "/tokens", NULL);
+    int path_len = 9 + strlen(req->bucket_id) + 7;
+    char *path = calloc(path_len + 1, sizeof(char));
+    strcat(path, "/buckets/");
+    strcat(path, req->bucket_id);
+    strcat(path, "/tokens");
 
     struct json_object *body = json_object_new_object();
     json_object *op_string = json_object_new_string(req->bucket_op);
@@ -190,13 +194,19 @@ static void request_replace_pointer(uv_work_t *work)
     int status_code = 0;
 
     char query_args[32 + strlen(req->excluded_farmer_ids)];
-    ne_snprintf(query_args, 25 + strlen(req->excluded_farmer_ids),
-                "?limit=1&skip=%i&exclude=%s",
-                req->pointer_index,
-                req->excluded_farmer_ids);
+    snprintf(query_args, 25 + strlen(req->excluded_farmer_ids),
+             "?limit=1&skip=%i&exclude=%s",
+             req->pointer_index,
+             req->excluded_farmer_ids);
 
-    char *path = ne_concat("/buckets/", req->bucket_id, "/files/",
-                           req->file_id, query_args, NULL);
+    int path_len = 9 + strlen(req->bucket_id) + 7 +
+        strlen(req->file_id) + strlen(query_args);
+    char *path = calloc(path_len + 1, sizeof(char));
+    strcat(path, "/buckets/");
+    strcat(path, req->bucket_id);
+    strcat(path, "/files/");
+    strcat(path, req->file_id);
+    strcat(path, query_args);
 
     req->response = fetch_json(req->http_options, req->options, "GET",
                                path, NULL, NULL, req->token, &status_code);
@@ -538,9 +548,17 @@ static void queue_request_pointers(storj_download_state_t *state)
     assert(req != NULL);
 
     char query_args[32];
-    ne_snprintf(query_args, 20, "?limit=6&skip=%i", state->total_pointers);
-    char *path = ne_concat("/buckets/", state->bucket_id, "/files/",
-                           state->file_id, query_args, NULL);
+    snprintf(query_args, 20, "?limit=6&skip=%i", state->total_pointers);
+
+    int path_len = 9 + strlen(state->bucket_id) + 7 +
+        strlen(state->file_id) + strlen(query_args);
+
+    char *path = calloc(path_len + 1, sizeof(char));
+    strcat(path, "/buckets/");
+    strcat(path, state->bucket_id);
+    strcat(path, "/files/");
+    strcat(path, state->file_id);
+    strcat(path, query_args);
 
     req->http_options = state->env->http_options;
     req->options = state->env->bridge_options;
