@@ -202,6 +202,11 @@ static void upload_file_progress(double progress,
     // TODO assersions
 }
 
+void close_signal(uv_handle_t *handle)
+{
+    ((void)0);
+}
+
 static void upload_file_complete(int status, void *handle)
 {
     if (status != 0) {
@@ -213,6 +218,16 @@ static void upload_file_complete(int status, void *handle)
     exit(0);
 }
 
+void upload_signal_handler(uv_signal_t *req, int signum)
+{
+    storj_upload_state_t *state = req->data;
+    storj_bridge_store_file_cancel(state);
+    if (uv_signal_stop(req)) {
+        printf("Unable to stop signal\n");
+    }
+    uv_close((uv_handle_t *)req, close_signal);
+}
+
 static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 {
     storj_upload_opts_t upload_opts = {
@@ -222,7 +237,13 @@ static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
         .file_path = file_path
     };
 
+    uv_signal_t sig;
+    uv_signal_init(env->loop, &sig);
+    uv_signal_start(&sig, upload_signal_handler, SIGINT);
+
     storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
+
+    sig.data = state;
 
     int status = storj_bridge_store_file(env,
                                          state,
@@ -268,12 +289,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     exit(0);
 }
 
-void close_signal(uv_handle_t *handle)
-{
-    ((void)0);
-}
-
-void signal_handler(uv_signal_t *req, int signum)
+void download_signal_handler(uv_signal_t *req, int signum)
 {
     storj_download_state_t *state = req->data;
     storj_bridge_resolve_file_cancel(state);
@@ -302,7 +318,7 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
     uv_signal_t sig;
     uv_signal_init(env->loop, &sig);
-    uv_signal_start(&sig, signal_handler, SIGINT);
+    uv_signal_start(&sig, download_signal_handler, SIGINT);
 
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
 

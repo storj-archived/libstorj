@@ -381,7 +381,7 @@ static void after_push_shard(uv_work_t *work, int status)
         shard->report->code = STORJ_REPORT_SUCCESS;
         shard->report->message = STORJ_REPORT_SHARD_UPLOADED;
 
-    } else {
+    } else if (!state->canceled){
 
         // Update the exchange report with failure
         shard->report->code = STORJ_REPORT_FAILURE;

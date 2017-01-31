@@ -23,7 +23,9 @@ static long int body_shard_send(void *userdata, char *buffer,
     shard_body_t *body = userdata;
 
     if (*body->canceled) {
-        return buflen;
+        uint64_t remain = body->remain;
+        body->remain = 0;
+        return remain;
     }
 
     if (buflen == 0) {
