@@ -93,6 +93,7 @@ typedef struct {
  */
 typedef struct storj_encrypt_options {
     const char *mnemonic;
+    const char *tmp_path;
 } storj_encrypt_options_t;
 
 typedef enum {

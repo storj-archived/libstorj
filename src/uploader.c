@@ -1196,34 +1196,32 @@ static void encrypt_file(uv_work_t *work)
                    state->encrypt_file_count);
 
     // Set tmp file
-    struct stat sb;
-    if (getenv("STORJ_TEMP") && stat(getenv("STORJ_TEMP"), &sb) == 0 && S_ISDIR(sb.st_mode)) {
-        char *temp_env = getenv("STORJ_TEMP");
-
+    if (state->env->encrypt_options->tmp_path) {
         int file_name_len = strlen(state->file_name);
-        char *tmp_file_name = calloc(strlen(".crypt") + file_name_len + 1, sizeof(char));
-        strcpy(tmp_file_name, state->file_name);
-        strcat(tmp_file_name, ".crypt");
-        int tmp_file_name_len = strlen(tmp_file_name);
-
-        int tmp_dir_len = strlen(temp_env);
-        if (temp_env[tmp_dir_len - 1] == separator()){
-            temp_env[tmp_dir_len -1] = '\0';
-            tmp_dir_len -= 1;
+        int extension_len = strlen(".crypt");
+        char *tmp_folder = strdup(state->env->encrypt_options->tmp_path);
+        int tmp_folder_len = strlen(tmp_folder);
+        if (tmp_folder[tmp_folder_len - 1] == separator()) {
+            tmp_folder[tmp_folder_len - 1] = '\0';
+            tmp_folder_len -= 1;
         }
 
-        char *tmp_path = calloc(tmp_dir_len + 1 + tmp_file_name_len + 1, sizeof(char));
+        char *tmp_path = calloc(
+            tmp_folder_len + 1 + file_name_len + extension_len + 1,
+            sizeof(char)
+        );
+
         sprintf(tmp_path,
-            "%s%c%s%c",
-            temp_env,
+            "%s%c%s%s%c",
+            tmp_folder,
             separator(),
-            tmp_file_name,
+            state->file_name,
+            ".crypt",
             '\0');
 
         req->tmp_path = tmp_path;
 
-        free(tmp_file_name);
-
+        free(tmp_folder);
     } else {
         int tmp_len = strlen(req->file_path) + strlen(".crypt");
         char *tmp_path = calloc(tmp_len + 1, sizeof(char));
