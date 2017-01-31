@@ -5,22 +5,9 @@
 
 // TODO error check the calloc and realloc calls
 
-static void clean_up_neon(ne_session *s, ne_request *r)
+static size_t body_shard_send(void *contents, size_t size, size_t nmemb, void *userp)
 {
-    // Destroy the request
-    ne_request_destroy(r);
-
-    // Must not be called if there is a request active
-    ne_close_connection(s);
-
-    // Must not be called until all requests have been destroy
-    ne_session_destroy(s);
-}
-
-static long int body_shard_send(void *userdata, char *buffer,
-                                long unsigned int buflen)
-{
-    shard_body_t *body = userdata;
+    shard_body_t *body = userp;
 
     if (*body->canceled) {
         uint64_t remain = body->remain;
@@ -73,42 +60,53 @@ int put_shard(storj_http_options_t *http_options,
               bool *canceled)
 {
 
-    ne_session *sess = ne_session_create(proto, host, port);
-    shard_body_t *shard_body = NULL;
-
-    if (http_options->user_agent) {
-        ne_set_useragent(sess, http_options->user_agent);
-    }
-
-    if (http_options->proxy_version &&
-        http_options->proxy_host &&
-        http_options->proxy_port) {
-
-        ne_session_socks_proxy(sess,
-                               (enum ne_sock_sversion)http_options->proxy_version,
-                               http_options->proxy_host,
-                               http_options->proxy_port,
-                               "",
-                               "");
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        return 1;
     }
 
     char query_args[80];
-    ne_snprintf(query_args, 80, "?token=%s", token);
+    snprintf(query_args, 80, "?token=%s", token);
 
-    char *path = ne_concat("/shards/", shard_hash, query_args, NULL);
+    int url_len = strlen(proto) + 3 + strlen(host) + 1 + 10 + 8
+        + strlen(shard_hash) + strlen(query_args);
+    char url = calloc(url_len + 1, sizeof(char));
 
-    ne_request *req = ne_request_create(sess, "POST", path);
+    snprintf(url, "%s://%s:%i/shards/%s%s", proto, host, port,
+             shard_hash, query_args);
 
-    ne_add_request_header(req, "x-storj-node-id", farmer_id);
+    curl_easy_setopt(curl, CURLOPT_URL, url);
 
-    if (0 == strcmp(proto, "https")) {
-        ne_ssl_trust_default_ca(sess);
+    if (http_options->user_agent) {
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, http_options->user_agent);
     }
 
-    if (shard_data && shard_total_bytes) {
+    int proxy_len = strlen(http_options->proxy_version) + 3 +
+        stlen(http_options->proxy_host) + 1 + 10;
 
-        // Set the content header
-        ne_add_request_header(req, "Content-Type", "application/octet-stream");
+    char *proxy = calloc(proxy_len + 1, sizeof(char));
+    snprintf(proxy, proxy_len, "%s://");
+
+    if (http_options->proxy_url) {
+        curl_easy_setopt(curl, CURLOPT_PROXY, http_options->proxy_url);
+    }
+
+    //curl_easy_setopt(curl, CURLOPT_POST, 1);
+
+    struct curl_slist *content_chunk = NULL;
+    content_chunk = curl_slist_append(content_chunk, "Content-Type: application/octet-stream");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, content_chunk);
+
+    struct curl_slist *node_chunk = NULL;
+    char *header = calloc(17 + 40 + 1, sizeof(char));
+    strcat(header, "x-storj-node-id: ");
+    strncat(header, farmer_id, 40);
+    chunk = curl_slist_append(node_chunk, header);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+
+    shard_body_t *shard_body = NULL;
+
+    if (shard_data && shard_total_bytes) {
 
         shard_body = malloc(sizeof(shard_body_t));
         shard_body->shard_data = shard_data;
@@ -120,9 +118,8 @@ int put_shard(storj_http_options_t *http_options,
         shard_body->progress_handle = progress_handle;
         shard_body->canceled = canceled;
 
-        ne_set_request_body_provider(req, shard_total_bytes,
-                                     body_shard_send, shard_body);
-
+        curl_easy_setopt(curl, CURLOPT_READFUNCTION, body_shard_send);
+        curl_easy_setopt(curl, CURLOPT_READDATA, (void *)shard_body);
     }
 
 #ifdef _WIN32
@@ -131,16 +128,16 @@ int put_shard(storj_http_options_t *http_options,
     signal(SIGPIPE, SIG_IGN);
 #endif
 
-    int request_status = ne_request_dispatch(req);
+    int req = curl_easy_perform(curl);
 
     if (*canceled) {
         goto clean_up;
     }
 
-    if (request_status != NE_OK) {
+    if (req != CURLE_OK) {
         // TODO log using logger
-        printf("Put shard request error: %s\n", ne_get_error(sess));
-        return request_status;
+        printf("Put shard request error: %s\n", curl_easy_strerror(req));
+        return req;
     }
 
     // set the status code
@@ -153,7 +150,7 @@ clean_up:
         free(shard_body);
     }
     free(path);
-    clean_up_neon(sess, req);
+    curl_easy_cleanup(cleanup);
 
     return 0;
 }

@@ -129,6 +129,8 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
                                  storj_http_options_t *http_options,
                                  storj_log_options_t *log_options)
 {
+    curl_global_init(CURL_GLOBAL_ALL);
+
     uv_loop_t *loop = malloc(sizeof(uv_loop_t));
     if (uv_loop_init(loop)) {
         return NULL;
@@ -260,13 +262,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     // deep copy the http options
     storj_http_options_t *ho = malloc(sizeof(storj_http_options_t));
     ho->user_agent = strdup(http_options->user_agent);
-    ho->proxy_version = http_options->proxy_version;
-    if (http_options->proxy_host) {
-        ho->proxy_host = strdup(http_options->proxy_host);
-    } else {
-        ho->proxy_host = NULL;
-    }
-    ho->proxy_port = http_options->proxy_port;
+    ho->proxy_url = strdup(http_options->proxy_url);
     env->http_options = ho;
 
     // setup the log options
@@ -347,7 +343,7 @@ int storj_destroy_env(storj_env_t *env)
 
     // free all http options
     free((char *)env->http_options->user_agent);
-    free((char *)env->http_options->proxy_host);
+    free((char *)env->http_options->proxy_url);
     free(env->http_options);
 
     // free the event loop
@@ -358,6 +354,8 @@ int storj_destroy_env(storj_env_t *env)
 
     // free the environment
     free(env);
+
+    curl_global_cleanup();
 
     return status;
 }

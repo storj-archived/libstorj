@@ -8,14 +8,13 @@
 #define STORJ_HTTP_H
 
 #include "storj.h"
-#include <neon/ne_request.h>
-#include <neon/ne_string.h>
+#include <curl/curl.h>
 
 #ifdef _WIN32
 #include <signal.h>
 #endif
 
-#define SHARD_PROGRESS_INTERVAL NE_BUFSIZ * 150
+#define SHARD_PROGRESS_INTERVAL BUFSIZ * 150
 
 /** @brief A structure for sharing download progress state between threads.
  *
