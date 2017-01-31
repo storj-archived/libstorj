@@ -5,6 +5,7 @@
 #include "storjtests.h"
 
 static int e_count = 0;
+static int i_count = 0;
 
 static void farmer_request_completed(void *cls,
                                      struct MHD_Connection *connection,
@@ -63,7 +64,11 @@ int mock_farmer_shard_server(void *cls,
         } else if (0 == strcmp(url, "/shards/69d49e7b7355cfaa00d4e42cd97ceb8d31ff4ce7")) {
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/85a942537a6b998c6338a438cd283e9bf531e261")) {
-            status_code = MHD_HTTP_OK;
+            if (i_count == 0) {
+                i_count += 1;
+            } else {
+                status_code = MHD_HTTP_OK;
+            }
         } else if (0 == strcmp(url, "/shards/88ee3a1a14771c4a9ceb81357a5889cc3d8ad8e7")) {
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/9273982d7e7785b50fc56943ec9ef394c0c2c4d6")) {
