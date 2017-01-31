@@ -194,17 +194,31 @@ static int get_password_verify(char *prompt, char *password, int count)
     }
 }
 
-static void upload_file_progress(double progress,
-                                 uint64_t uploaded_bytes,
-                                 uint64_t total_bytes,
-                                 void *handle)
-{
-    // TODO assersions
-}
-
 void close_signal(uv_handle_t *handle)
 {
     ((void)0);
+}
+
+static void file_progress(double progress,
+                          uint64_t downloaded_bytes,
+                          uint64_t total_bytes,
+                          void *handle)
+{
+    int bar_width = 70;
+
+    printf("\r[");
+    int pos = bar_width * progress;
+    for (int i = 0; i < bar_width; ++i) {
+        if (i < pos) {
+            printf("=");
+        } else if (i == pos) {
+            printf(">");
+        } else {
+            printf(" ");
+        }
+    }
+    printf("] %.*f%%", 2, progress * 100);
+    fflush(stdout);
 }
 
 static void upload_file_complete(int status, void *handle)
@@ -245,36 +259,19 @@ static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
 
     sig.data = state;
 
+    storj_progress_cb progress_cb = (storj_progress_cb)noop;
+    if (env->log_options->level == 0) {
+        progress_cb = file_progress;
+    }
+
     int status = storj_bridge_store_file(env,
                                          state,
                                          &upload_opts,
                                          NULL,
-                                         upload_file_progress,
+                                         progress_cb,
                                          upload_file_complete);
 
     return status;
-}
-
-static void download_file_progress(double progress,
-                                   uint64_t downloaded_bytes,
-                                   uint64_t total_bytes,
-                                   void *handle)
-{
-    int bar_width = 70;
-
-    printf("\r[");
-    int pos = bar_width * progress;
-    for (int i = 0; i < bar_width; ++i) {
-        if (i < pos) {
-            printf("=");
-        } else if (i == pos) {
-            printf(">");
-        } else {
-            printf(" ");
-        }
-    }
-    printf("] %.*f%%", 2, progress * 100);
-    fflush(stdout);
 }
 
 static void download_file_complete(int status, FILE *fd, void *handle)
@@ -324,9 +321,10 @@ static int download_file(storj_env_t *env, char *bucket_id,
 
     sig.data = state;
 
-    storj_progress_cb progress_cb = path ?
-        download_file_progress : (storj_progress_cb)noop;
-
+    storj_progress_cb progress_cb = (storj_progress_cb)noop;
+    if (path && env->log_options->level == 0) {
+        progress_cb = file_progress;
+    }
 
     int status = storj_bridge_resolve_file(env, state, bucket_id,
                                            file_id, fd, NULL,
