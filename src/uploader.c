@@ -49,6 +49,24 @@ static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state)
     return work;
 }
 
+static storj_exchange_report_t *storj_exchange_report_new()
+{
+    storj_exchange_report_t *report = malloc(sizeof(storj_exchange_report_t));
+    report->data_hash = NULL;
+    report->reporter_id = NULL;
+    report->farmer_id = NULL;
+    report->client_id = NULL;
+    report->message = NULL;
+
+    report->send_status = STORJ_REPORT_NOT_PREPARED; // not sent
+    report->start = 0;
+    report->end = 0;
+    report->code = 0;
+    report->send_count = 0;
+
+    return report;
+}
+
 static farmer_pointer_t *farmer_pointer_new()
 {
     farmer_pointer_t *pointer = calloc(sizeof(farmer_pointer_t), sizeof(char));
@@ -380,12 +398,13 @@ static void after_push_shard(uv_work_t *work, int status)
         // Update the exchange report with success
         shard->report->code = STORJ_REPORT_SUCCESS;
         shard->report->message = STORJ_REPORT_SHARD_UPLOADED;
+        shard->report->send_status = STORJ_REPORT_AWAITING_SEND;
 
     } else if (!state->canceled){
-
         // Update the exchange report with failure
         shard->report->code = STORJ_REPORT_FAILURE;
         shard->report->message = STORJ_REPORT_UPLOAD_ERROR;
+        shard->report->send_status = STORJ_REPORT_AWAITING_SEND;
 
         if (shard->push_shard_request_count == 6) {
 
@@ -553,26 +572,28 @@ static int queue_push_shard(storj_upload_state_t *state, int index)
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                push_shard, after_push_shard);
 
-    shard_tracker_t *shard = &state->shard[index];
+    state->shard[index].progress = PUSHING_SHARD;
 
-    shard->progress = PUSHING_SHARD;
+    if (state->shard[index].report->farmer_id != NULL) {
+        free(state->shard[index].report);
+        state->shard[index].report = storj_exchange_report_new();
+    }
 
     // setup the exchange report
-    storj_exchange_report_t *report = malloc(sizeof(storj_exchange_report_t));
-    report->data_hash = shard->meta->hash;
+    storj_exchange_report_t *report = state->shard[index].report;
+    report->data_hash = state->shard[index].meta->hash;
     report->reporter_id = (char *)state->env->bridge_options->user;
-    report->farmer_id = shard->pointer->farmer_node_id;
+    report->farmer_id = state->shard[index].pointer->farmer_node_id;
     report->client_id = (char *)state->env->bridge_options->user;
+    report->pointer_index = index;
     report->start = 0;
     report->end = 0;
     report->code = 0;
     report->message = NULL;
     report->send_status = 0; // not sent
     report->send_count = 0;
-    report->pointer_index = index;
 
-    shard->report = report;
-    shard->work = work;
+    state->shard[index].work = work;
 
     return status;
 }
@@ -1412,19 +1433,55 @@ clean_variables:
     json_object_put(body);
 }
 
+static int queue_request_bucket_token(storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+
+    request_token_t *req = malloc(sizeof(request_token_t));
+    assert(req != NULL);
+
+    req->http_options = state->env->http_options;
+    req->options = state->env->bridge_options;
+    req->bucket_id = state->bucket_id;
+    req->bucket_op = (char *)BUCKET_OP[BUCKET_PUSH];
+    req->upload_state = state;
+    req->error_status = 0;
+    req->log = state->log;
+
+    work->data = req;
+
+    state->pending_work_count += 1;
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               request_token, after_request_token);
+
+    // TODO check status
+    state->requesting_token = true;
+
+    return status;
+}
+
+
 static void after_send_exchange_report(uv_work_t *work, int status)
 {
     shard_send_report_t *req = work->data;
 
-
     req->state->pending_work_count -= 1;
+
+    req->report->send_count += 1;
 
     // TODO set status before retrying shard
 
     if (req->status_code == 201) {
-        req->report->send_status = 2; // report has been sent
+        req->state->env->log->info(req->state->env->log_options,
+                        req->state->handle,
+                         "Successfully sent exchange report for shard %d",
+                         req->report->pointer_index);
+
+        req->report->send_status = STORJ_REPORT_NOT_PREPARED; // report has been sent
+    } else if (req->report->send_count == 6) {
+        req->report->send_status = STORJ_REPORT_NOT_PREPARED; // report failed retries
     } else {
-        req->report->send_status = 0; // reset report back to unsent
+        req->report->send_status = STORJ_REPORT_AWAITING_SEND; // reset report back to unsent
     }
 
     queue_next_work(req->state);
@@ -1478,67 +1535,37 @@ static void send_exchange_report(uv_work_t *work)
     json_object_put(body);
 }
 
-static int queue_request_bucket_token(storj_upload_state_t *state)
+static void queue_send_exchange_report(storj_upload_state_t *state, int index)
 {
-    uv_work_t *work = uv_work_new();
+    if (state->shard[index].report->send_count == 6) {
+        return;
+    }
 
-    request_token_t *req = malloc(sizeof(request_token_t));
-    assert(req != NULL);
+    state->env->log->info(state->env->log_options, state->handle,
+                   "Sending exchange report for Shard index %d... (retry: %d)",
+                   index,
+                  state->shard[index].report->send_count);
+
+    shard_tracker_t *shard = &state->shard[index];
+
+    uv_work_t *work = malloc(sizeof(uv_work_t));
+    assert(work != NULL);
+
+    shard_send_report_t *req = malloc(sizeof(shard_send_report_t));
 
     req->http_options = state->env->http_options;
     req->options = state->env->bridge_options;
-    req->bucket_id = state->bucket_id;
-    req->bucket_op = (char *)BUCKET_OP[BUCKET_PUSH];
-    req->upload_state = state;
-    req->error_status = 0;
-    req->log = state->log;
+    req->status_code = 0;
+    req->report = shard->report;
+    req->report->send_status = STORJ_REPORT_SENDING;
+    req->state = state;
+    req->pointer_index = index;
 
     work->data = req;
 
     state->pending_work_count += 1;
-    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
-                               request_token, after_request_token);
-
-    // TODO check status
-    state->requesting_token = true;
-
-    return status;
-}
-
-static void queue_send_exchange_reports(storj_upload_state_t *state)
-{
-
-    for (int i = 0; i < state->total_shards; i++) {
-
-        shard_tracker_t *shard = &state->shard[i];
-
-        if (shard->report &&
-            shard->report->send_status < 1 &&
-            shard->report->send_count < STORJ_MAX_REPORT_TRIES &&
-            shard->report->start > 0 &&
-            shard->report->end > 0) {
-
-            uv_work_t *work = malloc(sizeof(uv_work_t));
-            assert(work != NULL);
-
-            shard_send_report_t *req = malloc(sizeof(shard_send_report_t));
-
-            req->http_options = state->env->http_options;
-            req->options = state->env->bridge_options;
-            req->status_code = 0;
-            req->report = shard->report;
-            req->report->send_status = 1; // being reported
-            req->report->send_count += 1;
-            req->state = state;
-            req->pointer_index = i;
-
-            work->data = req;
-
-            state->pending_work_count += 1;
-            uv_queue_work(state->env->loop, (uv_work_t*) work,
-                          send_exchange_report, after_send_exchange_report);
-        }
-    }
+    uv_queue_work(state->env->loop, (uv_work_t*) work,
+                  send_exchange_report, after_send_exchange_report);
 }
 
 static void queue_next_work(storj_upload_state_t *state)
@@ -1576,12 +1603,14 @@ static void queue_next_work(storj_upload_state_t *state)
     }
 
     if (state->frame_id && state->tmp_path) {
-        for (int index = 0; index < state->total_shards; index++ ) {
-            if (state->shard[index].progress == AWAITING_PUSH_FRAME) {
+        for (int index = 0; index < state->total_shards; index++) {
+            if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
+                state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
                 queue_push_frame(state, index);
             }
 
-            if (state->shard[index].progress == AWAITING_PUSH_SHARD) {
+            if (state->shard[index].progress == AWAITING_PUSH_SHARD &&
+                state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
                 queue_push_shard(state, index);
             }
         }
@@ -1594,7 +1623,11 @@ static void queue_next_work(storj_upload_state_t *state)
         queue_create_bucket_entry(state);
     }
 
-    queue_send_exchange_reports(state);
+    for (int index = 0; index < state->total_shards; index++ ) {
+        if (state->shard[index].report->send_status == STORJ_REPORT_AWAITING_SEND) {
+            queue_send_exchange_report(state, index);
+        }
+    }
 }
 
 static void begin_work_queue(uv_work_t *work, int status)
@@ -1639,7 +1672,7 @@ static void prepare_upload_state(uv_work_t *work)
         state->shard[i].progress = AWAITING_PREPARE_FRAME;
         state->shard[i].index = i;
         state->shard[i].push_frame_request_count = 0;
-        state->shard[i].report = NULL;
+        state->shard[i].report = storj_exchange_report_new();
         state->shard[i].work = NULL;
     }
 

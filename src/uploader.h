@@ -18,6 +18,7 @@
 #define STORJ_MAX_REPORT_TRIES 2
 
 typedef enum {
+    CANCELED = 0,
     AWAITING_PREPARE_FRAME = 1,
     PREPARING_FRAME = 2,
     AWAITING_PUSH_FRAME = 3,
@@ -26,6 +27,13 @@ typedef enum {
     PUSHING_SHARD = 6,
     COMPLETED_PUSH_SHARD = 7
 } storj_state_progress_t;
+
+typedef enum {
+    STORJ_REPORT_NOT_PREPARED = 0,
+    STORJ_REPORT_AWAITING_SEND = 1,
+    STORJ_REPORT_SENDING = 2,
+    STORJ_REPORT_SENT = 3
+} exhcnage_report_status_t;
 
 typedef struct {
     /* state should not be modified in worker threads */
@@ -141,6 +149,7 @@ static int queue_push_frame(storj_upload_state_t *state, int index);
 static int queue_push_shard(storj_upload_state_t *state, int index);
 static int queue_create_bucket_entry(storj_upload_state_t *state);
 static int queue_request_bucket_token(storj_upload_state_t *state);
+static void queue_send_exchange_report(storj_upload_state_t *state, int index);
 
 static void request_token(uv_work_t *work);
 static void request_frame_id(uv_work_t *work);
