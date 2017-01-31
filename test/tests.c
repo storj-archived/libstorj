@@ -1158,14 +1158,14 @@ int test_read_write_encrypted_file()
 
     // it should successfully encrypt and decrypt a file with the provided key and salt
     char *expected_mnemonic = "letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic avoid letter advice cage absurd amount doctor acoustic bless";
-    storj_write_auth(test_file, "testpass",
-                     "testuser@storj.io", "bridgepass", expected_mnemonic);
+    storj_encrypt_write_auth(test_file, "testpass",
+                             "testuser@storj.io", "bridgepass", expected_mnemonic);
 
     char *bridge_user = NULL;
     char *bridge_pass = NULL;
     char *mnemonic = NULL;
-    if (storj_read_auth(test_file, "testpass",
-                        &bridge_user, &bridge_pass, &mnemonic)) {
+    if (storj_decrypt_read_auth(test_file, "testpass",
+                                &bridge_user, &bridge_pass, &mnemonic)) {
         fail("test_storj_write_read_auth(0)");
         return 1;
     }
@@ -1190,8 +1190,8 @@ int test_read_write_encrypted_file()
     free(mnemonic);
 
     // it should fail to decrypt if the wrong password
-    if (!storj_read_auth(test_file, "wrongpass",
-                        &bridge_user, &bridge_pass, &mnemonic)) {
+    if (!storj_decrypt_read_auth(test_file, "wrongpass",
+                                 &bridge_user, &bridge_pass, &mnemonic)) {
         fail("test_storj_write_read_auth(4)");
         return 1;
     }

@@ -683,7 +683,7 @@ static int set_auth()
         return 1;
     }
 
-    if (storj_write_auth(user_file, key, user, pass, mnemonic)) {
+    if (storj_encrypt_write_auth(user_file, key, user, pass, mnemonic)) {
         return 1;
     }
 
@@ -875,8 +875,8 @@ int main(int argc, char **argv)
             char *file_user = NULL;
             char *file_pass = NULL;
             char *file_mnemonic = NULL;
-            if (storj_read_auth(user_file, key, &file_user,
-                                &file_pass, &file_mnemonic)) {
+            if (storj_decrypt_read_auth(user_file, key, &file_user,
+                                        &file_pass, &file_mnemonic)) {
                 printf("Unable to read user file.\n");
                 goto end_program;
             }

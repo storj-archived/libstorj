@@ -362,24 +362,17 @@ int storj_destroy_env(storj_env_t *env)
     return status;
 }
 
-int storj_write_auth(const char *filepath,
-                     const char *passphrase,
-                     const char *bridge_user,
-                     const char *bridge_pass,
-                     const char *mnemonic)
+int storj_encrypt_auth(const char *passphrase,
+                       const char *bridge_user,
+                       const char *bridge_pass,
+                       const char *mnemonic,
+                       char **buffer)
 {
-    FILE *fp;
-    fp = fopen(filepath, "w");
-    if (fp == NULL) {
-        return 1;
-    }
-
     char *pass_encrypted;
     int pass_length = strlen(bridge_pass);
 
     if (encrypt_data(passphrase, bridge_user, bridge_pass,
                      &pass_encrypted)) {
-        fclose(fp);
         return 1;
     }
 
@@ -388,7 +381,6 @@ int storj_write_auth(const char *filepath,
 
     if (encrypt_data(passphrase, bridge_user, mnemonic,
                      &mnemonic_encrypted)) {
-        fclose(fp);
         return 1;
     }
 
@@ -404,48 +396,53 @@ int storj_write_auth(const char *filepath,
 
     const char *body_str = json_object_to_json_string(body);
 
-    fwrite(body_str, strlen(body_str), sizeof(char), fp);
-    fwrite("\n", 1, sizeof(char), fp);
+    *buffer = calloc(strlen(body_str) + 1, sizeof(char));
+    memcpy(*buffer, body_str, strlen(body_str) + 1);
 
     json_object_put(body);
     free(mnemonic_encrypted);
     free(pass_encrypted);
 
+    return 0;
+}
+
+int storj_encrypt_write_auth(const char *filepath,
+                             const char *passphrase,
+                             const char *bridge_user,
+                             const char *bridge_pass,
+                             const char *mnemonic)
+{
+    FILE *fp;
+    fp = fopen(filepath, "w");
+    if (fp == NULL) {
+        return 1;
+    }
+
+    char *buffer = NULL;
+    if (storj_encrypt_auth(passphrase, bridge_user,
+                           bridge_pass, mnemonic, &buffer)) {
+        fclose(fp);
+        return 1;
+    }
+
+    fwrite(buffer, strlen(buffer), sizeof(char), fp);
+    fwrite("\n", 1, sizeof(char), fp);
+
+    free(buffer);
     fclose(fp);
 
     return 0;
 }
 
-int storj_read_auth(const char *filepath,
-                    const char *passphrase,
-                    char **bridge_user,
-                    char **bridge_pass,
-                    char **mnemonic)
+int storj_decrypt_auth(const char *buffer,
+                       const char *passphrase,
+                       char **bridge_user,
+                       char **bridge_pass,
+                       char **mnemonic)
 {
-    FILE *fp;
-    fp = fopen(filepath, "r");
-    if (fp == NULL) {
-        return 1;
-    }
-
-    fseek(fp, 0, SEEK_END);
-    int fsize = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-
-    char *data = calloc(fsize + 1, sizeof(char));
-    if (data == NULL) {
-        return 1;
-    }
-    int read_blocks = fread(data, fsize, 1, fp);
-    if (read_blocks != 1) {
-        free(data);
-        return 1;
-    }
-    fclose(fp);
-
     int status = 0;
 
-    json_object *body = json_tokener_parse(data);
+    json_object *body = json_tokener_parse(buffer);
 
     struct json_object *user_value;
     if (!json_object_object_get_ex(body, "user", &user_value)) {
@@ -481,9 +478,44 @@ int storj_read_auth(const char *filepath,
 
 clean_up:
     json_object_put(body);
-    free(data);
 
     return status;
+}
+
+int storj_decrypt_read_auth(const char *filepath,
+                            const char *passphrase,
+                            char **bridge_user,
+                            char **bridge_pass,
+                            char **mnemonic)
+{
+    FILE *fp;
+    fp = fopen(filepath, "r");
+    if (fp == NULL) {
+        return 1;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    int fsize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    char *buffer = calloc(fsize + 1, sizeof(char));
+    if (buffer == NULL) {
+        return 1;
+    }
+    int read_blocks = fread(buffer, fsize, 1, fp);
+    if (read_blocks != 1) {
+        free(buffer);
+        return 1;
+    }
+    fclose(fp);
+
+    int status = storj_decrypt_auth(buffer, passphrase, bridge_user,
+                                    bridge_pass, mnemonic);
+
+    free(buffer);
+
+    return status;
+
 }
 
 uint64_t storj_util_timestamp()
