@@ -157,9 +157,15 @@ static void cleanup_state(storj_upload_state_t *state)
 
     if (state->shard) {
         for (int i = 0; i < state->total_shards; i++ ) {
-            state->log->debug("Cleaning up shard %d\n", i);
+
+            state->log->debug(state->env->log_options, state->handle,
+                              "Cleaning up shard %d", i);
+
             shard_meta_cleanup(state->shard[i].meta);
-            state->log->debug("Cleaning up pointers %d\n", i);
+
+            state->log->debug(state->env->log_options, state->handle,
+                              "Cleaning up pointers %d", i);
+
             pointer_cleanup(state->shard[i].pointer);
             if (state->shard[i].report) {
                 free(state->shard[i].report);
@@ -199,8 +205,9 @@ static uint64_t determine_shard_size(storj_upload_state_t *state,
     uint64_t file_size;
 
     if (!state->file_size) {
-        state->log->error(
-            "Cannot determine shard size when there is no file size.\n");
+        state->log->error(state->env->log_options, state->handle,
+                          "File size is unknown");
+
         return 0;
     } else {
         file_size = state->file_size;
@@ -249,7 +256,10 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
 
     // Check if we got a 200 status and token
     if (req->status_code == 200 || req->status_code == 201) {
-        req->log->info("Successfully Added bucket entry\n");
+
+        req->log->info(state->env->log_options, state->handle,
+                       "Successfully Added bucket entry");
+
         state->add_bucket_entry_count = 0;
         state->completed_upload = true;
     } else if (state->add_bucket_entry_count == 6) {
@@ -266,7 +276,8 @@ static void create_bucket_entry(uv_work_t *work)
     post_to_bucket_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
 
-    req->log->info("[%s] Creating bucket entry... (retry: %d)\n",
+    req->log->info(state->env->log_options, state->handle,
+                   "[%s] Creating bucket entry... (retry: %d)",
                    state->file_name,
                    state->add_bucket_entry_count);
 
@@ -357,7 +368,11 @@ static void after_push_shard(uv_work_t *work, int status)
 
     // Check if we got a 200 status and token
     if (req->status_code == 200 || req->status_code == 201 || req->status_code == 304) {
-        req->log->info("Successfully transfered shard index %d\n", req->shard_index);
+
+        req->log->info(state->env->log_options, state->handle,
+                       "Successfully transfered shard index %d",
+                       req->shard_index);
+
         shard->progress = COMPLETED_PUSH_SHARD;
         state->completed_shards += 1;
         shard->push_shard_request_count = 0;
@@ -373,10 +388,16 @@ static void after_push_shard(uv_work_t *work, int status)
         shard->report->message = STORJ_REPORT_UPLOAD_ERROR;
 
         if (shard->push_shard_request_count == 6) {
-            req->log->error("Failed to push shard %d\n", req->shard_index);
+
+            req->log->error(state->env->log_options, state->handle,
+                            "Failed to push shard %d\n", req->shard_index);
+
             state->error_status = STORJ_FARMER_REQUEST_ERROR;
         } else {
-            req->log->warn("Failed to push shard %d... Retrying...\n", req->shard_index);
+            req->log->warn(state->env->log_options, state->handle,
+                           "Failed to push shard %d... Retrying...",
+                           req->shard_index);
+
             // We go back to getting a new pointer instead of retrying push with same pointer
             shard->progress = AWAITING_PUSH_FRAME;
             shard->push_shard_request_count += 1;
@@ -407,7 +428,8 @@ static void push_shard(uv_work_t *work)
     storj_upload_state_t *state = req->upload_state;
     shard_tracker_t *shard = &state->shard[req->shard_index];
 
-    req->log->info("Transfering Shard index %d... (retry: %d)\n",
+    req->log->info(state->env->log_options, state->handle,
+                   "Transfering Shard index %d... (retry: %d)",
                    req->shard_index,
                    state->shard[req->shard_index].push_shard_request_count);
 
@@ -618,6 +640,8 @@ static void after_push_frame(uv_work_t *work, int status)
                strlen(pointer->farmer_last_seen));
 
         state->log->info(
+            state->env->log_options,
+            state->handle,
             "Contract negotiated with: "
             "{ "
             "\"userAgent: \"%s\", "
@@ -625,7 +649,7 @@ static void after_push_frame(uv_work_t *work, int status)
             "\"port\": \"%s\", "
             "\"nodeID\": \"%s\", "
             "\"lastSeen\": \"%s\" "
-            "}\n",
+            "}",
             p->farmer_user_agent,
             p->farmer_protocol,
             p->farmer_port,
@@ -652,7 +676,8 @@ static void push_frame(uv_work_t *work)
     storj_upload_state_t *state = req->upload_state;
     shard_meta_t *shard_meta = state->shard[req->shard_index].meta;
 
-    req->log->info("Pushing frame for shard index %d... (retry: %d)\n",
+    req->log->info(state->env->log_options, state->handle,
+                   "Pushing frame for shard index %d... (retry: %d)",
                    req->shard_index,
                    state->shard[req->shard_index].push_frame_request_count);
 
@@ -711,7 +736,8 @@ static void push_frame(uv_work_t *work)
     strcpy(resource, "/frames/");
     strcat(resource, state->frame_id);
 
-    req->log->debug("JSON body: %s\n", json_object_to_json_string(body));
+    req->log->debug(state->env->log_options, state->handle,
+                    "JSON body: %s", json_object_to_json_string(body));
 
     int status_code;
     struct json_object *response = fetch_json(req->http_options,
@@ -723,7 +749,9 @@ static void push_frame(uv_work_t *work)
                                               NULL,
                                               &status_code);
 
-    req->log->debug("JSON Response: %s\n", json_object_to_json_string(response));
+    req->log->debug(state->env->log_options, state->handle,
+                    "JSON Response: %s",
+                    json_object_to_json_string(response));
 
     struct json_object *obj_token;
     if (!json_object_object_get_ex(response, "token", &obj_token)) {
@@ -890,23 +918,34 @@ static void after_prepare_frame(uv_work_t *work, int status)
            RIPEMD160_DIGEST_SIZE * 2);
 
     // Add challenges_as_str
-    state->log->debug("Challenges for shard index %d\n", shard_meta->index);
+    state->log->debug(state->env->log_options, state->handle,
+                      "Challenges for shard index %d",
+                      shard_meta->index);
+
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[shard_meta->index].meta->challenges_as_str[i],
                shard_meta->challenges_as_str[i],
                32);
 
-        state->log->debug("Challenge [%d]: %s\n", i, state->shard[shard_meta->index].meta->challenges_as_str[i]);
+        state->log->debug(state->env->log_options, state->handle,
+                          "Challenge [%d]: %s",
+                          i,
+                          state->shard[shard_meta->index].meta->challenges_as_str[i]);
     }
 
     // Add Merkle Tree leaves.
-    state->log->debug("Tree for shard index %d\n", shard_meta->index);
+    state->log->debug(state->env->log_options, state->handle,
+                      "Tree for shard index %d",
+                      shard_meta->index);
+
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[shard_meta->index].meta->tree[i],
                shard_meta->tree[i],
                32);
 
-        state->log->debug("Leaf [%d]: %s\n", i, state->shard[shard_meta->index].meta->tree[i]);
+        state->log->debug(state->env->log_options, state->handle,
+                          "Leaf [%d]: %s", i,
+                          state->shard[shard_meta->index].meta->tree[i]);
     }
 
     // Add index
@@ -915,7 +954,9 @@ static void after_prepare_frame(uv_work_t *work, int status)
     // Add size
     state->shard[shard_meta->index].meta->size = shard_meta->size;
 
-    state->log->info("Successfully created frame for shard index %d\n", shard_meta->index);
+    state->log->info(state->env->log_options, state->handle,
+                     "Successfully created frame for shard index %d",
+                     shard_meta->index);
 
     state->shard[shard_meta->index].progress = AWAITING_PUSH_FRAME;
 
@@ -946,7 +987,8 @@ static void prepare_frame(uv_work_t *work)
     // Bytes read from file
     uint64_t read_bytes;
 
-    req->log->info("Creating frame for shard index %d\n",
+    req->log->info(state->env->log_options, state->handle,
+                   "Creating frame for shard index %d",
                    shard_meta->index);
 
     read_bytes = 0;
@@ -965,7 +1007,8 @@ static void prepare_frame(uv_work_t *work)
     // Calculate Shard Hash
     ripmd160sha256_as_string(shard_data, shard_meta->size, &shard_meta->hash);
 
-    req->log->info("Shard (%d) hash: %s\n", shard_meta->index,
+    req->log->info(state->env->log_options, state->handle,
+                   "Shard (%d) hash: %s", shard_meta->index,
                    shard_meta->hash);
 
     // Set the challenges
@@ -1017,21 +1060,26 @@ static int queue_prepare_frame(storj_upload_state_t *state, int index)
 static void after_request_frame_id(uv_work_t *work, int status)
 {
     frame_request_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
 
-    req->upload_state->pending_work_count -= 1;
+    state->pending_work_count -= 1;
 
-    req->upload_state->frame_request_count += 1;
-    req->upload_state->requesting_frame = false;
+    state->frame_request_count += 1;
+    state->requesting_frame = false;
 
     // Check if we got a 201 status and token
     if (req->error_status == 0 && req->status_code == 200 && req->frame_id) {
-        req->upload_state->log->info("Successfully retrieved frame id\n");
-        req->upload_state->frame_id = req->frame_id;
-    } else if (req->upload_state->frame_request_count == 6) {
-        req->upload_state->error_status = STORJ_BRIDGE_FRAME_ERROR;
+
+        state->log->info(state->env->log_options, state->handle,
+                         "Successfully retrieved frame id");
+
+        state->frame_id = req->frame_id;
+
+    } else if (state->frame_request_count == 6) {
+        state->error_status = STORJ_BRIDGE_FRAME_ERROR;
     }
 
-    queue_next_work(req->upload_state);
+    queue_next_work(state);
 
     free(req);
     free(work);
@@ -1040,14 +1088,20 @@ static void after_request_frame_id(uv_work_t *work, int status)
 static void request_frame_id(uv_work_t *work)
 {
     frame_request_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
 
-    req->log->info("[%s] Requesting file staging frame... (retry: %d)\n",
-                   req->upload_state->file_name,
-                   req->upload_state->frame_request_count);
+    req->log->info(state->env->log_options,
+                   state->handle,
+                   "[%s] Requesting file staging frame... (retry: %d)",
+                   state->file_name,
+                   state->frame_request_count);
 
     struct json_object *body = json_object_new_object();
 
-    req->log->debug("JSON body: %s\n", json_object_to_json_string(body));
+    req->log->debug(state->env->log_options,
+                    state->handle,
+                    "JSON body: %s",
+                    json_object_to_json_string(body));
 
     int status_code;
     struct json_object *response = fetch_json(req->http_options,
@@ -1059,7 +1113,10 @@ static void request_frame_id(uv_work_t *work)
                                               NULL,
                                               &status_code);
 
-    req->log->debug("JSON Response: %s\n", json_object_to_json_string(response));
+    req->log->debug(state->env->log_options,
+                    state->handle,
+                    "JSON Response: %s",
+                    json_object_to_json_string(response));
 
     struct json_object *frame_id;
     if (!json_object_object_get_ex(response, "id", &frame_id)) {
@@ -1111,7 +1168,11 @@ static void after_encrypt_file(uv_work_t *work, int status)
         state->encrypting_file = false;
         state->tmp_path = calloc(strlen(meta->tmp_path) +1, sizeof(char));
         strcpy(state->tmp_path, meta->tmp_path);
-        state->log->info("Successfully completed file encryption\n");
+
+        state->log->info(state->env->log_options,
+                         state->handle,
+                         "Successfully completed file encryption");
+
     } else if (state->encrypt_file_count == 6) {
         state->error_status = STORJ_FILE_ENCRYPTION_ERROR;
     }
@@ -1126,19 +1187,22 @@ static void after_encrypt_file(uv_work_t *work, int status)
 static void encrypt_file(uv_work_t *work)
 {
     encrypt_file_meta_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
 
-    req->log->info("[%s] Encrypting file... (retry: %d)\n",
-                   req->upload_state->file_name,
-                   req->upload_state->encrypt_file_count);
+    req->log->info(state->env->log_options,
+                   state->handle,
+                   "[%s] Encrypting file... (retry: %d)",
+                   state->file_name,
+                   state->encrypt_file_count);
 
     // Set tmp file
     struct stat sb;
     if (getenv("STORJ_TEMP") && stat(getenv("STORJ_TEMP"), &sb) == 0 && S_ISDIR(sb.st_mode)) {
         char *temp_env = getenv("STORJ_TEMP");
 
-        int file_name_len = strlen(req->upload_state->file_name);
+        int file_name_len = strlen(state->file_name);
         char *tmp_file_name = calloc(strlen(".crypt") + file_name_len + 1, sizeof(char));
-        strcpy(tmp_file_name, req->upload_state->file_name);
+        strcpy(tmp_file_name, state->file_name);
         strcat(tmp_file_name, ".crypt");
         int tmp_file_name_len = strlen(tmp_file_name);
 
@@ -1208,7 +1272,11 @@ static void encrypt_file(uv_work_t *work)
                       (uint8_t *)cphr_txt, (uint8_t *)clr_txt);
 
             if (!encrypted_file) {
-                req->log->warn("Pointer to %s dropped.\n", req->tmp_path);
+
+                req->log->warn(state->env->log_options,
+                               state->handle,
+                               "Pointer to %s dropped.", req->tmp_path);
+
                 goto clean_variables;
             }
 
@@ -1269,22 +1337,27 @@ static int queue_encrypt_file(storj_upload_state_t *state)
 static void after_request_token(uv_work_t *work, int status)
 {
     request_token_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
 
-    req->upload_state->pending_work_count -= 1;
+    state->pending_work_count -= 1;
 
-    req->upload_state->token_request_count += 1;
-    req->upload_state->requesting_token = false;
+    state->token_request_count += 1;
+    state->requesting_token = false;
 
     // Check if we got a 201 status and token
     if (req->error_status == 0 && req->status_code == 201 && req->token) {
-        req->upload_state->log->info("Successfully retrieved storage token\n");
-        req->upload_state->token = req->token;
-        req->upload_state->token_request_count = 0;
-    } else if (req->upload_state->token_request_count == 6) {
-        req->upload_state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
+
+        state->log->info(state->env->log_options,
+                         state->handle,
+                         "Successfully retrieved storage token");
+
+        state->token = req->token;
+        state->token_request_count = 0;
+    } else if (state->token_request_count == 6) {
+        state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     }
 
-    queue_next_work(req->upload_state);
+    queue_next_work(state);
 
     free(req);
     free(work);
@@ -1293,10 +1366,13 @@ static void after_request_token(uv_work_t *work, int status)
 static void request_token(uv_work_t *work)
 {
     request_token_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
 
-    req->log->info("[%s] Requesting storage token... (retry: %d)\n",
-                   req->upload_state->file_name,
-                   req->upload_state->token_request_count);
+    req->log->info(state->env->log_options,
+                   state->handle,
+                   "[%s] Requesting storage token... (retry: %d)",
+                   state->file_name,
+                   state->token_request_count);
 
     int path_len = strlen(req->bucket_id) + 17;
     char *path = calloc(path_len + 1, sizeof(char));
@@ -1616,7 +1692,9 @@ int storj_bridge_store_file(storj_env_t *env,
                             storj_finished_upload_cb finished_cb)
 {
     if (opts->file_concurrency < 1) {
-        env->log->error("\nFile Concurrency (%i) can't be less than 1",
+        env->log->error(env->log_options,
+                        handle,
+                        "File Concurrency (%i) can't be less than 1",
                         opts->file_concurrency);
         return 1;
     } else if (!opts->file_concurrency) {
@@ -1624,7 +1702,9 @@ int storj_bridge_store_file(storj_env_t *env,
     }
 
     if (opts->shard_concurrency < 1) {
-        env->log->error("\nShard Concurrency (%i) can't be less than 1",
+        env->log->error(env->log_options,
+                        handle,
+                        "Shard Concurrency (%i) can't be less than 1",
                         opts->shard_concurrency);
         return 1;
     } else if (!opts->shard_concurrency) {

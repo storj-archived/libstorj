@@ -50,6 +50,12 @@ static inline void noop() {};
 
 #define CLI_VERSION "libstorj-1.0.0-alpha"
 
+static void json_logger(const char *message, int level, void *handle)
+{
+    printf("{\"message\": \"%s\", \"level\": %i, \"timestamp\": %li}\n",
+           message, level, storj_util_timestamp());
+}
+
 static char *get_home_dir()
 {
 #ifdef _WIN32
@@ -763,7 +769,7 @@ int main(int argc, char **argv)
     };
 
     storj_log_options_t log_options = {
-        .logger = (storj_logger_fn)printf,
+        .logger = json_logger,
         .level = log_level
     };
 

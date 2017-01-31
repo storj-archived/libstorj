@@ -20,7 +20,6 @@ storj_http_options_t http_options = {
 };
 
 storj_log_options_t log_options = {
-    .logger = (storj_logger_fn)printf,
     .level = 0
 };
 

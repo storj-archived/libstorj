@@ -114,7 +114,7 @@ typedef struct storj_http_options {
 
 /** @brief A function signature for logging
  */
-typedef void (*storj_logger_fn)(const char *format, ...);
+typedef void (*storj_logger_fn)(const char *message, int level, void *handle);
 
 /** @brief Logging configuration options
  *
@@ -125,13 +125,19 @@ typedef struct storj_log_options {
     int level;
 } storj_log_options_t;
 
+/** @brief A function signature for logging
+ */
+typedef void (*storj_logger_format_fn)(storj_log_options_t *options,
+                                       void *handle,
+                                       const char *format, ...);
+
 /** @brief Functions for all logging levels
  */
 typedef struct storj_log_levels {
-    storj_logger_fn debug;
-    storj_logger_fn info;
-    storj_logger_fn warn;
-    storj_logger_fn error;
+    storj_logger_format_fn debug;
+    storj_logger_format_fn info;
+    storj_logger_format_fn warn;
+    storj_logger_format_fn error;
 } storj_log_levels_t;
 
 /** @brief A structure for a Storj user environment.
@@ -430,6 +436,12 @@ int storj_read_auth(const char *filepath,
                     char **bridge_pass,
                     char **mnemonic);
 
+/**
+ * @brief Will get the current unix timestamp in milliseconds
+ *
+ * @return A unix timestamp
+ */
+uint64_t storj_util_timestamp();
 
 /**
  * @brief Will generate a new random mnemonic

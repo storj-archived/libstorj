@@ -508,7 +508,9 @@ static void queue_request_pointers(storj_download_state_t *state)
             assert(work != NULL);
             work->data = req;
 
-            state->log->info("Requesting replacement pointer at index: %i\n",
+            state->log->info(state->env->log_options,
+                             state->handle,
+                             "Requesting replacement pointer at index: %i",
                              req->pointer_index);
 
             state->pending_work_count++;
@@ -554,7 +556,9 @@ static void queue_request_pointers(storj_download_state_t *state)
     assert(work != NULL);
     work->data = req;
 
-    state->log->info("Requesting next set of pointers, total pointers: %i\n",
+    state->log->info(state->env->log_options,
+                     state->handle,
+                     "Requesting next set of pointers, total pointers: %i",
                      state->total_pointers);
 
     state->pending_work_count++;
@@ -657,7 +661,9 @@ static void after_request_shard(uv_work_t *work, int status)
 
     if (req->error_status) {
 
-        req->state->log->warn("Error downloading shard: %s, reason: %s\n",
+        req->state->log->warn(req->state->env->log_options,
+                              req->state->handle,
+                              "Error downloading shard: %s, reason: %s",
                               req->shard_hash,
                               storj_strerror(req->error_status));
 
@@ -678,7 +684,10 @@ static void after_request_shard(uv_work_t *work, int status)
 
     } else {
 
-        req->state->log->info("Finished downloading shard: %s\n", req->shard_hash);
+        req->state->log->info(req->state->env->log_options,
+                              req->state->handle,
+                              "Finished downloading shard: %s",
+                              req->shard_hash);
 
         pointer->report->code = STORJ_REPORT_SUCCESS;
         pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
@@ -776,7 +785,10 @@ static int queue_request_shards(storj_download_state_t *state)
             pointer->status = POINTER_BEING_DOWNLOADED;
             pointer->work = work;
 
-            state->log->info("Queue request shard: %s\n", req->shard_hash);
+            state->log->info(state->env->log_options,
+                             state->handle,
+                             "Queue request shard: %s",
+                             req->shard_hash);
 
             // setup download progress reporting
             shard_download_progress_t *progress =

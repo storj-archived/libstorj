@@ -62,6 +62,68 @@ static uv_work_t *json_request_work_new(
     return work;
 }
 
+static void default_logger(const char *message,
+                           int level,
+                           void *handle)
+{
+    puts(message);
+}
+
+static void log_formatter(storj_log_options_t *options,
+                          void *handle,
+                          int level,
+                          const char *format,
+                          va_list args)
+{
+    va_list args_cpy;
+    va_copy(args_cpy, args);
+    int length = vsnprintf(0, 0, format, args_cpy);
+    va_end(args_cpy);
+
+    if (length > 0) {
+        char message[length + 1];
+        if (vsnprintf(message, length + 1, format, args)) {
+            options->logger(message, level, handle);
+        }
+    }
+}
+
+static void log_formatter_debug(storj_log_options_t *options, void *handle,
+                                const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    log_formatter(options, handle, 4, format, args);
+    va_end(args);
+}
+
+static void log_formatter_info(storj_log_options_t *options, void *handle,
+                               const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    log_formatter(options, handle, 3, format, args);
+    va_end(args);
+}
+
+static void log_formatter_warn(storj_log_options_t *options, void *handle,
+                               const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    log_formatter(options, handle, 2, format, args);
+    va_end(args);
+}
+
+static void log_formatter_error(storj_log_options_t *options, void *handle,
+                                const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    log_formatter(options, handle, 1, format, args);
+    va_end(args);
+}
+
 struct storj_env *storj_init_env(storj_bridge_options_t *options,
                                  storj_encrypt_options_t *encrypt_options,
                                  storj_http_options_t *http_options,
@@ -209,23 +271,26 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
 
     // setup the log options
     env->log_options = log_options;
+    if (!env->log_options->logger) {
+        env->log_options->logger = default_logger;
+    }
 
     storj_log_levels_t *log = malloc(sizeof(storj_log_levels_t));
 
-    log->debug = (storj_logger_fn)noop;
-    log->info = (storj_logger_fn)noop;
-    log->warn = (storj_logger_fn)noop;
-    log->error = (storj_logger_fn)noop;
+    log->debug = (storj_logger_format_fn)noop;
+    log->info = (storj_logger_format_fn)noop;
+    log->warn = (storj_logger_format_fn)noop;
+    log->error = (storj_logger_format_fn)noop;
 
     switch(log_options->level) {
         case 4:
-            log->debug = log_options->logger;
+            log->debug = log_formatter_debug;
         case 3:
-            log->info = log_options->logger;
+            log->info = log_formatter_info;
         case 2:
-            log->warn = log_options->logger;
+            log->warn = log_formatter_warn;
         case 1:
-            log->error = log_options->logger;
+            log->error = log_formatter_error;
         case 0:
             break;
     }
@@ -419,6 +484,11 @@ clean_up:
     free(data);
 
     return status;
+}
+
+uint64_t storj_util_timestamp()
+{
+    return get_time_milliseconds();
 }
 
 int storj_mnemonic_generate(int strength, char **buffer)
