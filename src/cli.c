@@ -105,7 +105,7 @@ static int get_user_auth_location(char *host, char **root_dir, char **user_file)
     strcpy(*root_dir, home_dir);
     strcat(*root_dir, "/.storj/");
 
-    len = strlen(*root_dir) + strlen(host) + strlen("/user.json");
+    len = strlen(*root_dir) + strlen(host) + strlen(".json");
     *user_file = calloc(len + 1, sizeof(char));
     if (!*user_file) {
         return 1;
@@ -113,7 +113,7 @@ static int get_user_auth_location(char *host, char **root_dir, char **user_file)
 
     strcpy(*user_file, *root_dir);
     strcat(*user_file, host);
-    strcat(*user_file, "/user.json");
+    strcat(*user_file, ".json");
 
     return 0;
 }
