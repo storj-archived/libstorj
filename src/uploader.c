@@ -291,8 +291,8 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
         state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     }
 
-    queue_next_work(state);
 clean_variables:
+    queue_next_work(state);
     free(req);
     free(work);
 }
@@ -363,8 +363,13 @@ static void free_push_shard_work(uv_handle_t *progress_handle)
     uv_work_t *work = progress_handle->data;
     push_shard_request_t *req = work->data;
 
-    free(req);
-    free(work);
+    if (req) {
+        free(req);
+    }
+
+    if (work) {
+        free(work);
+    }
 }
 
 static void after_push_shard(uv_work_t *work, int status)
@@ -377,9 +382,13 @@ static void after_push_shard(uv_work_t *work, int status)
     // free the upload progress
     free(progress_handle->data);
 
+    // assign work so that we can free after progress_handle is closed
+    progress_handle->data = work;
+
     if (status == UV_ECANCELED) {
         shard->push_shard_request_count = 0;
         shard->progress = AWAITING_PUSH_FRAME;
+        shard->report->send_status = STORJ_REPORT_NOT_PREPARED;
 
         goto clean_variables;
     }
@@ -389,9 +398,6 @@ static void after_push_shard(uv_work_t *work, int status)
     // Update times on exchange report
     shard->report->start = req->start;
     shard->report->end = req->end;
-
-    // assign work so that we can free after progress_handle is closed
-    progress_handle->data = work;
 
     // Check if we got a 200 status and token
     if (req->status_code == 200 || req->status_code == 201 || req->status_code == 304) {
@@ -444,9 +450,8 @@ static void after_push_shard(uv_work_t *work, int status)
         }
     }
 
-    queue_next_work(state);
-
 clean_variables:
+    queue_next_work(state);
     // close the async progress handle
     uv_close(progress_handle, free_push_shard_work);
 }
@@ -716,9 +721,8 @@ static void after_push_frame(uv_work_t *work, int status)
         state->shard[req->shard_index].progress = AWAITING_PUSH_FRAME;
     }
 
-    queue_next_work(state);
-
 clean_variables:
+    queue_next_work(state);
     if (pointer) {
         pointer_cleanup(pointer);
     }
@@ -1022,9 +1026,8 @@ static void after_prepare_frame(uv_work_t *work, int status)
 
     state->shard[shard_meta->index].progress = AWAITING_PUSH_FRAME;
 
-    queue_next_work(state);
-
 clean_variables:
+    queue_next_work(state);
     if (shard_meta) {
         shard_meta_cleanup(shard_meta);
     }
@@ -1162,8 +1165,8 @@ static void after_request_frame_id(uv_work_t *work, int status)
         state->error_status = STORJ_BRIDGE_FRAME_ERROR;
     }
 
-    queue_next_work(state);
 clean_variables:
+    queue_next_work(state);
     free(req);
     free(work);
 }
@@ -1265,8 +1268,8 @@ static void after_encrypt_file(uv_work_t *work, int status)
         state->error_status = STORJ_FILE_ENCRYPTION_ERROR;
     }
 
-    queue_next_work(state);
 clean_variables:
+    queue_next_work(state);
     if (meta->tmp_path) {
         free(meta->tmp_path);
     }
@@ -1289,16 +1292,14 @@ static void encrypt_file(uv_work_t *work)
     // Set tmp file
     if (state->env->encrypt_options->tmp_path) {
         int file_name_len = strlen(state->file_name);
-        int extension_len = strlen(".crypt");
         char *tmp_folder = strdup(state->env->encrypt_options->tmp_path);
         int tmp_folder_len = strlen(tmp_folder);
         if (tmp_folder[tmp_folder_len - 1] == separator()) {
             tmp_folder[tmp_folder_len - 1] = '\0';
-            tmp_folder_len -= 1;
         }
 
         char *tmp_path = calloc(
-            tmp_folder_len + 1 + file_name_len + extension_len + 1,
+            tmp_folder_len + 2 + file_name_len + 6 + 1,
             sizeof(char)
         );
 
@@ -1451,8 +1452,8 @@ static void after_request_token(uv_work_t *work, int status)
         state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     }
 
-    queue_next_work(state);
 clean_variables:
+    queue_next_work(state);
     free(req);
     free(work);
 }
@@ -1562,8 +1563,8 @@ static void after_send_exchange_report(uv_work_t *work, int status)
         req->report->send_status = STORJ_REPORT_AWAITING_SEND; // reset report back to unsent
     }
 
-    queue_next_work(req->state);
 clean_variables:
+    queue_next_work(req->state);
     free(work->data);
     free(work);
 
@@ -1648,6 +1649,10 @@ static void queue_send_exchange_report(storj_upload_state_t *state, int index)
 
 static void queue_next_work(storj_upload_state_t *state)
 {
+    if (state->canceled) {
+        return cleanup_state(state);
+    }
+
     // report any errors
     if (state->error_status != 0) {
         return cleanup_state(state);
@@ -1777,6 +1782,7 @@ int storj_bridge_store_file_cancel(storj_upload_state_t *state)
         return 0;
     }
 
+    state->pending_work_count = 0;
     state->canceled = true;
     state->error_status = STORJ_TRANSFER_CANCELED;
 
@@ -1789,8 +1795,6 @@ int storj_bridge_store_file_cancel(storj_upload_state_t *state)
             uv_cancel((uv_req_t *)shard->work);
         }
     }
-
-    cleanup_state(state);
 
     return 0;
 }
