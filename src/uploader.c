@@ -479,7 +479,9 @@ static void push_shard(uv_work_t *work)
         // Read shard data from file
         read_bytes = fread(shard_data, 1, shard->meta->size, encrypted_file);
 
-        loop_count += 1;
+        if (read_bytes != shard->meta->size) {
+            loop_count += 1;
+        }
 
     } while(read_bytes < shard->meta->size);
 
@@ -1036,7 +1038,9 @@ static void prepare_frame(uv_work_t *work)
         // Read shard data from file
         read_bytes = fread(shard_data, 1, state->shard_size, encrypted_file);
 
-        loop_count += 1;
+        if (read_bytes != shard_meta->index*state->shard_size) {
+            loop_count += 1;
+        }
     } while(read_bytes < state->shard_size &&
             shard_meta->index != state->total_shards - 1);
 
