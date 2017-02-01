@@ -159,25 +159,16 @@ static size_t body_shard_receive(void *buffer, size_t size, size_t nmemb,
     }
 
     if (body->length + buflen > body->shard_total_bytes) {
-        // TODO give back error?
         return CURL_READFUNC_ABORT;
-    }
-
-    // Resize the data as needed
-    body->data = realloc(body->data, body->length + buflen + 1);
-    if (body->data == NULL) {
-        return 0;
     }
 
     // Update the hash
     sha256_update(body->sha256_ctx, buflen, (uint8_t *)buffer);
 
     // Copy the data
-    memcpy(&(body->data[body->length]), buffer, buflen);
+    memcpy(body->data + body->length, buffer, buflen);
 
     body->length += buflen;
-    body->data[body->length] = 0;
-
     body->bytes_since_progress += buflen;
 
     // Give progress updates at set interval
@@ -242,7 +233,7 @@ int fetch_shard(storj_http_options_t *http_options,
     // Set the body handler
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_shard_receive);
     shard_body_receive_t *body = malloc(sizeof(shard_body_receive_t));
-    body->data = NULL;
+    body->data = shard_data;
     body->length = 0;
     body->progress_handle = progress_handle;
     body->shard_total_bytes = shard_total_bytes;
