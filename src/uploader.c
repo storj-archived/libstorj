@@ -270,11 +270,10 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
     if (status == UV_ECANCELED) {
         state->add_bucket_entry_count = 0;
         state->creating_bucket_entry = false;
+        state->pending_work_count -= 1;
 
         goto clean_variables;
     }
-
-    state->pending_work_count -= 1;
 
     state->add_bucket_entry_count += 1;
     state->creating_bucket_entry = false;
@@ -385,6 +384,8 @@ static void after_push_shard(uv_work_t *work, int status)
     // assign work so that we can free after progress_handle is closed
     progress_handle->data = work;
 
+    state->pending_work_count -= 1;
+
     if (status == UV_ECANCELED) {
         shard->push_shard_request_count = 0;
         shard->progress = AWAITING_PUSH_FRAME;
@@ -392,8 +393,6 @@ static void after_push_shard(uv_work_t *work, int status)
 
         goto clean_variables;
     }
-
-    state->pending_work_count -= 1;
 
     // Update times on exchange report
     shard->report->start = req->start;
@@ -635,14 +634,14 @@ static void after_push_frame(uv_work_t *work, int status)
     storj_upload_state_t *state = req->upload_state;
     farmer_pointer_t *pointer = req->farmer_pointer;
 
+    state->pending_work_count -= 1;
+
     if (status == UV_ECANCELED) {
         state->shard[req->shard_index].push_frame_request_count = 0;
         state->shard[req->shard_index].progress = AWAITING_PUSH_FRAME;
 
         goto clean_variables;
     }
-
-    state->pending_work_count -= 1;
 
     // Increment request count every request for retry counts
     state->shard[req->shard_index].push_frame_request_count += 1;
@@ -965,13 +964,13 @@ static void after_prepare_frame(uv_work_t *work, int status)
     shard_meta_t *shard_meta = req->shard_meta;
     storj_upload_state_t *state = req->upload_state;
 
+    state->pending_work_count -= 1;
+
     if (status == UV_ECANCELED) {
         state->shard[shard_meta->index].progress = AWAITING_PREPARE_FRAME;
 
         goto clean_variables;
     }
-
-    state->pending_work_count -= 1;
 
     /* set the shard_meta to a struct array in the state for later use. */
 
@@ -1142,14 +1141,13 @@ static void after_request_frame_id(uv_work_t *work, int status)
     storj_upload_state_t *state = req->upload_state;
 
     state->requesting_frame = false;
+    state->pending_work_count -= 1;
 
     if (status == UV_ECANCELED) {
         state->frame_request_count == 0;
 
         goto clean_variables;
     }
-
-    state->pending_work_count -= 1;
 
     state->frame_request_count += 1;
 
@@ -1244,6 +1242,7 @@ static void after_encrypt_file(uv_work_t *work, int status)
     encrypt_file_meta_t *meta = work->data;
     storj_upload_state_t *state = meta->upload_state;
 
+    state->pending_work_count -= 1;
     state->encrypting_file = false;
 
     if (status == UV_ECANCELED) {
@@ -1252,7 +1251,6 @@ static void after_encrypt_file(uv_work_t *work, int status)
         goto clean_variables;
     }
 
-    state->pending_work_count -= 1;
     state->encrypt_file_count += 1;
 
     if (check_file(state->env, meta->tmp_path) == state->file_size) {
@@ -1428,6 +1426,7 @@ static void after_request_token(uv_work_t *work, int status)
     request_token_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
 
+    state->pending_work_count -= 1;
     state->requesting_token = false;
 
     if (status == UV_ECANCELED) {
@@ -1436,7 +1435,6 @@ static void after_request_token(uv_work_t *work, int status)
         goto clean_variables;
     }
 
-    state->pending_work_count -= 1;
     state->token_request_count += 1;
 
     // Check if we got a 201 status and token
@@ -1540,6 +1538,8 @@ static void after_send_exchange_report(uv_work_t *work, int status)
 {
     shard_send_report_t *req = work->data;
 
+    req->state->pending_work_count -= 1;
+
     if (status == UV_ECANCELED) {
         req->report->send_count == 0;
         req->report->send_status = STORJ_REPORT_AWAITING_SEND;
@@ -1547,7 +1547,6 @@ static void after_send_exchange_report(uv_work_t *work, int status)
         goto clean_variables;
     }
 
-    req->state->pending_work_count -= 1;
     req->report->send_count += 1;
 
     if (req->status_code == 201) {
@@ -1782,7 +1781,6 @@ int storj_bridge_store_file_cancel(storj_upload_state_t *state)
         return 0;
     }
 
-    state->pending_work_count = 0;
     state->canceled = true;
     state->error_status = STORJ_TRANSFER_CANCELED;
 
