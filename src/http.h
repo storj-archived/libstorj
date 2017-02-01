@@ -7,12 +7,15 @@
 #ifndef STORJ_HTTP_H
 #define STORJ_HTTP_H
 
-#include "storj.h"
 #include <curl/curl.h>
+#include <nettle/sha.h>
+#include <nettle/ripemd160.h>
 
 #ifdef _WIN32
 #include <signal.h>
 #endif
+
+#include "storj.h"
 
 #define SHARD_PROGRESS_INTERVAL BUFSIZ * 150
 
@@ -58,7 +61,9 @@ typedef struct {
     size_t length;
     size_t bytes_since_progress;
     uint64_t shard_total_bytes;
-    sha256_ctx *ctx;
+    uv_async_t *progress_handle;
+    bool *canceled;
+    struct sha256_ctx *sha256_ctx;
 } shard_body_receive_t;
 
 typedef struct {

@@ -18,6 +18,7 @@ extern "C" {
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include <string.h>
 #include <uv.h>
 #include <curl/curl.h>
