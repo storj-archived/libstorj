@@ -624,10 +624,8 @@ int storj_bridge_delete_bucket(storj_env_t *env,
                                void *handle,
                                uv_after_work_cb cb)
 {
-    int path_len = 9 + strlen(id);
-    char *path = calloc(path_len + 1, sizeof(char));
-    strcat(path, "/buckets/");
-    strcat(path, id);
+    char *path = str_concat_many(2, "/buckets/", id);
+
     uv_work_t *work = json_request_work_new(env, "DELETE", path,
                                             NULL, true, handle);
 
@@ -639,11 +637,8 @@ int storj_bridge_list_files(storj_env_t *env,
                             void *handle,
                             uv_after_work_cb cb)
 {
-    int path_len = 9 + strlen(id) + 6;
-    char *path = calloc(path_len + 1, sizeof(char));
-    strcat(path, "/buckets/");
-    strcat(path, id);
-    strcat(path, "/files");
+    char *path = str_concat_many(3, "/buckets/", id, "/files");
+
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                             true, handle);
 
@@ -661,11 +656,8 @@ int storj_bridge_create_bucket_token(storj_env_t *env,
 
     json_object_object_add(body, "operation", op_string);
 
-    int path_len = 9 + strlen(bucket_id) + 7;
-    char *path = calloc(path_len + 1, sizeof(char));
-    strcat(path, "/buckets/");
-    strcat(path, bucket_id);
-    strcat(path, "/tokens");
+    char *path = str_concat_many(3, "/buckets/", bucket_id, "/tokens");
+
     uv_work_t *work = json_request_work_new(env, "POST", path, body,
                                             true, handle);
 
@@ -678,12 +670,8 @@ int storj_bridge_get_file_pointers(storj_env_t *env,
                                    void *handle,
                                    uv_after_work_cb cb)
 {
-    int path_len = 9 + strlen(bucket_id) + 7 + strlen(file_id);
-    char *path = calloc(path_len + 1, sizeof(char));
-    strcat(path, "/buckets/");
-    strcat(path, bucket_id);
-    strcat(path, "/files/");
-    strcat(path, file_id);
+    char *path = str_concat_many(4, "/buckets/", bucket_id, "/files/", file_id);
+
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                             true, handle);
 
@@ -696,12 +684,8 @@ int storj_bridge_delete_file(storj_env_t *env,
                              void *handle,
                              uv_after_work_cb cb)
 {
-    int path_len = 9 + strlen(bucket_id) + 7 + strlen(file_id);
-    char *path = calloc(path_len + 1, sizeof(char));
-    strcat(path, "/buckets/");
-    strcat(path, bucket_id);
-    strcat(path, "/files/");
-    strcat(path, file_id);
+    char *path = str_concat_many(4, "/buckets/", bucket_id, "/files/", file_id);
+
     uv_work_t *work = json_request_work_new(env, "DELETE", path, NULL,
                                             true, handle);
 
@@ -733,10 +717,8 @@ int storj_bridge_get_frame(storj_env_t *env,
                            void *handle,
                            uv_after_work_cb cb)
 {
-    int path_len = 8 + strlen(frame_id);
-    char *path = calloc(path_len + 1, sizeof(char));
-    strcat(path, "/frames/");
-    strcat(path, frame_id);
+    char *path = str_concat_many(2, "/frames/", frame_id);
+
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                             true, handle);
 
@@ -749,10 +731,8 @@ int storj_bridge_delete_frame(storj_env_t *env,
                               void *handle,
                               uv_after_work_cb cb)
 {
-    int path_len = 8 + strlen(frame_id);
-    char *path = calloc(path_len + 1, sizeof(char));
-    strcat(path, "/frames/");
-    strcat(path, frame_id);
+    char *path = str_concat_many(2, "/frames/", frame_id);
+
     uv_work_t *work = json_request_work_new(env, "DELETE", path, NULL,
                                             true, handle);
 
@@ -765,13 +745,9 @@ int storj_bridge_get_file_info(storj_env_t *env,
                                void *handle,
                                uv_after_work_cb cb)
 {
-    int path_len = 9 + strlen(bucket_id) + 7 + strlen(file_id) + 5;
-    char *path = calloc(path_len + 1, sizeof(char));
-    strcat(path, "/buckets/");
-    strcat(path, bucket_id);
-    strcat(path, "/files/");
-    strcat(path, file_id);
-    strcat(path, "/info");
+    char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
+                                 file_id, "/info");
+
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                             true, handle);
 
@@ -784,13 +760,9 @@ int storj_bridge_list_mirrors(storj_env_t *env,
                               void *handle,
                               uv_after_work_cb cb)
 {
-    int path_len = 9 + strlen(bucket_id) + 7 + strlen(file_id) + 8;
-    char *path = calloc(path_len + 1, sizeof(char));
-    strcat(path, "/buckets/");
-    strcat(path, bucket_id);
-    strcat(path, "/files/");
-    strcat(path, file_id);
-    strcat(path, "/mirrors");
+    char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
+                                 file_id, "/mirrors");
+
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                            true, handle);
 

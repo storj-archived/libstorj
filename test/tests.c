@@ -110,6 +110,7 @@ void check_list_files(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
     assert(req->handle == NULL);
+    assert(req->response != NULL);
 
     struct json_object *file = json_object_array_get_idx(req->response, 0);
     struct json_object *value;
