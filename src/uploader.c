@@ -267,6 +267,13 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
     post_to_bucket_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
 
+    if (status == UV_ECANCELED) {
+        state->add_bucket_entry_count = 0;
+        state->creating_bucket_entry = false;
+
+        goto clean_variables;
+    }
+
     state->pending_work_count -= 1;
 
     state->add_bucket_entry_count += 1;
@@ -285,6 +292,7 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
     }
 
     queue_next_work(state);
+clean_variables:
     free(req);
     free(work);
 }
@@ -363,23 +371,24 @@ static void after_push_shard(uv_work_t *work, int status)
 {
     push_shard_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
+    uv_handle_t *progress_handle = (uv_handle_t *) &req->progress_handle;
+    shard_tracker_t *shard = &state->shard[req->shard_index];
 
-    state->pending_work_count -= 1;
+    // free the upload progress
+    free(progress_handle->data);
 
     if (status == UV_ECANCELED) {
-        // TODO
+        shard->push_shard_request_count = 0;
+        shard->progress = AWAITING_PUSH_FRAME;
+
+        goto clean_variables;
     }
 
-    shard_tracker_t *shard = &state->shard[req->shard_index];
+    state->pending_work_count -= 1;
 
     // Update times on exchange report
     shard->report->start = req->start;
     shard->report->end = req->end;
-
-    uv_handle_t *progress_handle = (uv_handle_t *) &req->progress_handle;
-
-    // free the upload progress
-    free(progress_handle->data);
 
     // assign work so that we can free after progress_handle is closed
     progress_handle->data = work;
@@ -437,6 +446,7 @@ static void after_push_shard(uv_work_t *work, int status)
 
     queue_next_work(state);
 
+clean_variables:
     // close the async progress handle
     uv_close(progress_handle, free_push_shard_work);
 }
@@ -618,10 +628,16 @@ static void after_push_frame(uv_work_t *work, int status)
 {
     frame_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
+    farmer_pointer_t *pointer = req->farmer_pointer;
+
+    if (status == UV_ECANCELED) {
+        state->shard[req->shard_index].push_frame_request_count = 0;
+        state->shard[req->shard_index].progress = AWAITING_PUSH_FRAME;
+
+        goto clean_variables;
+    }
 
     state->pending_work_count -= 1;
-
-    farmer_pointer_t *pointer = req->farmer_pointer;
 
     // Increment request count every request for retry counts
     state->shard[req->shard_index].push_frame_request_count += 1;
@@ -702,7 +718,11 @@ static void after_push_frame(uv_work_t *work, int status)
 
     queue_next_work(state);
 
-    pointer_cleanup(pointer);
+clean_variables:
+    if (pointer) {
+        pointer_cleanup(pointer);
+    }
+
     free(req);
     free(work);
 }
@@ -941,6 +961,12 @@ static void after_prepare_frame(uv_work_t *work, int status)
     shard_meta_t *shard_meta = req->shard_meta;
     storj_upload_state_t *state = req->upload_state;
 
+    if (status == UV_ECANCELED) {
+        state->shard[shard_meta->index].progress = AWAITING_PREPARE_FRAME;
+
+        goto clean_variables;
+    }
+
     state->pending_work_count -= 1;
 
     /* set the shard_meta to a struct array in the state for later use. */
@@ -998,7 +1024,11 @@ static void after_prepare_frame(uv_work_t *work, int status)
 
     queue_next_work(state);
 
-    shard_meta_cleanup(shard_meta);
+clean_variables:
+    if (shard_meta) {
+        shard_meta_cleanup(shard_meta);
+    }
+
     free(req);
     free(work);
 }
@@ -1108,10 +1138,17 @@ static void after_request_frame_id(uv_work_t *work, int status)
     frame_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
 
+    state->requesting_frame = false;
+
+    if (status == UV_ECANCELED) {
+        state->frame_request_count == 0;
+
+        goto clean_variables;
+    }
+
     state->pending_work_count -= 1;
 
     state->frame_request_count += 1;
-    state->requesting_frame = false;
 
     // Check if we got a 201 status and token
     if (req->error_status == 0 && req->status_code == 200 && req->frame_id) {
@@ -1126,7 +1163,7 @@ static void after_request_frame_id(uv_work_t *work, int status)
     }
 
     queue_next_work(state);
-
+clean_variables:
     free(req);
     free(work);
 }
@@ -1204,10 +1241,16 @@ static void after_encrypt_file(uv_work_t *work, int status)
     encrypt_file_meta_t *meta = work->data;
     storj_upload_state_t *state = meta->upload_state;
 
-    state->pending_work_count -= 1;
-
-    state->encrypt_file_count += 1;
     state->encrypting_file = false;
+
+    if (status == UV_ECANCELED) {
+        state->encrypt_file_count = 0;
+
+        goto clean_variables;
+    }
+
+    state->pending_work_count -= 1;
+    state->encrypt_file_count += 1;
 
     if (check_file(state->env, meta->tmp_path) == state->file_size) {
         state->encrypting_file = false;
@@ -1223,8 +1266,11 @@ static void after_encrypt_file(uv_work_t *work, int status)
     }
 
     queue_next_work(state);
+clean_variables:
+    if (meta->tmp_path) {
+        free(meta->tmp_path);
+    }
 
-    free(meta->tmp_path);
     free(meta);
     free(work);
 }
@@ -1381,10 +1427,16 @@ static void after_request_token(uv_work_t *work, int status)
     request_token_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
 
-    state->pending_work_count -= 1;
-
-    state->token_request_count += 1;
     state->requesting_token = false;
+
+    if (status == UV_ECANCELED) {
+        state->token_request_count = 0;
+
+        goto clean_variables;
+    }
+
+    state->pending_work_count -= 1;
+    state->token_request_count += 1;
 
     // Check if we got a 201 status and token
     if (req->error_status == 0 && req->status_code == 201 && req->token) {
@@ -1400,7 +1452,7 @@ static void after_request_token(uv_work_t *work, int status)
     }
 
     queue_next_work(state);
-
+clean_variables:
     free(req);
     free(work);
 }
@@ -1487,6 +1539,13 @@ static void after_send_exchange_report(uv_work_t *work, int status)
 {
     shard_send_report_t *req = work->data;
 
+    if (status == UV_ECANCELED) {
+        req->report->send_count == 0;
+        req->report->send_status = STORJ_REPORT_AWAITING_SEND;
+
+        goto clean_variables;
+    }
+
     req->state->pending_work_count -= 1;
     req->report->send_count += 1;
 
@@ -1504,7 +1563,7 @@ static void after_send_exchange_report(uv_work_t *work, int status)
     }
 
     queue_next_work(req->state);
-
+clean_variables:
     free(work->data);
     free(work);
 
