@@ -1,6 +1,8 @@
 #include "storjtests.h"
 
 char *folder;
+int tests_ran = 0;
+int test_status = 0;
 
 // setup bridge options to point to mock server
 storj_bridge_options_t bridge_options = {
@@ -26,11 +28,14 @@ storj_log_options_t log_options = {
 void fail(char *msg)
 {
     printf("\t" KRED "FAIL" RESET " %s\n", msg);
+    tests_ran += 1;
 }
 
 void pass(char *msg)
 {
     printf("\t" KGRN "PASS" RESET " %s\n", msg);
+    test_status += 1;
+    tests_ran += 1;
 }
 
 
@@ -1237,64 +1242,44 @@ int main(void)
     // spin up test farmer server
     struct MHD_Daemon *f = start_farmer_server();
 
-    int tests_ran = 0;
-
-    int status = 0;
-
     printf("Test Suite: API\n");
-    status += test_api();
-    ++tests_ran;
+    test_api();
     printf("\n");
 
     printf("Test Suite: Uploads\n");
-    status += test_upload();
-    ++tests_ran;
-    status += test_upload_cancel();
-    ++tests_ran;
+    test_upload();
+    test_upload_cancel();
+    printf("\n");
 
     printf("Test Suite: Downloads\n");
-    status += test_download();
-    ++tests_ran;
-    status += test_download_cancel();
-    ++tests_ran;
+    test_download();
+    test_download_cancel();
     printf("\n");
 
     printf("Test Suite: BIP39\n");
-    status += test_mnemonic_check();
-    ++tests_ran;
-    status += test_mnemonic_generate();
-    ++tests_ran;
-    status += test_storj_mnemonic_generate();
-    ++tests_ran;
-    status += test_storj_mnemonic_generate_256();
-    ++tests_ran;
-    status += test_generate_seed();
-    ++tests_ran;
+    test_mnemonic_check();
+    test_mnemonic_generate();
+    test_storj_mnemonic_generate();
+    test_storj_mnemonic_generate_256();
+    test_generate_seed();
     printf("\n");
 
     printf("Test Suite: Crypto\n");
-    status += test_calculate_file_id();
-    ++tests_ran;
-    status += test_generate_bucket_key();
-    ++tests_ran;
-    status += test_generate_file_key();
-    ++tests_ran;
-    status += test_increment_ctr_aes_iv();
-    ++tests_ran;
-    status += test_read_write_encrypted_file();
-    ++tests_ran;
+    test_calculate_file_id();
+    test_generate_bucket_key();
+    test_generate_file_key();
+    test_increment_ctr_aes_iv();
+    test_read_write_encrypted_file();
     printf("\n");
 
     printf("Test Suite: Utils\n");
-    status += test_str2hex();
-    ++tests_ran;
-    status += test_get_time_milliseconds();
-    ++tests_ran;
+    test_str2hex();
+    test_get_time_milliseconds();
 
-    int num_passed = tests_ran - status;
-    printf(KGRN "\nPASSED: %i" RESET, num_passed);
-    if (num_passed < tests_ran) {
-        printf(KRED " FAILED: %i" RESET, abs(status));
+    int num_failed = tests_ran - test_status;
+    printf(KGRN "\nPASSED: %i" RESET, test_status);
+    if (num_failed > 0) {
+        printf(KRED " FAILED: %i" RESET, num_failed);
     }
     printf(" TOTAL: %i\n", (tests_ran));
 
