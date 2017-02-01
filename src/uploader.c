@@ -1731,6 +1731,8 @@ int storj_bridge_store_file_cancel(storj_upload_state_t *state)
         }
     }
 
+    cleanup_state(state);
+
     return 0;
 }
 
