@@ -460,7 +460,7 @@ static void push_shard(uv_work_t *work)
 
     put_shard(req->http_options,
               shard->pointer->farmer_node_id,
-              shard->pointer->farmer_protocol,
+              "http",
               shard->pointer->farmer_address,
               atoi(shard->pointer->farmer_port),
               shard->meta->hash,

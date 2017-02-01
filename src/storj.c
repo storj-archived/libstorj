@@ -262,7 +262,11 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     // deep copy the http options
     storj_http_options_t *ho = malloc(sizeof(storj_http_options_t));
     ho->user_agent = strdup(http_options->user_agent);
-    ho->proxy_url = strdup(http_options->proxy_url);
+    if (http_options->proxy_url) {
+        ho->proxy_url = strdup(http_options->proxy_url);
+    } else {
+        ho->proxy_url = NULL;
+    }
     env->http_options = ho;
 
     // setup the log options
@@ -343,7 +347,9 @@ int storj_destroy_env(storj_env_t *env)
 
     // free all http options
     free((char *)env->http_options->user_agent);
-    free((char *)env->http_options->proxy_url);
+    if (env->http_options->proxy_url) {
+        free((char *)env->http_options->proxy_url);
+    }
     free(env->http_options);
 
     // free the event loop

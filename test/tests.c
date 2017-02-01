@@ -748,8 +748,6 @@ int test_api()
     status = storj_bridge_delete_frame(env, frame_id, NULL, check_delete_frame);
     assert(status == 0);
 
-    // TODO add shard to frame
-
     // get file information
     status = storj_bridge_get_file_info(env, bucket_id,
                                         file_id, NULL, check_file_info);
@@ -780,7 +778,6 @@ int test_api()
     if (status == UV_EBUSY) {
         return 1;
     }
-
 
     storj_destroy_env(env);
 

@@ -81,7 +81,6 @@ int put_shard(storj_http_options_t *http_options,
     }
 
     curl_easy_setopt(curl, CURLOPT_POST, 1);
-    // TODO check content type header
 
     struct curl_slist *content_chunk = NULL;
     content_chunk = curl_slist_append(content_chunk, "Content-Type: application/octet-stream");
@@ -110,6 +109,7 @@ int put_shard(storj_http_options_t *http_options,
 
         curl_easy_setopt(curl, CURLOPT_READFUNCTION, body_shard_send);
         curl_easy_setopt(curl, CURLOPT_READDATA, (void *)shard_body);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, shard_total_bytes);
     }
 
     // TODO is this still needed?
@@ -132,7 +132,9 @@ int put_shard(storj_http_options_t *http_options,
     }
 
     // set the status code
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, *status_code);
+    long int _status_code;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &_status_code);
+    *status_code = (int)_status_code;
 
 clean_up:
 
@@ -219,12 +221,13 @@ int fetch_shard(storj_http_options_t *http_options,
 
     char query_args[80];
     snprintf(query_args, 80, "?token=%s", token);
+    int url_len = strlen(proto) + 3 + strlen(host) + 1 + 10
+        + 8 + strlen(shard_hash) + strlen(query_args);
+    char *url = calloc(url_len + 1, sizeof(char));
+    snprintf(url, url_len, "%s://%s:%i/shards/%s%s", proto, host, port,
+             shard_hash, query_args);
 
-    char *path = calloc(8 + strlen(shard_hash) + strlen(query_args) + 1,
-                        sizeof(char));
-    strcat(path, "/shards/");
-    strcat(path, shard_hash);
-    strcat(path, query_args);
+    curl_easy_setopt(curl, CURLOPT_URL, url);
 
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
 
@@ -258,9 +261,14 @@ int fetch_shard(storj_http_options_t *http_options,
         error_code = STORJ_FARMER_REQUEST_ERROR;
     }
 
+    // set the status code
+    long int _status_code;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &_status_code);
+    *status_code = (int)_status_code;
+
     curl_easy_cleanup(curl);
 
-    free(path);
+    free(url);
 
     if (error_code) {
         return error_code;
@@ -364,9 +372,10 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
 
     // Set the url
     int url_len = strlen(options->proto) + 3 + strlen(options->host) +
-        1 + 10 + 1 + strlen(path);
+        1 + 10 + strlen(path);
     char *url = calloc(url_len + 1, sizeof(char));
-    snprintf(url, url_len, "%s://%s:%i/%s", options->proto, options->host,
+
+    snprintf(url, url_len, "%s://%s:%i%s", options->proto, options->host,
              options->port, path);
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
@@ -376,8 +385,6 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
     }
 
     // Set the HTTP method
-    // TODO check that CURLOPT_POST and etc do not include extra headers
-    // and other behavior
     if (0 == strcmp(method, "PUT")) {
         curl_easy_setopt(curl, CURLOPT_PUT, 1);
     } else if (0 == strcmp(method, "POST")) {
@@ -422,6 +429,7 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
         char *user_pass = calloc(user_pass_len + 1, sizeof(char));
         strcat(user_pass, options->user);
         strcat(user_pass, ":");
+        strcat(user_pass, pass);
 
         free(pass);
 
@@ -467,7 +475,9 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
     }
 
     // set the status code
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, *status_code);
+    long int _status_code;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &_status_code);
+    *status_code = (int)_status_code;
 
     json_object *j = json_tokener_parse(body->data);
 
