@@ -51,12 +51,25 @@ typedef struct {
     uv_async_t *progress_handle;
     void *pnt;
     bool *canceled;
-} shard_body_t;
+} shard_body_send_t;
 
 typedef struct {
     uint8_t *data;
     size_t length;
-} http_body_t;
+    size_t bytes_since_progress;
+    uint64_t shard_total_bytes;
+    sha256_ctx *ctx;
+} shard_body_receive_t;
+
+typedef struct {
+    uint8_t *data;
+    size_t length;
+} http_body_receive_t;
+
+typedef struct {
+    void *pnt;
+    uint64_t remain;
+} http_body_send_t;
 
 /**
  * @brief Send a shard to a farmer via an HTTP request

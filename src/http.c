@@ -8,7 +8,7 @@
 static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
                               void *userp)
 {
-    shard_body_t *body = userp;
+    shard_body_send_t *body = userp;
 
     if (*body->canceled) {
         return CURL_READFUNC_ABORT;
@@ -89,7 +89,8 @@ int put_shard(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_PROXY, http_options->proxy_url);
     }
 
-    //curl_easy_setopt(curl, CURLOPT_POST, 1);
+    curl_easy_setopt(curl, CURLOPT_POST, 1);
+    // TODO check content type header
 
     struct curl_slist *content_chunk = NULL;
     content_chunk = curl_slist_append(content_chunk, "Content-Type: application/octet-stream");
@@ -102,11 +103,11 @@ int put_shard(storj_http_options_t *http_options,
     chunk = curl_slist_append(node_chunk, header);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 
-    shard_body_t *shard_body = NULL;
+    shard_body_send_t *shard_body = NULL;
 
     if (shard_data && shard_total_bytes) {
 
-        shard_body = malloc(sizeof(shard_body_t));
+        shard_body = malloc(sizeof(shard_body_send_t));
         shard_body->shard_data = shard_data;
         shard_body->length = shard_total_bytes;
         shard_body->remain = shard_total_bytes;
@@ -154,6 +155,50 @@ clean_up:
     return 0;
 }
 
+static size_t body_shard_receive(void *buffer, size_t size, size_t nmemb,
+                                  void *userp)
+{
+    if (*body->canceled) {
+        return CURL_READFUNC_ABORT;
+    }
+
+    size_t buflen = size * nmemb;
+    shard_body_receive_t *body = (shard_body_receive_t *)userp;
+
+    if (body->length + buflen > body->shard_total_bytes) {
+        // TODO give back error?
+        return CURL_READFUNC_ABORT;
+    }
+
+    // Resize the data as needed
+    body->data = realloc(body->data, body->length + buflen + 1);
+    if (body->data == NULL) {
+        return 0;
+    }
+
+    // Update the hash
+    sha256_update(body->sha256_ctx, buflen, (uint8_t *)buffer);
+
+    // Copy the data
+    memcpy(&(body->data[body->length]), buffer, buflen);
+
+    body->length += buflen;
+    body->data[mem->length] = 0;
+
+    body->bytes_since_progress += buflen;
+
+    // Give progress updates at set interval
+    if (body->progress_handle &&
+        body->bytes_since_progress > SHARD_PROGRESS_INTERVAL) {
+        shard_download_progress_t *progress = progress_handle->data;
+        progress->bytes = total;
+        uv_async_send(progress_handle);
+        body->bytes_since_progress = 0;
+    }
+
+    return buflen;
+}
+
 /* shard_data must be allocated for shard_total_bytes */
 int fetch_shard(storj_http_options_t *http_options,
                 char *farmer_id,
@@ -168,9 +213,6 @@ int fetch_shard(storj_http_options_t *http_options,
                 uv_async_t *progress_handle,
                 bool *canceled)
 {
-    struct sha256_ctx ctx;
-    sha256_init(&ctx);
-
     CURL *curl = curl_easy_init();
     if (!curl) {
         return 1;
@@ -192,8 +234,9 @@ int fetch_shard(storj_http_options_t *http_options,
     strcat(path, shard_hash);
     strcat(path, query_args);
 
-    //ne_request *req = ne_request_create(sess, "GET", path);
+    curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
 
+    // Set the node id header
     struct curl_slist *node_chunk = NULL;
     char *header = calloc(17 + 40 + 1, sizeof(char));
     strcat(header, "x-storj-node-id: ");
@@ -201,66 +244,38 @@ int fetch_shard(storj_http_options_t *http_options,
     chunk = curl_slist_append(node_chunk, header);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 
+    // Set the body handler
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_shard_receive);
+    shard_body_receive_t *body = malloc(sizeof(shard_body_receive_t));
+    body->data = NULL;
+    body->length = 0;
+    body->progress_handle = progress_handle;
+    body->shard_total_bytes = shard_total_bytes;
+    body->bytes_since_progress = 0;
+    body->sha256_ctx = malloc(sizeof(struct sha256_ctx ctx));
+    sha256_init(body->sha256_ctx);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
+
     int req = curl_easy_perform(curl);
-
-    if (req != CURLE_OK) {
-        curl_easy_cleanup(curl);
-        return STORJ_FARMER_REQUEST_ERROR;
-    }
-
-    // Set the status code
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, *status_code);
-
-
-    // TODO XXX
-    char *buf = calloc(NE_BUFSIZ, sizeof(char));
-
-    ssize_t bytes = 0;
-    ssize_t total = 0;
-
-    ssize_t bytes_since_progress = 0;
 
     int error_code = 0;
 
-    while ((bytes = ne_read_response_block(req, buf, NE_BUFSIZ)) > 0) {
-        if (total + bytes > shard_total_bytes) {
-            error_code = STORJ_FARMER_INTEGRITY_ERROR;
-            break;
-        }
-
-        sha256_update(&ctx, bytes, (uint8_t *)buf);
-
-        memcpy(shard_data + total, buf, bytes);
-        total += bytes;
-
-        bytes_since_progress += bytes;
-
-        // give progress updates at set interval
-        if (progress_handle && bytes_since_progress > SHARD_PROGRESS_INTERVAL) {
-            shard_download_progress_t *progress = progress_handle->data;
-            progress->bytes = total;
-            uv_async_send(progress_handle);
-            bytes_since_progress = 0;
-        }
-
-        if (*canceled) {
-            error_code = STORJ_TRANSFER_CANCELED;
-            break;
-        }
-
+    if (req != CURLE_OK) {
+        // TODO include the actual http error code
+        error_code = STORJ_FARMER_REQUEST_ERROR;
     }
 
-    ne_end_request(req);
-    clean_up_neon(sess, req);
+    curl_easy_cleanup(curl);
+
     free(buf);
     free(path);
 
-    if (!error_code && total != shard_total_bytes) {
-        error_code = STORJ_FARMER_INTEGRITY_ERROR;
-    }
-
     if (error_code) {
         return error_code;
+    }
+
+    if (body->length != shard_total_bytes) {
+        return STORJ_FARMER_INTEGRITY_ERROR;
     }
 
     uint8_t *hash_sha256 = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
@@ -302,11 +317,31 @@ int fetch_shard(storj_http_options_t *http_options,
     return 0;
 }
 
-static size_t body_memory_receive(void *buffer, size_t size, size_t nmemb,
+static size_t body_json_send(void *buffer, size_t size, size_t nmemb,
+                             void *userp)
+{
+    http_body_send_t *body (http_body_send_t *)userp;
+
+    size_t buflen = size * nmemb;
+
+    if (buflen > 0) {
+        if (body->remain < buflen) {
+            buflen = body->remain;
+        }
+        memcpy(buffer, body->pnt, buflen);
+
+        body->pnt += buflen;
+        body->remain -= buflen;
+    }
+
+    return buflen;
+}
+
+static size_t body_json_receive(void *buffer, size_t size, size_t nmemb,
                                   void *userp)
 {
     size_t buflen = size * nmemb;
-    http_body_t *body = (http_body_t *)userp;
+    http_body_receive_t *body = (http_body_receive_t *)userp;
 
     body->data = realloc(body->data, body->length + buflen + 1);
     if (body->data == NULL) {
@@ -330,7 +365,6 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
                                char *token,
                                int *status_code)
 {
-
     CURL *curl = curl_easy_init();
     if (!curl) {
         return 1;
@@ -349,14 +383,29 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_USERAGENT, http_options->user_agent);
     }
 
+    // Set the HTTP method
+    // TODO check that CURLOPT_POST and etc do not include extra headers
+    // and other behavior
+    if (0 == strcmp(method, "PUT")) {
+        curl_easy_setopt(curl, CURLOPT_PUT, 1);
+    } else if (0 == strcmp(method, "POST")) {
+        curl_easy_setopt(curl, CURLOPT_POST, 1);
+    } else if (0 == strcmp(method, "GET")) {
+        curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
+    } else if (0 == strcmp(method, "DELETE")) {
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+    } else {
+        return 1;
+    }
+
     // Set the proxy
     if (http_options->proxy_url) {
         curl_easy_setopt(curl, CURLOPT_PROXY, http_options->proxy_url);
     }
 
     // Setup the body handler
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_memory_receive);
-    http_body_t *body = malloc(sizeof(http_body_t));
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_json_receive);
+    http_body_receive_t *body = malloc(sizeof(http_body_t));
     body->data = NULL;
     body->length = 0;
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
@@ -384,23 +433,10 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
 
         free(pass);
 
-        // TODO fix this XXX
-        char *user_pass_64 = curl_base64_encode((uint8_t *)user_pass, strlen(user_pass));
+        curl_easy_setopt(curl, CURLOPT_USERPWD, user_pass);
 
-        free(user_pass);
-
-        int auth_value_len = strlen(user_pass_64) + 6;
-        char auth_value[auth_value_len + 1];
-        strcpy(auth_value, "Authorization: Basic ");
-        strcat(auth_value, user_pass_64);
-
-        free(user_pass_64);
-
-        auth_value[auth_value_len] = '\0';
-
-        struct curl_slist *auth_chunk = NULL;
-        auth_chunk = curl_slist_append(auth_chunk, auth_value);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, auth_chunk);
+        // TODO
+        //free(user_pass);
     }
 
     if (token) {
@@ -416,14 +452,17 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
     if (request_body) {
         const char *req_buf = json_object_to_json_string(request_body);
 
-
         struct curl_slist *json_chunk = NULL;
         json_chunk = curl_slist_append(json_chunk,
                                        "Content-Type: application/json");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, json_chunk);
 
-        // TODO XXX
-        ne_set_request_body_buffer(req, req_buf, strlen(req_buf));
+        http_body_send_t *post_body = malloc(http_body_send_t);
+        post_body->pnt = req_buf;
+        post_body->remain = strlen(req_buf);
+
+        curl_easy_setopt(curl, CURLOPT_READFUNCTION, body_json_send);
+        curl_easy_setopt(curl, CURLOPT_READDATA, (void *)post_body);
     }
 
     int req = curl_easy_perform(curl);
