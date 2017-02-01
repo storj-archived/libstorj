@@ -267,10 +267,11 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
     post_to_bucket_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
 
+    state->pending_work_count -= 1;
+
     if (status == UV_ECANCELED) {
         state->add_bucket_entry_count = 0;
         state->creating_bucket_entry = false;
-        state->pending_work_count -= 1;
 
         goto clean_variables;
     }
