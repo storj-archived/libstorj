@@ -73,6 +73,13 @@ extern "C" {
 
 #define STORJ_SHARD_CHALLENGES 4
 
+typedef enum {
+    STORJ_REPORT_NOT_PREPARED = 0,
+    STORJ_REPORT_AWAITING_SEND = 1,
+    STORJ_REPORT_SENDING = 2,
+    STORJ_REPORT_SENT = 3
+} exchange_report_status_t;
+
 /** @brief Bridge configuration options
  *
  * Proto can be "http" or "https", and the user/pass are used for

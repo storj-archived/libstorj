@@ -28,13 +28,6 @@ typedef enum {
     COMPLETED_PUSH_SHARD = 7
 } storj_state_progress_t;
 
-typedef enum {
-    STORJ_REPORT_NOT_PREPARED = 0,
-    STORJ_REPORT_AWAITING_SEND = 1,
-    STORJ_REPORT_SENDING = 2,
-    STORJ_REPORT_SENT = 3
-} exhcnage_report_status_t;
-
 typedef struct {
     /* state should not be modified in worker threads */
     storj_upload_state_t *upload_state;
