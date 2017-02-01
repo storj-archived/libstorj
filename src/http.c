@@ -463,6 +463,7 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
 
         curl_easy_setopt(curl, CURLOPT_READFUNCTION, body_json_send);
         curl_easy_setopt(curl, CURLOPT_READDATA, (void *)post_body);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, strlen(req_buf));        
     }
 
     int req = curl_easy_perform(curl);
