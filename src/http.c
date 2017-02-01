@@ -286,6 +286,7 @@ int fetch_shard(storj_http_options_t *http_options,
         sprintf(&hash[i*2], "%02x", hash_rmd160[i]);
     }
 
+    free(body);
     free(hash_rmd160);
 
     if (strcmp(shard_hash, hash) != 0) {
@@ -301,7 +302,7 @@ int fetch_shard(storj_http_options_t *http_options,
     // final progress update
     if (progress_handle) {
         shard_download_progress_t *progress = progress_handle->data;
-        progress->bytes = body->length;
+        progress->bytes = shard_total_bytes;
         uv_async_send(progress_handle);
     }
 
@@ -360,6 +361,7 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
     if (!curl) {
         return NULL;
     }
+    char *user_pass = NULL;
 
     // Set the url
     int url_len = strlen(options->proto) + 3 + strlen(options->host) +
@@ -417,7 +419,7 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
         free(pass_hash);
 
         int user_pass_len = strlen(options->user) + 1 + strlen(pass);
-        char *user_pass = calloc(user_pass_len + 1, sizeof(char));
+        user_pass = calloc(user_pass_len + 1, sizeof(char));
         strcat(user_pass, options->user);
         strcat(user_pass, ":");
         strcat(user_pass, pass);
@@ -426,8 +428,6 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
 
         curl_easy_setopt(curl, CURLOPT_USERPWD, user_pass);
 
-        // TODO
-        //free(user_pass);
     }
 
     if (token) {
@@ -459,6 +459,10 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
 
     int req = curl_easy_perform(curl);
 
+    if (user_pass) {
+        free(user_pass);
+    }
+
     if (req != CURLE_OK) {
         // TODO check request status
         // TODO get details with curl_easy_strerror(req)
@@ -474,6 +478,7 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
     json_object *j = json_tokener_parse(body->data);
 
     curl_easy_cleanup(curl);
+    free(body->data);
     free(body);
 
     return j;
