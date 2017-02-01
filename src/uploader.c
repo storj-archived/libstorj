@@ -467,12 +467,20 @@ static void push_shard(uv_work_t *work)
     // Bytes read from file
     uint64_t read_bytes = 0;
 
-    // TODO: make sure we only loop a certain number of times
+    int loop_count = 0;
+
     do {
+        if (loop_count == 6) {
+            goto clean_variables;
+        }
+
         // Seek to shard's location in file
         fseek(encrypted_file, req->shard_index*state->shard_size, SEEK_SET);
         // Read shard data from file
         read_bytes = fread(shard_data, 1, shard->meta->size, encrypted_file);
+
+        loop_count += 1;
+
     } while(read_bytes < shard->meta->size);
 
     req->start = get_time_milliseconds();
@@ -494,8 +502,14 @@ static void push_shard(uv_work_t *work)
 
     req->status_code = status_code;
 
-    fclose(encrypted_file);
-    free(shard_data);
+clean_variables:
+    if (encrypted_file) {
+        fclose(encrypted_file);
+    }
+
+    if (shard_data) {
+        free(shard_data);
+    }
 }
 
 static void progress_put_shard(uv_async_t* async)
@@ -913,7 +927,6 @@ static int queue_push_frame(storj_upload_state_t *state, int index)
     state->pending_work_count += 1;
     uv_queue_work(state->env->loop, (uv_work_t*) shard_work,
                   push_frame, after_push_frame);
-    // TODO check status
 
     state->shard[index].progress = PUSHING_FRAME;
 
@@ -1005,21 +1018,25 @@ static void prepare_frame(uv_work_t *work)
     uint8_t *shard_data = calloc(state->shard_size, sizeof(char));
     // Hash of the shard_data
     shard_meta->hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 1, sizeof(char));
-    // Bytes read from file
-    uint64_t read_bytes;
 
     req->log->info(state->env->log_options, state->handle,
                    "Creating frame for shard index %d",
                    shard_meta->index);
 
-    read_bytes = 0;
+    // Bytes read from file
+    uint64_t read_bytes = 0;
+    int loop_count = 0;
 
-    // TODO: make sure we only loop a certain number of times
     do {
+        if (loop_count == 6) {
+            goto clean_variables;
+        }
         // Seek to shard's location in file
         fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
         // Read shard data from file
         read_bytes = fread(shard_data, 1, state->shard_size, encrypted_file);
+
+        loop_count += 1;
     } while(read_bytes < state->shard_size &&
             shard_meta->index != state->total_shards - 1);
 
@@ -1059,8 +1076,14 @@ static void prepare_frame(uv_work_t *work)
         free(buff);
     }
 
-    fclose(encrypted_file);
-    free(shard_data);
+clean_variables:
+    if (encrypted_file) {
+        fclose(encrypted_file);
+    }
+
+    if (shard_data) {
+        free(shard_data);
+    }
 }
 
 static int queue_prepare_frame(storj_upload_state_t *state, int index)
@@ -1070,8 +1093,6 @@ static int queue_prepare_frame(storj_upload_state_t *state, int index)
     state->pending_work_count += 1;
     uv_queue_work(state->env->loop, (uv_work_t*) shard_work,
                   prepare_frame, after_prepare_frame);
-
-    // TODO check queue status
 
     state->shard[index].progress = PREPARING_FRAME;
 
@@ -1168,7 +1189,6 @@ static int queue_request_frame_id(storj_upload_state_t *state)
     state->pending_work_count += 1;
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                request_frame_id, after_request_frame_id);
-    // TODO check queue status
 
     state->requesting_frame = true;
 
@@ -1347,7 +1367,6 @@ static int queue_encrypt_file(storj_upload_state_t *state)
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                encrypt_file, after_encrypt_file);
 
-    // TODO check status
     state->encrypting_file = true;
 
     return status;
@@ -1454,7 +1473,6 @@ static int queue_request_bucket_token(storj_upload_state_t *state)
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                request_token, after_request_token);
 
-    // TODO check status
     state->requesting_token = true;
 
     return status;
@@ -1466,10 +1484,7 @@ static void after_send_exchange_report(uv_work_t *work, int status)
     shard_send_report_t *req = work->data;
 
     req->state->pending_work_count -= 1;
-
     req->report->send_count += 1;
-
-    // TODO set status before retrying shard
 
     if (req->status_code == 201) {
         req->state->env->log->info(req->state->env->log_options,
