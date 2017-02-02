@@ -1145,7 +1145,7 @@ static void after_request_frame_id(uv_work_t *work, int status)
     state->pending_work_count -= 1;
 
     if (status == UV_ECANCELED) {
-        state->frame_request_count == 0;
+        state->frame_request_count = 0;
 
         goto clean_variables;
     }
@@ -1542,7 +1542,7 @@ static void after_send_exchange_report(uv_work_t *work, int status)
     req->state->pending_work_count -= 1;
 
     if (status == UV_ECANCELED) {
-        req->report->send_count == 0;
+        req->report->send_count = 0;
         req->report->send_status = STORJ_REPORT_AWAITING_SEND;
 
         goto clean_variables;

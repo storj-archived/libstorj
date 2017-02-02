@@ -52,7 +52,7 @@ static inline void noop() {};
 
 static void json_logger(const char *message, int level, void *handle)
 {
-    printf("{\"message\": \"%s\", \"level\": %i, \"timestamp\": %li}\n",
+    printf("{\"message\": \"%s\", \"level\": %i, \"timestamp\": %llu}\n",
            message, level, storj_util_timestamp());
 }
 
