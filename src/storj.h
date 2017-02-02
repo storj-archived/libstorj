@@ -18,8 +18,10 @@ extern "C" {
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include <string.h>
 #include <uv.h>
+#include <curl/curl.h>
 
 #ifdef _WIN32
 #include <time.h>
@@ -103,11 +105,7 @@ typedef struct storj_encrypt_options {
     const char *tmp_path;
 } storj_encrypt_options_t;
 
-typedef enum {
-    STORJ_PROXY_SOCKSV4 = 0,
-    STORJ_PROXY_SOCKSV4A,
-    STORJ_PROXY_SOCKSV5
-} storj_proxy_version_t;
+
 
 /** @brief HTTP configuration options
  *
@@ -115,9 +113,7 @@ typedef enum {
  */
 typedef struct storj_http_options {
     const char *user_agent;
-    storj_proxy_version_t proxy_version;
-    const char *proxy_host;
-    int proxy_port;
+    const char *proxy_url;
 } storj_http_options_t;
 
 /** @brief A function signature for logging

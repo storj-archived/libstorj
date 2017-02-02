@@ -789,25 +789,9 @@ int main(int argc, char **argv)
     };
 
     if (proxy) {
-        char proxy_proto[8];
-        char proxy_host[100];
-        int proxy_port = 0;
-        sscanf(proxy, "%7[^://]://%99[^:/]:%99d", proxy_proto,
-               proxy_host, &proxy_port);
-
-        if (strcmp(proxy_proto, "socks5") == 0) {
-            http_options.proxy_version = STORJ_PROXY_SOCKSV5;
-        } else if(strcmp(proxy_proto, "socks4") == 0) {
-            http_options.proxy_version = STORJ_PROXY_SOCKSV4;
-        } else if(strcmp(proxy_proto, "socks4a") == 0) {
-            http_options.proxy_version = STORJ_PROXY_SOCKSV4A;
-        } else {
-            printf("Unsupported proxy protocol\n");
-            return 1;
-        }
-
-        http_options.proxy_host = proxy_host;
-        http_options.proxy_port = proxy_port;
+        http_options.proxy_url = proxy;
+    } else {
+        http_options.proxy_url = NULL;
     }
 
     if (strcmp(command, "get-info") == 0) {

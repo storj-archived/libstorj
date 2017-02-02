@@ -7,15 +7,17 @@
 #ifndef STORJ_HTTP_H
 #define STORJ_HTTP_H
 
-#include "storj.h"
-#include <neon/ne_request.h>
-#include <neon/ne_string.h>
+#include <curl/curl.h>
+#include <nettle/sha.h>
+#include <nettle/ripemd160.h>
 
 #ifdef _WIN32
 #include <signal.h>
 #endif
 
-#define SHARD_PROGRESS_INTERVAL NE_BUFSIZ * 150
+#include "storj.h"
+
+#define SHARD_PROGRESS_INTERVAL BUFSIZ * 150
 
 /** @brief A structure for sharing download progress state between threads.
  *
@@ -52,7 +54,27 @@ typedef struct {
     uv_async_t *progress_handle;
     void *pnt;
     bool *canceled;
-} shard_body_t;
+} shard_body_send_t;
+
+typedef struct {
+    uint8_t *data;
+    size_t length;
+    size_t bytes_since_progress;
+    uint64_t shard_total_bytes;
+    uv_async_t *progress_handle;
+    bool *canceled;
+    struct sha256_ctx *sha256_ctx;
+} shard_body_receive_t;
+
+typedef struct {
+    uint8_t *data;
+    size_t length;
+} http_body_receive_t;
+
+typedef struct {
+    void *pnt;
+    uint64_t remain;
+} http_body_send_t;
 
 /**
  * @brief Send a shard to a farmer via an HTTP request

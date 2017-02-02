@@ -45,6 +45,33 @@ int str2hex(unsigned length, char *data, uint8_t *buffer)
     return 0;
 }
 
+char *str_concat_many(int count, ...)
+{
+    int length = 1;
+
+    va_list args;
+    va_start(args, count);
+    for (int i = 0; i < count; i++) {
+        char *item = va_arg(args, char *);
+        length += strlen(item);
+    }
+    va_end(args);
+
+    char *combined = calloc(length, sizeof(char));
+    if (!combined) {
+        return NULL;
+    }
+
+    va_start(args, count);
+    for (int i = 0; i < count; i++) {
+        char *item = va_arg(args, char *);
+        strcat(combined, item);
+    }
+    va_end(args);
+
+    return combined;
+}
+
 void random_buffer(uint8_t *buf, size_t len)
 {
     // TODO check os portability for randomness

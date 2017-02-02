@@ -115,6 +115,7 @@ void check_list_files(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
     assert(req->handle == NULL);
+    assert(req->response != NULL);
 
     struct json_object *file = json_object_array_get_idx(req->response, 0);
     struct json_object *value;
@@ -753,8 +754,6 @@ int test_api()
     status = storj_bridge_delete_frame(env, frame_id, NULL, check_delete_frame);
     assert(status == 0);
 
-    // TODO add shard to frame
-
     // get file information
     status = storj_bridge_get_file_info(env, bucket_id,
                                         file_id, NULL, check_file_info);
@@ -785,7 +784,6 @@ int test_api()
     if (status == UV_EBUSY) {
         return 1;
     }
-
 
     storj_destroy_env(env);
 
