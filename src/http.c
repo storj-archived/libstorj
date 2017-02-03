@@ -1,6 +1,12 @@
 #include "http.h"
 
 // TODO error check the calloc and realloc calls
+static size_t body_ignore_receive(void *buffer, size_t size, size_t nmemb,
+                                  void *userp)
+{
+    size_t buflen = size * nmemb;
+    return buflen;
+}
 
 static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
                               void *userp)
@@ -112,6 +118,9 @@ int put_shard(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, shard_total_bytes);
     }
 
+    // Ignore any data sent back, we only need to know the status code
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_ignore_receive);
+
     // TODO is this still needed?
 #ifdef _WIN32
     signal(WSAECONNRESET, SIG_IGN);
@@ -130,8 +139,6 @@ int put_shard(storj_http_options_t *http_options,
     }
 
     if (req != CURLE_OK) {
-        // TODO log using logger
-        printf("Put shard request error: %s\n", curl_easy_strerror(req));
         return req;
     }
 

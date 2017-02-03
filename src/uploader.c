@@ -506,18 +506,24 @@ static void push_shard(uv_work_t *work)
 
     req->start = get_time_milliseconds();
 
-    put_shard(req->http_options,
-              shard->pointer->farmer_node_id,
-              "http",
-              shard->pointer->farmer_address,
-              atoi(shard->pointer->farmer_port),
-              shard->meta->hash,
-              shard->meta->size,
-              shard_data,
-              shard->pointer->token,
-              &status_code,
-              &req->progress_handle,
-              req->canceled);
+    int req_status = put_shard(req->http_options,
+                               shard->pointer->farmer_node_id,
+                               "http",
+                               shard->pointer->farmer_address,
+                               atoi(shard->pointer->farmer_port),
+                               shard->meta->hash,
+                               shard->meta->size,
+                               shard_data,
+                               shard->pointer->token,
+                               &status_code,
+                               &req->progress_handle,
+                               req->canceled);
+
+
+    if (req_status) {
+        req->log->error(state->env->log_options, state->handle,
+                        "Put shard request error code: %i\n", req_status);
+    }
 
     req->end = get_time_milliseconds();
 
