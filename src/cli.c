@@ -712,6 +712,7 @@ static int set_auth(char *host)
     free(mnemonic);
     free(mnemonic_input);
     free(key);
+    free(root_dir);
 
     return 0;
 }
@@ -860,6 +861,9 @@ int main(int argc, char **argv)
             printf("Unable to determine user auth filepath.\n");
             return 1;
         }
+
+        // We aren't using root dir so free it
+        free(root_dir);
 
         // First, get auth from environment variables
         char *user = getenv("STORJ_BRIDGE_USER");
@@ -1039,6 +1043,7 @@ int main(int argc, char **argv)
             status = 1;
             goto end_program;
         }
+
     }
 
     // run all queued events
