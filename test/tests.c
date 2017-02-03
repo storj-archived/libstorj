@@ -463,7 +463,8 @@ int test_upload()
         .file_concurrency = 1,
         .shard_concurrency = 3,
         .bucket_id = "368be0816766b28fd5f43af5",
-        .file_path = file
+        .file_name = file_name,
+        .fd = fopen(file, "r")
     };
 
     storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
@@ -518,7 +519,8 @@ int test_upload_cancel()
         .file_concurrency = 1,
         .shard_concurrency = 3,
         .bucket_id = "368be0816766b28fd5f43af5",
-        .file_path = file
+        .file_name = file_name,
+        .fd = fopen(file, "r")
     };
 
     storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));

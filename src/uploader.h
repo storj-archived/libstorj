@@ -40,8 +40,8 @@ typedef struct {
 typedef struct {
     char *file_id;
     char *file_key;
-    char *file_path;
-    char *file_name;
+    FILE *original_file;
+    const char *file_name;
     char *tmp_path;
     uint64_t file_size;
     storj_upload_state_t *upload_state;
@@ -68,7 +68,7 @@ typedef struct {
     storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     char *token;
-    char *bucket_id;
+    const char *bucket_id;
     char *bucket_op;
     /* state should not be modified in worker threads */
     storj_upload_state_t *upload_state;
@@ -113,20 +113,13 @@ typedef struct {
     storj_upload_state_t *state;
 } shard_send_report_t;
 
-static inline char separator()
-{
-#ifdef _WIN32
-    return '\\';
-#else
-    return '/';
-#endif
-}
-
 static farmer_pointer_t *farmer_pointer_new();
 static shard_meta_t *shard_meta_new();
 static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state);
 static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state);
 static uv_work_t *uv_work_new();
+
+static uint64_t check_file(storj_env_t *env, const char *filepath);
 
 static void shard_meta_cleanup(shard_meta_t *shard_meta);
 static void pointer_cleanup(farmer_pointer_t *farmer_pointer);

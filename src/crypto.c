@@ -1,6 +1,6 @@
 #include "crypto.h"
 
-int calculate_file_id(char *bucket, char *file_name, char **buffer)
+int calculate_file_id(const char *bucket, const char *file_name, char **buffer)
 {
     // Combine bucket and file_name
     int name_len = strlen(bucket) + strlen(file_name);

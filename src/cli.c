@@ -52,7 +52,7 @@ static inline void noop() {};
 
 static void json_logger(const char *message, int level, void *handle)
 {
-    printf("{\"message\": \"%s\", \"level\": %i, \"timestamp\": %llu}\n",
+    printf("{\"message\": \"%s\", \"level\": %i, \"timestamp\": %lu}\n",
            message, level, storj_util_timestamp());
 }
 
@@ -243,13 +243,29 @@ void upload_signal_handler(uv_signal_t *req, int signum)
     uv_close((uv_handle_t *)req, close_signal);
 }
 
-static int upload_file(storj_env_t *env, char *bucket_id, char *file_path)
+static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
 {
+    FILE *fd = fopen(file_path, "r");
+    const char *file_name;
+
+    if (!fd) {
+        printf("Invalid file path: %s\n", file_path);
+    }
+
+    if (strrchr(file_path, separator())) {
+        file_name = strrchr(file_path, separator());
+        // Remove '/' from the front if exists by pushing the pointer up
+        if (file_name[0] == separator()) file_name++;
+    } else {
+        file_name = file_path;
+    }
+
     storj_upload_opts_t upload_opts = {
         .file_concurrency = 1,
         .shard_concurrency = 3,
         .bucket_id = bucket_id,
-        .file_path = file_path
+        .file_name = file_name,
+        .fd = fd
     };
 
     uv_signal_t sig;

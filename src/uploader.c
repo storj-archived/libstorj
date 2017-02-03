@@ -141,6 +141,10 @@ static void cleanup_state(storj_upload_state_t *state)
         return;
     }
 
+    if (state->original_file) {
+        fclose(state->original_file);
+    }
+
     state->final_callback_called = true;
 
     if (state->file_id) {
@@ -197,7 +201,7 @@ static void cleanup_state(storj_upload_state_t *state)
     free(state);
 }
 
-static uint64_t check_file(storj_env_t *env, char *filepath)
+static uint64_t check_file(storj_env_t *env, const char *filepath)
 {
     int r = 0;
     uv_fs_t *stat_req = malloc(sizeof(uv_fs_t));
@@ -1314,11 +1318,10 @@ static void encrypt_file(uv_work_t *work)
 
         free(tmp_folder);
     } else {
-        int tmp_len = strlen(req->file_path) + strlen(".crypt");
-        char *tmp_path = calloc(tmp_len + 1, sizeof(char));
-        strcpy(tmp_path, req->file_path);
-        strcat(tmp_path, ".crypt");
-        req->tmp_path = tmp_path;
+        req->log->error(state->env->log_options, state->handle,
+                        "No valid temp path set");
+
+        state->error_status = STORJ_FILE_WRITE_ERROR;
     }
 
     // Convert file key to password
@@ -1339,10 +1342,8 @@ static void encrypt_file(uv_work_t *work)
     memcpy(iv, salt, AES_BLOCK_SIZE);
 
     // Load original file and tmp file
-    FILE *original_file;
-    FILE *encrypted_file;
-    original_file = fopen(req->file_path, "r");
-    encrypted_file = fopen(req->tmp_path, "w+");
+    FILE *original_file = state->original_file;
+    FILE *encrypted_file = fopen(req->tmp_path, "w+");
 
     char clr_txt[AES_BLOCK_SIZE * 256 + 1];
     char cphr_txt[AES_BLOCK_SIZE * 256 + 1];
@@ -1382,9 +1383,6 @@ static void encrypt_file(uv_work_t *work)
     }
 
 clean_variables:
-    if (original_file) {
-        fclose(original_file);
-    }
 
     if (encrypted_file) {
         fclose(encrypted_file);
@@ -1406,7 +1404,7 @@ static int queue_encrypt_file(storj_upload_state_t *state)
     req->file_id = state->file_id;
     req->file_key = state->file_key;
     req->file_name = state->file_name;
-    req->file_path = state->file_path;
+    req->original_file = state->original_file;
     req->file_size = state->file_size;
     req->upload_state = state;
     req->log = state->log;
@@ -1727,20 +1725,15 @@ static void prepare_upload_state(uv_work_t *work)
 {
     storj_upload_state_t *state = work->data;
 
-    if (strrchr(state->file_path, separator())) {
-        state->file_name = strrchr(state->file_path, separator());
-        // Remove '/' from the front if exists by pushing the pointer up
-        if (state->file_name[0] == separator()) state->file_name++;
-    } else {
-        state->file_name = state->file_path;
-    }
-
     // Get the file size, expect to be up to 10tb
-    state->file_size = check_file(state->env, state->file_path);
-    if (state->file_size < 1) {
+    struct stat st;
+
+    if(fstat(fileno(state->original_file), &st) != 0) {
         state->error_status = STORJ_FILE_INTEGRITY_ERROR;
         return;
     }
+
+    state->file_size = st.st_size;
 
     // Set Shard calculations
     state->shard_size = determine_shard_size(state, 0);
@@ -1825,15 +1818,22 @@ int storj_bridge_store_file(storj_env_t *env,
         opts->shard_concurrency = 3;
     }
 
+    if (!opts->fd) {
+        env->log->error(env->log_options, handle, "Invalid File descriptor");
+        return 1;
+    }
+
     // setup upload state
     state->file_concurrency = opts->file_concurrency;
     state->shard_concurrency = opts->shard_concurrency;
-    state->env = env;
-    state->file_path = opts->file_path;
+    state->file_name = opts->file_name;
     state->bucket_id = opts->bucket_id;
+    state->original_file = opts->fd;
+    state->env = env;
+    state->log = env->log;
     state->progress_cb = progress_cb;
-    state->progress_finished = false;
     state->finished_cb = finished_cb;
+    state->handle = handle;
 
     // TODO: find a way to default
     state->token_request_count = 0;
@@ -1855,10 +1855,10 @@ int storj_bridge_store_file(storj_env_t *env,
     state->received_all_pointers = false;
     state->completed_upload = false;
     state->creating_bucket_entry = false;
-    state->log = env->log;
-    state->handle = handle;
     state->canceled = false;
     state->pending_work_count = 0;
+    state->progress_finished = false;
+
 
     uv_work_t *work = uv_work_new();
     work->data = state;

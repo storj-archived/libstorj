@@ -245,8 +245,9 @@ typedef struct {
 typedef struct {
     int file_concurrency;
     int shard_concurrency;
-    char *bucket_id;
-    char *file_path;
+    const char *bucket_id;
+    const char *file_name;
+    FILE *fd;
 } storj_upload_opts_t;
 
 /** @brief A structure that keeps state between multiple worker threads,
@@ -329,12 +330,12 @@ typedef struct {
     uint32_t file_concurrency;
     uint32_t shard_concurrency;
     char *file_id;
-    char *file_name;
-    char *file_path;
+    const char *file_name;
+    FILE *original_file;
     char *file_key;
     uint64_t file_size;
     char *tmp_path;
-    char *bucket_id;
+    const char *bucket_id;
     char *bucket_key;
     uint32_t completed_shards;
     uint32_t total_shards;
@@ -794,6 +795,15 @@ int storj_bridge_register(storj_env_t *env,
                           const char *password,
                           void *handle,
                           uv_after_work_cb cb);
+
+static inline char separator()
+{
+#ifdef _WIN32
+    return '\\';
+#else
+    return '/';
+#endif
+}
 
 #ifdef __cplusplus
 }
