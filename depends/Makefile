@@ -31,9 +31,13 @@ endef
 
 define extract_file
 	set -e && \
-	echo "Extracting: $(DOWNLOAD_DIR)$($(1)_file_name)" && \
-	mkdir -p "$(SOURCES_DIR)$(1)" && \
-	tar xf "$(DOWNLOAD_DIR)$($(1)_file_name)" -C "$(SOURCES_DIR)$(1)" --strip-components=1
+	if test -d "$(SOURCES_DIR)$(1)"; then \
+	echo "Skipping extract: $(DOWNLOAD_DIR)$($(1)_file_name)"; \
+	else \
+	echo "Extracting: $(DOWNLOAD_DIR)$($(1)_file_name)"; \
+	mkdir -p "$(SOURCES_DIR)$(1)"; \
+	tar xf "$(DOWNLOAD_DIR)$($(1)_file_name)" -C "$(SOURCES_DIR)$(1)" --strip-components=1; \
+	fi
 endef
 
 extract-sources: download-sources
@@ -41,5 +45,9 @@ extract-sources: download-sources
 
 download-sources:
 	@$(foreach package,$(packages),$(call fetch_file,$(package));)
+
+clean:
+	$(RM) -rv $(DOWNLOAD_DIR)
+	$(RM) -rv $(SOURCES_DIR)
 
 .PHONY: extract-sources
