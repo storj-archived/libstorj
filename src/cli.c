@@ -984,7 +984,8 @@ int main(int argc, char **argv)
         };
 
         storj_encrypt_options_t encrypt_options = {
-            .mnemonic = mnemonic
+            .mnemonic = mnemonic,
+            .tmp_path = NULL
         };
 
         env = storj_init_env(&options, &encrypt_options,

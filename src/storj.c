@@ -259,7 +259,8 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
 
     // Set tmp_path
     struct stat sb;
-    if (encrypt_options->tmp_path &&
+    if (encrypt_options &&
+        encrypt_options->tmp_path &&
         stat(encrypt_options->tmp_path, &sb) == 0 &&
         S_ISDIR(sb.st_mode)) {
         eo->tmp_path = strdup(encrypt_options->tmp_path);
