@@ -62,5 +62,6 @@ download-sources:
 clean:
 	$(RM) -rv $(DOWNLOAD_DIR)
 	$(RM) -rv $(SOURCES_DIR)
+	$(RM) -rv $(PREFIX_DIR)
 
 .PHONY: extract-sources
