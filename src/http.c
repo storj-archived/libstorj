@@ -139,8 +139,6 @@ int put_shard(storj_http_options_t *http_options,
     }
 
     if (req != CURLE_OK) {
-        // TODO log using logger
-        printf("Put shard request error: %s\n", curl_easy_strerror(req));
         return req;
     }
 
