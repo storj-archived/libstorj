@@ -18,10 +18,14 @@ define fetch_file
 	set -e && \
 	mkdir -p "$(DOWNLOAD_DIR)" && \
 	cd "$(DOWNLOAD_DIR)" && \
-	echo "Downloading: $($(1)_download_path)" && \
-	$(build_DOWNLOAD) "$($(1)_file_name)" "$($(1)_download_path)" && \
-	echo "$($(1)_sha256_hash)\t$($(1)_file_name)" > "$($(1)_file_name)".hash && \
-	$(build_SHA256SUM) -c "$($(1)_file_name)".hash && \
+	if test -f "$($(1)_file_name)"; then \
+	echo "Skipping download: $($(1)_download_path)"; \
+	else \
+	echo "Downloading: $($(1)_download_path)"; \
+	$(build_DOWNLOAD) "$($(1)_file_name)" "$($(1)_download_path)"; \
+	echo "$($(1)_sha256_hash)\t$($(1)_file_name)" > "$($(1)_file_name)".hash; \
+	$(build_SHA256SUM) -c "$($(1)_file_name)".hash; \
+	fi && \
 	cd "$(CURDIR)"
 endef
 
