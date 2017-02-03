@@ -32,4 +32,6 @@ src/storj.exe
 test/tests.exe
 depends/*.tar.gz
 depends/*.tar.xz
+depends/*.tar.bz2
+depends/*.hash
 !depends/Makefile
