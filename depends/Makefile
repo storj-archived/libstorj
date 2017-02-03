@@ -40,6 +40,20 @@ define extract_file
 	fi
 endef
 
+define build_source
+	set -e && \
+	echo "Building $(1)" && \
+	cd "$(SOURCES_DIR)$(1)" && \
+	if test -f "./autogen.sh"; then ./autogen.sh; fi && \
+	$($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) --enable-static --disable-shared --prefix=$(PREFIX_DIR) && \
+	make && \
+	make install && \
+	cd "$(CURDIR)"
+endef
+
+build-sources: extract-sources
+	@$(foreach package,$(packages),$(call build_source,$(package));)
+
 extract-sources: download-sources
 	@$(foreach package,$(packages),$(call extract_file,$(package));)
 
