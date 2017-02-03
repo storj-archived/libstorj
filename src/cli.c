@@ -652,12 +652,45 @@ static void get_info_callback(uv_work_t *work_req, int status)
 
 static int set_auth(char *host)
 {
-    char *user;
+    int status = 0;
+    char *user = NULL;
+    char *pass = NULL;
+    char *mnemonic = NULL;
+    char *mnemonic_input = NULL;
+    char *key = NULL;
+
     char *user_input = calloc(BUFSIZ, sizeof(char));
     if (user_input == NULL) {
         printf("Unable to allocate buffer\n");
-        return 1;
+        status = 1;
+        goto clear_variables;
     }
+
+    char *user_file = NULL;
+    char *root_dir = NULL;
+    if (get_user_auth_location(host, &root_dir, &user_file)) {
+        printf("Unable to determine user auth filepath.\n");
+        status = 1;
+        goto clear_variables;
+    }
+
+    struct stat st;
+    if (stat(user_file, &st) == 0) {
+        printf("Would you like to overwrite the current settings?: [y/n] ");
+        get_input(user_input);
+        while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0)
+        {
+            printf("Would you like to overwrite the current settings?: [y/n] ");
+            get_input(user_input);
+        }
+
+        if (strcmp(user_input, "n") == 0) {
+            printf("\nCanceled overwriting of stored credentials.\n");
+            status = 1;
+            goto clear_variables;
+        }
+    }
+
     printf("Bridge username (email): ");
     get_input(user_input);
     int num_chars = strlen(user_input);
@@ -665,15 +698,15 @@ static int set_auth(char *host)
     memcpy(user, user_input, num_chars * sizeof(char));
 
     printf("Password: ");
-    char *pass = calloc(BUFSIZ, sizeof(char));
+    pass = calloc(BUFSIZ, sizeof(char));
     get_password(pass);
     printf("\n");
 
-    char *mnemonic;
-    char *mnemonic_input = calloc(BUFSIZ, sizeof(char));
+    mnemonic_input = calloc(BUFSIZ, sizeof(char));
     if (mnemonic_input == NULL) {
         printf("Unable to allocate buffer");
-        return 1;
+        status = 1;
+        goto clear_variables;
     }
 
     printf("Mnemonic: ");
@@ -682,39 +715,51 @@ static int set_auth(char *host)
     mnemonic = calloc(num_chars + 1, sizeof(char));
     memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
 
-    char *key = calloc(BUFSIZ, sizeof(char));
+    key = calloc(BUFSIZ, sizeof(char));
     if (get_password_verify("Encryption passphrase: ", key, 0)) {
         printf("Unable to store encrypted authentication.\n");
-        return 1;
+        status = 1;
+        goto clear_variables;
     }
     printf("\n");
 
-    char *user_file = NULL;
-    char *root_dir = NULL;
-    if (get_user_auth_location(host, &root_dir, &user_file)) {
-        printf("Unable to determine user auth filepath.\n");
-        return 1;
-    }
-
     if (make_user_directory(root_dir)) {
-        return 1;
+        status = 1;
+        goto clear_variables;
     }
 
     if (storj_encrypt_write_auth(user_file, key, user, pass, mnemonic)) {
-        return 1;
+        status = 1;
+        printf("Failed to write to disk\n");
+        goto clear_variables;
     }
 
     printf("Successfully stored username, password, and mnemonic.\n");
 
-    free(user);
-    free(user_input);
-    free(pass);
-    free(mnemonic);
-    free(mnemonic_input);
-    free(key);
-    free(root_dir);
+clear_variables:
+    if (user) {
+        free(user);
+    }
+    if (user_input) {
+        free(user_input);
+    }
+    if (pass) {
+        free(pass);
+    }
+    if (mnemonic) {
+        free(mnemonic);
+    }
+    if (mnemonic_input) {
+        free(mnemonic_input);
+    }
+    if (key) {
+        free(key);
+    }
+    if (root_dir) {
+        free(root_dir);
+    }
 
-    return 0;
+    return status;
 }
 
 int main(int argc, char **argv)
