@@ -41,13 +41,12 @@ define extract_file
 endef
 
 define build_source
-	set -e && \
 	echo "Building $(1)" && \
 	cd "$(SOURCES_DIR)$(1)" && \
 	if test -f "./autogen.sh"; then ./autogen.sh; fi && \
-	$($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) --enable-static --disable-shared --prefix=$(PREFIX_DIR) && \
-	make && \
-	make install && \
+	$($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) --enable-static --disable-shared --prefix=$(PREFIX_DIR) || exit&& \
+	make || exit && \
+	make install || exit && \
 	cd "$(CURDIR)"
 endef
 
