@@ -51,3 +51,19 @@ Dependencies:
 ```bash
 brew install curl nettle json-c libuv
 ```
+
+### Cross Compiling Dependencies
+
+There is a make script provided for automating building of dependencies for various hosts.
+
+To build dependencies for a host:
+```
+cd ./depends
+make HOST="x86_64-w64-mingw32"
+```
+
+Supported hosts currently include:
+- x86_64-w64-mingw32
+- i686-w64-mingw32
+
+Dependencies will then be installed with prefix at `./depends/build/x86_64-w64-mingw32/` that can be plugged into the libstorj configure script.
