@@ -839,7 +839,7 @@ int main(int argc, char **argv)
     }
 
     // initialize event loop and environment
-    storj_env_t *env;
+    storj_env_t *env = NULL;
 
     storj_http_options_t http_options = {
         .user_agent = CLI_VERSION

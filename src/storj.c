@@ -535,12 +535,21 @@ int storj_decrypt_read_auth(const char *filepath,
     if (buffer == NULL) {
         return 1;
     }
-    int read_blocks = fread(buffer, fsize, 1, fp);
-    if (read_blocks != 1) {
-        free(buffer);
-        return 1;
+
+    int read_blocks = 0;
+    while ((!feof(fp)) && (!ferror(fp))) {
+        read_blocks = fread(buffer + read_blocks, 1, fsize, fp);
+        if (read_blocks <= 0) {
+            break;
+        }
     }
+
+    int error = ferror(fp);
     fclose(fp);
+
+    if (error) {
+        return error;
+    }
 
     int status = storj_decrypt_auth(buffer, passphrase, bridge_user,
                                     bridge_pass, mnemonic);
