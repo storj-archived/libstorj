@@ -183,7 +183,8 @@ int mock_bridge_server(void *cls,
             if (check_auth(user, pass, &status_code, page)) {
                 // TODO check post body
                 // there is no response body
-                status_code = MHD_HTTP_OK;
+                page = NULL;
+                status_code = 204;
             }
         } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/files/998960317b6725a3f8080c2b")) {
             if (check_auth(user, pass, &status_code, page)) {
@@ -199,13 +200,19 @@ int mock_bridge_server(void *cls,
         }
     }
 
-    int page_len = strlen(page);
-    char *page_cpy = calloc(page_len + 1, sizeof(char));
-    memcpy(page_cpy, page, page_len);
+    if (page) {
+        int page_len = strlen(page);
+        char *page_cpy = calloc(page_len + 1, sizeof(char));
+        memcpy(page_cpy, page, page_len);
 
-    response = MHD_create_response_from_buffer(page_len,
-                                               (void *) page_cpy,
-                                               MHD_RESPMEM_MUST_FREE);
+        response = MHD_create_response_from_buffer(page_len,
+                                                   (void *) page_cpy,
+                                                   MHD_RESPMEM_MUST_FREE);
+    } else {
+        response = MHD_create_response_from_buffer(0,
+                                                   NULL,
+                                                   MHD_RESPMEM_MUST_FREE);
+    }
 
     *ptr = NULL;
 

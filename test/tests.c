@@ -100,7 +100,7 @@ void check_delete_bucket(uv_work_t *work_req, int status)
     json_request_t *req = work_req->data;
     assert(req->handle == NULL);
     assert(req->response == NULL);
-    assert(req->status_code == 200);
+    assert(req->status_code == 204);
 
     pass("storj_bridge_delete_bucket");
 
