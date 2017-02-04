@@ -510,7 +510,11 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &_status_code);
     *status_code = (int)_status_code;
 
-    json_object *j = json_tokener_parse(body->data);
+    json_object *j = NULL;
+
+    if (body->data) {
+        j = json_tokener_parse(body->data);
+    }
 
     curl_easy_cleanup(curl);
     free(body->data);

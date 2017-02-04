@@ -530,10 +530,10 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
 
-    if (req->status_code == 200) {
+    if (req->status_code == 200 || req->status_code == 204) {
         printf("Bucket was successfully removed destroyed.\n");
     } else {
-        printf("Failed to destroy bucket.\n");
+        printf("Failed to destroy bucket. (%i)\n", req->status_code);
     }
 
     free(req);
