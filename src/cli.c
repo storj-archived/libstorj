@@ -499,10 +499,10 @@ static void list_files_callback(uv_work_t *work_req, int status)
         json_object_object_get_ex(file, "id", &id);
         // print out the name attribute
         printf("Name: %s, Type: %s, Size: %s bytes, ID: %s\n",
-                json_object_to_json_string(filename),
-                json_object_to_json_string(mimetype),
-                json_object_to_json_string(size),
-                json_object_to_json_string(id));
+                json_object_get_string(filename),
+                json_object_get_string(mimetype),
+                json_object_get_string(size),
+                json_object_get_string(id));
     }
 
     json_object_put(req->response);
