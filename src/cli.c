@@ -919,10 +919,12 @@ int main(int argc, char **argv)
         // Second, try to get from encrypted user file
         if ((!user || !pass || !mnemonic) && access(user_file, F_OK) != -1) {
 
-            char *key = calloc(BUFSIZ, sizeof(char));
+            char *key = NULL;
             if (keypass) {
+                key = calloc(strlen(keypass) + 1, sizeof(char));
                 strcpy(key, keypass);
             } else {
+                key = calloc(BUFSIZ, sizeof(char));
                 printf("Encryption passphrase: ");
                 get_password(key);
                 printf("\n");
