@@ -522,7 +522,7 @@ static void push_shard(uv_work_t *work)
 
     if (req_status) {
         req->log->error(state->env->log_options, state->handle,
-                        "Put shard request error code: %i\n", req_status);
+                        "Put shard request error code: %i", req_status);
     }
 
     req->end = get_time_milliseconds();
