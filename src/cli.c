@@ -499,10 +499,10 @@ static void list_files_callback(uv_work_t *work_req, int status)
         json_object_object_get_ex(file, "id", &id);
         // print out the name attribute
         printf("Name: %s, Type: %s, Size: %s bytes, ID: %s\n",
-                json_object_to_json_string(filename),
-                json_object_to_json_string(mimetype),
-                json_object_to_json_string(size),
-                json_object_to_json_string(id));
+                json_object_get_string(filename),
+                json_object_get_string(mimetype),
+                json_object_get_string(size),
+                json_object_get_string(id));
     }
 
     json_object_put(req->response);
@@ -530,10 +530,10 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
 
-    if (req->status_code == 200) {
+    if (req->status_code == 200 || req->status_code == 204) {
         printf("Bucket was successfully removed destroyed.\n");
     } else {
-        printf("Failed to destroy bucket.\n");
+        printf("Failed to destroy bucket. (%i)\n", req->status_code);
     }
 
     free(req);
@@ -570,11 +570,11 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
         json_object_object_get_ex(bucket, "storage", &storage);
         json_object_object_get_ex(bucket, "transfer", &transfer);
         // print out the name attribute
-        printf("ID: %s, Name: %s, Storage: %s, Transfer: %s\n",
-                json_object_to_json_string(id),
-                json_object_to_json_string(name),
-                json_object_to_json_string(storage),
-                json_object_to_json_string(transfer));
+        printf("ID: \"%s\", Name: %s, Storage: %s, Transfer: %s\n",
+               json_object_get_string(id),
+               json_object_get_string(name),
+               json_object_get_string(storage),
+               json_object_get_string(transfer));
     }
 
     json_object_put(req->response);
@@ -605,11 +605,11 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
     json_object_object_get_ex(req->response, "storage", &storage);
     json_object_object_get_ex(req->response, "transfer", &transfer);
     // print out the name attribute
-    printf("ID: %s, Name: %s, Storage: %s, Transfer: %s\n",
-            json_object_to_json_string(id),
-            json_object_to_json_string(name),
-            json_object_to_json_string(storage),
-            json_object_to_json_string(transfer));
+    printf("ID: \"%s\", Name: %s, Storage: %s, Transfer: %s\n",
+           json_object_get_string(id),
+           json_object_get_string(name),
+           json_object_get_string(storage),
+           json_object_get_string(transfer));
 
     json_object_put(req->response);
     free(req);
@@ -640,10 +640,10 @@ static void get_info_callback(uv_work_t *work_req, int status)
     struct json_object *host;
     json_object_object_get_ex(req->response, "host", &host);
 
-    printf("Title:       %s\n", json_object_to_json_string(title));
-    printf("Description: %s\n", json_object_to_json_string(description));
-    printf("Version:     %s\n", json_object_to_json_string(version));
-    printf("Host:        %s\n", json_object_to_json_string(host));
+    printf("Title:       %s\n", json_object_get_string(title));
+    printf("Description: %s\n", json_object_get_string(description));
+    printf("Version:     %s\n", json_object_get_string(version));
+    printf("Host:        %s\n", json_object_get_string(host));
 
     json_object_put(req->response);
     free(req);
