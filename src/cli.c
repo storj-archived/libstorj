@@ -89,6 +89,27 @@ static int make_user_directory(char *path)
     return 0;
 }
 
+static char *get_filename_separator(const char *file_path)
+{
+    char *file_name = NULL;
+#ifdef _WIN32
+    file_name = strrchr(file_path, '\\');
+    if (!file_name) {
+        file_name = strrchr(file_path, '/');
+    }
+
+    if (file_name[0] == '\\' || file_name[0] == '/') {
+        file_name++;
+    }
+#else
+    file_name = strrchr(file_path, '/');
+    if (file_name[0] == '/') {
+        file_name++;
+    }
+#endif
+    return file_name;
+}
+
 static int get_user_auth_location(char *host, char **root_dir, char **user_file)
 {
     char *home_dir = get_home_dir();
@@ -246,17 +267,14 @@ void upload_signal_handler(uv_signal_t *req, int signum)
 static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
 {
     FILE *fd = fopen(file_path, "r");
-    const char *file_name;
 
     if (!fd) {
         printf("Invalid file path: %s\n", file_path);
     }
 
-    if (strrchr(file_path, separator())) {
-        file_name = strrchr(file_path, separator());
-        // Remove '/' from the front if exists by pushing the pointer up
-        if (file_name[0] == separator()) file_name++;
-    } else {
+    const char *file_name = get_filename_separator(file_path);
+
+    if (!file_name) {
         file_name = file_path;
     }
 
