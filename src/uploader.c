@@ -1683,16 +1683,6 @@ int storj_bridge_store_file(storj_env_t *env,
                             storj_progress_cb progress_cb,
                             storj_finished_upload_cb finished_cb)
 {
-    if (opts->file_concurrency < 1) {
-        env->log->error(env->log_options,
-                        handle,
-                        "File Concurrency (%i) can't be less than 1",
-                        opts->file_concurrency);
-        return 1;
-    } else if (!opts->file_concurrency) {
-        opts->file_concurrency = 1;
-    }
-
     if (opts->shard_concurrency < 1) {
         env->log->error(env->log_options,
                         handle,
@@ -1709,39 +1699,45 @@ int storj_bridge_store_file(storj_env_t *env,
     }
 
     // setup upload state
-    state->file_concurrency = opts->file_concurrency;
-    state->shard_concurrency = opts->shard_concurrency;
-    state->file_name = opts->file_name;
-    state->bucket_id = opts->bucket_id;
-    state->original_file = opts->fd;
     state->env = env;
-    state->log = env->log;
-    state->progress_cb = progress_cb;
-    state->finished_cb = finished_cb;
-    state->handle = handle;
+    state->shard_concurrency = opts->shard_concurrency;
+    state->file_id = NULL;
+    state->file_name = opts->file_name;
+    state->original_file = opts->fd;
+    state->file_key = NULL;
+    state->file_size = 0;
+    state->tmp_path = NULL;
+    state->bucket_id = opts->bucket_id;
+    state->bucket_key = NULL;
+    state->completed_shards = 0;
+    state->total_shards = 0;
+    state->shard_size = 0;
+    state->total_bytes = 0;
+    state->uploaded_bytes = 0;
+    state->exclude = NULL;
+    state->frame_id = NULL;
 
-    // TODO: find a way to default
+    state->requesting_frame = false;
+    state->completed_upload = false;
+    state->encrypting_file = false;
+    state->creating_bucket_entry = false;
+    state->received_all_pointers = false;
+    state->final_callback_called = false;
+    state->canceled = false;
+
+    state->progress_finished = false;
+
     state->frame_request_count = 0;
     state->encrypt_file_count = 0;
     state->add_bucket_entry_count = 0;
-    state->error_status = 0;
-    state->encrypting_file = false;
-    state->requesting_frame = false;
-    state->requesting_token = false;
-    state->tmp_path = NULL;
-    state->frame_id = NULL;
-    state->exclude = NULL;
-    state->total_shards = 0;
-    state->completed_shards = 0;
-    state->uploaded_bytes = 0;
-    state->final_callback_called = false;
-    state->received_all_pointers = false;
-    state->completed_upload = false;
-    state->creating_bucket_entry = false;
-    state->canceled = false;
-    state->pending_work_count = 0;
-    state->progress_finished = false;
 
+    state->progress_cb = progress_cb;
+    state->finished_cb = finished_cb;
+    state->error_status = 0;
+    state->log = env->log;
+    state->handle = handle;
+    state->shard = NULL;
+    state->pending_work_count = 0;
 
     uv_work_t *work = uv_work_new();
     work->data = state;

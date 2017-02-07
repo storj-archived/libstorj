@@ -243,7 +243,6 @@ typedef struct {
 /** @brief A structure for file upload options
  */
 typedef struct {
-    int file_concurrency;
     int shard_concurrency;
     const char *bucket_id;
     const char *file_name;
@@ -327,7 +326,6 @@ typedef struct {
 
 typedef struct {
     storj_env_t *env;
-    uint32_t file_concurrency;
     uint32_t shard_concurrency;
     char *file_id;
     const char *file_name;
@@ -348,7 +346,6 @@ typedef struct {
     bool requesting_frame;
     bool completed_upload;
     bool encrypting_file;
-    bool requesting_token;
     bool creating_bucket_entry;
     bool received_all_pointers;
     bool final_callback_called;

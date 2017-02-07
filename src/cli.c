@@ -261,7 +261,6 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
     }
 
     storj_upload_opts_t upload_opts = {
-        .file_concurrency = 1,
         .shard_concurrency = 3,
         .bucket_id = bucket_id,
         .file_name = file_name,
