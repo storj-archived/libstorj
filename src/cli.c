@@ -914,20 +914,27 @@ int main(int argc, char **argv)
         char *user = getenv("STORJ_BRIDGE_USER");
         char *pass = getenv("STORJ_BRIDGE_PASS");
         char *mnemonic = getenv("STORJ_MNEMONIC");
+        char *keypass = getenv("STORJ_KEYPASS");
 
         // Second, try to get from encrypted user file
         if ((!user || !pass || !mnemonic) && access(user_file, F_OK) != -1) {
 
-            char *key = calloc(BUFSIZ, sizeof(char));
-            printf("Encryption passphrase: ");
-            get_password(key);
-            printf("\n");
+            char *key = NULL;
+            if (keypass) {
+                key = calloc(strlen(keypass) + 1, sizeof(char));
+                strcpy(key, keypass);
+            } else {
+                key = calloc(BUFSIZ, sizeof(char));
+                printf("Encryption passphrase: ");
+                get_password(key);
+                printf("\n");
+            }
             char *file_user = NULL;
             char *file_pass = NULL;
             char *file_mnemonic = NULL;
             if (storj_decrypt_read_auth(user_file, key, &file_user,
                                         &file_pass, &file_mnemonic)) {
-                printf("Unable to read user file.\n");
+                printf("Unable to read user file. Invalid keypass or path.\n");
                 goto end_program;
             }
 

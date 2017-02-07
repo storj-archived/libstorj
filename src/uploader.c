@@ -518,7 +518,7 @@ static void push_shard(uv_work_t *work)
 
     if (req_status) {
         req->log->error(state->env->log_options, state->handle,
-                        "Put shard request error code: %i\n", req_status);
+                        "Put shard request error code: %i", req_status);
     }
 
     req->end = get_time_milliseconds();
@@ -1660,6 +1660,12 @@ int storj_bridge_store_file_cancel(storj_upload_state_t *state)
     }
 
     state->canceled = true;
+
+    if (state->token) {
+        free(state->token);
+        state->token = NULL;
+    }
+
     state->error_status = STORJ_TRANSFER_CANCELED;
 
     // loop over all shards, and cancel any that are queued to be uploaded
