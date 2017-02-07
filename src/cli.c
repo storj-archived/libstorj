@@ -737,6 +737,12 @@ static int set_auth(char *host)
     mnemonic = calloc(num_chars + 1, sizeof(char));
     memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
 
+    if (!storj_mnemonic_check(mnemonic)) {
+        printf("Mnemonic integrity check failed.\n");
+        status = 1;
+        goto clear_variables;
+    }
+
     key = calloc(BUFSIZ, sizeof(char));
     if (get_password_verify("Encryption passphrase: ", key, 0)) {
         printf("Unable to store encrypted authentication.\n");
