@@ -121,13 +121,6 @@ int put_shard(storj_http_options_t *http_options,
     // Ignore any data sent back, we only need to know the status code
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_ignore_receive);
 
-    // TODO is this still needed?
-#ifdef _WIN32
-    signal(WSAECONNRESET, SIG_IGN);
-#else
-    signal(SIGPIPE, SIG_IGN);
-#endif
-
     int req = curl_easy_perform(curl);
 
     curl_slist_free_all(content_chunk);
