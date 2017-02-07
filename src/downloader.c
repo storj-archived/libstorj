@@ -54,6 +54,7 @@ static void free_download_state(storj_download_state_t *state)
 static void request_token(uv_work_t *work)
 {
     token_request_download_t *req = work->data;
+    storj_download_state_t *state = req->state;
 
     int path_len = 9 + strlen(req->bucket_id) + 7;
     char *path = calloc(path_len + 1, sizeof(char));
@@ -77,7 +78,13 @@ static void request_token(uv_work_t *work)
                                     &response,
                                     &status_code);
 
-    if (status_code == 201) {
+    if (request_status) {
+        req->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+
+        state->log->warn(state->env->log_options, state->handle,
+                         "Request token error: %i", request_status);
+
+    } else if (status_code == 201) {
         struct json_object *token_value;
         if (!json_object_object_get_ex(response, "token", &token_value)) {
             req->error_status = STORJ_BRIDGE_JSON_ERROR;
@@ -162,6 +169,9 @@ static int queue_request_bucket_token(storj_download_state_t *state)
     req->bucket_id = state->bucket_id;
     req->bucket_op = (char *)BUCKET_OP[BUCKET_PULL];
     req->state = state;
+    req->status_code = 0;
+    req->error_status = 0;
+
     work->data = req;
 
     state->pending_work_count++;
@@ -178,11 +188,18 @@ static int queue_request_bucket_token(storj_download_state_t *state)
 static void request_pointers(uv_work_t *work)
 {
     json_request_download_t *req = work->data;
+    storj_download_state_t *state = req->state;
 
     int status_code = 0;
     int request_status = fetch_json(req->http_options, req->options, req->method,
                                     req->path, req->body, req->auth, req->token,
                                     &req->response, &status_code);
+
+
+    if (request_status) {
+        state->log->warn(state->env->log_options, state->handle,
+                         "Request pointers error: %i", request_status);
+    }
 
     req->status_code = status_code;
 
@@ -194,6 +211,7 @@ static void request_pointers(uv_work_t *work)
 static void request_replace_pointer(uv_work_t *work)
 {
     json_request_replace_pointer_t *req = work->data;
+    storj_download_state_t *state = req->state;
 
     int status_code = 0;
 
@@ -215,6 +233,12 @@ static void request_replace_pointer(uv_work_t *work)
     int request_status = fetch_json(req->http_options, req->options, "GET",
                                     path, NULL, NULL, req->token,
                                     &req->response, &status_code);
+
+    if (request_status) {
+        state->log->warn(state->env->log_options, state->handle,
+                         "Request replace pointer error: %i", request_status);
+    }
+
 
     req->status_code = status_code;
 
@@ -922,6 +946,7 @@ static void queue_write_next_shard(storj_download_state_t *state)
 static void send_exchange_report(uv_work_t *work)
 {
     shard_send_report_t *req = work->data;
+    storj_download_state_t *state = req->state;
 
     struct json_object *body = json_object_new_object();
 
@@ -957,6 +982,12 @@ static void send_exchange_report(uv_work_t *work)
                                     req->options, "POST",
                                     "/reports/exchanges", body,
                                     NULL, NULL, &response, &status_code);
+
+
+    if (request_status) {
+        state->log->warn(state->env->log_options, state->handle,
+                         "Send exchange report error: %i", request_status);
+    }
 
     req->status_code = status_code;
 

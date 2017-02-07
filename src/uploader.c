@@ -331,6 +331,12 @@ static void create_bucket_entry(uv_work_t *work)
                                     &status_code);
 
 
+    if (request_status) {
+        req->log->warn(state->env->log_options, state->handle,
+                       "Create bucket entry error: %i", request_status);
+    }
+
+
     req->status_code = status_code;
 
     json_object_put(response);
@@ -821,6 +827,11 @@ static void push_frame(uv_work_t *work)
                                     &response,
                                     &status_code);
 
+    if (request_status) {
+        req->log->warn(state->env->log_options, state->handle,
+                       "Push frame error: %i", request_status);
+    }
+
     req->log->debug(state->env->log_options, state->handle,
                     "JSON Response: %s",
                     json_object_to_json_string(response));
@@ -1211,6 +1222,12 @@ static void request_frame_id(uv_work_t *work)
                                     &response,
                                     &status_code);
 
+
+    if (request_status) {
+        req->log->warn(state->env->log_options, state->handle,
+                       "Request frame id error: %i", request_status);
+    }
+
     req->log->debug(state->env->log_options,
                     state->handle,
                     "JSON Response: %s",
@@ -1467,6 +1484,7 @@ clean_variables:
 static void send_exchange_report(uv_work_t *work)
 {
     shard_send_report_t *req = work->data;
+    storj_upload_state_t *state = req->state;
 
     struct json_object *body = json_object_new_object();
 
@@ -1502,6 +1520,13 @@ static void send_exchange_report(uv_work_t *work)
                                     req->options, "POST",
                                     "/reports/exchanges", body,
                                     NULL, NULL, &response, &status_code);
+
+
+    if (request_status) {
+        state->log->warn(state->env->log_options, state->handle,
+                         "Send exchange report error: %i", request_status);
+    }
+
     req->status_code = status_code;
 
     // free all memory for body and response

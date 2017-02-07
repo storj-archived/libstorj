@@ -620,10 +620,15 @@ static void get_info_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
 
-    if (req->response == NULL) {
+    if (req->error_code || req->response == NULL) {
         free(req);
         free(work_req);
-        printf("Failed to get info.\n");
+        if (req->error_code) {
+            printf("Request failed, reason: %s\n",
+                   curl_easy_strerror(req->error_code));
+        } else {
+            printf("Failed to get info.\n");
+        }
         exit(1);
     }
 
