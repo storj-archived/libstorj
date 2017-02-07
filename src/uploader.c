@@ -1661,11 +1661,6 @@ int storj_bridge_store_file_cancel(storj_upload_state_t *state)
 
     state->canceled = true;
 
-    if (state->token) {
-        free(state->token);
-        state->token = NULL;
-    }
-
     state->error_status = STORJ_TRANSFER_CANCELED;
 
     // loop over all shards, and cancel any that are queued to be uploaded
@@ -1726,7 +1721,6 @@ int storj_bridge_store_file(storj_env_t *env,
     state->handle = handle;
 
     // TODO: find a way to default
-    state->token_request_count = 0;
     state->frame_request_count = 0;
     state->encrypt_file_count = 0;
     state->add_bucket_entry_count = 0;

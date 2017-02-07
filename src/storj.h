@@ -356,7 +356,6 @@ typedef struct {
 
     bool progress_finished;
 
-    int token_request_count;
     int frame_request_count;
     int encrypt_file_count;
     int add_bucket_entry_count;
