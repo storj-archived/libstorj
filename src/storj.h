@@ -342,7 +342,6 @@ typedef struct {
     uint64_t shard_size;
     uint64_t total_bytes;
     uint64_t uploaded_bytes;
-    char *token;
     char *exclude;
     char *frame_id;
 

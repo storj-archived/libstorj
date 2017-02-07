@@ -156,10 +156,6 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->file_key);
     }
 
-    if (state->token) {
-        free(state->token);
-    }
-
     if (state->frame_id) {
         free(state->frame_id);
     }
@@ -1426,119 +1422,6 @@ static int queue_encrypt_file(storj_upload_state_t *state)
     return status;
 }
 
-static void after_request_token(uv_work_t *work, int status)
-{
-    request_token_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
-
-    state->pending_work_count -= 1;
-    state->requesting_token = false;
-
-    if (status == UV_ECANCELED) {
-        state->token_request_count = 0;
-
-        goto clean_variables;
-    }
-
-    state->token_request_count += 1;
-
-    // Check if we got a 201 status and token
-    if (req->error_status == 0 && req->status_code == 201 && req->token) {
-
-        state->log->info(state->env->log_options,
-                         state->handle,
-                         "Successfully retrieved storage token");
-
-        state->token = req->token;
-        state->token_request_count = 0;
-    } else if (state->token_request_count == 6) {
-        state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
-    }
-
-clean_variables:
-    queue_next_work(state);
-    free(req);
-    free(work);
-}
-
-static void request_token(uv_work_t *work)
-{
-    request_token_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
-
-    req->log->info(state->env->log_options,
-                   state->handle,
-                   "[%s] Requesting storage token... (retry: %d)",
-                   state->file_name,
-                   state->token_request_count);
-
-    int path_len = strlen(req->bucket_id) + 17;
-    char *path = calloc(path_len + 1, sizeof(char));
-    sprintf(path, "%s%s%s%c", "/buckets/", req->bucket_id, "/tokens", '\0');
-
-    struct json_object *body = json_object_new_object();
-    json_object *op_string = json_object_new_string(req->bucket_op);
-    json_object_object_add(body, "operation", op_string);
-
-    int status_code;
-    struct json_object *response = fetch_json(req->http_options,
-                                              req->options,
-                                              "POST",
-                                              path,
-                                              body,
-                                              true,
-                                              NULL,
-                                              &status_code);
-
-    struct json_object *token_value;
-    if (!json_object_object_get_ex(response, "token", &token_value)) {
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
-        goto clean_variables;
-    }
-
-    if (!json_object_is_type(token_value, json_type_string)) {
-        req->error_status = STORJ_BRIDGE_JSON_ERROR;
-        goto clean_variables;
-    }
-
-    char *token_value_str = (char *)json_object_get_string(token_value);
-    req->token = calloc(strlen(token_value_str) + 1, sizeof(char));
-    strcpy(req->token, token_value_str);
-    req->status_code = status_code;
-
-clean_variables:
-    free(path);
-    json_object_put(response);
-    json_object_put(body);
-}
-
-static int queue_request_bucket_token(storj_upload_state_t *state)
-{
-    uv_work_t *work = uv_work_new();
-
-    request_token_t *req = malloc(sizeof(request_token_t));
-    assert(req != NULL);
-
-    req->http_options = state->env->http_options;
-    req->options = state->env->bridge_options;
-    req->bucket_id = state->bucket_id;
-    req->bucket_op = (char *)BUCKET_OP[BUCKET_PUSH];
-    req->upload_state = state;
-    req->error_status = 0;
-    req->log = state->log;
-
-    work->data = req;
-
-    state->pending_work_count += 1;
-    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
-                               request_token, after_request_token);
-
-    state->requesting_token = true;
-
-    return status;
-}
-
-
 static void after_send_exchange_report(uv_work_t *work, int status)
 {
     shard_send_report_t *req = work->data;
@@ -1665,11 +1548,6 @@ static void queue_next_work(storj_upload_state_t *state)
     // report upload complete
     if (state->completed_upload) {
         return cleanup_state(state);
-    }
-
-    // Make sure we get a PUSH token
-    if (!state->token && !state->requesting_token) {
-        queue_request_bucket_token(state);
     }
 
     // Encrypt the file
@@ -1850,7 +1728,6 @@ int storj_bridge_store_file(storj_env_t *env,
     state->encrypting_file = false;
     state->requesting_frame = false;
     state->requesting_token = false;
-    state->token = NULL;
     state->tmp_path = NULL;
     state->frame_id = NULL;
     state->exclude = NULL;
