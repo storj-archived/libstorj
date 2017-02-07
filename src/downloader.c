@@ -66,14 +66,16 @@ static void request_token(uv_work_t *work)
     json_object_object_add(body, "operation", op_string);
 
     int status_code = 0;
-    struct json_object *response = fetch_json(req->http_options,
-                                              req->options,
-                                              "POST",
-                                              path,
-                                              body,
-                                              true,
-                                              NULL,
-                                              &status_code);
+    struct json_object *response = NULL;
+    int request_status = fetch_json(req->http_options,
+                                    req->options,
+                                    "POST",
+                                    path,
+                                    body,
+                                    true,
+                                    NULL,
+                                    &response,
+                                    &status_code);
 
     if (status_code == 201) {
         struct json_object *token_value;
@@ -100,7 +102,9 @@ static void request_token(uv_work_t *work)
 
     req->status_code = status_code;
 
-    json_object_put(response);
+    if (response) {
+        json_object_put(response);
+    }
     json_object_put(body);
     free(path);
 }
@@ -176,9 +180,9 @@ static void request_pointers(uv_work_t *work)
     json_request_download_t *req = work->data;
 
     int status_code = 0;
-    req->response = fetch_json(req->http_options, req->options, req->method,
-                               req->path, req->body, req->auth, req->token,
-                               &status_code);
+    int request_status = fetch_json(req->http_options, req->options, req->method,
+                                    req->path, req->body, req->auth, req->token,
+                                    &req->response, &status_code);
 
     req->status_code = status_code;
 
@@ -208,8 +212,9 @@ static void request_replace_pointer(uv_work_t *work)
     strcat(path, req->file_id);
     strcat(path, query_args);
 
-    req->response = fetch_json(req->http_options, req->options, "GET",
-                               path, NULL, NULL, req->token, &status_code);
+    int request_status = fetch_json(req->http_options, req->options, "GET",
+                                    path, NULL, NULL, req->token,
+                                    &req->response, &status_code);
 
     req->status_code = status_code;
 
@@ -947,14 +952,18 @@ static void send_exchange_report(uv_work_t *work)
     int status_code = 0;
 
     // there should be an empty object in response
-    struct json_object *response = fetch_json(req->http_options,
-                                              req->options, "POST",
-                                              "/reports/exchanges", body,
-                                              NULL, NULL, &status_code);
+    struct json_object *response = NULL;
+    int request_status = fetch_json(req->http_options,
+                                    req->options, "POST",
+                                    "/reports/exchanges", body,
+                                    NULL, NULL, &response, &status_code);
+
     req->status_code = status_code;
 
     // free all memory for body and response
-    json_object_put(response);
+    if (response) {
+        json_object_put(response);
+    }
     json_object_put(body);
 }
 

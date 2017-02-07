@@ -9,9 +9,10 @@ static void json_request_worker(uv_work_t *work)
 {
     json_request_t *req = work->data;
     int status_code = 0;
-    req->response = fetch_json(req->http_options,
-                               req->options, req->method, req->path, req->body,
-                               req->auth, NULL, &status_code);
+
+    req->error_code = fetch_json(req->http_options,
+                                 req->options, req->method, req->path, req->body,
+                                 req->auth, NULL, &req->response, &status_code);
 
     req->status_code = status_code;
 }
@@ -39,8 +40,11 @@ static json_request_t *json_request_new(
     req->options = options;
     req->method = method;
     req->path = path;
-    req->body = request_body;
     req->auth = auth;
+    req->body = request_body;
+    req->response = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
     req->handle = handle;
 
     return req;

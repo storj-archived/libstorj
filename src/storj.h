@@ -168,6 +168,7 @@ typedef struct {
     bool auth;
     struct json_object *body;
     struct json_object *response;
+    int error_code;
     int status_code;
     void *handle;
 } json_request_t;

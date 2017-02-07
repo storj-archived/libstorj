@@ -367,18 +367,19 @@ static size_t body_json_receive(void *buffer, size_t size, size_t nmemb,
     return buflen;
 }
 
-struct json_object *fetch_json(storj_http_options_t *http_options,
-                               storj_bridge_options_t *options,
-                               char *method,
-                               char *path,
-                               struct json_object *request_body,
-                               bool auth,
-                               char *token,
-                               int *status_code)
+int fetch_json(storj_http_options_t *http_options,
+               storj_bridge_options_t *options,
+               char *method,
+               char *path,
+               struct json_object *request_body,
+               bool auth,
+               char *token,
+               struct json_object **response,
+               int *status_code)
 {
     CURL *curl = curl_easy_init();
     if (!curl) {
-        return NULL;
+        return 1;
     }
     char *user_pass = NULL;
 
@@ -406,7 +407,7 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
     } else if (0 == strcmp(method, "DELETE")) {
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
     } else {
-        return NULL;
+        return 1;
     }
 
     // Set the proxy
@@ -499,10 +500,8 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
     }
 
     if (req != CURLE_OK) {
-        // TODO check request status
-        // TODO get details with curl_easy_strerror(req)
         curl_easy_cleanup(curl);
-        return NULL;
+        return req;
     }
 
     // set the status code
@@ -510,15 +509,15 @@ struct json_object *fetch_json(storj_http_options_t *http_options,
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &_status_code);
     *status_code = (int)_status_code;
 
-    json_object *j = NULL;
+    *response = NULL;
 
     if (body->data) {
-        j = json_tokener_parse(body->data);
+        *response = json_tokener_parse(body->data);
     }
 
     curl_easy_cleanup(curl);
     free(body->data);
     free(body);
 
-    return j;
+    return 0;
 }

@@ -147,14 +147,15 @@ int fetch_shard(storj_http_options_t *http_options,
  * @param[out] status_code The resulting status code from the request
  * @return A non-zero error value on failure and 0 on success.
  */
-struct json_object *fetch_json(storj_http_options_t *http_options,
-                               storj_bridge_options_t *options,
-                               char *method,
-                               char *path,
-                               struct json_object *request_body,
-                               bool auth,
-                               char *token,
-                               int *status_code);
+int fetch_json(storj_http_options_t *http_options,
+               storj_bridge_options_t *options,
+               char *method,
+               char *path,
+               struct json_object *request_body,
+               bool auth,
+               char *token,
+               struct json_object **response,
+               int *status_code);
 
 
 #endif /* STORJ_HTTP_H */

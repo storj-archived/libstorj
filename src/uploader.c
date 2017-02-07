@@ -319,14 +319,17 @@ static void create_bucket_entry(uv_work_t *work)
     sprintf(path, "%s%s%s%c", "/buckets/", state->bucket_id, "/files", '\0');
 
     int status_code;
-    struct json_object *response = fetch_json(req->http_options,
-                                              req->options,
-                                              "POST",
-                                              path,
-                                              body,
-                                              true,
-                                              NULL,
-                                              &status_code);
+    struct json_object *response = NULL;
+    int request_status = fetch_json(req->http_options,
+                                    req->options,
+                                    "POST",
+                                    path,
+                                    body,
+                                    true,
+                                    NULL,
+                                    &response,
+                                    &status_code);
+
 
     req->status_code = status_code;
 
@@ -807,14 +810,16 @@ static void push_frame(uv_work_t *work)
                     "JSON body: %s", json_object_to_json_string(body));
 
     int status_code;
-    struct json_object *response = fetch_json(req->http_options,
-                                              req->options,
-                                              "PUT",
-                                              resource,
-                                              body,
-                                              true,
-                                              NULL,
-                                              &status_code);
+    struct json_object *response = NULL;
+    int request_status = fetch_json(req->http_options,
+                                    req->options,
+                                    "PUT",
+                                    resource,
+                                    body,
+                                    true,
+                                    NULL,
+                                    &response,
+                                    &status_code);
 
     req->log->debug(state->env->log_options, state->handle,
                     "JSON Response: %s",
@@ -1195,14 +1200,16 @@ static void request_frame_id(uv_work_t *work)
                     json_object_to_json_string(body));
 
     int status_code;
-    struct json_object *response = fetch_json(req->http_options,
-                                              req->options,
-                                              "POST",
-                                              "/frames",
-                                              body,
-                                              true,
-                                              NULL,
-                                              &status_code);
+    struct json_object *response = NULL;
+    int request_status = fetch_json(req->http_options,
+                                    req->options,
+                                    "POST",
+                                    "/frames",
+                                    body,
+                                    true,
+                                    NULL,
+                                    &response,
+                                    &status_code);
 
     req->log->debug(state->env->log_options,
                     state->handle,
@@ -1490,10 +1497,11 @@ static void send_exchange_report(uv_work_t *work)
     int status_code = 0;
 
     // there should be an empty object in response
-    struct json_object *response = fetch_json(req->http_options,
-                                              req->options, "POST",
-                                              "/reports/exchanges", body,
-                                              NULL, NULL, &status_code);
+    struct json_object *response = NULL;
+    int request_status = fetch_json(req->http_options,
+                                    req->options, "POST",
+                                    "/reports/exchanges", body,
+                                    NULL, NULL, &response, &status_code);
     req->status_code = status_code;
 
     // free all memory for body and response
