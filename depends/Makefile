@@ -5,7 +5,6 @@ build_DOWNLOAD = curl --location --fail --connect-timeout 120 --retry 3 -o
 
 BUILD = $(shell ./config.guess)
 HOST ?= $(BUILD)
-CA_BUNDLE ?= "/etc/ssl/certs/ca-certificates.crt"
 
 DOWNLOAD_DIR = "$(CURDIR)/downloads/"
 SOURCES_DIR = "$(CURDIR)/sources/$(HOST)/"

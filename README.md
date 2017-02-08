@@ -59,10 +59,8 @@ There is a make script provided for automating building of dependencies for vari
 To build dependencies for a host:
 ```
 cd ./depends
-make HOST="x86_64-w64-mingw32" CA_BUNDLE="/path/to/ca-certificates.crt"
+make HOST="x86_64-w64-mingw32"
 ```
-Note: CA_BUNDLE is optional and will default to use `/etc/ssl/certs/ca-certificates.crt`
-
 Dependencies will then be installed with prefix at `./depends/build/x86_64-w64-mingw32/` that can be plugged into the libstorj configure script.
 
 #### Build MinGW (Windows)
