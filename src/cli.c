@@ -99,7 +99,8 @@ static const char *get_filename_separator(const char *file_path)
     }
     if (!file_name && file_path) {
         file_name = file_path;
-    } else {
+    }
+    if (!file_name) {
         return NULL;
     }
     if (file_name[0] == '\\' || file_name[0] == '/') {
@@ -109,7 +110,8 @@ static const char *get_filename_separator(const char *file_path)
     file_name = strrchr(file_path, '/');
     if (!file_name && file_path) {
         file_name = file_path;
-    } else {
+    }
+    if (!file_name) {
         return NULL;
     }
     if (file_name[0] == '/') {
