@@ -20,7 +20,6 @@ static void json_request_worker(uv_work_t *work)
 static uv_work_t *uv_work_new()
 {
     uv_work_t *work = malloc(sizeof(uv_work_t));
-    assert(work != NULL);
     return work;
 }
 
@@ -34,7 +33,9 @@ static json_request_t *json_request_new(
     void *handle)
 {
     json_request_t *req = malloc(sizeof(json_request_t));
-    assert(req != NULL);
+    if (!req) {
+        return NULL;
+    }
 
     req->http_options = http_options;
     req->options = options;
@@ -59,9 +60,16 @@ static uv_work_t *json_request_work_new(
     void *handle)
 {
     uv_work_t *work = uv_work_new();
+    if (!work) {
+        return NULL;
+    }
     work->data = json_request_new(env->http_options,
                                   env->bridge_options, method, path,
                                   request_body, auth, handle);
+
+    if (!work->data) {
+        return NULL;
+    }
 
     return work;
 }
@@ -136,17 +144,27 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     curl_global_init(CURL_GLOBAL_ALL);
 
     uv_loop_t *loop = malloc(sizeof(uv_loop_t));
+    if (!loop) {
+        return NULL;
+    }
     if (uv_loop_init(loop)) {
         return NULL;
     }
 
     storj_env_t *env = malloc(sizeof(storj_env_t));
+    if (!env) {
+        return NULL;
+    }
 
     // setup the uv event loop
     env->loop = loop;
 
     // deep copy bridge options
     storj_bridge_options_t *bo = malloc(sizeof(storj_bridge_options_t));
+    if (!bo) {
+        return NULL;
+    }
+
     bo->proto = strdup(options->proto);
     bo->host = strdup(options->host);
     bo->port = options->port;
@@ -213,6 +231,9 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
 
     // deep copy encryption options
     storj_encrypt_options_t *eo = malloc(sizeof(storj_encrypt_options_t));
+    if (!eo) {
+        return NULL;
+    }
 
     if (encrypt_options && encrypt_options->mnemonic) {
 
@@ -289,6 +310,9 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
 
     // deep copy the http options
     storj_http_options_t *ho = malloc(sizeof(storj_http_options_t));
+    if (!ho) {
+        return NULL;
+    }
     ho->user_agent = strdup(http_options->user_agent);
     if (http_options->proxy_url) {
         ho->proxy_url = strdup(http_options->proxy_url);
@@ -304,6 +328,9 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     }
 
     storj_log_levels_t *log = malloc(sizeof(storj_log_levels_t));
+    if (!log) {
+        return NULL;
+    }
 
     log->debug = (storj_logger_format_fn)noop;
     log->info = (storj_logger_format_fn)noop;
@@ -637,6 +664,9 @@ int storj_bridge_get_info(storj_env_t *env, void *handle, uv_after_work_cb cb)
 {
     uv_work_t *work = json_request_work_new(env,"GET", "/", NULL,
                                             false, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -645,6 +675,9 @@ int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb
 {
     uv_work_t *work = json_request_work_new(env, "GET", "/buckets", NULL,
                                             true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -661,6 +694,9 @@ int storj_bridge_create_bucket(storj_env_t *env,
 
     uv_work_t *work = json_request_work_new(env, "POST", "/buckets", body,
                                             true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -671,9 +707,15 @@ int storj_bridge_delete_bucket(storj_env_t *env,
                                uv_after_work_cb cb)
 {
     char *path = str_concat_many(2, "/buckets/", id);
+    if (!path) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     uv_work_t *work = json_request_work_new(env, "DELETE", path,
                                             NULL, true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -684,9 +726,15 @@ int storj_bridge_list_files(storj_env_t *env,
                             uv_after_work_cb cb)
 {
     char *path = str_concat_many(3, "/buckets/", id, "/files");
+    if (!path) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                             true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -703,9 +751,15 @@ int storj_bridge_create_bucket_token(storj_env_t *env,
     json_object_object_add(body, "operation", op_string);
 
     char *path = str_concat_many(3, "/buckets/", bucket_id, "/tokens");
+    if (!path) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     uv_work_t *work = json_request_work_new(env, "POST", path, body,
                                             true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -717,9 +771,15 @@ int storj_bridge_get_file_pointers(storj_env_t *env,
                                    uv_after_work_cb cb)
 {
     char *path = str_concat_many(4, "/buckets/", bucket_id, "/files/", file_id);
+    if (!path) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                             true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -731,9 +791,15 @@ int storj_bridge_delete_file(storj_env_t *env,
                              uv_after_work_cb cb)
 {
     char *path = str_concat_many(4, "/buckets/", bucket_id, "/files/", file_id);
+    if (!path) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     uv_work_t *work = json_request_work_new(env, "DELETE", path, NULL,
                                             true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -744,6 +810,9 @@ int storj_bridge_create_frame(storj_env_t *env,
 {
     uv_work_t *work = json_request_work_new(env, "POST", "/frames", NULL,
                                             true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -754,6 +823,9 @@ int storj_bridge_get_frames(storj_env_t *env,
 {
     uv_work_t *work = json_request_work_new(env, "GET", "/frames", NULL,
                                             true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -764,9 +836,15 @@ int storj_bridge_get_frame(storj_env_t *env,
                            uv_after_work_cb cb)
 {
     char *path = str_concat_many(2, "/frames/", frame_id);
+    if (!path) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                             true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 
@@ -778,9 +856,15 @@ int storj_bridge_delete_frame(storj_env_t *env,
                               uv_after_work_cb cb)
 {
     char *path = str_concat_many(2, "/frames/", frame_id);
+    if (!path) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     uv_work_t *work = json_request_work_new(env, "DELETE", path, NULL,
                                             true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -793,9 +877,15 @@ int storj_bridge_get_file_info(storj_env_t *env,
 {
     char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
                                  file_id, "/info");
+    if (!path) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                             true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -808,9 +898,15 @@ int storj_bridge_list_mirrors(storj_env_t *env,
 {
     char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
                                  file_id, "/mirrors");
+    if (!path) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
                                            true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
 
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
@@ -826,6 +922,9 @@ int storj_bridge_register(storj_env_t *env,
     // TODO refactor hex2str, to make it more clear how much space needs
     // to be allocated for hex_str
     char *hex_str = calloc(2 * SHA256_DIGEST_SIZE + 2, sizeof(char));
+    if (!hex_str) {
+        return STORJ_MEMORY_ERROR;
+    }
     hex2str(SHA256_DIGEST_SIZE, sha256_digest, hex_str);
     hex_str[2 * SHA256_DIGEST_SIZE] = '\0';
 
@@ -838,5 +937,8 @@ int storj_bridge_register(storj_env_t *env,
 
     uv_work_t *work = json_request_work_new(env, "POST", "/users", body, true,
                                             handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
