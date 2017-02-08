@@ -290,6 +290,9 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
     uv_signal_start(&sig, upload_signal_handler, SIGINT);
 
     storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
+    if (!state) {
+        return 1;
+    }
 
     sig.data = state;
 
@@ -352,6 +355,9 @@ static int download_file(storj_env_t *env, char *bucket_id,
     uv_signal_start(&sig, download_signal_handler, SIGINT);
 
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+    if (!state) {
+        return 1;
+    }
 
     sig.data = state;
 
@@ -717,16 +723,23 @@ static int set_auth(char *host)
     get_input(user_input);
     int num_chars = strlen(user_input);
     user = calloc(num_chars + 1, sizeof(char));
+    if (!user) {
+        status = 1;
+        goto clear_variables;
+    }
     memcpy(user, user_input, num_chars * sizeof(char));
 
     printf("Password: ");
     pass = calloc(BUFSIZ, sizeof(char));
+    if (!pass) {
+        status = 1;
+        goto clear_variables;
+    }
     get_password(pass);
     printf("\n");
 
     mnemonic_input = calloc(BUFSIZ, sizeof(char));
-    if (mnemonic_input == NULL) {
-        printf("Unable to allocate buffer");
+    if (!mnemonic_input) {
         status = 1;
         goto clear_variables;
     }
@@ -734,7 +747,12 @@ static int set_auth(char *host)
     printf("Mnemonic: ");
     get_input(mnemonic_input);
     num_chars = strlen(mnemonic_input);
+
     mnemonic = calloc(num_chars + 1, sizeof(char));
+    if (!mnemonic) {
+        status = 1;
+        goto clear_variables;
+    }
     memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
 
     if (!storj_mnemonic_check(mnemonic)) {
@@ -917,11 +935,17 @@ int main(int argc, char **argv)
         }
 
         char *user = calloc(BUFSIZ, sizeof(char));
+        if (!user) {
+            return 1;
+        }
         printf("Bridge username (email): ");
         get_input(user);
 
         printf("Password: ");
         char *pass = calloc(BUFSIZ, sizeof(char));
+        if (!pass) {
+            return 1;
+        }
         get_password(pass);
         printf("\n");
 
@@ -950,9 +974,15 @@ int main(int argc, char **argv)
             char *key = NULL;
             if (keypass) {
                 key = calloc(strlen(keypass) + 1, sizeof(char));
+                if (!key) {
+                    return 1;
+                }
                 strcpy(key, keypass);
             } else {
                 key = calloc(BUFSIZ, sizeof(char));
+                if (!key) {
+                    return 1;
+                }
                 printf("Encryption passphrase: ");
                 get_password(key);
                 printf("\n");
@@ -984,13 +1014,15 @@ int main(int argc, char **argv)
         if (!user) {
             char *user_input = malloc(BUFSIZ);
             if (user_input == NULL) {
-                printf("Unable to allocate buffer\n");
-                exit(1);
+                return 1;
             }
             printf("Bridge username (email): ");
             get_input(user_input);
             int num_chars = strlen(user_input);
             user = calloc(num_chars + 1, sizeof(char));
+            if (!user) {
+                return 1;
+            }
             memcpy(user, user_input, num_chars);
             free(user_input);
         }
@@ -998,6 +1030,9 @@ int main(int argc, char **argv)
         if (!pass) {
             printf("Bridge password: ");
             pass = calloc(BUFSIZ, sizeof(char));
+            if (!pass) {
+                return 1;
+            }
             get_password(pass);
             printf("\n");
         }
@@ -1005,6 +1040,9 @@ int main(int argc, char **argv)
         if (!mnemonic) {
             printf("Encryption mnemonic: ");
             mnemonic = calloc(BUFSIZ, sizeof(char));
+            if (!mnemonic) {
+                return 1;
+            }
             get_password(mnemonic);
             printf("\n");
         }
