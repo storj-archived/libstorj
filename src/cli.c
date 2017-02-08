@@ -89,9 +89,9 @@ static int make_user_directory(char *path)
     return 0;
 }
 
-static char *get_filename_separator(const char *file_path)
+static const char *get_filename_separator(const char *file_path)
 {
-    char *file_name = NULL;
+    const char *file_name = NULL;
 #ifdef _WIN32
     file_name = strrchr(file_path, '\\');
     if (!file_name) {
