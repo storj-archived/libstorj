@@ -62,9 +62,15 @@ extern "C" {
 #define STORJ_FILE_WRITE_ERROR 3001
 #define STORJ_FILE_ENCRYPTION_ERROR 3002
 
+// Memory related errors
+#define STORJ_MEMORY_ERROR 4000
+
+// Queue related errors
+#define STORJ_QUEUE_ERROR 5000
+
 // Exchange report codes
-#define STORJ_REPORT_SUCCESS 1000;
-#define STORJ_REPORT_FAILURE 1100;
+#define STORJ_REPORT_SUCCESS 1000
+#define STORJ_REPORT_FAILURE 1100
 
 // Exchange report messages
 #define STORJ_REPORT_FAILED_INTEGRITY "FAILED_INTEGRITY"
@@ -310,7 +316,6 @@ typedef struct {
     char *farmer_address;
     char *farmer_port;
     char *farmer_node_id;
-    char *farmer_last_seen;
 } farmer_pointer_t;
 
 typedef struct {

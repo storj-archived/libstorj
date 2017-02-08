@@ -46,6 +46,7 @@ typedef struct {
     uint64_t file_size;
     storj_upload_state_t *upload_state;
     storj_log_levels_t *log;
+    int error_status;
 } encrypt_file_meta_t;
 
 typedef struct {
@@ -127,14 +128,12 @@ static void cleanup_state(storj_upload_state_t *state);
 
 static void queue_next_work(storj_upload_state_t *state);
 
-static int queue_request_bucket_token(storj_upload_state_t *state);
-static int queue_request_frame_id(storj_upload_state_t *state);
-static int queue_encrypt_file(storj_upload_state_t *state);
-static int queue_prepare_frame(storj_upload_state_t *state, int index);
-static int queue_push_frame(storj_upload_state_t *state, int index);
-static int queue_push_shard(storj_upload_state_t *state, int index);
-static int queue_create_bucket_entry(storj_upload_state_t *state);
-static int queue_request_bucket_token(storj_upload_state_t *state);
+static void queue_request_frame_id(storj_upload_state_t *state);
+static void queue_encrypt_file(storj_upload_state_t *state);
+static void queue_prepare_frame(storj_upload_state_t *state, int index);
+static void queue_push_frame(storj_upload_state_t *state, int index);
+static void queue_push_shard(storj_upload_state_t *state, int index);
+static void queue_create_bucket_entry(storj_upload_state_t *state);
 static void queue_send_exchange_report(storj_upload_state_t *state, int index);
 
 static void request_token(uv_work_t *work);

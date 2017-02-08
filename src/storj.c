@@ -622,6 +622,10 @@ char *storj_strerror(int error_code)
             return "File Encryption error";
         case STORJ_TRANSFER_CANCELED:
             return "File transfer canceled";
+        case STORJ_MEMORY_ERROR:
+            return "Memory error";
+        case STORJ_QUEUE_ERROR:
+            return "Queue error";
         case STORJ_TRANSFER_OK:
             return "No errors";
         default:
