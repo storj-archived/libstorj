@@ -58,6 +58,11 @@ static void request_token(uv_work_t *work)
 
     int path_len = 9 + strlen(req->bucket_id) + 7;
     char *path = calloc(path_len + 1, sizeof(char));
+    if (!path) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
     strcat(path, "/buckets/");
     strcat(path, req->bucket_id);
     strcat(path, "/tokens");
@@ -152,17 +157,23 @@ static void after_request_token(uv_work_t *work, int status)
     free(work);
 }
 
-static int queue_request_bucket_token(storj_download_state_t *state)
+static void queue_request_bucket_token(storj_download_state_t *state)
 {
     if (state->requesting_token || state->canceled) {
-        return 0;
+        return;
     }
 
     uv_work_t *work = malloc(sizeof(uv_work_t));
-    assert(work != NULL);
+    if (!work) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
 
     token_request_download_t *req = malloc(sizeof(token_request_download_t));
-    assert(req != NULL);
+    if (!req) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
 
     req->http_options = state->env->http_options;
     req->options = state->env->bridge_options;
@@ -178,10 +189,13 @@ static int queue_request_bucket_token(storj_download_state_t *state)
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                request_token, after_request_token);
 
+    if (status) {
+        state->error_status = STORJ_QUEUE_ERROR;
+        return;
+    }
+
     // TODO check status
     state->requesting_token = true;
-
-    return status;
 
 }
 
@@ -224,6 +238,11 @@ static void request_replace_pointer(uv_work_t *work)
     int path_len = 9 + strlen(req->bucket_id) + 7 +
         strlen(req->file_id) + strlen(query_args);
     char *path = calloc(path_len + 1, sizeof(char));
+    if (!path) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
     strcat(path, "/buckets/");
     strcat(path, req->bucket_id);
     strcat(path, "/files/");
@@ -354,6 +373,11 @@ static void set_pointer_from_json(storj_download_state_t *state,
     p->report = malloc(
         sizeof(storj_exchange_report_t));
 
+    if (!p->report) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
     const char *client_id = state->env->bridge_options->user;
     p->report->reporter_id = strdup(client_id);
     p->report->client_id = strdup(client_id);
@@ -393,6 +417,10 @@ static void append_pointers_to_state(storj_download_state_t *state,
                                       total_pointers * sizeof(storj_pointer_t));
         } else {
             state->pointers = malloc(length * sizeof(storj_pointer_t) * 100);
+        }
+        if (!state->pointers) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            return;
         }
 
         state->total_pointers = total_pointers;
@@ -461,6 +489,8 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
 
     if (status != 0) {
         req->state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
+    } else if (req->error_status) {
+        req->state->error_status = req->error_status;
     } else if (req->status_code != 200) {
         req->state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
 
@@ -519,19 +549,29 @@ static void queue_request_pointers(storj_download_state_t *state)
             // exclude this farmer id from future requests
             if (!state->excluded_farmer_ids) {
                 state->excluded_farmer_ids = calloc(41, sizeof(char));
+                if (!state->excluded_farmer_ids) {
+                    state->error_status = STORJ_MEMORY_ERROR;
+                    return;
+                }
                 strcat(state->excluded_farmer_ids, pointer->report->farmer_id);
             } else {
                 state->excluded_farmer_ids =
                     realloc(state->excluded_farmer_ids,
                             strlen(state->excluded_farmer_ids) + 41);
-
+                if (!state->excluded_farmer_ids) {
+                    state->error_status = STORJ_MEMORY_ERROR;
+                    return;
+                }
                 strcat(state->excluded_farmer_ids, ",");
                 strcat(state->excluded_farmer_ids, pointer->report->farmer_id);
             }
 
             json_request_replace_pointer_t *req =
                 malloc(sizeof(json_request_replace_pointer_t));
-            assert(req != NULL);
+            if (!req) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
 
             req->pointer_index = i;
 
@@ -542,9 +582,15 @@ static void queue_request_pointers(storj_download_state_t *state)
             req->file_id = state->file_id;
             req->state = state;
             req->excluded_farmer_ids = state->excluded_farmer_ids;
+            req->error_status = 0;
+            req->response = NULL;
+            req->status_code = 0;
 
             uv_work_t *work = malloc(sizeof(uv_work_t));
-            assert(work != NULL);
+            if (!work) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
             work->data = req;
 
             state->log->info(state->env->log_options,
@@ -557,7 +603,11 @@ static void queue_request_pointers(storj_download_state_t *state)
                                        (uv_work_t*) work,
                                        request_replace_pointer,
                                        after_request_replace_pointer);
-            // TODO check status
+
+            if (status) {
+                state->error_status = STORJ_QUEUE_ERROR;
+                return;
+            }
 
             pointer->status = POINTER_BEING_REPLACED;
 
@@ -574,7 +624,10 @@ static void queue_request_pointers(storj_download_state_t *state)
     }
 
     json_request_download_t *req = malloc(sizeof(json_request_download_t));
-    assert(req != NULL);
+    if (!req) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
 
     char query_args[32];
     snprintf(query_args, 20, "?limit=6&skip=%i", state->total_pointers);
@@ -583,6 +636,10 @@ static void queue_request_pointers(storj_download_state_t *state)
         strlen(state->file_id) + strlen(query_args);
 
     char *path = calloc(path_len + 1, sizeof(char));
+    if (!path) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
     strcat(path, "/buckets/");
     strcat(path, state->bucket_id);
     strcat(path, "/files/");
@@ -600,7 +657,10 @@ static void queue_request_pointers(storj_download_state_t *state)
     req->state = state;
 
     uv_work_t *work = malloc(sizeof(uv_work_t));
-    assert(work != NULL);
+    if (!work) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
     work->data = req;
 
     state->log->info(state->env->log_options,
@@ -612,7 +672,11 @@ static void queue_request_pointers(storj_download_state_t *state)
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                request_pointers, after_request_pointers);
 
-    // TODO check status
+    if (status) {
+        state->error_status = STORJ_QUEUE_ERROR;
+        return;
+    }
+
     state->requesting_pointers = true;
 }
 
@@ -652,6 +716,11 @@ static void request_shard(uv_work_t *work)
         // Decrypt the shard
         if (req->decrypt_key && req->decrypt_ctr) {
             struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
+            if (!ctx) {
+                req->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
+
             aes256_set_encrypt_key(ctx, req->decrypt_key);
             ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE, req->decrypt_ctr,
@@ -776,10 +845,10 @@ static void progress_request_shard(uv_async_t* async)
                        state->handle);
 }
 
-static int queue_request_shards(storj_download_state_t *state)
+static void queue_request_shards(storj_download_state_t *state)
 {
     if (state->canceled) {
-        return 0;
+        return;
     }
 
     int i = 0;
@@ -791,7 +860,10 @@ static int queue_request_shards(storj_download_state_t *state)
 
         if (pointer->status == POINTER_CREATED) {
             shard_request_download_t *req = malloc(sizeof(shard_request_download_t));
-            assert(req != NULL);
+            if (!req) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
 
             req->http_options = state->env->http_options;
             req->farmer_id = pointer->farmer_id;
@@ -805,10 +877,22 @@ static int queue_request_shards(storj_download_state_t *state)
 
             // TODO assert max bytes for shard
             req->shard_data = calloc(pointer->size, sizeof(char));
+            if (!req->shard_data) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
 
             if (state->decrypt_key && state->decrypt_ctr) {
                 req->decrypt_key = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+                if (!req->decrypt_key) {
+                    state->error_status = STORJ_MEMORY_ERROR;
+                    return;
+                }
                 req->decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+                if (!req->decrypt_ctr) {
+                    state->error_status = STORJ_MEMORY_ERROR;
+                    return;
+                }
                 memcpy(req->decrypt_key, state->decrypt_key, SHA256_DIGEST_SIZE);
                 memcpy(req->decrypt_ctr, state->decrypt_ctr, AES_BLOCK_SIZE);
 
@@ -824,7 +908,10 @@ static int queue_request_shards(storj_download_state_t *state)
             req->canceled = &state->canceled;
 
             uv_work_t *work = malloc(sizeof(uv_work_t));
-            assert(work != NULL);
+            if (!work) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
 
             work->data = req;
 
@@ -840,6 +927,10 @@ static int queue_request_shards(storj_download_state_t *state)
             // setup download progress reporting
             shard_download_progress_t *progress =
                 malloc(sizeof(shard_download_progress_t));
+            if (!progress) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
 
             progress->pointer_index = pointer->index;
             progress->bytes = 0;
@@ -852,14 +943,16 @@ static int queue_request_shards(storj_download_state_t *state)
 
             // queue download
             state->pending_work_count++;
-            uv_queue_work(state->env->loop, (uv_work_t*) work,
-                          request_shard, after_request_shard);
+            int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                                       request_shard, after_request_shard);
+            if (status) {
+                state->error_status = STORJ_QUEUE_ERROR;
+                return;
+            }
         }
 
         i++;
     }
-
-    return 0;
 }
 
 static void write_shard(uv_work_t *work)
@@ -917,9 +1010,16 @@ static void queue_write_next_shard(storj_download_state_t *state)
 
         if (pointer->status == POINTER_DOWNLOADED) {
             uv_work_t *work = malloc(sizeof(uv_work_t));
-            assert(work != NULL);
+            if (!work) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
 
             shard_request_write_t *req = malloc(sizeof(shard_request_write_t));
+            if (!req) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
 
             req->shard_data = pointer->shard_data;
             req->shard_total_bytes = pointer->size;
@@ -933,8 +1033,11 @@ static void queue_write_next_shard(storj_download_state_t *state)
             pointer->status = POINTER_BEING_WRITTEN;
 
             state->pending_work_count++;
-            uv_queue_work(state->env->loop, (uv_work_t*) work,
-                          write_shard, after_write_shard);
+            int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                                       write_shard, after_write_shard);
+            if (status) {
+                state->error_status = STORJ_QUEUE_ERROR;
+            }
             break;
         }
 
@@ -1042,9 +1145,16 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
             pointer->report->end > 0) {
 
             uv_work_t *work = malloc(sizeof(uv_work_t));
-            assert(work != NULL);
+            if (!work) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
 
             shard_send_report_t *req = malloc(sizeof(shard_send_report_t));
+            if (!req) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
 
             req->http_options = state->env->http_options;
             req->options = state->env->bridge_options;
@@ -1058,8 +1168,13 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
             work->data = req;
 
             state->pending_work_count++;
-            uv_queue_work(state->env->loop, (uv_work_t*) work,
-                          send_exchange_report, after_send_exchange_report);
+            int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                                       send_exchange_report,
+                                       after_send_exchange_report);
+            if (status) {
+                state->error_status = STORJ_QUEUE_ERROR;
+                return;
+            }
         }
     }
 }
@@ -1180,12 +1295,19 @@ int storj_bridge_resolve_file(storj_env_t *env,
         state->decrypt_ctr = NULL;
     } else {
         char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+        if (!file_key) {
+            return STORJ_MEMORY_ERROR;
+        }
 
         generate_file_key(env->encrypt_options->mnemonic, bucket_id,
                           file_id, &file_key);
         file_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
         uint8_t *decrypt_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+        if (!decrypt_key) {
+            return STORJ_MEMORY_ERROR;
+        }
+
         sha256_of_str((uint8_t *)file_key, DETERMINISTIC_KEY_SIZE, decrypt_key);
         decrypt_key[SHA256_DIGEST_SIZE] = '\0';
 
@@ -1195,10 +1317,16 @@ int storj_bridge_resolve_file(storj_env_t *env,
         state->decrypt_key = decrypt_key;
 
         uint8_t *file_id_hash = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
+        if (!file_id_hash) {
+            return STORJ_MEMORY_ERROR;
+        }
         ripemd160_of_str((uint8_t *)file_id, FILE_ID_SIZE, file_id_hash);
         file_id_hash[RIPEMD160_DIGEST_SIZE] = '\0';
 
         uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+        if (!decrypt_ctr) {
+            return STORJ_MEMORY_ERROR;
+        }
         memcpy(decrypt_ctr, file_id_hash, AES_BLOCK_SIZE);
 
         free(file_id_hash);
@@ -1209,5 +1337,5 @@ int storj_bridge_resolve_file(storj_env_t *env,
     // start download
     queue_next_work(state);
 
-    return 0;
+    return state->error_status;
 }

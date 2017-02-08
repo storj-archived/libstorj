@@ -102,6 +102,7 @@ typedef struct {
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
     struct json_object *response;
+    int error_status;
     int status_code;
 } json_request_replace_pointer_t;
 
