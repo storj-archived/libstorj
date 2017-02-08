@@ -97,12 +97,21 @@ static char *get_filename_separator(const char *file_path)
     if (!file_name) {
         file_name = strrchr(file_path, '/');
     }
-
+    if (!file_name && file_path) {
+        file_name = file_path;
+    } else {
+        return NULL;
+    }
     if (file_name[0] == '\\' || file_name[0] == '/') {
         file_name++;
     }
 #else
     file_name = strrchr(file_path, '/');
+    if (!file_name && file_path) {
+        file_name = file_path;
+    } else {
+        return NULL;
+    }
     if (file_name[0] == '/') {
         file_name++;
     }
