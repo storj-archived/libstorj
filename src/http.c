@@ -1,6 +1,5 @@
 #include "http.h"
 
-// TODO error check the calloc and realloc calls
 static size_t body_ignore_receive(void *buffer, size_t size, size_t nmemb,
                                   void *userp)
 {
@@ -72,6 +71,9 @@ int put_shard(storj_http_options_t *http_options,
     int url_len = strlen(proto) + 3 + strlen(host) + 1 + 10 + 8
         + strlen(shard_hash) + strlen(query_args);
     char *url = calloc(url_len + 1, sizeof(char));
+    if (!url) {
+        return 1;
+    }
 
     snprintf(url, url_len, "%s://%s:%i/shards/%s%s", proto, host, port,
              shard_hash, query_args);
@@ -94,6 +96,9 @@ int put_shard(storj_http_options_t *http_options,
 
     struct curl_slist *node_chunk = NULL;
     char *header = calloc(17 + 40 + 1, sizeof(char));
+    if (!header) {
+        return 1;
+    }
     strcat(header, "x-storj-node-id: ");
     strncat(header, farmer_id, 40);
     node_chunk = curl_slist_append(node_chunk, header);
@@ -104,6 +109,9 @@ int put_shard(storj_http_options_t *http_options,
     if (shard_data && shard_total_bytes) {
 
         shard_body = malloc(sizeof(shard_body_send_t));
+        if (!shard_body) {
+            return 1;
+        }
         shard_body->shard_data = shard_data;
         shard_body->length = shard_total_bytes;
         shard_body->remain = shard_total_bytes;
@@ -219,6 +227,9 @@ int fetch_shard(storj_http_options_t *http_options,
     int url_len = strlen(proto) + 3 + strlen(host) + 1 + 10
         + 8 + strlen(shard_hash) + strlen(query_args);
     char *url = calloc(url_len + 1, sizeof(char));
+    if (!url) {
+        return 1;
+    }
     snprintf(url, url_len, "%s://%s:%i/shards/%s%s", proto, host, port,
              shard_hash, query_args);
 
@@ -229,6 +240,9 @@ int fetch_shard(storj_http_options_t *http_options,
     // Set the node id header
     struct curl_slist *node_chunk = NULL;
     char *header = calloc(17 + 40 + 1, sizeof(char));
+    if (!header) {
+        return 1;
+    }
     strcat(header, "x-storj-node-id: ");
     strncat(header, farmer_id, 40);
     node_chunk = curl_slist_append(node_chunk, header);
@@ -238,6 +252,9 @@ int fetch_shard(storj_http_options_t *http_options,
     // Set the body handler
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_shard_receive);
     shard_body_receive_t *body = malloc(sizeof(shard_body_receive_t));
+    if (!body) {
+        return 1;
+    }
     body->data = shard_data;
     body->length = 0;
     body->progress_handle = progress_handle;
@@ -245,6 +262,9 @@ int fetch_shard(storj_http_options_t *http_options,
     body->bytes_since_progress = 0;
     body->canceled = canceled;
     body->sha256_ctx = malloc(sizeof(struct sha256_ctx));
+    if (!body->sha256_ctx) {
+        return 1;
+    }
     sha256_init(body->sha256_ctx);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
 
@@ -281,6 +301,9 @@ int fetch_shard(storj_http_options_t *http_options,
     }
 
     uint8_t *hash_sha256 = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+    if (!hash_sha256) {
+        return 1;
+    }
     sha256_digest(body->sha256_ctx, SHA256_DIGEST_SIZE, hash_sha256);
 
     struct ripemd160_ctx rctx;
@@ -290,9 +313,15 @@ int fetch_shard(storj_http_options_t *http_options,
     free(hash_sha256);
 
     uint8_t *hash_rmd160 = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
+    if (!hash_rmd160) {
+        return 1;
+    }
     ripemd160_digest(&rctx, RIPEMD160_DIGEST_SIZE, hash_rmd160);
 
     char *hash = calloc(RIPEMD160_DIGEST_SIZE * 2 + 1, sizeof(char));
+    if (!hash) {
+        return 1;
+    }
     for (unsigned i = 0; i < RIPEMD160_DIGEST_SIZE; i++) {
         sprintf(&hash[i*2], "%02x", hash_rmd160[i]);
     }
@@ -380,6 +409,9 @@ int fetch_json(storj_http_options_t *http_options,
     int url_len = strlen(options->proto) + 3 + strlen(options->host) +
         1 + 10 + strlen(path);
     char *url = calloc(url_len + 1, sizeof(char));
+    if (!url) {
+        return 1;
+    }
 
     snprintf(url, url_len, "%s://%s:%i%s", options->proto, options->host,
              options->port, path);
@@ -411,6 +443,9 @@ int fetch_json(storj_http_options_t *http_options,
     // Setup the body handler
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_json_receive);
     http_body_receive_t *body = malloc(sizeof(http_body_receive_t));
+    if (!body) {
+        return 1;
+    }
     body->data = NULL;
     body->length = 0;
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
@@ -420,7 +455,13 @@ int fetch_json(storj_http_options_t *http_options,
 
         // Hash password
         uint8_t *pass_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+        if (!pass_hash) {
+            return 1;
+        }
         char *pass = calloc(SHA256_DIGEST_SIZE * 2 + 1, sizeof(char));
+        if (!pass) {
+            return 1;
+        }
         struct sha256_ctx ctx;
         sha256_init(&ctx);
         sha256_update(&ctx, strlen(options->pass), (uint8_t *)options->pass);
@@ -433,6 +474,9 @@ int fetch_json(storj_http_options_t *http_options,
 
         int user_pass_len = strlen(options->user) + 1 + strlen(pass);
         user_pass = calloc(user_pass_len + 1, sizeof(char));
+        if (!user_pass) {
+            return 1;
+        }
         strcat(user_pass, options->user);
         strcat(user_pass, ":");
         strcat(user_pass, pass);
@@ -446,6 +490,9 @@ int fetch_json(storj_http_options_t *http_options,
     struct curl_slist *token_chunk = NULL;
     if (token) {
         char *token_header = calloc(9 + strlen(token) + 1, sizeof(char));
+        if (!token_header) {
+            return 1;
+        }
         strcat(token_header, "X-Token: ");
         strcat(token_header, token);
         token_chunk = curl_slist_append(token_chunk, token_header);
@@ -464,6 +511,9 @@ int fetch_json(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, json_chunk);
 
         post_body = malloc(sizeof(http_body_send_t));
+        if (!post_body) {
+            return 1;
+        }
         post_body->pnt = (char *)req_buf;
         post_body->remain = strlen(req_buf);
 
