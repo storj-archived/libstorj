@@ -34,6 +34,9 @@ int str2hex(unsigned length, char *data, uint8_t *buffer)
     memset(buffer, '\0', length/2 + 1);
 
     unsigned int *tmp = calloc(length/2, sizeof(unsigned int));
+    if (!tmp) {
+        return 1;
+    }
 
     for (i = 0; i<(length/2); i++) {
         sscanf(data + (i*2), "%2x", tmp + i);

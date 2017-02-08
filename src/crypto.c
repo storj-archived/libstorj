@@ -170,7 +170,9 @@ int get_deterministic_key(const char *key, int key_len,
     // Convert input to hexdata
     uint8_t sha512input_as_hex[input_len / 2 + 1];
     memset(sha512input_as_hex, '\0', input_len / 2 + 1);
-    str2hex(input_len, sha512input, sha512input_as_hex);
+    if (str2hex(input_len, sha512input, sha512input_as_hex)) {
+        return 1;
+    }
 
     // Sha512 of hexdata
     uint8_t sha512_digest[SHA512_DIGEST_SIZE];
@@ -289,7 +291,9 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
     int enc_len = len / 2;
     int data_size = enc_len - SHA256_DIGEST_SIZE;
     uint8_t *enc = calloc(enc_len + 1, sizeof(uint8_t));
-    str2hex(len, (char *)data, enc);
+    if (str2hex(len, (char *)data, enc)) {
+        return 1;
+    }
 
     // Get hash from enc data
     uint8_t *data_hash_ctr = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
