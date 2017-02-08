@@ -31,6 +31,9 @@ int calculate_file_id(const char *bucket, const char *file_name, char **buffer)
 int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
 {
     uint8_t *ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
+    if (!ripemd160_digest) {
+        return 1;
+    }
     ripmd160sha256(data, data_size, &ripemd160_digest);
 
     // Convert ripemd160 hex to character array
@@ -65,11 +68,18 @@ int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest)
 int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest)
 {
     uint8_t *first_ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
+    if (!first_ripemd160_digest) {
+        return 1;
+    }
     ripmd160sha256(data, data_size, &first_ripemd160_digest);
 
     uint8_t *second_ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
+    if (!second_ripemd160_digest) {
+        return 1;
+    }
     ripmd160sha256(first_ripemd160_digest, RIPEMD160_DIGEST_SIZE,
                    &second_ripemd160_digest);
+
 
     //Copy the result into buffer
     memcpy(*digest, second_ripemd160_digest, RIPEMD160_DIGEST_SIZE);
@@ -84,7 +94,12 @@ int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size,
                                     char **digest)
 {
     uint8_t *ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
-    double_ripmd160sha256(data, data_size, &ripemd160_digest);
+    if (!ripemd160_digest) {
+        return 1;
+    }
+    if (double_ripmd160sha256(data, data_size, &ripemd160_digest)) {
+        return 1;
+    }
 
     // Convert ripemd160 hex to character array
     char ripemd160_str[RIPEMD160_DIGEST_SIZE*2+1];
@@ -103,9 +118,14 @@ int generate_bucket_key(const char *mnemonic, const char *bucket_id,
                         char **bucket_key)
 {
     char *seed = calloc(128 + 1, sizeof(char));
+    if (!seed) {
+        return 1;
+    }
     mnemonic_to_seed(mnemonic, "", &seed);
     seed[128] = '\0';
-    get_deterministic_key(seed, 128, bucket_id, bucket_key);
+    if (get_deterministic_key(seed, 128, bucket_id, bucket_key)) {
+        return 1;
+    }
 
     memset_zero(seed, 128 + 1);
     free(seed);
@@ -117,7 +137,12 @@ int generate_file_key(const char *mnemonic, const char *bucket_id,
                       const char *file_id, char **file_key)
 {
     char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(mnemonic, bucket_id, &bucket_key);
+    if (!bucket_key) {
+        return 1;
+    }
+    if (generate_bucket_key(mnemonic, bucket_id, &bucket_key)) {
+        return 1;
+    }
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
     get_deterministic_key(bucket_key, 64, file_id, file_key);
@@ -133,6 +158,9 @@ int get_deterministic_key(const char *key, int key_len,
 {
     int input_len = key_len + strlen(id);
     char *sha512input = calloc(input_len + 1, sizeof(char));
+    if (!sha512input) {
+        return 1;
+    }
 
     // Combine key and id
     memcpy(sha512input, key, key_len);
@@ -321,12 +349,21 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
     }
     int buffer_size = data_size + SHA256_DIGEST_SIZE;
     uint8_t *buffer = calloc(buffer_size, sizeof(char));
+    if (!buffer) {
+        return 1;
+    }
 
     struct sha256_ctx *ctx1 = malloc(sizeof(struct sha256_ctx));
+    if (!ctx1) {
+        return 1;
+    }
     sha256_init(ctx1);
     sha256_update(ctx1, data_size, (uint8_t *)data);
     sha256_update(ctx1, strlen(salt), (uint8_t *)salt);
     uint8_t *data_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
+    if (!data_hash) {
+        return 1;
+    }
     sha256_digest(ctx1, SHA256_DIGEST_SIZE, data_hash);
 
     // Copy hash to buffer
@@ -334,6 +371,9 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
 
     // Encrypt data
     struct aes256_ctx *ctx2 = malloc(sizeof(struct aes256_ctx));
+    if (!ctx2) {
+        return 1;
+    }
     aes256_set_encrypt_key(ctx2, key);
     ctr_crypt(ctx2, (nettle_cipher_func *)aes256_encrypt,
               AES_BLOCK_SIZE, data_hash,
@@ -342,6 +382,9 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
 
     // Convert to hex string
     *result = calloc(buffer_size * 2 + 2, sizeof(char));
+    if (!*result) {
+        return 1;
+    }
     hex2str(buffer_size, buffer, *result);
 
     free(buffer);

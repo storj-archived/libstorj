@@ -1299,8 +1299,10 @@ int storj_bridge_resolve_file(storj_env_t *env,
             return STORJ_MEMORY_ERROR;
         }
 
-        generate_file_key(env->encrypt_options->mnemonic, bucket_id,
-                          file_id, &file_key);
+        if (generate_file_key(env->encrypt_options->mnemonic, bucket_id,
+                              file_id, &file_key)) {
+            return STORJ_MEMORY_ERROR;
+        }
         file_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
         uint8_t *decrypt_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));

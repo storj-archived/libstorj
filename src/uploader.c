@@ -1230,7 +1230,12 @@ static void prepare_frame(uv_work_t *work)
     shard_meta->size = read_bytes;
 
     // Calculate Shard Hash
-    ripmd160sha256_as_string(shard_data, shard_meta->size, &shard_meta->hash);
+    if (ripmd160sha256_as_string(shard_data, shard_meta->size,
+                                 &shard_meta->hash)) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
 
     req->log->info(state->env->log_options, state->handle,
                    "Shard (%d) hash: %s", shard_meta->index,
@@ -1270,7 +1275,10 @@ static void prepare_frame(uv_work_t *work)
             state->error_status = STORJ_MEMORY_ERROR;
             return;
         }
-        double_ripmd160sha256_as_string(preleaf, preleaf_size, &buff);
+        if (double_ripmd160sha256_as_string(preleaf, preleaf_size, &buff)) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            return;
+        }
         memcpy(shard_meta->tree[i], buff, RIPEMD160_DIGEST_SIZE*2 + 1);
 
         free(preleaf);
@@ -1901,8 +1909,12 @@ static void prepare_upload_state(uv_work_t *work)
     file_id[FILE_ID_SIZE] = '\0';
     state->file_id = file_id;
 
-    generate_file_key(state->env->encrypt_options->mnemonic, state->bucket_id,
-                      state->file_id, &file_key);
+    if (generate_file_key(state->env->encrypt_options->mnemonic,
+                          state->bucket_id,
+                          state->file_id, &file_key)) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
 
     file_key[DETERMINISTIC_KEY_SIZE] = '\0';
     state->file_key = file_key;
