@@ -193,12 +193,12 @@ static void cleanup_state(storj_upload_state_t *state)
         for (int i = 0; i < state->total_shards; i++ ) {
 
             state->log->debug(state->env->log_options, state->handle,
-                              "Cleaning up shard %d", i);
+                              "fn[cleanup_state] - Cleaning up shard %d", i);
 
             shard_meta_cleanup(state->shard[i].meta);
 
             state->log->debug(state->env->log_options, state->handle,
-                              "Cleaning up pointers %d", i);
+                              "fn[cleanup_state] - Cleaning up pointers %d", i);
 
             pointer_cleanup(state->shard[i].pointer);
             if (state->shard[i].report) {
@@ -854,7 +854,7 @@ static void push_frame(uv_work_t *work)
     json_object_object_add(body, "hash", shard_hash);
 
     // Add shard size
-    json_object *shard_size = json_object_new_double(shard_meta->size);
+    json_object *shard_size = json_object_new_int64(shard_meta->size);
     json_object_object_add(body, "size", shard_size);
 
     // Add shard index
@@ -906,7 +906,7 @@ static void push_frame(uv_work_t *work)
     strcat(resource, state->frame_id);
 
     req->log->debug(state->env->log_options, state->handle,
-                    "JSON body: %s", json_object_to_json_string(body));
+                    "fn[push_frame] - JSON body: %s", json_object_to_json_string(body));
 
     int status_code;
     struct json_object *response = NULL;
@@ -926,7 +926,7 @@ static void push_frame(uv_work_t *work)
     }
 
     req->log->debug(state->env->log_options, state->handle,
-                    "JSON Response: %s",
+                    "fn[push_frame] - JSON Response: %s",
                     json_object_to_json_string(response));
 
     struct json_object *obj_token;
@@ -1368,7 +1368,7 @@ static void request_frame_id(uv_work_t *work)
 
     req->log->debug(state->env->log_options,
                     state->handle,
-                    "JSON body: %s",
+                    "fn[request_frame_id] - JSON body: %s",
                     json_object_to_json_string(body));
 
     int status_code;
@@ -1391,7 +1391,7 @@ static void request_frame_id(uv_work_t *work)
 
     req->log->debug(state->env->log_options,
                     state->handle,
-                    "JSON Response: %s",
+                    "fn[request_frame_id] - JSON Response: %s",
                     json_object_to_json_string(response));
 
     struct json_object *frame_id;

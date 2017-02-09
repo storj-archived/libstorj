@@ -26,7 +26,8 @@ static inline void noop() {};
     "These are common Storj commands for various situations:\n\n"       \
     "account\n"                                                         \
     "  register\n"                                                      \
-    "  set-auth\n\n"                                                    \
+    "  login\n"                                                         \
+    "  export-auth\n\n"                                                 \
     "working with buckets and files\n"                                  \
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
@@ -167,6 +168,41 @@ static void get_input(char *line)
             }
         }
     }
+}
+
+static int generate_menmonic(char **mnemonic)
+{
+    char *strength_str = NULL;
+    int strength = 0;
+    int status = 0;
+
+    while (strength % 32 || strength < 128 || strength > 256) {
+        strength_str = calloc(BUFSIZ, sizeof(char));
+        printf("Common mnemonic strengths: 128, 160, 192, 224, 256\n");
+        printf("Mnemonic strength (default 256): ");
+        get_input(strength_str);
+
+        if (strength_str != NULL) {
+            strength = atoi(strength_str);
+        }
+
+        free(strength_str);
+    }
+
+    if (*mnemonic) {
+        free(*mnemonic);
+    }
+
+    *mnemonic = calloc(250, sizeof(char));
+
+    int generate_code = storj_mnemonic_generate(strength, mnemonic);
+    if (*mnemonic == NULL || generate_code == 0) {
+        printf("Failed to generate mnemonic.\n");
+        status = 1;
+        status = generate_menmonic(mnemonic);
+    }
+
+    return status;
 }
 
 static void get_password(char *password)
@@ -491,6 +527,17 @@ static void register_callback(uv_work_t *work_req, int status)
         struct json_object *email;
         json_object_object_get_ex(req->response, "email", &email);
         printf("Successfully registered %s\n", json_object_get_string(email));
+
+        // save credentials
+        char *mnemonic = NULL;
+        printf("\n");
+        generate_menmonic(&mnemonic);
+        printf("\n");
+        printf("Mnemonic: %s\n", mnemonic);
+
+        if (mnemonic) {
+            free(mnemonic);
+        }
     }
 
     json_object_put(req->response);
@@ -687,6 +734,60 @@ static void get_info_callback(uv_work_t *work_req, int status)
     json_object_put(req->response);
     free(req);
     free(work_req);
+}
+
+static int export_auth(char *host)
+{
+    int status = 0;
+    char *user_file = NULL;
+    char *root_dir = NULL;
+    char *user = NULL;
+    char *pass = NULL;
+    char *mnemonic = NULL;
+    char *key = NULL;
+
+    if (get_user_auth_location(host, &root_dir, &user_file)) {
+        printf("Unable to determine user auth filepath.\n");
+        status = 1;
+        goto clear_variables;
+    }
+
+    if (access(user_file, F_OK) != -1) {
+        key = calloc(BUFSIZ, sizeof(char));
+        printf("Encryption passphrase: ");
+        get_password(key);
+        printf("\n\n");
+
+        if (storj_decrypt_read_auth(user_file, key, &user, &pass, &mnemonic)) {
+            printf("Unable to read user file.\n");
+            status = 1;
+            goto clear_variables;
+        }
+
+        printf("Username:\t%s\nPassword:\t%s\nMnemonic:\t%s\n",
+               user, pass, mnemonic);
+    }
+
+clear_variables:
+    if (user) {
+        free(user);
+    }
+    if (pass) {
+        free(pass);
+    }
+    if (mnemonic) {
+        free(mnemonic);
+    }
+    if (root_dir) {
+        free(root_dir);
+    }
+    if (user_file) {
+        free(user_file);
+    }
+    if (key) {
+        free(key);
+    }
+    return status;
 }
 
 static int set_auth(char *host)
@@ -891,8 +992,12 @@ int main(int argc, char **argv)
     int port = 443;
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
 
-    if (strcmp(command, "set-auth") == 0) {
+    if (strcmp(command, "login") == 0 || strcmp(command, "import-auth") == 0) {
         return set_auth(host);
+    }
+
+    if (strcmp(command, "export-auth") == 0) {
+        return export_auth(host);
     }
 
     // initialize event loop and environment
