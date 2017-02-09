@@ -997,7 +997,12 @@ int main(int argc, char **argv)
     int port = 443;
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
 
-    if (strcmp(command, "login") == 0 || strcmp(command, "import-auth") == 0) {
+    if (strcmp(command, "login") == 0) {
+        printf("'login' is not a storj command. Did you mean 'import-auth'?\n\n");
+        return 1;
+    }
+
+    if (strcmp(command, "import-auth") == 0) {
         return set_auth(host);
     }
 
