@@ -332,16 +332,19 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
         .fd = fd
     };
 
-    uv_signal_t sig;
-    uv_signal_init(env->loop, &sig);
-    uv_signal_start(&sig, upload_signal_handler, SIGINT);
+    uv_signal_t *sig = malloc(sizeof(uv_signal_t));
+    if (!sig) {
+        return 1;
+    }
+    uv_signal_init(env->loop, sig);
+    uv_signal_start(sig, upload_signal_handler, SIGINT);
 
     storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
     if (!state) {
         return 1;
     }
 
-    sig.data = state;
+    sig->data = state;
 
     storj_progress_cb progress_cb = (storj_progress_cb)noop;
     if (env->log_options->level == 0) {
@@ -397,16 +400,16 @@ static int download_file(storj_env_t *env, char *bucket_id,
         return 1;
     }
 
-    uv_signal_t sig;
-    uv_signal_init(env->loop, &sig);
-    uv_signal_start(&sig, download_signal_handler, SIGINT);
+    uv_signal_t *sig = malloc(sizeof(uv_signal_t));
+    uv_signal_init(env->loop, sig);
+    uv_signal_start(sig, download_signal_handler, SIGINT);
 
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
     if (!state) {
         return 1;
     }
 
-    sig.data = state;
+    sig->data = state;
 
     storj_progress_cb progress_cb = (storj_progress_cb)noop;
     if (path && env->log_options->level == 0) {
