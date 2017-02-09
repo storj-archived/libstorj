@@ -211,7 +211,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         }
 #elif _WIN32
         int pass_len = strlen(options->pass);
-        bo->pass = _aligned_malloc(page_size, page_size);
+        bo->pass = VirtualAlloc(NULL, page_size,  MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
         if (bo->pass == NULL) {
             return NULL;
         }
@@ -266,7 +266,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
         }
 #elif _WIN32
         int mnemonic_len = strlen(encrypt_options->mnemonic);
-        eo->mnemonic = _aligned_malloc(page_size, page_size);
+        eo->mnemonic = VirtualAlloc(NULL, page_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
         if (eo->mnemonic == NULL) {
             return NULL;
         }
@@ -377,8 +377,15 @@ int storj_destroy_env(storj_env_t *env)
             status = 1;
         }
 #endif
+
+#ifdef _WIN32
+        VirtualFree((char *)env->bridge_options, pass_len, MEM_RELEASE);
+#else
         free((char *)env->bridge_options->pass);
+#endif
+
     }
+
     free(env->bridge_options);
 
     // free and destroy all encryption options
@@ -396,7 +403,12 @@ int storj_destroy_env(storj_env_t *env)
             status = 1;
         }
 #endif
+
+#ifdef _WIN32
+        VirtualFree((char *)env->bridge_options, mnemonic_len, MEM_RELEASE);
+#else
         free((char *)env->encrypt_options->mnemonic);
+#endif
     }
 
     if (env->encrypt_options->tmp_path) {
