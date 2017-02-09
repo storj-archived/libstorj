@@ -170,7 +170,7 @@ static void get_input(char *line)
     }
 }
 
-static int generate_menmonic(char **mnemonic)
+static int generate_mnemonic(char **mnemonic)
 {
     char *strength_str = NULL;
     int strength = 0;
@@ -199,7 +199,7 @@ static int generate_menmonic(char **mnemonic)
     if (*mnemonic == NULL || generate_code == 0) {
         printf("Failed to generate mnemonic.\n");
         status = 1;
-        status = generate_menmonic(mnemonic);
+        status = generate_mnemonic(mnemonic);
     }
 
     return status;
@@ -528,10 +528,12 @@ static void register_callback(uv_work_t *work_req, int status)
         json_object_object_get_ex(req->response, "email", &email);
         printf("Successfully registered %s\n", json_object_get_string(email));
 
-        // save credentials
+        // TODO save credentials
+        // get handle from req->handle with reference to
+        // the username and password
         char *mnemonic = NULL;
         printf("\n");
-        generate_menmonic(&mnemonic);
+        generate_mnemonic(&mnemonic);
         printf("\n");
         printf("Mnemonic: %s\n", mnemonic);
 
