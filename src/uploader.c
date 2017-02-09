@@ -1781,6 +1781,22 @@ static void queue_send_exchange_report(storj_upload_state_t *state, int index)
     }
 }
 
+static void queue_push_frame_and_shard(storj_upload_state_t *state)
+{
+    for (int index = 0; index < state->total_shards; index++) {
+
+        if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
+            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
+            queue_push_frame(state, index);
+        }
+
+        if (state->shard[index].progress == AWAITING_PUSH_SHARD &&
+            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
+            queue_push_shard(state, index);
+        }
+    }
+}
+
 static void queue_next_work(storj_upload_state_t *state)
 {
     if (state->canceled) {
@@ -1814,21 +1830,6 @@ static void queue_next_work(storj_upload_state_t *state)
         }
     }
 
-    if (state->frame_id && state->tmp_path) {
-        for (int index = 0; index < state->total_shards; index++) {
-
-            if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
-                state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
-                queue_push_frame(state, index);
-            }
-
-            if (state->shard[index].progress == AWAITING_PUSH_SHARD &&
-                state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
-                queue_push_shard(state, index);
-            }
-        }
-    }
-
     // report upload complete
     if (state->completed_shards == state->total_shards &&
         !state->creating_bucket_entry &&
@@ -1840,6 +1841,13 @@ static void queue_next_work(storj_upload_state_t *state)
         if (state->shard[index].report->send_status == STORJ_REPORT_AWAITING_SEND) {
             queue_send_exchange_report(state, index);
         }
+    }
+
+    // NB: This needs to be the last thing, there is a bug with mingw
+    // builds and uv_async_init, where leaving a block will cause the state
+    // pointer to change values.
+    if (state->frame_id && state->tmp_path) {
+        queue_push_frame_and_shard(state);
     }
 }
 
