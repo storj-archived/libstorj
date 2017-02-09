@@ -1816,6 +1816,7 @@ static void queue_next_work(storj_upload_state_t *state)
 
     if (state->frame_id && state->tmp_path) {
         for (int index = 0; index < state->total_shards; index++) {
+
             if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
                 state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
                 queue_push_frame(state, index);
@@ -1871,23 +1872,33 @@ static void prepare_upload_state(uv_work_t *work)
     state->total_shards = ceil((double)state->file_size / state->shard_size);
 
     int tracker_calloc_amount = state->total_shards * sizeof(shard_tracker_t);
-    state->shard = calloc(tracker_calloc_amount, sizeof(char));
+    state->shard = malloc(tracker_calloc_amount);
     if (!state->shard) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
     }
 
-    for (int i = 0; i< state->total_shards; i++) {
+    for (int i = 0; i < state->total_shards; i++) {
+        state->shard[i].progress = AWAITING_PREPARE_FRAME;
+        state->shard[i].push_frame_request_count = 0;
+        state->shard[i].push_shard_request_count = 0;
+        state->shard[i].index = i;
         state->shard[i].pointer = farmer_pointer_new();
+        if (!state->shard[i].pointer) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            return;
+        }
         state->shard[i].meta = shard_meta_new();
         if (!state->shard[i].meta) {
             state->error_status = STORJ_MEMORY_ERROR;
             return;
         }
-        state->shard[i].progress = AWAITING_PREPARE_FRAME;
-        state->shard[i].index = i;
-        state->shard[i].push_frame_request_count = 0;
         state->shard[i].report = storj_exchange_report_new();
+        if (!state->shard[i].report) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            return;
+        }
+        state->shard[i].uploaded_size = 0;
         state->shard[i].work = NULL;
     }
 
