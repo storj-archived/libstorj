@@ -26,7 +26,7 @@ static inline void noop() {};
     "These are common Storj commands for various situations:\n\n"       \
     "account\n"                                                         \
     "  register\n"                                                      \
-    "  login\n"                                                         \
+    "  import-auth\n"                                                   \
     "  export-auth\n\n"                                                 \
     "working with buckets and files\n"                                  \
     "  list-buckets\n"                                                  \
