@@ -194,7 +194,6 @@ static void queue_request_bucket_token(storj_download_state_t *state)
         return;
     }
 
-    // TODO check status
     state->requesting_token = true;
 
 }
@@ -478,8 +477,6 @@ static void after_request_pointers(uv_work_t *work, int status)
 
 static void after_request_replace_pointer(uv_work_t *work, int status)
 {
-    // TODO check status
-
     json_request_replace_pointer_t *req = work->data;
 
     req->state->pending_work_count--;
@@ -753,10 +750,6 @@ static void free_request_shard_work(uv_handle_t *progress_handle)
 static void after_request_shard(uv_work_t *work, int status)
 {
     shard_request_download_t *req = work->data;
-
-    if (status == UV_ECANCELED) {
-        // TODO
-    }
 
     req->state->pending_work_count--;
     req->state->resolving_shards -= 1;

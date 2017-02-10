@@ -32,10 +32,11 @@ static inline void noop() {};
 
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
-    "account\n"                                                         \
-    "  register\n"                                                      \
-    "  import-auth\n"                                                   \
-    "  export-auth\n\n"                                                 \
+    "setting up users profiles\n"                                       \
+    "  register                  setup a new storj bridge user\n"       \
+    "  import-keys               import existing user\n"                \
+    "  export-keys               export bridge user, password and "     \
+    "encryption keys\n\n"                                               \
     "working with buckets and files\n"                                  \
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
@@ -178,7 +179,7 @@ static void get_input(char *line)
     }
 }
 
-static int generate_menmonic(char **mnemonic)
+static int generate_mnemonic(char **mnemonic)
 {
     char *strength_str = NULL;
     int strength = 0;
@@ -207,7 +208,7 @@ static int generate_menmonic(char **mnemonic)
     if (*mnemonic == NULL || generate_code == 0) {
         printf("Failed to generate mnemonic.\n");
         status = 1;
-        status = generate_menmonic(mnemonic);
+        status = generate_mnemonic(mnemonic);
     }
 
     return status;
@@ -340,16 +341,19 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
         .fd = fd
     };
 
-    uv_signal_t sig;
-    uv_signal_init(env->loop, &sig);
-    uv_signal_start(&sig, upload_signal_handler, SIGINT);
+    uv_signal_t *sig = malloc(sizeof(uv_signal_t));
+    if (!sig) {
+        return 1;
+    }
+    uv_signal_init(env->loop, sig);
+    uv_signal_start(sig, upload_signal_handler, SIGINT);
 
     storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
     if (!state) {
         return 1;
     }
 
-    sig.data = state;
+    sig->data = state;
 
     storj_progress_cb progress_cb = (storj_progress_cb)noop;
     if (env->log_options->level == 0) {
@@ -405,16 +409,16 @@ static int download_file(storj_env_t *env, char *bucket_id,
         return 1;
     }
 
-    uv_signal_t sig;
-    uv_signal_init(env->loop, &sig);
-    uv_signal_start(&sig, download_signal_handler, SIGINT);
+    uv_signal_t *sig = malloc(sizeof(uv_signal_t));
+    uv_signal_init(env->loop, sig);
+    uv_signal_start(sig, download_signal_handler, SIGINT);
 
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
     if (!state) {
         return 1;
     }
 
-    sig.data = state;
+    sig->data = state;
 
     storj_progress_cb progress_cb = (storj_progress_cb)noop;
     if (path && env->log_options->level == 0) {
@@ -520,7 +524,7 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-static int set_auth(user_options_t *options)
+static int import_keys(user_options_t *options)
 {
     int status = 0;
     char *host = options->host ? strdup(options->host) : NULL;
@@ -679,14 +683,14 @@ static void register_callback(uv_work_t *work_req, int status)
         // save credentials
         char *mnemonic = NULL;
         printf("\n");
-        generate_menmonic(&mnemonic);
+        generate_mnemonic(&mnemonic);
         printf("\n");
         printf("Mnemonic: %s\n", mnemonic);
 
         user_options_t *user_opts = req->handle;
 
         user_opts->mnemonic = mnemonic;
-        set_auth(user_opts);
+        import_keys(user_opts);
 
         if (mnemonic) {
             free(mnemonic);
@@ -898,7 +902,7 @@ static void get_info_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-static int export_auth(char *host)
+static int export_keys(char *host)
 {
     int status = 0;
     char *user_file = NULL;
@@ -1024,13 +1028,18 @@ int main(int argc, char **argv)
     int port = 443;
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
 
-    if (strcmp(command, "login") == 0 || strcmp(command, "import-auth") == 0) {
-        user_options_t user_options = {NULL, NULL, host, NULL, NULL};
-        return set_auth(&user_options);
+    if (strcmp(command, "login") == 0) {
+        printf("'login' is not a storj command. Did you mean 'import-keys'?\n\n");
+        return 1;
     }
 
-    if (strcmp(command, "export-auth") == 0) {
-        return export_auth(host);
+    if (strcmp(command, "import-keys") == 0) {
+        user_options_t user_options = {NULL, NULL, host, NULL, NULL};
+        return import_keys(&user_options);
+    }
+
+    if (strcmp(command, "export-keys") == 0) {
+        return export_keys(host);
     }
 
     // initialize event loop and environment

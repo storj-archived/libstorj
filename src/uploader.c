@@ -731,6 +731,11 @@ static void after_push_frame(uv_work_t *work, int status)
     // Increment request count every request for retry counts
     state->shard[req->shard_index].push_frame_request_count += 1;
 
+    if (req->error_status) {
+        state->error_status = req->error_status;
+        goto clean_variables;
+    }
+
     // Check if we got a 200 status and token
     if ((req->status_code == 200 || req->status_code == 201) &&
         pointer->token != NULL) {
@@ -815,7 +820,7 @@ static void after_push_frame(uv_work_t *work, int status)
         );
 
     } else if (state->shard[req->shard_index].push_frame_request_count == 6) {
-        state->error_status = req->error_status ?: STORJ_BRIDGE_TOKEN_ERROR;
+        state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
     } else {
         state->shard[req->shard_index].progress = AWAITING_PUSH_FRAME;
     }
