@@ -16,6 +16,14 @@
 
 #include "storj.h"
 
+typedef struct {
+    char *user;
+    char *pass;
+    char *host;
+    char *mnemonic;
+    char *key;
+} user_options_t;
+
 #ifndef errno
 extern int errno;
 #endif
@@ -512,6 +520,146 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+static int set_auth(user_options_t *options)
+{
+    int status = 0;
+    char *host = options->host ? strdup(options->host) : NULL;
+    char *user = options->user ? strdup(options->user) : NULL;
+    char *pass = options->pass ? strdup(options->pass) : NULL;
+    char *key = options->key ? strdup(options->key) : NULL;
+    char *mnemonic = options->mnemonic ? strdup(options->mnemonic): NULL;
+    char *mnemonic_input = NULL;
+    char *user_file = NULL;
+    char *root_dir = NULL;
+    int num_chars;
+
+    char *user_input = calloc(BUFSIZ, sizeof(char));
+    if (user_input == NULL) {
+        printf("Unable to allocate buffer\n");
+        status = 1;
+        goto clear_variables;
+    }
+
+    if (get_user_auth_location(host, &root_dir, &user_file)) {
+        printf("Unable to determine user auth filepath.\n");
+        status = 1;
+        goto clear_variables;
+    }
+
+    struct stat st;
+    if (stat(user_file, &st) == 0) {
+        printf("Would you like to overwrite the current settings?: [y/n] ");
+        get_input(user_input);
+        while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0)
+        {
+            printf("Would you like to overwrite the current settings?: [y/n] ");
+            get_input(user_input);
+        }
+
+        if (strcmp(user_input, "n") == 0) {
+            printf("\nCanceled overwriting of stored credentials.\n");
+            status = 1;
+            goto clear_variables;
+        }
+    }
+
+    if (!user) {
+        printf("Bridge username (email): ");
+        get_input(user_input);
+        num_chars = strlen(user_input);
+        user = calloc(num_chars + 1, sizeof(char));
+        if (!user) {
+            status = 1;
+            goto clear_variables;
+        }
+        memcpy(user, user_input, num_chars * sizeof(char));
+    }
+
+    if (!pass) {
+        printf("Password: ");
+        pass = calloc(BUFSIZ, sizeof(char));
+        if (!pass) {
+            status = 1;
+            goto clear_variables;
+        }
+        get_password(pass);
+        printf("\n");
+    }
+
+    if (!mnemonic) {
+        mnemonic_input = calloc(BUFSIZ, sizeof(char));
+        if (!mnemonic_input) {
+            status = 1;
+            goto clear_variables;
+        }
+
+        printf("Mnemonic: ");
+        get_input(mnemonic_input);
+        num_chars = strlen(mnemonic_input);
+
+        mnemonic = calloc(num_chars + 1, sizeof(char));
+        if (!mnemonic) {
+            status = 1;
+            goto clear_variables;
+        }
+        memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
+
+        if (!storj_mnemonic_check(mnemonic)) {
+            printf("Mnemonic integrity check failed.\n");
+            status = 1;
+            goto clear_variables;
+        }
+    }
+
+    if (!key) {
+        key = calloc(BUFSIZ, sizeof(char));
+        if (get_password_verify("Encryption passphrase: ", key, 0)) {
+            printf("Unable to store encrypted authentication.\n");
+            status = 1;
+            goto clear_variables;
+        }
+        printf("\n");
+    }
+
+    if (make_user_directory(root_dir)) {
+        status = 1;
+        goto clear_variables;
+    }
+
+    if (storj_encrypt_write_auth(user_file, key, user, pass, mnemonic)) {
+        status = 1;
+        printf("Failed to write to disk\n");
+        goto clear_variables;
+    }
+
+    printf("Successfully stored username, password, and mnemonic.\n");
+
+clear_variables:
+    if (user) {
+        free(user);
+    }
+    if (user_input) {
+        free(user_input);
+    }
+    if (pass) {
+        free(pass);
+    }
+    if (mnemonic) {
+        free(mnemonic);
+    }
+    if (mnemonic_input) {
+        free(mnemonic_input);
+    }
+    if (key) {
+        free(key);
+    }
+    if (root_dir) {
+        free(root_dir);
+    }
+
+    return status;
+}
+
 static void register_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -535,8 +683,22 @@ static void register_callback(uv_work_t *work_req, int status)
         printf("\n");
         printf("Mnemonic: %s\n", mnemonic);
 
+        user_options_t *user_opts = req->handle;
+
+        user_opts->mnemonic = mnemonic;
+        set_auth(user_opts);
+
         if (mnemonic) {
             free(mnemonic);
+        }
+        if (user_opts->pass) {
+            free(user_opts->pass);
+        }
+        if (user_opts->user) {
+            free(user_opts->user);
+        }
+        if (user_opts->host) {
+            free(user_opts->host);
         }
     }
 
@@ -790,136 +952,6 @@ clear_variables:
     return status;
 }
 
-static int set_auth(char *host)
-{
-    int status = 0;
-    char *user = NULL;
-    char *pass = NULL;
-    char *mnemonic = NULL;
-    char *mnemonic_input = NULL;
-    char *key = NULL;
-
-    char *user_input = calloc(BUFSIZ, sizeof(char));
-    if (user_input == NULL) {
-        printf("Unable to allocate buffer\n");
-        status = 1;
-        goto clear_variables;
-    }
-
-    char *user_file = NULL;
-    char *root_dir = NULL;
-    if (get_user_auth_location(host, &root_dir, &user_file)) {
-        printf("Unable to determine user auth filepath.\n");
-        status = 1;
-        goto clear_variables;
-    }
-
-    struct stat st;
-    if (stat(user_file, &st) == 0) {
-        printf("Would you like to overwrite the current settings?: [y/n] ");
-        get_input(user_input);
-        while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0)
-        {
-            printf("Would you like to overwrite the current settings?: [y/n] ");
-            get_input(user_input);
-        }
-
-        if (strcmp(user_input, "n") == 0) {
-            printf("\nCanceled overwriting of stored credentials.\n");
-            status = 1;
-            goto clear_variables;
-        }
-    }
-
-    printf("Bridge username (email): ");
-    get_input(user_input);
-    int num_chars = strlen(user_input);
-    user = calloc(num_chars + 1, sizeof(char));
-    if (!user) {
-        status = 1;
-        goto clear_variables;
-    }
-    memcpy(user, user_input, num_chars * sizeof(char));
-
-    printf("Password: ");
-    pass = calloc(BUFSIZ, sizeof(char));
-    if (!pass) {
-        status = 1;
-        goto clear_variables;
-    }
-    get_password(pass);
-    printf("\n");
-
-    mnemonic_input = calloc(BUFSIZ, sizeof(char));
-    if (!mnemonic_input) {
-        status = 1;
-        goto clear_variables;
-    }
-
-    printf("Mnemonic: ");
-    get_input(mnemonic_input);
-    num_chars = strlen(mnemonic_input);
-
-    mnemonic = calloc(num_chars + 1, sizeof(char));
-    if (!mnemonic) {
-        status = 1;
-        goto clear_variables;
-    }
-    memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
-
-    if (!storj_mnemonic_check(mnemonic)) {
-        printf("Mnemonic integrity check failed.\n");
-        status = 1;
-        goto clear_variables;
-    }
-
-    key = calloc(BUFSIZ, sizeof(char));
-    if (get_password_verify("Encryption passphrase: ", key, 0)) {
-        printf("Unable to store encrypted authentication.\n");
-        status = 1;
-        goto clear_variables;
-    }
-    printf("\n");
-
-    if (make_user_directory(root_dir)) {
-        status = 1;
-        goto clear_variables;
-    }
-
-    if (storj_encrypt_write_auth(user_file, key, user, pass, mnemonic)) {
-        status = 1;
-        printf("Failed to write to disk\n");
-        goto clear_variables;
-    }
-
-    printf("Successfully stored username, password, and mnemonic.\n");
-
-clear_variables:
-    if (user) {
-        free(user);
-    }
-    if (user_input) {
-        free(user_input);
-    }
-    if (pass) {
-        free(pass);
-    }
-    if (mnemonic) {
-        free(mnemonic);
-    }
-    if (mnemonic_input) {
-        free(mnemonic_input);
-    }
-    if (key) {
-        free(key);
-    }
-    if (root_dir) {
-        free(root_dir);
-    }
-
-    return status;
-}
-
 int main(int argc, char **argv)
 {
     int status = 0;
@@ -993,7 +1025,8 @@ int main(int argc, char **argv)
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
 
     if (strcmp(command, "login") == 0 || strcmp(command, "import-auth") == 0) {
-        return set_auth(host);
+        user_options_t user_options = {NULL, NULL, host, NULL, NULL};
+        return set_auth(&user_options);
     }
 
     if (strcmp(command, "export-auth") == 0) {
@@ -1065,7 +1098,13 @@ int main(int argc, char **argv)
         get_password(pass);
         printf("\n");
 
-        storj_bridge_register(env, user, pass, NULL, register_callback);
+        user_options_t user_opts = {strdup(user), strdup(pass), strdup(host), NULL, NULL};
+
+        if (!user_opts.user || !user_opts.host || !user_opts.pass) {
+            return 1;
+        }
+
+        storj_bridge_register(env, user, pass, &user_opts, register_callback);
     } else {
 
         char *user_file = NULL;
