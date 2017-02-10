@@ -48,7 +48,15 @@ static inline void noop() {};
     "  -p, --proxy <url>         set the socks proxy "                  \
     "(e.g. socks5://<host>:<port>)\n"                                   \
     "  -l, --log <level>         set the log level (default 0)\n"       \
-    "  -d, --debug               set the debug log level\n\n"
+    "  -d, --debug               set the debug log level\n\n"           \
+    "environment variables:\n"                                          \
+    "  STORJ_KEYPASS             imported user settings passphrase\n"   \
+    "  STORJ_BRIDGE              the bridge host "                      \
+    "(e.g. https://api.storj.io)\n"                                     \
+    "  STORJ_BRIDGE_USER         bridge username\n"                     \
+    "  STORJ_BRIDGE_PASS         bridge password\n"                     \
+    "  STORJ_MNEMONIC            file encryption mnemonic key\n\n"
+
 
 #define CLI_VERSION "libstorj-1.0.0-alpha"
 
