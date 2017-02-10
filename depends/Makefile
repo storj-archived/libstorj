@@ -34,14 +34,15 @@ host_os=$(full_host_os)
 endif
 
 # mac build
-DARWIN_SDK_PATH ?= "/Library/Developer/CommandLineTools/SDKs/MacOSX10.12.sdk"
-DARWIN_CFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH)"
+DARWIN_SDK_PATH ?= "/home/bgf/storj/libstorj-c/depends/MacOSX10.11.sdk"
+DARWIN_CFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH) -mmacosx-version-min=10.8 -mlinker-version=253.9 -pipe -I$(PREFIX_DIR)include"
+DARWIN_LDFLAGS="-L/home/bgf/vendor/clang+llvm/lib -L$(DARWIN_SDK_PATH)/usr/lib -L$(PREFIX_DIR)lib -Wl,-syslibroot $(DARWIN_SDK_PATH)"
 
 build_SHA256SUM = $(if "$(build_os)" == "darwin",shasum -a 256,sha256sum -c)
 
 build_env=
 ifeq ($(host_os), darwin)
-build_env=CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS)
+build_env=PATH="/home/bgf/vendor/clang+llvm/bin:${PATH}" CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS) LDFLAGS=$(DARWIN_LDFLAGS)
 endif
 ifeq ($(HOST), i686-pc-linux-gnu)
 build_env=CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32
@@ -87,6 +88,7 @@ define build_source
 	echo "host: $(HOST)" && \
 	echo "prefix: $(PREFIX_DIR)" && \
 	echo "====================================\n\n" && \
+	export PATH="/home/bgf/vendor/clang+llvm/bin:${PATH}" && \
 	if test -f "./autogen.sh"; then ./autogen.sh; fi && \
 	$(build_env) $($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) --enable-static --disable-shared --prefix=$(PREFIX_DIR) || exit && \
 	make || exit && \
