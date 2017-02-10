@@ -24,10 +24,11 @@ static inline void noop() {};
 
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
-    "account\n"                                                         \
-    "  register\n"                                                      \
-    "  import-auth\n"                                                   \
-    "  export-auth\n\n"                                                 \
+    "setting up users profiles\n"                                       \
+    "  register                  setup a new storj bridge user\n"       \
+    "  import-keys               import existing user\n"                \
+    "  export-keys               export bridge user, password and "     \
+    "encryption keys\n\n"                                               \
     "working with buckets and files\n"                                  \
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
@@ -741,7 +742,7 @@ static void get_info_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-static int export_auth(char *host)
+static int export_keys(char *host)
 {
     int status = 0;
     char *user_file = NULL;
@@ -795,7 +796,7 @@ clear_variables:
     return status;
 }
 
-static int set_auth(char *host)
+static int import_keys(char *host)
 {
     int status = 0;
     char *user = NULL;
@@ -998,16 +999,16 @@ int main(int argc, char **argv)
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
 
     if (strcmp(command, "login") == 0) {
-        printf("'login' is not a storj command. Did you mean 'import-auth'?\n\n");
+        printf("'login' is not a storj command. Did you mean 'import-keys'?\n\n");
         return 1;
     }
 
-    if (strcmp(command, "import-auth") == 0) {
-        return set_auth(host);
+    if (strcmp(command, "import-keys") == 0) {
+        return import_keys(host);
     }
 
-    if (strcmp(command, "export-auth") == 0) {
-        return export_auth(host);
+    if (strcmp(command, "export-keys") == 0) {
+        return export_keys(host);
     }
 
     // initialize event loop and environment
