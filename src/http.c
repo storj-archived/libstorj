@@ -59,6 +59,7 @@ int put_shard(storj_http_options_t *http_options,
               uv_async_t *progress_handle,
               bool *canceled)
 {
+    int return_code = 0;
 
     CURL *curl = curl_easy_init();
     if (!curl) {
@@ -136,11 +137,13 @@ int put_shard(storj_http_options_t *http_options,
     free(header);
 
     if (*canceled) {
+        return_code = 1;
         goto clean_up;
     }
 
     if (req != CURLE_OK) {
-        return req;
+        return_code = req;
+        goto clean_up;
     }
 
     // set the status code
@@ -150,7 +153,8 @@ int put_shard(storj_http_options_t *http_options,
 
     // check that total bytes have been sent
     if (shard_body->total_sent != shard_total_bytes) {
-        return 1;
+        return_code = 1;
+        goto clean_up;
     }
 
 clean_up:
@@ -162,7 +166,7 @@ clean_up:
     free(url);
     curl_easy_cleanup(curl);
 
-    return 0;
+    return return_code;
 }
 
 static size_t body_shard_receive(void *buffer, size_t size, size_t nmemb,
