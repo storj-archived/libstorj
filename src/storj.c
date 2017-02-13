@@ -658,7 +658,9 @@ char *storj_strerror(int error_code)
         case STORJ_BRIDGE_FRAME_ERROR:
             return "Bridge frame request error";
         case STORJ_FILE_ENCRYPTION_ERROR:
-            return "File Encryption error";
+            return "File encryption error";
+        case STORJ_FILE_SIZE_ERROR:
+            return "File size error";
         case STORJ_TRANSFER_CANCELED:
             return "File transfer canceled";
         case STORJ_MEMORY_ERROR:
