@@ -1,6 +1,6 @@
 #include "crypto.h"
 
-int calculate_file_id(const char *bucket, const char *file_name, char **buffer)
+int calculate_file_id_by_name(const char *bucket, const char *file_name, char **buffer)
 {
     // Combine bucket and file_name
     int name_len = strlen(bucket) + strlen(file_name);
@@ -255,6 +255,58 @@ int increment_ctr_aes_iv(uint8_t *iv, uint64_t bytes_position)
         }
         times--;
     }
+
+    return 0;
+}
+
+int calculate_file_id(FILE *fp, char *salt, int salt_len, char **digest)
+{
+    if (NULL == fp) {
+        return 1;
+    }
+
+    int read_bytes = 0;
+
+    // Calculate sha256 of file data
+    uint8_t sha256_data[SHA256_DIGEST_SIZE];
+    struct sha256_ctx sha_ctx;
+    sha256_init(&sha_ctx);
+    char read_data[16];
+
+    memset_zero(read_data, 16);
+    memset_zero(sha256_data, SHA256_DIGEST_SIZE);
+
+    if (salt && salt_len > 0) {
+        sha256_update(&sha_ctx, salt_len, salt);
+    }
+
+    while ((read_bytes = fread(read_data, 1, 16, fp)) > 0)
+    {
+        sha256_update(&sha_ctx, read_bytes, read_data);
+    }
+
+    sha256_digest(&sha_ctx, SHA256_DIGEST_SIZE, sha256_data);
+
+    // Calculate ripemd160 of sha256
+    struct ripemd160_ctx ripemd_ctx;
+    uint8_t ripemd160_data[RIPEMD160_DIGEST_SIZE];
+
+    memset_zero(ripemd160_data, RIPEMD160_DIGEST_SIZE);
+
+    ripemd160_init(&ripemd_ctx);
+    ripemd160_update(&ripemd_ctx, SHA256_DIGEST_SIZE, sha256_data);
+    ripemd160_digest(&ripemd_ctx, RIPEMD160_DIGEST_SIZE, ripemd160_data);
+
+    // Convert ripemd160 to string
+    *digest = calloc((RIPEMD160_DIGEST_SIZE * 2) + 2, sizeof(char));
+    if (!*digest) {
+        return 1;
+    }
+
+    hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_data, *digest);
+
+    memset_zero(sha256_data, SHA256_DIGEST_SIZE);
+    memset_zero(ripemd160_data, RIPEMD160_DIGEST_SIZE);
 
     return 0;
 }

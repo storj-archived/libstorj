@@ -41,6 +41,8 @@ int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest);
 int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size,
                                     char **digest);
 
+int calculate_file_id(FILE *fp, char *salt, int salt_len, char **digest);
+
 void pbkdf2_hmac_sha512(unsigned key_length,
                         const uint8_t *key,
                         unsigned iterations,
@@ -55,7 +57,7 @@ void pbkdf2_hmac_sha512(unsigned key_length,
  * @param[out] buffer 12 byte character array that is the file's id
  * @return A non-zero error value on failure and 0 on success.
  */
-int calculate_file_id(const char *bucket, const char *file_name, char **buffer);
+int calculate_file_id_by_name(const char *bucket, const char *file_name, char **buffer);
 
 /**
  * @brief Generate a bucket's key
