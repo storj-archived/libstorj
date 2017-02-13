@@ -23,7 +23,7 @@ int calculate_file_id_by_name(const char *bucket, const char *file_name, char **
     hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest, ripemd160_str);
 
     //Copy the result into buffer
-    memcpy(*buffer, ripemd160_str, FILE_ID_SIZE);
+    memcpy(*buffer, ripemd160_str, FILE_ID_BY_NAME_SIZE);
 
     return 0;
 }

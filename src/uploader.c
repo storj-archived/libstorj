@@ -213,28 +213,6 @@ static void cleanup_state(storj_upload_state_t *state)
     free(state);
 }
 
-static uint64_t check_file(storj_env_t *env, const char *filepath)
-{
-    int r = 0;
-    uv_fs_t *stat_req = malloc(sizeof(uv_fs_t));
-    if (!stat_req) {
-        return 0;
-    }
-
-    r = uv_fs_stat(env->loop, stat_req, filepath, NULL);
-    if (r < 0) {
-        const char *msg = uv_strerror(r);
-        free(stat_req);
-        return 0;
-    }
-
-    long long size = (stat_req->statbuf.st_size);
-
-    free(stat_req);
-
-    return size;
-}
-
 static uint64_t determine_shard_size(storj_upload_state_t *state,
                                      int accumulator)
 {
@@ -1457,7 +1435,10 @@ static void after_encrypt_file(uv_work_t *work, int status)
         goto clean_variables;
     }
 
-    if (check_file(state->env, req->tmp_path) == state->file_size) {
+    struct stat st;
+    fstat(fileno(fopen(req->tmp_path, "r")), &st);
+
+    if (st.st_size == state->file_size) {
         state->encrypting_file = false;
         state->tmp_path = calloc(strlen(req->tmp_path) +1, sizeof(char));
         if (!state->tmp_path) {
@@ -1547,7 +1528,8 @@ static void encrypt_file(uv_work_t *work)
         req->error_status = STORJ_MEMORY_ERROR;
         return;
     }
-    ripemd160_of_str((uint8_t *)req->file_id, FILE_ID_SIZE, salt);
+
+    ripemd160_of_str((uint8_t *)req->file_id, strlen(req->file_id), salt);
     salt[RIPEMD160_DIGEST_SIZE] = '\0';
 
     // Encrypt file
@@ -1576,6 +1558,7 @@ static void encrypt_file(uv_work_t *work)
     memset(cphr_txt, '\0', AES_BLOCK_SIZE * 256 + 1);
 
     if (original_file) {
+        fseek(original_file, 0, SEEK_SET);
         size_t bytes_read = 0;
         // read up to sizeof(buffer) bytes
         while ((bytes_read = fread(clr_txt, 1, AES_BLOCK_SIZE * 256,
@@ -1920,7 +1903,9 @@ static void prepare_upload_state(uv_work_t *work)
         return;
     }
 
-    calculate_file_id_by_name(state->bucket_id, state->file_name, &file_id);
+    const char *user = state->env->bridge_options->user;
+
+    calculate_file_id(state->original_file, (char *)user, strlen(user), &file_id);
 
     file_id[FILE_ID_SIZE] = '\0';
     state->file_id = file_id;

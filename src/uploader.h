@@ -120,8 +120,6 @@ static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state);
 static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state);
 static uv_work_t *uv_work_new();
 
-static uint64_t check_file(storj_env_t *env, const char *filepath);
-
 static void shard_meta_cleanup(shard_meta_t *shard_meta);
 static void pointer_cleanup(farmer_pointer_t *farmer_pointer);
 static void cleanup_state(storj_upload_state_t *state);
