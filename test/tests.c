@@ -988,6 +988,57 @@ int test_generate_seed()
     return 0;
 }
 
+int test_generate_seed_256()
+{
+    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art";
+    char *seed = calloc(128 + 1, sizeof(char));
+    char *expected_seed = "408b285c123836004f4b8842c89324c1f01382450c0d439af345ba7fc49acf705489c6fc77dbd4e3dc1dd8cc6bc9f043db8ada1e243c4a0eafb290d399480840";
+
+    mnemonic_to_seed(mnemonic, "", &seed);
+    seed[128] = '\0';
+
+    int check = memcmp(seed, expected_seed, 128);
+    if (check != 0) {
+        fail("test_generate_seed_256");
+        printf("\t\texpected seed: %s\n", expected_seed);
+        printf("\t\tactual seed:   %s\n", seed);
+
+        free(seed);
+        return 1;
+    }
+
+    free(seed);
+    pass("test_generate_seed_256");
+
+    return 0;
+}
+
+
+int test_generate_seed_256_trezor()
+{
+    char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art";
+    char *seed = calloc(128 + 1, sizeof(char));
+    char *expected_seed = "bda85446c68413707090a52022edd26a1c9462295029f2e60cd7c4f2bbd3097170af7a4d73245cafa9c3cca8d561a7c3de6f5d4a10be8ed2a5e608d68f92fcc8";
+
+    mnemonic_to_seed(mnemonic, "TREZOR", &seed);
+    seed[128] = '\0';
+
+    int check = memcmp(seed, expected_seed, 128);
+    if (check != 0) {
+        fail("test_generate_seed_256_trezor");
+        printf("\t\texpected seed: %s\n", expected_seed);
+        printf("\t\tactual seed:   %s\n", seed);
+
+        free(seed);
+        return 1;
+    }
+
+    free(seed);
+    pass("test_generate_seed_256_trezor");
+
+    return 0;
+}
+
 int test_generate_bucket_key()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -1192,7 +1243,7 @@ int test_read_write_encrypted_file()
     strcpy(test_file, folder);
     strcat(test_file, "storj-test-user.json");
     if (access(test_file, F_OK) != -1) {
-        // unlink(test_file);
+        unlink(test_file);
     }
 
     // it should successfully encrypt and decrypt a file with the provided key and salt
@@ -1280,15 +1331,15 @@ int main(void)
     test_api();
     printf("\n");
 
-    // printf("Test Suite: Uploads\n");
-    // test_upload();
-    // test_upload_cancel();
-    // printf("\n");
-    //
-    // printf("Test Suite: Downloads\n");
-    // test_download();
-    // test_download_cancel();
-    // printf("\n");
+    printf("Test Suite: Uploads\n");
+    test_upload();
+    test_upload_cancel();
+    printf("\n");
+
+    printf("Test Suite: Downloads\n");
+    test_download();
+    test_download_cancel();
+    printf("\n");
 
     printf("Test Suite: BIP39\n");
     test_mnemonic_check();
@@ -1296,6 +1347,8 @@ int main(void)
     test_storj_mnemonic_generate();
     test_storj_mnemonic_generate_256();
     test_generate_seed();
+    test_generate_seed_256();
+    test_generate_seed_256_trezor();
     printf("\n");
 
     printf("Test Suite: Crypto\n");
