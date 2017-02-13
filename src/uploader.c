@@ -458,6 +458,8 @@ static void after_push_shard(uv_work_t *work, int status)
         shard->progress = COMPLETED_PUSH_SHARD;
         state->completed_shards += 1;
         shard->push_shard_request_count = 0;
+
+        // Update the uploaded size outside of the progress async handle
         shard->uploaded_size = shard->meta->size;
 
         // Update the exchange report with success
