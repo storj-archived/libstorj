@@ -1443,8 +1443,21 @@ static void after_encrypt_file(uv_work_t *work, int status)
         goto clean_variables;
     }
 
-    struct stat st;
-    fstat(fileno(fopen(req->tmp_path, "r")), &st);
+
+#ifdef _WIN32
+        struct __stat64 st;
+
+        if(_stati64(req->tmp_path, &st) != 0) {
+            req->log->warn(state->env->log_options, state->handle,
+                            "Invalid size or path to temp file");
+        }
+#else
+        struct stat st;
+        if(stat(req->tmp_path, &st) != 0) {
+            req->log->warn(state->env->log_options, state->handle,
+                            "Invalid size or path to temp file");
+        }
+#endif
 
     if (st.st_size == state->file_size) {
         state->encrypting_file = false;
