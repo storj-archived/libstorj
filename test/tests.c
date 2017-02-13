@@ -1069,13 +1069,23 @@ int test_generate_file_key()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *bucket_id = "0123456789ab0123456789ab";
-    char *file_name = "samplefile.txt";
-    char *file_id = calloc(FILE_ID_BY_NAME_SIZE + 1, sizeof(char));
+    char *file_id = NULL;
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    char *expected_file_key = "fe5fe4dcc5cb094666957d135341283d1af766cfe3174b75e15935ef5387c533";
+    char *expected_file_key = "941058e3cef448e7d1d741fb2f494e1754d256709a2e4409b840877ceafb01ff";
 
-    calculate_file_id_by_name(bucket_id, file_name, &file_id);
-    file_id[FILE_ID_BY_NAME_SIZE] = '\0';
+    char *file_name = "storj-test-upload.data";
+    int len = strlen(folder) + strlen(file_name);
+    char *file = calloc(len + 1, sizeof(char));
+    strcpy(file, folder);
+    strcat(file, file_name);
+    file[len] = '\0';
+
+    create_test_upload_file(file);
+
+    FILE *fp = fopen(file, "r");
+
+    calculate_file_id(fp, NULL, 0, &file_id);
+    file_id[FILE_ID_SIZE] = '\0';
     generate_file_key(mnemonic, bucket_id, file_id, &file_key);
     file_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
@@ -1092,6 +1102,7 @@ int test_generate_file_key()
 
     free(file_key);
     free(file_id);
+    fclose(fp);
     pass("test_generate_file_key");
 
     return 0;
