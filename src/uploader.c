@@ -262,8 +262,8 @@ static uint64_t determine_shard_size(storj_upload_state_t *state,
     int hops = ((accumulator - SHARD_MULTIPLES_BACK) < 0 ) ?
         0 : accumulator - SHARD_MULTIPLES_BACK;
 
-    uint64_t byteMultiple = shard_size(accumulator);
-    double check = (double) file_size / byteMultiple;
+    uint64_t byte_multiple = shard_size(accumulator);
+    double check = (double) file_size / byte_multiple;
 
     // Determine if bytemultiple is highest bytemultiple that is still <= size
     if (check > 0 && check <= 1) {
@@ -276,6 +276,11 @@ static uint64_t determine_shard_size(storj_upload_state_t *state,
         }
 
         return shard_size(hops);
+    }
+
+    // Maximum of 2 ^ 41 * 8 * 1024 * 1024
+    if (accumulator > 41) {
+        return 0;
     }
 
     return determine_shard_size(state, ++accumulator);
@@ -1866,17 +1871,30 @@ static void prepare_upload_state(uv_work_t *work)
     storj_upload_state_t *state = work->data;
 
     // Get the file size, expect to be up to 10tb
-    struct stat st;
+#ifdef _WIN32
+    struct __stat64 st;
 
+    if(_fstati64(fileno(state->original_file), &st) != 0) {
+        state->error_status = STORJ_FILE_INTEGRITY_ERROR;
+        return;
+    }
+#else
+    struct stat st;
     if(fstat(fileno(state->original_file), &st) != 0) {
         state->error_status = STORJ_FILE_INTEGRITY_ERROR;
         return;
     }
+#endif
 
     state->file_size = st.st_size;
 
     // Set Shard calculations
     state->shard_size = determine_shard_size(state, 0);
+    if (!state->shard_size) {
+        state->error_status = STORJ_FILE_SIZE_ERROR;
+        return;
+    }
+
     state->total_shards = ceil((double)state->file_size / state->shard_size);
 
     int tracker_calloc_amount = state->total_shards * sizeof(shard_tracker_t);
