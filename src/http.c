@@ -148,6 +148,11 @@ int put_shard(storj_http_options_t *http_options,
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &_status_code);
     *status_code = (int)_status_code;
 
+    // check that total bytes have been sent
+    if (shard_body->total_sent != shard_total_bytes) {
+        return 1;
+    }
+
 clean_up:
 
     // clean up memory

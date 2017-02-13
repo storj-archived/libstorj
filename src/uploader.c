@@ -423,13 +423,11 @@ static void after_push_shard(uv_work_t *work, int status)
     shard->report->start = req->start;
     shard->report->end = req->end;
 
-    if (req->error_status) {
-        state->error_status = req->error_status;
-        goto clean_variables;
-    }
-
     // Check if we got a 200 status and token
-    if (req->status_code == 200 || req->status_code == 201 || req->status_code == 304) {
+    if (!req->error_status &&
+        (req->status_code == 200 ||
+         req->status_code == 201 ||
+         req->status_code == 304)) {
 
         req->log->info(state->env->log_options, state->handle,
                        "Successfully transfered shard index %d",
@@ -438,6 +436,7 @@ static void after_push_shard(uv_work_t *work, int status)
         shard->progress = COMPLETED_PUSH_SHARD;
         state->completed_shards += 1;
         shard->push_shard_request_count = 0;
+        shard->uploaded_size = shard->meta->size;
 
         // Update the exchange report with success
         shard->report->code = STORJ_REPORT_SUCCESS;
@@ -445,6 +444,7 @@ static void after_push_shard(uv_work_t *work, int status)
         shard->report->send_status = STORJ_REPORT_AWAITING_SEND;
 
     } else if (!state->canceled){
+
         // Update the exchange report with failure
         shard->report->code = STORJ_REPORT_FAILURE;
         shard->report->message = STORJ_REPORT_UPLOAD_ERROR;
@@ -554,6 +554,7 @@ static void push_shard(uv_work_t *work)
 
 
     if (req_status) {
+        req->error_status = req_status;
         req->log->error(state->env->log_options, state->handle,
                         "Put shard request error code: %i", req_status);
     }
