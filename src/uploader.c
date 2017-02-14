@@ -318,7 +318,10 @@ static void create_bucket_entry(uv_work_t *work)
     json_object_object_add(body, "frame", frame);
 
     json_object *file_name = json_object_new_string(state->file_name);
-    json_object_object_add(body, "filename",file_name);
+    json_object_object_add(body, "filename", file_name);
+
+    json_object *id = json_object_new_string(state->file_id);
+    json_object_object_add(body, "id", id);
 
     int path_len = strlen(state->bucket_id) + 16;
     char *path = calloc(path_len + 1, sizeof(char));
@@ -1943,6 +1946,8 @@ static void prepare_upload_state(uv_work_t *work)
 
     file_id[FILE_ID_SIZE] = '\0';
     state->file_id = file_id;
+
+    printf("ID: %s\n", state->file_id);
 
     if (generate_file_key(state->env->encrypt_options->mnemonic,
                           state->bucket_id,
