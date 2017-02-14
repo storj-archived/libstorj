@@ -1315,7 +1315,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
         if (!file_id_hash) {
             return STORJ_MEMORY_ERROR;
         }
-        ripemd160_of_str((uint8_t *)file_id, FILE_ID_BY_NAME_SIZE, file_id_hash);
+        ripemd160_of_str((uint8_t *)file_id, strlen(file_id), file_id_hash);
         file_id_hash[RIPEMD160_DIGEST_SIZE] = '\0';
 
         uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
