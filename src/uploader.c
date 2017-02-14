@@ -1237,7 +1237,7 @@ static void prepare_frame(uv_work_t *work)
     struct sha256_ctx first_sha256_for_leaf[STORJ_SHARD_CHALLENGES];
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         sha256_init(&first_sha256_for_leaf[i]);
-        sha256_update(&first_sha256_for_leaf[i], 32, &shard_meta->challenges[i]);
+        sha256_update(&first_sha256_for_leaf[i], 32, (char *)&shard_meta->challenges[i]);
     }
 
     // read from file
