@@ -668,6 +668,12 @@ clear_variables:
     if (root_dir) {
         free(root_dir);
     }
+    if (user_file) {
+        free(user_file);
+    }
+    if (host) {
+        free(host);
+    }
 
     return status;
 }
