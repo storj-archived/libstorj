@@ -22,7 +22,7 @@ storj_http_options_t http_options = {
 };
 
 storj_log_options_t log_options = {
-    .level = 4
+    .level = 0
 };
 
 void fail(char *msg)
@@ -1349,33 +1349,33 @@ int main(void)
     test_upload_cancel();
     printf("\n");
 
-    printf("Test Suite: Downloads\n");
-    test_download();
-    test_download_cancel();
-    printf("\n");
-
-    printf("Test Suite: BIP39\n");
-    test_mnemonic_check();
-    test_mnemonic_generate();
-    test_storj_mnemonic_generate();
-    test_storj_mnemonic_generate_256();
-    test_generate_seed();
-    test_generate_seed_256();
-    test_generate_seed_256_trezor();
-    printf("\n");
-
-    printf("Test Suite: Crypto\n");
-    test_calculate_file_id_by_name();
-    test_calculate_file_id_by_file();
-    test_generate_bucket_key();
-    test_generate_file_key();
-    test_increment_ctr_aes_iv();
-    test_read_write_encrypted_file();
-    printf("\n");
-
-    printf("Test Suite: Utils\n");
-    test_str2hex();
-    test_get_time_milliseconds();
+    // printf("Test Suite: Downloads\n");
+    // test_download();
+    // test_download_cancel();
+    // printf("\n");
+    //
+    // printf("Test Suite: BIP39\n");
+    // test_mnemonic_check();
+    // test_mnemonic_generate();
+    // test_storj_mnemonic_generate();
+    // test_storj_mnemonic_generate_256();
+    // test_generate_seed();
+    // test_generate_seed_256();
+    // test_generate_seed_256_trezor();
+    // printf("\n");
+    //
+    // printf("Test Suite: Crypto\n");
+    // test_calculate_file_id_by_name();
+    // test_calculate_file_id_by_file();
+    // test_generate_bucket_key();
+    // test_generate_file_key();
+    // test_increment_ctr_aes_iv();
+    // test_read_write_encrypted_file();
+    // printf("\n");
+    //
+    // printf("Test Suite: Utils\n");
+    // test_str2hex();
+    // test_get_time_milliseconds();
 
     int num_failed = tests_ran - test_status;
     printf(KGRN "\nPASSED: %i" RESET, test_status);

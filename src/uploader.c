@@ -1110,6 +1110,8 @@ static void after_prepare_frame(uv_work_t *work, int status)
            shard_meta->hash,
            RIPEMD160_DIGEST_SIZE * 2);
 
+    printf("Hash (%d): %s\n", shard_meta->index, state->shard[shard_meta->index].meta->hash);
+
     // Add challenges_as_str
     state->log->debug(state->env->log_options, state->handle,
                       "Challenges for shard index %d",
