@@ -546,7 +546,6 @@ static void push_shard(uv_work_t *work)
         }
 
     } while(read_bytes < shard->meta->size);
-
     req->start = get_time_milliseconds();
 
     int req_status = put_shard(req->http_options,
@@ -1110,8 +1109,6 @@ static void after_prepare_frame(uv_work_t *work, int status)
            shard_meta->hash,
            RIPEMD160_DIGEST_SIZE * 2);
 
-    printf("Hash (%d): %s\n", shard_meta->index, state->shard[shard_meta->index].meta->hash);
-
     // Add challenges_as_str
     state->log->debug(state->env->log_options, state->handle,
                       "Challenges for shard index %d",
@@ -1213,7 +1210,8 @@ static void prepare_frame(uv_work_t *work)
     fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
 
     while (total_read < state->shard_size &&
-           shard_meta->index != state->total_shards - 1)
+           shard_meta->index != state->total_shards - 1 &&
+           read_bytes > 0)
     {
         read_bytes = fread(read_data, 1, 16, encrypted_file);
         total_read += read_bytes;
@@ -1221,6 +1219,8 @@ static void prepare_frame(uv_work_t *work)
         sha256_update(&shard_hash_ctx, read_bytes, read_data);
         memset_zero(read_data, 16);
     }
+
+    shard_meta->size = total_read;
 
     sha256_digest(&shard_hash_ctx, SHA256_DIGEST_SIZE, prehash_sha256);
 
@@ -1246,8 +1246,11 @@ static void prepare_frame(uv_work_t *work)
     total_read = 0;
     read_bytes = 0;
 
+    fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
+
     while (total_read < state->shard_size &&
-           shard_meta->index != state->total_shards - 1)
+           shard_meta->index != state->total_shards - 1 &&
+           read_bytes > 0)
     {
         // Update first sha256 for each leaf
         read_bytes = fread(read_data, 1, 16, encrypted_file);

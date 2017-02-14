@@ -22,7 +22,7 @@ storj_http_options_t http_options = {
 };
 
 storj_log_options_t log_options = {
-    .level = 0
+    .level = 4
 };
 
 void fail(char *msg)
