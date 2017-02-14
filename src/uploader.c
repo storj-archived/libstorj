@@ -1947,8 +1947,6 @@ static void prepare_upload_state(uv_work_t *work)
     file_id[FILE_ID_SIZE] = '\0';
     state->file_id = file_id;
 
-    printf("ID: %s\n", state->file_id);
-
     if (generate_file_key(state->env->encrypt_options->mnemonic,
                           state->bucket_id,
                           state->file_id, &file_key)) {
