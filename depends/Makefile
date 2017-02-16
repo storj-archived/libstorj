@@ -1,6 +1,5 @@
 .NOTPARALLEL :
 
-build_SHA256SUM = sha256sum
 build_DOWNLOAD = curl --location --fail --connect-timeout 120 --retry 3 -o
 
 BUILD = $(shell ./config.guess)
@@ -9,6 +8,25 @@ HOST ?= $(BUILD)
 DOWNLOAD_DIR = "$(CURDIR)/downloads/"
 SOURCES_DIR = "$(CURDIR)/sources/$(HOST)/"
 PREFIX_DIR = "$(CURDIR)/build/$(HOST)/"
+
+build:=$(shell ./config.sub $(BUILD))
+
+build_arch =$(firstword $(subst -, ,$(build)))
+build_vendor=$(word 2,$(subst -, ,$(build)))
+full_build_os:=$(subst $(build_arch)-$(build_vendor)-,,$(build))
+build_os:=$(findstring linux,$(full_build_os))
+build_os+=$(findstring darwin,$(full_build_os))
+build_os:=$(strip $(build_os))
+ifeq ($(build_os),)
+build_os=$(full_build_os)
+endif
+
+# mac build
+DARWIN_SDK_PATH = "/Library/Developer/CommandLineTools/SDKs/MacOSX10.12.sdk"
+DARWIN_CFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH)"
+
+build_SHA256SUM = $(if "$(build_os)" == "darwin",shasum -a 256,sha256sum -c)
+build_env = $(if $(build_os) == "darwin",CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS),)
 
 packages:=gmp nettle gnutls libcurl json-c libuv libmicrohttpd
 
@@ -24,7 +42,7 @@ define fetch_file
 	echo "Downloading: $($(1)_download_path)"; \
 	$(build_DOWNLOAD) "$($(1)_file_name)" "$($(1)_download_path)"; \
 	echo "$($(1)_sha256_hash)\t$($(1)_file_name)" > "$($(1)_file_name)".hash; \
-	$(build_SHA256SUM) -c "$($(1)_file_name)".hash; \
+	$(build_SHA256SUM) "$($(1)_file_name)".hash; \
 	fi && \
 	cd "$(CURDIR)"
 endef
@@ -50,7 +68,7 @@ define build_source
 	echo "prefix: $(PREFIX_DIR)" && \
 	echo "====================================\n\n" && \
 	if test -f "./autogen.sh"; then ./autogen.sh; fi && \
-	$($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) --enable-static --disable-shared --prefix=$(PREFIX_DIR) || exit&& \
+	$($(build_env)) $($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) --enable-static --disable-shared --prefix=$(PREFIX_DIR) || exit && \
 	make || exit && \
 	make install || exit && \
 	cd "$(CURDIR)"
