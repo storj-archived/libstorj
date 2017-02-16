@@ -44,6 +44,11 @@ define build_source
 	echo "Building $(1)" && \
 	cd "$(SOURCES_DIR)$(1)" && \
 	if test -f "./autogen.sh"; then ./autogen.sh; fi && \
+	echo "curdir: $(CURDIR)" && \
+	echo "config_env: $($(1)_config_env)" && \
+	echo "config_opts: $($(1)_config_opts)" && \
+	echo "host: $(HOST)" && \
+	echo "prefix: $(PREFIX_DIR)" && \
 	$($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) --enable-static --disable-shared --prefix=$(PREFIX_DIR) || exit&& \
 	make || exit && \
 	make install || exit && \
