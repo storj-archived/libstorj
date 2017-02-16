@@ -22,7 +22,7 @@ build_os=$(full_build_os)
 endif
 
 # mac build
-DARWIN_SDK_PATH = "/Library/Developer/CommandLineTools/SDKs/MacOSX10.12.sdk"
+DARWIN_SDK_PATH ?= "/Library/Developer/CommandLineTools/SDKs/MacOSX10.12.sdk"
 DARWIN_CFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH)"
 
 build_SHA256SUM = $(if "$(build_os)" == "darwin",shasum -a 256,sha256sum -c)

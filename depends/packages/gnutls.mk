@@ -11,6 +11,7 @@ $(package)_config_opts_default=--with-included-libtasn1 --with-included-unistrin
 # darwin specific settings
 $(package)_config_env_darwin=PKG_CONFIG_LIBDIR="$(PREFIX_DIR)/lib/pkgconfig" CFLAGS="-I$(PREFIX_DIR)include -L$(PREFIX_DIR)lib"
 $(package)_config_env_x86_64-apple-darwin11=$($(package)_config_env_darwin)
+$(package)_config_env_x86_64-apple-darwin16.4.0=$($(package)_config_env_darwin)
 
 # set settings based on host
 $(package)_config_env = $(if $($(package)_config_env_$(HOST)), $($(package)_config_env_$(HOST)), $($(package)_config_env_default))
