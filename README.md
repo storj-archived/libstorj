@@ -96,23 +96,37 @@ Configure command for libstorj-c:
 PKG_CONFIG_LIBDIR="$(pwd)/depends/build/arm-linux-gnueabihf/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/arm-linux-gnueabihf/include -L$(pwd)/depends/build/arm-linux-gnueabihf/lib -static" ./configure --host=arm-linux-gnueabihf --enable-static --disable-shared --prefix=$(pwd)/depends/build/arm-linux-gnueabihf
 ```
 
-**GNU/Linux**
+**64-bit GNU/Linux**
 
 Supported hosts include:
 - x86_64-pc-linux-gnu
-- i686-pc-linux-gnu
 
 ```
 cd ./depends
 make HOST="x86_64-pc-linux-gnu"
 ```
 
-Configure command for libstorj-c w/ x86_64-pc-linux-gnu:
+Configure command for libstorj-c:
 ```
 PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-pc-linux-gnu/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/x86_64-pc-linux-gnu/include -L$(pwd)/depends/build/x86_64-pc-linux-gnu/lib -static" ./configure --host=x86_64-pc-linux-gnu --enable-static --disable-shared --prefix=$(pwd)/depends/build/x86_64-pc-linux-gnu
 ```
 
-Configure command for libstorj-c w/ i686-pc-linux-gnu:
+**32-bit GNU/linux**
+
+Supported hosts include:
+- i686-pc-linux-gnu
+
+Dependencies:
+```
+apt-get install gcc-multilib g++-multilib
+```
+
+```
+cd ./depends
+make HOST="i686-pc-linux-gnu"
+```
+
+Configure command for libstorj-c:
 ```
 PKG_CONFIG_LIBDIR="$(pwd)/depends/build/i686-pc-linux-gnu/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/i686-pc-linux-gnu/include -L$(pwd)/depends/build/i686-pc-linux-gnu/lib -static -m32" LDFLAGS="-m32" ./configure --host=i686-pc-linux-gnu --enable-static --disable-shared --prefix=$(pwd)/depends/build/i686-pc-linux-gnu
 ```
