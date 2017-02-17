@@ -193,10 +193,12 @@ static int generate_mnemonic(char **mnemonic)
     int strength = 0;
     int status = 0;
 
+    printf("We now need to create an secret key used for encrypting " \
+           "files.\nPlease choose strength from: 128, 160, 192, 224, 256\n\n");
+
     while (strength % 32 || strength < 128 || strength > 256) {
         strength_str = calloc(BUFSIZ, sizeof(char));
-        printf("Common mnemonic strengths: 128, 160, 192, 224, 256\n");
-        printf("Mnemonic strength (default 256): ");
+        printf("Strength: ");
         get_input(strength_str);
 
         if (strength_str != NULL) {
@@ -646,7 +648,9 @@ static int import_keys(user_options_t *options)
         goto clear_variables;
     }
 
-    printf("Successfully stored username, password, and mnemonic.\n");
+    printf("Successfully stored bridge username, password, and encryption "\
+           "mnemonic key to %s\n\n",
+           user_file);
 
 clear_variables:
     if (user) {
@@ -688,14 +692,20 @@ static void register_callback(uv_work_t *work_req, int status)
     } else {
         struct json_object *email;
         json_object_object_get_ex(req->response, "email", &email);
-        printf("Successfully registered %s\n", json_object_get_string(email));
+        printf("\n");
+        printf("Successfully registered %s, please check your email "\
+               "to confirm.\n", json_object_get_string(email));
 
         // save credentials
         char *mnemonic = NULL;
         printf("\n");
         generate_mnemonic(&mnemonic);
         printf("\n");
-        printf("Mnemonic: %s\n", mnemonic);
+
+        printf("Encryption Key:\n%s\n", mnemonic);
+        printf("\n");
+        printf("Please make sure to backup this key in a safe location. " \
+               "If the key is lost, the data uploaded will also be lost.\n\n");
 
         user_options_t *user_opts = req->handle;
 
@@ -1117,7 +1127,7 @@ int main(int argc, char **argv)
         printf("Bridge username (email): ");
         get_input(user);
 
-        printf("Password: ");
+        printf("Bridge password: ");
         char *pass = calloc(BUFSIZ, sizeof(char));
         if (!pass) {
             return 1;
@@ -1220,7 +1230,7 @@ int main(int argc, char **argv)
         }
 
         if (!mnemonic) {
-            printf("Encryption mnemonic: ");
+            printf("Encryption mnemonic key: ");
             mnemonic = calloc(BUFSIZ, sizeof(char));
             if (!mnemonic) {
                 return 1;
