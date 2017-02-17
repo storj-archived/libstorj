@@ -9,6 +9,7 @@ DOWNLOAD_DIR = "$(CURDIR)/downloads/"
 SOURCES_DIR = "$(CURDIR)/sources/$(HOST)/"
 PREFIX_DIR = "$(CURDIR)/build/$(HOST)/"
 
+canonical_host:=$(shell ./config.sub $(HOST))
 build:=$(shell ./config.sub $(BUILD))
 
 build_arch =$(firstword $(subst -, ,$(build)))
@@ -21,12 +22,24 @@ ifeq ($(build_os),)
 build_os=$(full_build_os)
 endif
 
+host_arch=$(firstword $(subst -, ,$(canonical_host)))
+host_vendor=$(word 2,$(subst -, ,$(canonical_host)))
+full_host_os:=$(subst $(host_arch)-$(host_vendor)-,,$(canonical_host))
+host_os:=$(findstring linux,$(full_host_os))
+host_os+=$(findstring darwin,$(full_host_os))
+host_os+=$(findstring mingw32,$(full_host_os))
+host_os:=$(strip $(host_os))
+ifeq ($(host_os),)
+host_os=$(full_host_os)
+endif
+
 # mac build
 DARWIN_SDK_PATH ?= "/Library/Developer/CommandLineTools/SDKs/MacOSX10.12.sdk"
 DARWIN_CFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH)"
 
 build_SHA256SUM = $(if "$(build_os)" == "darwin",shasum -a 256,sha256sum -c)
-build_env = $(if $(build_os) == "darwin",CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS),)
+build_env = $(if $(host_os) == "darwin",CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS),)
+build_env = $(if $(host_arch) == "i686" && $(host_os) == "linux",CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32,)
 
 packages:=gmp nettle gnutls libcurl json-c libuv libmicrohttpd
 
@@ -62,6 +75,7 @@ define build_source
 	echo "\n\nBuilding $(1)\n====================================" && \
 	cd "$(SOURCES_DIR)$(1)" && \
 	echo "curdir: $(CURDIR)" && \
+	echo "build_env: $(build_env)" && \
 	echo "config_env: $($(1)_config_env)" && \
 	echo "config_opts: $($(1)_config_opts)" && \
 	echo "host: $(HOST)" && \

@@ -13,6 +13,9 @@ $(package)_config_env_mingw32=LIBS="-lcrypt32 -lnettle -lhogweed -lgmp" LD_LIBRA
 $(package)_config_env_x86_64-w64-mingw32=$($(package)_config_env_mingw32)
 $(package)_config_env_i686-w64-mingw32=$($(package)_config_env_mingw32)
 
+# 32-bit linux specific settings
+$(package)_config_env_i686-pc-linux-gnu=LIBS="-lnettle -lhogweed -lgmp" LD_LIBRARY_PATH="$(PREFIX_DIR)lib" PKG_CONFIG_LIBDIR="$(PREFIX_DIR)lib/pkgconfig" CPPFLAGS="-I$(PREFIX_DIR)include -m32" LDFLAGS="-L$(PREFIX_DIR)lib -m32"
+
 # set settings based on host
 $(package)_config_env = $(if $($(package)_config_env_$(HOST)), $($(package)_config_env_$(HOST)), $($(package)_config_env_default))
 $(package)_config_opts = $(if $($(package)_config_opts_$(HOST)), $($(package)_config_opts_$(HOST)), $($(package)_config_opts_default))

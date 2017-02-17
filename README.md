@@ -100,6 +100,7 @@ PKG_CONFIG_LIBDIR="$(pwd)/depends/build/arm-linux-gnueabihf/lib/pkgconfig" CFLAG
 
 Supported hosts include:
 - x86_64-pc-linux-gnu
+- i686-pc-linux-gnu
 
 ```
 cd ./depends
