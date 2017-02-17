@@ -43,7 +43,7 @@ build_env=
 ifeq ($(host_os), darwin)
 build_env=CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS)
 endif
-ifeq ($(host_arch), i686)
+ifeq ($(HOST), i686-pc-linux-gnu)
 build_env=CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32
 endif
 
