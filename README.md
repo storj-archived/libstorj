@@ -110,3 +110,15 @@ Configure command for libstorj-c:
 ```
 PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-pc-linux-gnu/lib/pkgconfig" -I$(pwd)/depends/build/x86_64-pc-linux-gnu/include -L$(pwd)/depends/build/x86_64-pc-linux-gnu/lib -static" ./configure --host=x86_64-pc-linux-gnu --enable-static --disable-shared --prefix=$(pwd)/depends/build/x86_64-pc-linux-gnu
 ```
+
+### Compiling Dependencies from OS X
+
+```
+cd ./depends
+make HOST="x86_64-apple-darwin11"
+```
+
+Configure command for libstorj-c:
+```
+CC=clang CXX=clang++ CFLAGS="-target x86_64-apple-darwin11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.12.sdk" PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-apple-darwin11/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/x86_64-apple-darwin11/include -L$(pwd)/depends/build/x86_64-apple-darwin11/lib" ./configure --host=x86_64-apple-darwin11 --enable-static --disable-shared --prefix=$(pwd)/depends/build/x86_64-apple-darwin11
+```
