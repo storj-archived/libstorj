@@ -83,7 +83,7 @@ Supported hosts include:
 
 Dependencies:
 ```
-apt-get gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+apt-get install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 ```
 
 ```
