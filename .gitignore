@@ -33,4 +33,5 @@ test/tests.exe
 depends/downloads/*
 depends/sources/*
 depends/build/*
+depends/toolchain/*
 !depends/Makefile
