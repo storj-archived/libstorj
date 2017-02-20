@@ -1109,10 +1109,14 @@ static void after_prepare_frame(uv_work_t *work, int status)
            shard_meta->hash,
            RIPEMD160_DIGEST_SIZE * 2);
 
+    req->log->info(state->env->log_options, state->handle,
+                  "[%d] Shard (%d) hash: %s", shard_meta->index, shard_meta->index,
+                  state->shard[shard_meta->index].meta->hash);
+
     // Add challenges_as_str
     state->log->debug(state->env->log_options, state->handle,
-                      "Challenges for shard index %d",
-                      shard_meta->index);
+                      "[%d] Challenges for shard index %d",
+                      shard_meta->index, shard_meta->index);
 
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[shard_meta->index].meta->challenges_as_str[i],
@@ -1120,15 +1124,16 @@ static void after_prepare_frame(uv_work_t *work, int status)
                32);
 
         state->log->debug(state->env->log_options, state->handle,
-                          "Challenge [%d]: %s",
+                          "[%d] Challenge [%d]: %s",
+                          shard_meta->index,
                           i,
                           state->shard[shard_meta->index].meta->challenges_as_str[i]);
     }
 
     // Add Merkle Tree leaves.
     state->log->debug(state->env->log_options, state->handle,
-                      "Tree for shard index %d",
-                      shard_meta->index);
+                      "[%d] Tree for shard index %d",
+                      shard_meta->index, shard_meta->index);
 
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[shard_meta->index].meta->tree[i],
@@ -1136,7 +1141,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
                32);
 
         state->log->debug(state->env->log_options, state->handle,
-                          "Leaf [%d]: %s", i,
+                          "[%d] Leaf [%d]: %s", shard_meta->index, i,
                           state->shard[shard_meta->index].meta->tree[i]);
     }
 
@@ -1230,10 +1235,6 @@ static void prepare_frame(uv_work_t *work)
 
     // Shard Hash
     hex2str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160, shard_meta->hash);
-
-    req->log->info(state->env->log_options, state->handle,
-                   "Shard (%d) hash: %s", shard_meta->index,
-                   shard_meta->hash);
 
     // Calculate the merkle tree with challenges
     struct sha256_ctx first_sha256_for_leaf[STORJ_SHARD_CHALLENGES];
