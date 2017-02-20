@@ -38,8 +38,14 @@ DARWIN_SDK_PATH ?= "/Library/Developer/CommandLineTools/SDKs/MacOSX10.12.sdk"
 DARWIN_CFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH)"
 
 build_SHA256SUM = $(if "$(build_os)" == "darwin",shasum -a 256,sha256sum -c)
-build_env = $(if $(host_os) == "darwin",CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS),)
-build_env = $(if $(host_arch) == "i686" && $(host_os) == "linux",CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32,)
+
+build_env=
+ifeq ($(host_os), darwin)
+build_env=CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS)
+endif
+ifeq ($(HOST), i686-pc-linux-gnu)
+build_env=CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32
+endif
 
 packages:=gmp nettle gnutls libcurl json-c libuv libmicrohttpd
 
@@ -82,7 +88,7 @@ define build_source
 	echo "prefix: $(PREFIX_DIR)" && \
 	echo "====================================\n\n" && \
 	if test -f "./autogen.sh"; then ./autogen.sh; fi && \
-	$($(build_env)) $($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) --enable-static --disable-shared --prefix=$(PREFIX_DIR) || exit && \
+	$(build_env) $($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) --enable-static --disable-shared --prefix=$(PREFIX_DIR) || exit && \
 	make || exit && \
 	make install || exit && \
 	cd "$(CURDIR)"
