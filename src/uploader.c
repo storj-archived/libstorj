@@ -1110,13 +1110,13 @@ static void after_prepare_frame(uv_work_t *work, int status)
            RIPEMD160_DIGEST_SIZE * 2);
 
     req->log->info(state->env->log_options, state->handle,
-                  "[%d] Shard (%d) hash: %s", shard_meta->index, shard_meta->index,
+                  "Shard (%d) hash: %s", shard_meta->index,
                   state->shard[shard_meta->index].meta->hash);
 
     // Add challenges_as_str
     state->log->debug(state->env->log_options, state->handle,
-                      "[%d] Challenges for shard index %d",
-                      shard_meta->index, shard_meta->index);
+                      "Challenges for shard index %d",
+                      shard_meta->index);
 
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[shard_meta->index].meta->challenges_as_str[i],
@@ -1124,7 +1124,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
                32);
 
         state->log->debug(state->env->log_options, state->handle,
-                          "[%d] Challenge [%d]: %s",
+                          "Shard %d Challenge [%d]: %s",
                           shard_meta->index,
                           i,
                           state->shard[shard_meta->index].meta->challenges_as_str[i]);
@@ -1132,8 +1132,8 @@ static void after_prepare_frame(uv_work_t *work, int status)
 
     // Add Merkle Tree leaves.
     state->log->debug(state->env->log_options, state->handle,
-                      "[%d] Tree for shard index %d",
-                      shard_meta->index, shard_meta->index);
+                      "Tree for shard index %d",
+                      shard_meta->index);
 
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[shard_meta->index].meta->tree[i],
@@ -1141,7 +1141,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
                32);
 
         state->log->debug(state->env->log_options, state->handle,
-                          "[%d] Leaf [%d]: %s", shard_meta->index, i,
+                          "Shard %d Leaf [%d]: %s", shard_meta->index, i,
                           state->shard[shard_meta->index].meta->tree[i]);
     }
 
@@ -1206,24 +1206,22 @@ static void prepare_frame(uv_work_t *work)
     struct sha256_ctx shard_hash_ctx;
     sha256_init(&shard_hash_ctx);
 
-    char read_data[16];
-    memset_zero(read_data, 16);
-    int read_bytes = 0;
+    char read_data[8];
+    memset_zero(read_data, 8);
+    uint64_t read_bytes = 0;
     uint8_t prehash_sha256[SHA256_DIGEST_SIZE];
 
-    int total_read = 0;
+    uint64_t total_read = 0;
     fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
 
-    while (total_read < state->shard_size &&
-           shard_meta->index != state->total_shards - 1 &&
-           read_bytes > 0)
-    {
-        read_bytes = fread(read_data, 1, 16, encrypted_file);
+    do {
+        read_bytes = fread(read_data, 1, 8, encrypted_file);
         total_read += read_bytes;
 
         sha256_update(&shard_hash_ctx, read_bytes, read_data);
-        memset_zero(read_data, 16);
-    }
+        memset_zero(read_data, 8);
+    } while(total_read < state->shard_size &&
+            read_bytes > 0);
 
     shard_meta->size = total_read;
 
@@ -1249,19 +1247,17 @@ static void prepare_frame(uv_work_t *work)
 
     fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
 
-    while (total_read < state->shard_size &&
-           shard_meta->index != state->total_shards - 1 &&
-           read_bytes > 0)
-    {
+    do {
         // Update first sha256 for each leaf
-        read_bytes = fread(read_data, 1, 16, encrypted_file);
+        read_bytes = fread(read_data, 1, 8, encrypted_file);
         total_read += read_bytes;
 
         for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
             sha256_update(&first_sha256_for_leaf[i], read_bytes, read_data);
         }
-        memset_zero(read_data, 16);
-    }
+        memset_zero(read_data, 8);
+    } while(total_read < state->shard_size &&
+            read_bytes > 0);
 
     uint8_t preleaf_sha256[SHA256_DIGEST_SIZE];
     memset_zero(preleaf_sha256, SHA256_DIGEST_SIZE);

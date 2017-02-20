@@ -57,7 +57,7 @@ int mock_farmer_shard_server(void *cls,
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/9ff08d5c41144fac30118a26facfc17c4d6f99ea")) {
             status_code = MHD_HTTP_OK;
-        } else if (0 == strcmp(url, "/shards/b472a266d0bd89c13706a4132ccfb16f7c3b9fcb")) {
+        } else if (0 == strcmp(url, "/shards/85565129af3625db7bfdbd4fd0d755e14c195969")) {
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/24bbd218bb82fa14d16ed0a24c9029c193d8406d")) {
             status_code = MHD_HTTP_OK;
