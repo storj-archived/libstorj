@@ -739,6 +739,7 @@ static void register_callback(uv_work_t *work_req, int status)
 
 static void list_files_callback(uv_work_t *work_req, int status)
 {
+    int ret_status = 0;
     assert(status == 0);
     json_request_t *req = work_req->data;
 
@@ -747,10 +748,9 @@ static void list_files_callback(uv_work_t *work_req, int status)
     }
 
     if (req->response == NULL) {
-        free(req);
-        free(work_req);
         printf("Failed to list files.\n");
-        exit(1);
+        ret_status = 1;
+        goto cleanup;
     }
     int num_files = json_object_array_length(req->response);
 
@@ -778,9 +778,12 @@ static void list_files_callback(uv_work_t *work_req, int status)
                 json_object_get_string(id));
     }
 
+cleanup:
+    free(req->path);
     json_object_put(req->response);
     free(req);
     free(work_req);
+    exit(ret_status);
 }
 
 static void delete_file_callback(uv_work_t *work_req, int status)
