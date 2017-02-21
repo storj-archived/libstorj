@@ -1129,6 +1129,10 @@ static void after_prepare_frame(uv_work_t *work, int status)
            shard_meta->hash,
            RIPEMD160_DIGEST_SIZE * 2);
 
+    req->log->info(state->env->log_options, state->handle,
+                  "Shard (%d) hash: %s", shard_meta->index,
+                  state->shard[shard_meta->index].meta->hash);
+
     // Add challenges_as_str
     state->log->debug(state->env->log_options, state->handle,
                       "Challenges for shard index %d",
@@ -1140,7 +1144,8 @@ static void after_prepare_frame(uv_work_t *work, int status)
                32);
 
         state->log->debug(state->env->log_options, state->handle,
-                          "Challenge [%d]: %s",
+                          "Shard %d Challenge [%d]: %s",
+                          shard_meta->index,
                           i,
                           state->shard[shard_meta->index].meta->challenges_as_str[i]);
     }
@@ -1156,7 +1161,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
                32);
 
         state->log->debug(state->env->log_options, state->handle,
-                          "Leaf [%d]: %s", i,
+                          "Shard %d Leaf [%d]: %s", shard_meta->index, i,
                           state->shard[shard_meta->index].meta->tree[i]);
     }
 
@@ -1192,111 +1197,109 @@ static void prepare_frame(uv_work_t *work)
     FILE *encrypted_file = fopen(state->tmp_path, "r");
     if (NULL == encrypted_file) {
         req->error_status = STORJ_FILE_INTEGRITY_ERROR;
-        return;
+        goto clean_variables;
     }
 
-    // Encrypted shard read from file
-    uint8_t *shard_data = calloc(state->shard_size, sizeof(char));
-    if (!shard_data) {
-        req->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    // Hash of the shard_data
-    shard_meta->hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 1, sizeof(char));
-    if (!shard_meta->hash) {
-        req->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    req->log->info(state->env->log_options, state->handle,
-                   "Creating frame for shard index %d",
-                   shard_meta->index);
-
-    // Bytes read from file
-    uint64_t read_bytes = 0;
-    int loop_count = 0;
-
-    do {
-        if (loop_count == 6) {
-            goto clean_variables;
-        }
-        // Seek to shard's location in file
-        fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
-        // Read shard data from file
-        read_bytes = fread(shard_data, 1, state->shard_size, encrypted_file);
-
-        if (read_bytes != shard_meta->index*state->shard_size) {
-            loop_count += 1;
-        }
-    } while(read_bytes < state->shard_size &&
-            shard_meta->index != state->total_shards - 1);
-
-    shard_meta->size = read_bytes;
-
-    // Calculate Shard Hash
-    if (ripmd160sha256_as_string(shard_data, shard_meta->size,
-                                 &shard_meta->hash)) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-
-    req->log->info(state->env->log_options, state->handle,
-                   "Shard (%d) hash: %s", shard_meta->index,
-                   shard_meta->hash);
-
-    // Set the challenges
+    // // Set the challenges
+    uint8_t buff[32];
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
-        uint8_t *buff = malloc(32);
-        if (!buff) {
-            state->error_status = STORJ_MEMORY_ERROR;
-            return;
-        }
+        memset_zero(buff, 32);
 
         random_buffer(buff, 32);
         memcpy(shard_meta->challenges[i], buff, 32);
 
         // Convert the uint8_t challenges to character arrays
         hex2str(32, buff, (char *)shard_meta->challenges_as_str[i]);
-
-        free(buff);
     }
 
+    // Hash of the shard_data
+    shard_meta->hash = calloc(RIPEMD160_DIGEST_SIZE*2 + 2, sizeof(char));
+    if (!shard_meta->hash) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        goto clean_variables;
+    }
+
+    req->log->info(state->env->log_options, state->handle,
+                   "Creating frame for shard index %d",
+                   shard_meta->index);
+
+    struct sha256_ctx shard_hash_ctx;
+    sha256_init(&shard_hash_ctx);
+
+    char read_data[8];
+    memset_zero(read_data, 8);
+    uint64_t read_bytes = 0;
+    uint8_t prehash_sha256[SHA256_DIGEST_SIZE];
+
+    uint64_t total_read = 0;
+    fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
+
+    do {
+        read_bytes = fread(read_data, 1, 8, encrypted_file);
+        total_read += read_bytes;
+
+        sha256_update(&shard_hash_ctx, read_bytes, read_data);
+        memset_zero(read_data, 8);
+    } while(total_read < state->shard_size &&
+            read_bytes > 0);
+
+    shard_meta->size = total_read;
+
+    sha256_digest(&shard_hash_ctx, SHA256_DIGEST_SIZE, prehash_sha256);
+
+    uint8_t prehash_ripemd160[RIPEMD160_DIGEST_SIZE];
+    memset_zero(prehash_ripemd160, RIPEMD160_DIGEST_SIZE);
+    ripemd160_of_str(prehash_sha256, SHA256_DIGEST_SIZE, prehash_ripemd160);
+
+    // Shard Hash
+    hex2str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160, shard_meta->hash);
+
     // Calculate the merkle tree with challenges
+    struct sha256_ctx first_sha256_for_leaf[STORJ_SHARD_CHALLENGES];
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
-        int preleaf_size = 32 + shard_meta->size;
-        uint8_t *preleaf = calloc(preleaf_size, sizeof(char));
-        if (!preleaf) {
-            state->error_status = STORJ_MEMORY_ERROR;
-            return;
-        }
+        sha256_init(&first_sha256_for_leaf[i]);
+        sha256_update(&first_sha256_for_leaf[i], 32, (char *)&shard_meta->challenges[i]);
+    }
 
-        memcpy(preleaf, shard_meta->challenges[i], 32);
-        memcpy(preleaf+32, shard_data, shard_meta->size);
+    // read from file
+    total_read = 0;
+    read_bytes = 0;
 
-        char *buff = calloc(RIPEMD160_DIGEST_SIZE*2 +1, sizeof(char));
-        if (!buff) {
-            state->error_status = STORJ_MEMORY_ERROR;
-            return;
-        }
-        if (double_ripmd160sha256_as_string(preleaf, preleaf_size, &buff)) {
-            state->error_status = STORJ_MEMORY_ERROR;
-            return;
-        }
-        memcpy(shard_meta->tree[i], buff, RIPEMD160_DIGEST_SIZE*2 + 1);
+    fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
 
-        free(preleaf);
-        free(buff);
+    do {
+        // Update first sha256 for each leaf
+        read_bytes = fread(read_data, 1, 8, encrypted_file);
+        total_read += read_bytes;
+
+        for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+            sha256_update(&first_sha256_for_leaf[i], read_bytes, read_data);
+        }
+        memset_zero(read_data, 8);
+    } while(total_read < state->shard_size &&
+            read_bytes > 0);
+
+    uint8_t preleaf_sha256[SHA256_DIGEST_SIZE];
+    memset_zero(preleaf_sha256, SHA256_DIGEST_SIZE);
+    uint8_t preleaf_ripemd160[RIPEMD160_DIGEST_SIZE];
+    memset_zero(preleaf_ripemd160, RIPEMD160_DIGEST_SIZE);
+    char *buff2 = calloc(RIPEMD160_DIGEST_SIZE*2 +1, sizeof(char));
+    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+        // finish first sha256 for leaf
+        sha256_digest(&first_sha256_for_leaf[i], SHA256_DIGEST_SIZE, preleaf_sha256);
+
+        // ripemd160 result of sha256
+        ripemd160_of_str(preleaf_sha256, SHA256_DIGEST_SIZE, preleaf_ripemd160);
+
+        // sha256 and ripemd160 again
+        ripmd160sha256_as_string(preleaf_ripemd160, RIPEMD160_DIGEST_SIZE, &buff2);
+
+        memcpy(shard_meta->tree[i], buff2, RIPEMD160_DIGEST_SIZE*2 + 1);
     }
 
 clean_variables:
     if (encrypted_file) {
         fclose(encrypted_file);
-    }
-
-    if (shard_data) {
-        free(shard_data);
     }
 }
 
