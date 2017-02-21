@@ -34,4 +34,6 @@ depends/downloads/*
 depends/sources/*
 depends/build/*
 depends/toolchain/*
+depends/MacOSX10.11.sdk.tar.gz
+depends/MacOSX10.11.sdk/
 !depends/Makefile
