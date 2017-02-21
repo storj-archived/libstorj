@@ -133,7 +133,15 @@ PKG_CONFIG_LIBDIR="$(pwd)/depends/build/i686-pc-linux-gnu/lib/pkgconfig" CFLAGS=
 
 **Mac OSX**
 
-The Apple SDK `MacOSX10.11.sdk` is needed and is available in [Xcode_7.3.1.dmg](https://developer.apple.com/devcenter/download.action?path=/Developer_Tools/Xcode_7.3.1/Xcode_7.3.1.dmg) *(requires a developer account)*. You may also need to symlink `/System/Library/Frameworks/Security.framework` to `/path/to/MacOSX10.11.sdk/System/Library/Frameworks/Security.framework` to have `darwinssl` be enabled during the build.
+The Apple SDK `MacOSX10.11.sdk` is needed and is available in [Xcode_7.3.1.dmg](https://developer.apple.com/devcenter/download.action?path=/Developer_Tools/Xcode_7.3.1/Xcode_7.3.1.dmg) *(requires a developer account)*. You can extract the sdk using `./depends/extract-osx-sdk.sh`:
+
+```
+apt-get install p7zip-full sleuthkit
+./depends/extract-osx-sdk.sh
+rm -rf 5.hfs MacOSX10.11.sdk
+```
+
+You may also need to symlink `/System/Library/Frameworks/Security.framework` to `/path/to/MacOSX10.11.sdk/System/Library/Frameworks/Security.framework` to have `darwinssl` be enabled during the build.
 
 ```
 cd ./depends
