@@ -8,19 +8,10 @@ HOST ?= $(BUILD)
 DOWNLOAD_DIR = "$(CURDIR)/downloads/"
 SOURCES_DIR = "$(CURDIR)/sources/$(HOST)/"
 PREFIX_DIR = "$(CURDIR)/build/$(HOST)/"
+TOOLCHAIN_BUILD_DIR = "$(CURDIR)/toolchain/build/"
+TOOLCHAIN_SOURCE_DIR = "$(CURDIR)/toolchain/source/"
 
 canonical_host:=$(shell ./config.sub $(HOST))
-build:=$(shell ./config.sub $(BUILD))
-
-build_arch =$(firstword $(subst -, ,$(build)))
-build_vendor=$(word 2,$(subst -, ,$(build)))
-full_build_os:=$(subst $(build_arch)-$(build_vendor)-,,$(build))
-build_os:=$(findstring linux,$(full_build_os))
-build_os+=$(findstring darwin,$(full_build_os))
-build_os:=$(strip $(build_os))
-ifeq ($(build_os),)
-build_os=$(full_build_os)
-endif
 
 host_arch=$(firstword $(subst -, ,$(canonical_host)))
 host_vendor=$(word 2,$(subst -, ,$(canonical_host)))
@@ -34,22 +25,25 @@ host_os=$(full_host_os)
 endif
 
 # mac build
-DARWIN_SDK_PATH ?= "/Library/Developer/CommandLineTools/SDKs/MacOSX10.12.sdk"
-DARWIN_CFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH)"
+DARWIN_SDK_PATH ?= "$(CURDIR)/MacOSX10.11.sdk"
+DARWIN_CFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH) -mmacosx-version-min=10.8 -mlinker-version=253.9 -pipe -I$(PREFIX_DIR)include"
+DARWIN_LDFLAGS="-L$(TOOLCHAIN_BUILD_DIR)lib -L$(DARWIN_SDK_PATH)/usr/lib -L$(PREFIX_DIR)lib -Wl,-syslibroot $(DARWIN_SDK_PATH)"
 
-build_SHA256SUM = $(if "$(build_os)" == "darwin",shasum -a 256,sha256sum -c)
+build_SHA256SUM = sha256sum -c
 
 build_env=
 ifeq ($(host_os), darwin)
-build_env=CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS)
+build_env=PATH="$(TOOLCHAIN_BUILD_DIR)bin:${PATH}" CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS) LDFLAGS=$(DARWIN_LDFLAGS)
 endif
 ifeq ($(HOST), i686-pc-linux-gnu)
 build_env=CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32
 endif
 
+toolchain_packages:=clang cctools
 packages:=gmp nettle gnutls libcurl json-c libuv libmicrohttpd
+all_packages = $(toolchain_packages) $(packages)
 
-$(foreach package,$(packages),$(eval include packages/$(package).mk))
+$(foreach package,$(all_packages),$(eval include packages/$(package).mk))
 
 define fetch_file
 	set -e && \
@@ -87,6 +81,7 @@ define build_source
 	echo "host: $(HOST)" && \
 	echo "prefix: $(PREFIX_DIR)" && \
 	echo "====================================\n\n" && \
+	export PATH="$(TOOLCHAIN_BUILD_DIR)bin:${PATH}" && \
 	if test -f "./autogen.sh"; then ./autogen.sh; fi && \
 	$(build_env) $($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) --enable-static --disable-shared --prefix=$(PREFIX_DIR) || exit && \
 	make || exit && \
@@ -94,14 +89,52 @@ define build_source
 	cd "$(CURDIR)"
 endef
 
+define extract_toolchain_file
+	if test -d "$(TOOLCHAIN_SOURCE_DIR)$(1)"; then \
+	echo "Skipping extract: $(DOWNLOAD_DIR)$($(1)_file_name)"; \
+	else \
+	echo "Extracting: $(DOWNLOAD_DIR)$($(1)_file_name)"; \
+	mkdir -p "$(TOOLCHAIN_SOURCE_DIR)$(1)"; \
+	tar xf "$(DOWNLOAD_DIR)$($(1)_file_name)" -C "$(TOOLCHAIN_SOURCE_DIR)$(1)" --strip-components=1; \
+	fi
+endef
+
+define extract_toolchain_file_build
+	mkdir -p "$(TOOLCHAIN_BUILD_DIR)"; \
+	tar xfv "$(DOWNLOAD_DIR)$($(1)_file_name)" -C "$(TOOLCHAIN_BUILD_DIR)" --strip-components=1; \
+	rm -f $(TOOLCHAIN_BUILD_DIR)lib/libc++abi.so
+endef
+
+ifeq ($(host_os), darwin)
+define build_darwin_toolchain
+	echo "Building darwin toolchain" && \
+	$(foreach package,$(toolchain_packages),$(call fetch_file,$(package));)
+	$(foreach package,clang,$(call extract_toolchain_file_build,$(package));)
+	$(foreach package,cctools,$(call extract_toolchain_file,$(package));)
+	cd "$(TOOLCHAIN_SOURCE_DIR)cctools/cctools" && \
+	if test -f "./autogen.sh"; then ./autogen.sh; fi && \
+	PATH="$(TOOLCHAIN_BUILD_DIR)bin:${PATH}" CC=clang CXX=clang++ ./configure --prefix="$(TOOLCHAIN_BUILD_DIR)" --target="x86_64-apple-darwin11" || exit && \
+	make || exit && \
+	make install || exit && \
+	cd "$(CURDIR)"
+endef
+else
+define build_darwin_toolchain
+	echo "Skipping building darwin toolchain"
+endef
+endif
+
 build-sources: extract-sources
 	@$(foreach package,$(packages),$(call build_source,$(package));)
 
 extract-sources: download-sources
 	@$(foreach package,$(packages),$(call extract_file,$(package));)
 
-download-sources:
+download-sources: build-toolchain
 	@$(foreach package,$(packages),$(call fetch_file,$(package));)
+
+build-toolchain:
+	@$(call build_darwin_toolchain,)
 
 clean:
 	$(RM) -rv $(DOWNLOAD_DIR)
