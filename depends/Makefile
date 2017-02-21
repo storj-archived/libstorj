@@ -12,17 +12,6 @@ TOOLCHAIN_BUILD_DIR = "$(CURDIR)/toolchain/build/"
 TOOLCHAIN_SOURCE_DIR = "$(CURDIR)/toolchain/source/"
 
 canonical_host:=$(shell ./config.sub $(HOST))
-build:=$(shell ./config.sub $(BUILD))
-
-build_arch =$(firstword $(subst -, ,$(build)))
-build_vendor=$(word 2,$(subst -, ,$(build)))
-full_build_os:=$(subst $(build_arch)-$(build_vendor)-,,$(build))
-build_os:=$(findstring linux,$(full_build_os))
-build_os+=$(findstring darwin,$(full_build_os))
-build_os:=$(strip $(build_os))
-ifeq ($(build_os),)
-build_os=$(full_build_os)
-endif
 
 host_arch=$(firstword $(subst -, ,$(canonical_host)))
 host_vendor=$(word 2,$(subst -, ,$(canonical_host)))
@@ -40,7 +29,7 @@ DARWIN_SDK_PATH ?= "$(CURDIR)/MacOSX10.11.sdk"
 DARWIN_CFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH) -mmacosx-version-min=10.8 -mlinker-version=253.9 -pipe -I$(PREFIX_DIR)include"
 DARWIN_LDFLAGS="-L$(TOOLCHAIN_BUILD_DIR)lib -L$(DARWIN_SDK_PATH)/usr/lib -L$(PREFIX_DIR)lib -Wl,-syslibroot $(DARWIN_SDK_PATH)"
 
-build_SHA256SUM = $(if "$(build_os)" == "darwin",shasum -a 256,sha256sum -c)
+build_SHA256SUM = sha256sum -c
 
 build_env=
 ifeq ($(host_os), darwin)

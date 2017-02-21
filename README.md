@@ -137,23 +137,10 @@ The Apple SDK `MacOSX10.11.sdk` is needed and is available in [Xcode_7.3.1.dmg](
 
 ```
 cd ./depends
-make HOST="x86_64-apple-darwin11"
+make HOST="x86_64-apple-darwin11" DARWIN_SDK_PATH="/path/to/MacOSX10.11.sdk"
 ```
 
 Configure command for libstorj-c:
 ```
 export PATH="$(pwd)/depends/toolchain/build/bin:${PATH}" && PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-apple-darwin11/lib/pkgconfig" CC=clang CXX=clang++ CFLAGS="-target x86_64-apple-darwin11 -isysroot $(pwd)/depends/MacOSX10.11.sdk -mmacosx-version-min=10.8 -mlinker-version=253.9 -pipe -I$(pwd)/depends/build/x86_64-apple-darwin11/include" LDFLAGS="-L$(pwd)/depends/toolchain/build/lib -L$(pwd)/depends/MacOSX10.11.sdk/usr/lib -L$(pwd)/depends/build/x86_64-apple-darwin11/lib -Wl,-syslibroot $(pwd)/depends/MacOSX10.11.sdk" ./configure --host="x86_64-apple-darwin11" --enable-static --disable-shared --prefix=$(pwd)/depends/build/x86_64-apple-darwin11
-```
-
-
-### Compiling Dependencies from OS X
-
-```
-cd ./depends
-make HOST="x86_64-apple-darwin11"
-```
-
-Configure command for libstorj-c:
-```
-CC=clang CXX=clang++ CFLAGS="-target x86_64-apple-darwin11 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.12.sdk" PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-apple-darwin11/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/x86_64-apple-darwin11/include -L$(pwd)/depends/build/x86_64-apple-darwin11/lib" ./configure --host=x86_64-apple-darwin11 --enable-static --disable-shared --prefix=$(pwd)/depends/build/x86_64-apple-darwin11
 ```
