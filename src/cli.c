@@ -797,6 +797,8 @@ static void delete_file_callback(uv_work_t *work_req, int status)
         printf("Failed to remove file from bucket. (%i)\n", req->status_code);
     }
 
+    json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
