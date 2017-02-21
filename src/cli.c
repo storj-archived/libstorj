@@ -1094,6 +1094,10 @@ int main(int argc, char **argv)
         http_options.proxy_url = NULL;
     }
 
+    char *user;
+    char *pass;
+    char *mnemonic;
+
     if (strcmp(command, "get-info") == 0) {
         printf("Storj bridge: %s\n\n", storj_bridge);
 
@@ -1126,7 +1130,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        char *user = calloc(BUFSIZ, sizeof(char));
+        user = calloc(BUFSIZ, sizeof(char));
         if (!user) {
             return 1;
         }
@@ -1161,9 +1165,9 @@ int main(int argc, char **argv)
         free(root_dir);
 
         // First, get auth from environment variables
-        char *user = getenv("STORJ_BRIDGE_USER");
-        char *pass = getenv("STORJ_BRIDGE_PASS");
-        char *mnemonic = getenv("STORJ_MNEMONIC");
+        user = getenv("STORJ_BRIDGE_USER");
+        pass = getenv("STORJ_BRIDGE_PASS");
+        mnemonic = getenv("STORJ_MNEMONIC");
         char *keypass = getenv("STORJ_KEYPASS");
 
         // Second, try to get from encrypted user file
@@ -1191,19 +1195,32 @@ int main(int argc, char **argv)
             if (storj_decrypt_read_auth(user_file, key, &file_user,
                                         &file_pass, &file_mnemonic)) {
                 printf("Unable to read user file. Invalid keypass or path.\n");
+                free(key);
+                free(user_file);
+                free(file_user);
+                free(file_pass);
+                free(file_mnemonic);
                 goto end_program;
             }
+            free(key);
+            free(user_file);
 
             if (!user && file_user) {
                 user = file_user;
+            } else if (file_user) {
+                free(file_user);
             }
 
             if (!pass && file_pass) {
                 pass = file_pass;
+            } else if (file_pass) {
+                free(file_pass);
             }
 
             if (!mnemonic && file_mnemonic) {
                 mnemonic = file_mnemonic;
+            } else if (file_mnemonic) {
+                free(file_mnemonic);
             }
 
         }
@@ -1379,6 +1396,15 @@ int main(int argc, char **argv)
 end_program:
     if (env) {
         storj_destroy_env(env);
+    }
+    if (user) {
+        free(user);
+    }
+    if (pass) {
+        free(pass);
+    }
+    if (mnemonic) {
+        free(mnemonic);
     }
     return status;
 }
