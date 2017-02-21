@@ -193,10 +193,12 @@ static int generate_mnemonic(char **mnemonic)
     int strength = 0;
     int status = 0;
 
+    printf("We now need to create an secret key used for encrypting " \
+           "files.\nPlease choose strength from: 128, 160, 192, 224, 256\n\n");
+
     while (strength % 32 || strength < 128 || strength > 256) {
         strength_str = calloc(BUFSIZ, sizeof(char));
-        printf("Common mnemonic strengths: 128, 160, 192, 224, 256\n");
-        printf("Mnemonic strength (default 256): ");
+        printf("Strength: ");
         get_input(strength_str);
 
         if (strength_str != NULL) {
@@ -309,6 +311,7 @@ static void file_progress(double progress,
 
 static void upload_file_complete(int status, void *handle)
 {
+    printf("\n");
     if (status != 0) {
         printf("Upload failure: %s\n", storj_strerror(status));
         exit(status);
@@ -387,6 +390,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
         printf("Download failure: %s\n", storj_strerror(status));
         exit(status);
     }
+    printf("Download Success!\n");
     exit(0);
 }
 
@@ -644,7 +648,9 @@ static int import_keys(user_options_t *options)
         goto clear_variables;
     }
 
-    printf("Successfully stored username, password, and mnemonic.\n");
+    printf("Successfully stored bridge username, password, and encryption "\
+           "mnemonic key to %s\n\n",
+           user_file);
 
 clear_variables:
     if (user) {
@@ -692,14 +698,20 @@ static void register_callback(uv_work_t *work_req, int status)
     } else {
         struct json_object *email;
         json_object_object_get_ex(req->response, "email", &email);
-        printf("Successfully registered %s\n", json_object_get_string(email));
+        printf("\n");
+        printf("Successfully registered %s, please check your email "\
+               "to confirm.\n", json_object_get_string(email));
 
         // save credentials
         char *mnemonic = NULL;
         printf("\n");
         generate_mnemonic(&mnemonic);
         printf("\n");
-        printf("Mnemonic: %s\n", mnemonic);
+
+        printf("Encryption Key:\n%s\n", mnemonic);
+        printf("\n");
+        printf("Please make sure to backup this key in a safe location. " \
+               "If the key is lost, the data uploaded will also be lost.\n\n");
 
         user_options_t *user_opts = req->handle;
 
@@ -743,7 +755,7 @@ static void list_files_callback(uv_work_t *work_req, int status)
     int num_files = json_object_array_length(req->response);
 
     if (num_files == 0) {
-        printf("No files for bucket");
+        printf("No files for bucket.\n");
     }
 
     struct json_object *file;
@@ -779,7 +791,7 @@ static void delete_file_callback(uv_work_t *work_req, int status)
     if (req->status_code == 200) {
         printf("File was successfully removed from bucket.\n");
     } else {
-        printf("Failed to remove file from bucket.\n");
+        printf("Failed to remove file from bucket. (%i)\n", req->status_code);
     }
 
     free(req);
@@ -792,7 +804,7 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
     json_request_t *req = work_req->data;
 
     if (req->status_code == 200 || req->status_code == 204) {
-        printf("Bucket was successfully removed destroyed.\n");
+        printf("Bucket was successfully removed.\n");
     } else {
         printf("Failed to destroy bucket. (%i)\n", req->status_code);
     }
@@ -824,6 +836,10 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
     struct json_object *storage;
     struct json_object *transfer;
 
+    if (num_buckets == 0) {
+        printf("No buckets.\n");
+    }
+
     for (int i = 0; i < num_buckets; i++) {
         bucket = json_object_array_get_idx(req->response, i);
         json_object_object_get_ex(bucket, "id", &id);
@@ -847,6 +863,10 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
     json_request_t *req = work_req->data;
+
+    if (req->status_code != 201) {
+        printf("Request failed with status code: %i\n", req->status_code);
+    }
 
     if (req->response == NULL) {
         free(req);
@@ -1113,7 +1133,7 @@ int main(int argc, char **argv)
         printf("Bridge username (email): ");
         get_input(user);
 
-        printf("Password: ");
+        printf("Bridge password: ");
         char *pass = calloc(BUFSIZ, sizeof(char));
         if (!pass) {
             return 1;
@@ -1216,7 +1236,7 @@ int main(int argc, char **argv)
         }
 
         if (!mnemonic) {
-            printf("Encryption mnemonic: ");
+            printf("Encryption mnemonic key: ");
             mnemonic = calloc(BUFSIZ, sizeof(char));
             if (!mnemonic) {
                 return 1;
@@ -1251,8 +1271,8 @@ int main(int argc, char **argv)
             char *file_id = argv[command_index + 2];
             char *path = argv[command_index + 3];
 
-            if (!bucket_id || !file_id) {
-                printf(HELP_TEXT);
+            if (!bucket_id || !file_id || !path) {
+                printf("Missing arguments: <bucket-id> <file-id> <path>\n");
                 status = 1;
                 goto end_program;
             }
@@ -1266,7 +1286,7 @@ int main(int argc, char **argv)
             char *path = argv[command_index + 2];
 
             if (!bucket_id || !path) {
-                printf(HELP_TEXT);
+                printf("Missing arguments: <bucket-id> <path>\n");
                 status = 1;
                 goto end_program;
             }
@@ -1279,7 +1299,7 @@ int main(int argc, char **argv)
             char *bucket_id = argv[command_index + 1];
 
             if (!bucket_id) {
-                printf(HELP_TEXT);
+                printf("Missing first argument: <bucket-id>\n");
                 status = 1;
                 goto end_program;
             }
@@ -1289,7 +1309,7 @@ int main(int argc, char **argv)
             char *bucket_name = argv[command_index + 1];
 
             if (!bucket_name) {
-                printf(HELP_TEXT);
+                printf("Missing first argument: <bucket-name>\n");
                 status = 1;
                 goto end_program;
             }
@@ -1301,7 +1321,7 @@ int main(int argc, char **argv)
             char *bucket_id = argv[command_index + 1];
 
             if (!bucket_id) {
-                printf(HELP_TEXT);
+                printf("Missing first argument: <bucket-id>\n");
                 status = 1;
                 goto end_program;
             }
@@ -1314,7 +1334,7 @@ int main(int argc, char **argv)
             char *file_id = argv[command_index + 2];
 
             if (!bucket_id || !file_id) {
-                printf(HELP_TEXT);
+                printf("Missing arguments, expected: <bucket-id> <file-id>\n");
                 status = 1;
                 goto end_program;
             }
@@ -1328,7 +1348,7 @@ int main(int argc, char **argv)
             char *file_id = argv[command_index + 2];
 
             if (!bucket_id || !file_id) {
-                printf(HELP_TEXT);
+                printf("Missing arguments, expected: <bucket-id> <file-id>\n");
                 status = 1;
                 goto end_program;
             }
