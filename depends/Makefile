@@ -105,6 +105,7 @@ define extract_toolchain_file_build
 	rm -f $(TOOLCHAIN_BUILD_DIR)lib/libc++abi.so
 endef
 
+ifeq ($(host_os), darwin)
 define build_darwin_toolchain
 	echo "Building darwin toolchain" && \
 	$(foreach package,$(toolchain_packages),$(call fetch_file,$(package));)
@@ -117,6 +118,11 @@ define build_darwin_toolchain
 	make install || exit && \
 	cd "$(CURDIR)"
 endef
+else
+define build_darwin_toolchain
+	echo "Skipping building darwin toolchain"
+endef
+endif
 
 build-sources: extract-sources
 	@$(foreach package,$(packages),$(call build_source,$(package));)
