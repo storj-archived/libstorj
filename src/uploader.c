@@ -1571,7 +1571,7 @@ static void encrypt_file(uv_work_t *work)
     memcpy(iv, salt, AES_BLOCK_SIZE);
 
     // Context for getting hmac_id
-    char *hmac_id = calloc(RIPEMD160_DIGEST_SIZE *2 + 1, sizeof(char));
+    char *hmac_id = calloc(SHA512_DIGEST_SIZE *2 + 1, sizeof(char));
     if (!hmac_id) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
@@ -1582,8 +1582,8 @@ static void encrypt_file(uv_work_t *work)
     memset_zero(file_key_as_hex, DETERMINISTIC_KEY_HEX_SIZE);
     hex2str(DETERMINISTIC_KEY_SIZE, state->file_key, file_key_as_hex);
 
-    struct hmac_ripemd160_ctx hmac_ctx;
-    hmac_ripemd160_set_key(&hmac_ctx, DETERMINISTIC_KEY_HEX_SIZE, file_key_as_hex);
+    struct hmac_sha512_ctx hmac_ctx;
+    hmac_sha512_set_key(&hmac_ctx, DETERMINISTIC_KEY_HEX_SIZE, file_key_as_hex);
 
     // Load original file and tmp file
     FILE *original_file = state->original_file;
@@ -1602,7 +1602,7 @@ static void encrypt_file(uv_work_t *work)
                                    original_file)) > 0) {
 
             // Update hmac for hmac_id
-            hmac_ripemd160_update(&hmac_ctx, bytes_read, clr_txt);
+            hmac_sha512_update(&hmac_ctx, bytes_read, clr_txt);
 
             // Encrypt data
             ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
@@ -1630,11 +1630,11 @@ static void encrypt_file(uv_work_t *work)
         }
     }
 
-    uint8_t hmac_id_hex[RIPEMD160_DIGEST_SIZE];
-    memset_zero(hmac_id_hex, RIPEMD160_DIGEST_SIZE);
-    hmac_ripemd160_digest (&hmac_ctx, RIPEMD160_DIGEST_SIZE, hmac_id_hex);
+    uint8_t hmac_id_hex[SHA512_DIGEST_SIZE];
+    memset_zero(hmac_id_hex, SHA512_DIGEST_SIZE);
+    hmac_sha512_digest (&hmac_ctx, SHA512_DIGEST_SIZE, hmac_id_hex);
 
-    hex2str(RIPEMD160_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
+    hex2str(SHA512_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
 
 clean_variables:
 
