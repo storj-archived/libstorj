@@ -346,11 +346,15 @@ static void create_bucket_entry(uv_work_t *work)
     json_object *file_name = json_object_new_string(state->file_name);
     json_object_object_add(body, "filename",file_name);
 
+    struct json_object *hmac = json_object_new_object();
+
     json_object *type = json_object_new_string("sha512");
-    json_object_object_add(body, "type", type);
+    json_object_object_add(hmac, "type", type);
 
     json_object *value = json_object_new_string(state->hmac_id);
-    json_object_object_add(body, "value", value);
+    json_object_object_add(hmac, "value", value);
+
+    json_object_object_add(body, "hmac", hmac);
 
     int path_len = strlen(state->bucket_id) + 16;
     char *path = calloc(path_len + 1, sizeof(char));
@@ -1641,6 +1645,7 @@ static void encrypt_file(uv_work_t *work)
     hmac_sha512_digest (&hmac_ctx, SHA512_DIGEST_SIZE, hmac_id_hex);
 
     hex2str(SHA512_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
+    state->hmac_id[SHA512_DIGEST_SIZE *2] = '\0';
 
 clean_variables:
     if (encrypted_file) {
