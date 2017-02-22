@@ -346,6 +346,12 @@ static void create_bucket_entry(uv_work_t *work)
     json_object *file_name = json_object_new_string(state->file_name);
     json_object_object_add(body, "filename",file_name);
 
+    json_object *type = json_object_new_string("sha512");
+    json_object_object_add(body, "type", type);
+
+    json_object *value = json_object_new_string(state->hmac_id);
+    json_object_object_add(body, "value", value);
+
     int path_len = strlen(state->bucket_id) + 16;
     char *path = calloc(path_len + 1, sizeof(char));
     if (!path) {
