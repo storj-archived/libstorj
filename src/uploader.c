@@ -1933,9 +1933,11 @@ static void prepare_upload_state(uv_work_t *work)
         return;
     }
 
-    const char *user = state->env->bridge_options->user;
+    uint8_t file_key_as_hex[DETERMINISTIC_KEY_HEX_SIZE];
+    memset_zero(file_key_as_hex, DETERMINISTIC_KEY_HEX_SIZE);
+    str2hex(DETERMINISTIC_KEY_SIZE, file_key, file_key_as_hex);
 
-    calculate_file_id(state->original_file, (char *)user, strlen(user), &file_id);
+    calculate_file_id(state->original_file, file_key_as_hex, DETERMINISTIC_KEY_HEX_SIZE, &file_id);
 
     file_id[FILE_ID_SIZE] = '\0';
     state->file_id = file_id;
