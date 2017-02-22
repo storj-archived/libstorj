@@ -1223,13 +1223,17 @@ static void prepare_frame(uv_work_t *work)
                    "Creating frame for shard index %d",
                    shard_meta->index);
 
-    struct sha256_ctx shard_hash_ctx;
-    sha256_init(&shard_hash_ctx);
-
     char read_data[8];
     memset_zero(read_data, 8);
     uint64_t read_bytes = 0;
+    uint64_t total_read = 0;
+
+    // Sha256 of encrypted data for calculating shard has
     uint8_t prehash_sha256[SHA256_DIGEST_SIZE];
+
+    // Initialize context for sha256 of encrypted data
+    struct sha256_ctx shard_hash_ctx;
+    sha256_init(&shard_hash_ctx);
 
     // Calculate the merkle tree with challenges
     struct sha256_ctx first_sha256_for_leaf[STORJ_SHARD_CHALLENGES];
@@ -1238,7 +1242,6 @@ static void prepare_frame(uv_work_t *work)
         sha256_update(&first_sha256_for_leaf[i], 32, (char *)&shard_meta->challenges[i]);
     }
 
-    uint64_t total_read = 0;
     fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
 
     do {
@@ -1250,7 +1253,7 @@ static void prepare_frame(uv_work_t *work)
         for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
             sha256_update(&first_sha256_for_leaf[i], read_bytes, read_data);
         }
-        
+
         memset_zero(read_data, 8);
     } while(total_read < state->shard_size &&
             read_bytes > 0);
