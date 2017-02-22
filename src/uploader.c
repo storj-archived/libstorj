@@ -176,6 +176,10 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->frame_id);
     }
 
+    if (state->hmac_id) {
+        free(state->hmac_id);
+    }
+
     if (state->exclude) {
         free(state->exclude);
     }
@@ -1566,6 +1570,21 @@ static void encrypt_file(uv_work_t *work)
     }
     memcpy(iv, salt, AES_BLOCK_SIZE);
 
+    // Context for getting hmac_id
+    char *hmac_id = calloc(RIPEMD160_DIGEST_SIZE *2 + 1, sizeof(char));
+    if (!hmac_id) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+    state->hmac_id = hmac_id;
+
+    uint8_t file_key_as_hex[DETERMINISTIC_KEY_HEX_SIZE];
+    memset_zero(file_key_as_hex, DETERMINISTIC_KEY_HEX_SIZE);
+    hex2str(DETERMINISTIC_KEY_SIZE, state->file_key, file_key_as_hex);
+
+    struct hmac_ripemd160_ctx hmac_ctx;
+    hmac_ripemd160_set_key(&hmac_ctx, DETERMINISTIC_KEY_HEX_SIZE, file_key_as_hex);
+
     // Load original file and tmp file
     FILE *original_file = state->original_file;
     FILE *encrypted_file = fopen(req->tmp_path, "w+");
@@ -1582,6 +1601,10 @@ static void encrypt_file(uv_work_t *work)
         while ((bytes_read = fread(clr_txt, 1, AES_BLOCK_SIZE * 256,
                                    original_file)) > 0) {
 
+            // Update hmac for hmac_id
+            hmac_ripemd160_update(&hmac_ctx, bytes_read, clr_txt);
+
+            // Encrypt data
             ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE, (uint8_t *)iv, bytes_read,
                       (uint8_t *)cphr_txt, (uint8_t *)clr_txt);
@@ -1606,6 +1629,12 @@ static void encrypt_file(uv_work_t *work)
             memset(cphr_txt, '\0', AES_BLOCK_SIZE * 256 + 1);
         }
     }
+
+    uint8_t hmac_id_hex[RIPEMD160_DIGEST_SIZE];
+    memset_zero(hmac_id_hex, RIPEMD160_DIGEST_SIZE);
+    hmac_ripemd160_digest (&hmac_ctx, RIPEMD160_DIGEST_SIZE, hmac_id_hex);
+
+    hex2str(RIPEMD160_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
 
 clean_variables:
 
@@ -1921,7 +1950,6 @@ static void prepare_upload_state(uv_work_t *work)
         state->shard[i].work = NULL;
     }
 
-
     // Generate encryption key && Calculate deterministic file id
     char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
     if (!file_id) {
@@ -2013,6 +2041,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->uploaded_bytes = 0;
     state->exclude = NULL;
     state->frame_id = NULL;
+    state->hmac_id = NULL;
 
     state->requesting_frame = false;
     state->completed_upload = false;

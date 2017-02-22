@@ -349,6 +349,7 @@ typedef struct {
     uint64_t uploaded_bytes;
     char *exclude;
     char *frame_id;
+    char *hmac_id;
 
     bool requesting_frame;
     bool completed_upload;
