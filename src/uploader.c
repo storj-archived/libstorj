@@ -1586,7 +1586,7 @@ static void encrypt_file(uv_work_t *work)
 
     uint8_t file_key_as_hex[DETERMINISTIC_KEY_HEX_SIZE];
     memset_zero(file_key_as_hex, DETERMINISTIC_KEY_HEX_SIZE);
-    hex2str(DETERMINISTIC_KEY_SIZE, state->file_key, file_key_as_hex);
+    str2hex(DETERMINISTIC_KEY_SIZE, state->file_key, file_key_as_hex);
 
     struct hmac_sha512_ctx hmac_ctx;
     hmac_sha512_set_key(&hmac_ctx, DETERMINISTIC_KEY_HEX_SIZE, file_key_as_hex);
@@ -1643,7 +1643,6 @@ static void encrypt_file(uv_work_t *work)
     hex2str(SHA512_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
 
 clean_variables:
-
     if (encrypted_file) {
         fclose(encrypted_file);
     }
