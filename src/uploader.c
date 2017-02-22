@@ -1231,6 +1231,13 @@ static void prepare_frame(uv_work_t *work)
     uint64_t read_bytes = 0;
     uint8_t prehash_sha256[SHA256_DIGEST_SIZE];
 
+    // Calculate the merkle tree with challenges
+    struct sha256_ctx first_sha256_for_leaf[STORJ_SHARD_CHALLENGES];
+    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+        sha256_init(&first_sha256_for_leaf[i]);
+        sha256_update(&first_sha256_for_leaf[i], 32, (char *)&shard_meta->challenges[i]);
+    }
+
     uint64_t total_read = 0;
     fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
 
@@ -1239,6 +1246,11 @@ static void prepare_frame(uv_work_t *work)
         total_read += read_bytes;
 
         sha256_update(&shard_hash_ctx, read_bytes, read_data);
+
+        for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+            sha256_update(&first_sha256_for_leaf[i], read_bytes, read_data);
+        }
+        
         memset_zero(read_data, 8);
     } while(total_read < state->shard_size &&
             read_bytes > 0);
@@ -1253,31 +1265,6 @@ static void prepare_frame(uv_work_t *work)
 
     // Shard Hash
     hex2str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160, shard_meta->hash);
-
-    // Calculate the merkle tree with challenges
-    struct sha256_ctx first_sha256_for_leaf[STORJ_SHARD_CHALLENGES];
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
-        sha256_init(&first_sha256_for_leaf[i]);
-        sha256_update(&first_sha256_for_leaf[i], 32, (char *)&shard_meta->challenges[i]);
-    }
-
-    // read from file
-    total_read = 0;
-    read_bytes = 0;
-
-    fseek(encrypted_file, shard_meta->index*state->shard_size, SEEK_SET);
-
-    do {
-        // Update first sha256 for each leaf
-        read_bytes = fread(read_data, 1, 8, encrypted_file);
-        total_read += read_bytes;
-
-        for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
-            sha256_update(&first_sha256_for_leaf[i], read_bytes, read_data);
-        }
-        memset_zero(read_data, 8);
-    } while(total_read < state->shard_size &&
-            read_bytes > 0);
 
     uint8_t preleaf_sha256[SHA256_DIGEST_SIZE];
     memset_zero(preleaf_sha256, SHA256_DIGEST_SIZE);
