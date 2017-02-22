@@ -1571,7 +1571,7 @@ static void encrypt_file(uv_work_t *work)
     memcpy(iv, salt, AES_BLOCK_SIZE);
 
     // Context for getting hmac_id
-    char *hmac_id = calloc(SHA512_DIGEST_SIZE *2 + 1, sizeof(char));
+    char *hmac_id = calloc(SHA512_DIGEST_SIZE *2 + 2, sizeof(char));
     if (!hmac_id) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
