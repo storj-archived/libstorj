@@ -47,6 +47,12 @@ static void free_download_state(storj_download_state_t *state)
         free(state->decrypt_ctr);
     }
 
+    if (state->info) {
+        free((char *)state->info->hmac);
+        free(state->info);
+    }
+
+    free(state->hmac_ctx);
     free(state->pointers);
     free(state);
 }
@@ -953,6 +959,13 @@ static void write_shard(uv_work_t *work)
     shard_request_write_t *req = work->data;
     req->error_status = 0;
 
+    // multiple write shards will not happen at the same
+    // time so it should be safe here to use hmac_ctx on state
+    // within a worker thread
+    hmac_sha512_update(req->state->hmac_ctx,
+                       req->shard_total_bytes,
+                       req->shard_data);
+
     if (req->shard_total_bytes != fwrite(req->shard_data,
                                          sizeof(char),
                                          req->shard_total_bytes,
@@ -1350,8 +1363,28 @@ static void queue_next_work(storj_download_state_t *state)
         state->completed_shards == state->total_shards) {
 
         if (!state->finished && state->pending_work_count == 0) {
+
+            uint8_t hmac[SHA512_DIGEST_SIZE];
+            memset_zero(hmac, SHA512_DIGEST_SIZE);
+            hmac_sha512_digest(state->hmac_ctx, SHA512_DIGEST_SIZE, hmac);
+
+            char hmac_str[SHA512_DIGEST_SIZE *2 + 2];
+            hex2str(SHA512_DIGEST_SIZE, hmac, hmac_str);
+            hmac_str[SHA512_DIGEST_SIZE *2] = '\0';
+
+            if (state->info && state->info->hmac) {
+                if (0 != strcmp(state->info->hmac, hmac_str)) {
+                    state->error_status = STORJ_FILE_DECRYPTION_ERROR;
+                }
+            } else {
+                state->log->warn(state->env->log_options,
+                                 state->handle,
+                                 "Unable to verify decryption integrity" \
+                                 ", missing hmac from file info.");
+            }
+
             state->finished = true;
-            state->finished_cb(0, state->destination, state->handle);
+            state->finished_cb(state->error_status, state->destination, state->handle);
 
             free_download_state(state);
         }
@@ -1420,6 +1453,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->file_id = file_id;
     state->bucket_id = bucket_id;
     state->destination = destination;
+    state->hmac_ctx = malloc(sizeof(struct hmac_sha512_ctx));
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
     state->finished = false;
@@ -1489,6 +1523,9 @@ int storj_bridge_resolve_file(storj_env_t *env,
 
         state->decrypt_ctr = decrypt_ctr;
     };
+
+    // initialize the hmac with the decrypt key
+    hmac_sha512_set_key(state->hmac_ctx, SHA256_DIGEST_SIZE, state->decrypt_key);
 
     // start download
     queue_next_work(state);

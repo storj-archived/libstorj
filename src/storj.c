@@ -663,6 +663,8 @@ char *storj_strerror(int error_code)
             return "File encryption error";
         case STORJ_FILE_SIZE_ERROR:
             return "File size error";
+        case STORJ_FILE_DECRYPTION_ERROR:
+            return "File decryption error";
         case STORJ_TRANSFER_CANCELED:
             return "File transfer canceled";
         case STORJ_MEMORY_ERROR:
