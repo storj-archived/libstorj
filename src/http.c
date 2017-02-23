@@ -25,7 +25,7 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
         }
 
         // Read shard data from file
-        read_bytes = fread(buffer, size, nmemb, body->fd);
+        read_bytes = fread(buffer, 1, buflen, body->fd);
 
         if (ferror(body->fd)) {
             return CURL_READFUNC_ABORT;
