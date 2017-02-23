@@ -1103,9 +1103,9 @@ int main(int argc, char **argv)
         http_options.proxy_url = NULL;
     }
 
-    char *user;
-    char *pass;
-    char *mnemonic;
+    char *user = NULL;
+    char *pass = NULL;
+    char *mnemonic = NULL;
 
     if (strcmp(command, "get-info") == 0) {
         printf("Storj bridge: %s\n\n", storj_bridge);
