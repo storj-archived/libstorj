@@ -1340,11 +1340,6 @@ static void after_request_frame_id(uv_work_t *work, int status)
         goto clean_variables;
     }
 
-    if (req->error_status) {
-        state->error_status = req->error_status;
-        goto clean_variables;
-    }
-
     state->frame_request_count += 1;
 
     // Check if we got a 201 status and token
