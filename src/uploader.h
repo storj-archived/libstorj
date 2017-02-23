@@ -17,6 +17,13 @@
 #define STORJ_NULL -1
 #define STORJ_MAX_REPORT_TRIES 2
 
+typedef struct {
+  uint8_t *iv;
+  uint8_t *salt;
+  uint8_t *pass;
+  struct aes256_ctx *ctx;
+} storj_encryption_ctx_t ;
+
 typedef enum {
     CANCELED = 0,
     AWAITING_PREPARE_FRAME = 1,
@@ -119,12 +126,17 @@ static shard_meta_t *shard_meta_new();
 static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state);
 static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state);
 static uv_work_t *uv_work_new();
+static storj_encryption_ctx_t *prepare_encryption(char *pre_pass,
+                                                  int pre_pass_size,
+                                                  char *pre_salt,
+                                                  int pre_salt_size);
 
 static uint64_t check_file(storj_env_t *env, const char *filepath);
 
 static void shard_meta_cleanup(shard_meta_t *shard_meta);
 static void pointer_cleanup(farmer_pointer_t *farmer_pointer);
 static void cleanup_state(storj_upload_state_t *state);
+static void free_encryption_ctx(storj_encryption_ctx_t *ctx);
 
 static void queue_next_work(storj_upload_state_t *state);
 
