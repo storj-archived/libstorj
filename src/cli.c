@@ -696,6 +696,11 @@ static void register_callback(uv_work_t *work_req, int status)
         struct json_object *error;
         json_object_object_get_ex(req->response, "error", &error);
         printf("Error: %s\n", json_object_get_string(error));
+
+        user_options_t *handle = (user_options_t *) req->handle;
+        free(handle->user);
+        free(handle->host);
+        free(handle->pass);
     } else {
         struct json_object *email;
         json_object_object_get_ex(req->response, "email", &email);
@@ -734,6 +739,7 @@ static void register_callback(uv_work_t *work_req, int status)
     }
 
     json_object_put(req->response);
+    json_object_put(req->body);
     free(req);
     free(work_req);
 }
@@ -1147,7 +1153,7 @@ int main(int argc, char **argv)
         get_input(user);
 
         printf("Bridge password: ");
-        char *pass = calloc(BUFSIZ, sizeof(char));
+        pass = calloc(BUFSIZ, sizeof(char));
         if (!pass) {
             return 1;
         }
