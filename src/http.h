@@ -46,13 +46,12 @@ typedef struct {
 } shard_upload_progress_t;
 
 typedef struct {
-    uint8_t *shard_data;
+    FILE *fd;
     uint64_t length;
     uint64_t remain;
     uint64_t total_sent;
     uint64_t bytes_since_progress;
     uv_async_t *progress_handle;
-    void *pnt;
     bool *canceled;
 } shard_body_send_t;
 
@@ -100,7 +99,8 @@ int put_shard(storj_http_options_t *http_options,
               int port,
               char *shard_hash,
               uint64_t shard_total_bytes,
-              uint8_t *shard_data,
+              char *encrypted_file_path,
+              uint64_t file_position,
               char *token,
               int *status_code,
               uv_async_t *progress_handle,

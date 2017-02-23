@@ -16,23 +16,29 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
         return CURL_READFUNC_ABORT;
     }
 
+    size_t read_bytes = 0;
     size_t buflen = size * nmemb;
 
     if (buflen > 0) {
         if (body->remain < buflen) {
             buflen = body->remain;
         }
-        memcpy(buffer, body->pnt, buflen);
 
-        body->pnt += buflen;
-        body->total_sent += buflen;
-        body->bytes_since_progress += buflen;
+        // Read shard data from file
+        read_bytes = fread(buffer, size, nmemb, body->fd);
 
-        body->remain -= buflen;
+        if (ferror(body->fd)) {
+            return CURL_READFUNC_ABORT;
+        }
+
+        body->total_sent += read_bytes;
+        body->bytes_since_progress += read_bytes;
+
+        body->remain -= read_bytes;
     }
 
     // give progress updates at set interval
-    if (body->progress_handle && buflen &&
+    if (body->progress_handle && read_bytes > 0 &&
         (body->bytes_since_progress > SHARD_PROGRESS_INTERVAL ||
          body->remain == 0)) {
 
@@ -43,7 +49,7 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
         body->bytes_since_progress = 0;
     }
 
-    return buflen;
+    return read_bytes;
 }
 
 int put_shard(storj_http_options_t *http_options,
@@ -53,7 +59,8 @@ int put_shard(storj_http_options_t *http_options,
               int port,
               char *shard_hash,
               uint64_t shard_total_bytes,
-              uint8_t *shard_data,
+              char *encrypted_file_path,
+              uint64_t file_position,
               char *token,
               int *status_code,
               uv_async_t *progress_handle,
@@ -107,16 +114,27 @@ int put_shard(storj_http_options_t *http_options,
 
     shard_body_send_t *shard_body = NULL;
 
-    if (shard_data && shard_total_bytes) {
+    FILE *encrypted_file = NULL;
+
+    if (encrypted_file_path && shard_total_bytes) {
+
+        // Open file for reading
+        encrypted_file = fopen(encrypted_file_path, "r");
+        if (!encrypted_file) {
+            return 1;
+        }
+
+        // Seek to shard's location in file
+        fseek(encrypted_file, file_position, SEEK_SET);
 
         shard_body = malloc(sizeof(shard_body_send_t));
         if (!shard_body) {
             return 1;
         }
-        shard_body->shard_data = shard_data;
+
+        shard_body->fd = encrypted_file;
         shard_body->length = shard_total_bytes;
         shard_body->remain = shard_total_bytes;
-        shard_body->pnt = shard_data;
         shard_body->total_sent = 0;
         shard_body->bytes_since_progress = 0;
         shard_body->progress_handle = progress_handle;
@@ -131,6 +149,10 @@ int put_shard(storj_http_options_t *http_options,
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_ignore_receive);
 
     int req = curl_easy_perform(curl);
+
+    if (encrypted_file) {
+        fclose(encrypted_file);
+    }
 
     curl_slist_free_all(content_chunk);
     curl_slist_free_all(node_chunk);

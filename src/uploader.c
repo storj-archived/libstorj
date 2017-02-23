@@ -545,42 +545,9 @@ static void push_shard(uv_work_t *work)
 
     int status_code = 0;
 
-    //get shard_data
-    FILE *encrypted_file = fopen(state->tmp_path, "r");
-    if (NULL == encrypted_file) {
-        req->error_status = STORJ_FILE_INTEGRITY_ERROR;
-        return;
-    }
-
-    // Encrypted shard read from file
-    uint8_t *shard_data = calloc(shard->meta->size, sizeof(char));
-    if (!shard_data) {
-        req->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    // Bytes read from file
-    uint64_t read_bytes = 0;
-
-    int loop_count = 0;
-
-    do {
-        if (loop_count == 6) {
-            goto clean_variables;
-        }
-
-        // Seek to shard's location in file
-        fseek(encrypted_file, req->shard_index*state->shard_size, SEEK_SET);
-        // Read shard data from file
-        read_bytes = fread(shard_data, 1, shard->meta->size, encrypted_file);
-
-        if (read_bytes != shard->meta->size) {
-            loop_count += 1;
-        }
-
-    } while(read_bytes < shard->meta->size);
-
     req->start = get_time_milliseconds();
+
+    uint64_t file_position = req->shard_index * state->shard_size;
 
     int req_status = put_shard(req->http_options,
                                shard->pointer->farmer_node_id,
@@ -589,7 +556,8 @@ static void push_shard(uv_work_t *work)
                                atoi(shard->pointer->farmer_port),
                                shard->meta->hash,
                                shard->meta->size,
-                               shard_data,
+                               state->tmp_path,
+                               file_position,
                                shard->pointer->token,
                                &status_code,
                                &req->progress_handle,
@@ -605,15 +573,6 @@ static void push_shard(uv_work_t *work)
     req->end = get_time_milliseconds();
 
     req->status_code = status_code;
-
-clean_variables:
-    if (encrypted_file) {
-        fclose(encrypted_file);
-    }
-
-    if (shard_data) {
-        free(shard_data);
-    }
 }
 
 static void progress_put_shard(uv_async_t* async)
