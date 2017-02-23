@@ -532,6 +532,7 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
     }
 
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
