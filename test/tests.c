@@ -482,12 +482,6 @@ int test_upload()
         return 1;
     }
 
-    // shutdown
-    status = uv_loop_close(env->loop);
-    if (status == UV_EBUSY) {
-        return 1;
-    }
-
     free(file);
     storj_destroy_env(env);
 
@@ -554,12 +548,6 @@ int test_upload_cancel()
 
     } while (more == true);
 
-    // shutdown
-    status = uv_loop_close(env->loop);
-    if (status == UV_EBUSY) {
-        return 1;
-    }
-
     free(file);
     storj_destroy_env(env);
 
@@ -601,12 +589,6 @@ int test_download()
     assert(status == 0);
 
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
-        return 1;
-    }
-
-    // shutdown
-    status = uv_loop_close(env->loop);
-    if (status == UV_EBUSY) {
         return 1;
     }
 
@@ -669,11 +651,6 @@ int test_download_cancel()
 
     } while (more == true);
 
-    // shutdown
-    status = uv_loop_close(env->loop);
-    if (status == UV_EBUSY) {
-        return 1;
-    }
 
     free(download_file);
     storj_destroy_env(env);
@@ -776,12 +753,6 @@ int test_api()
 
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
-        return 1;
-    }
-
-    // shutdown
-    status = uv_loop_close(env->loop);
-    if (status == UV_EBUSY) {
         return 1;
     }
 

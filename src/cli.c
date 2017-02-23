@@ -1410,13 +1410,6 @@ int main(int argc, char **argv)
         goto end_program;
     }
 
-    // shutdown
-    int uv_status = uv_loop_close(env->loop);
-    if (uv_status == UV_EBUSY) {
-        status = 1;
-        goto end_program;
-    }
-
 end_program:
     if (env) {
         storj_destroy_env(env);
