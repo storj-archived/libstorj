@@ -49,6 +49,7 @@ extern "C" {
 #define STORJ_BRIDGE_FRAME_ERROR 1009
 #define STORJ_BRIDGE_POINTER_ERROR 1010
 #define STORJ_BRIDGE_REPOINTER_ERROR 1011
+#define STORJ_BRIDGE_FILEINFO_ERROR 1012
 
 // Farmer related errors 2000 to 2999
 #define STORJ_FARMER_REQUEST_ERROR 2000
@@ -62,6 +63,7 @@ extern "C" {
 #define STORJ_FILE_WRITE_ERROR 3001
 #define STORJ_FILE_ENCRYPTION_ERROR 3002
 #define STORJ_FILE_SIZE_ERROR 3003
+#define STORJ_FILE_DECRYPTION_ERROR 3004
 
 // Memory related errors
 #define STORJ_MEMORY_ERROR 4000
@@ -257,6 +259,10 @@ typedef struct {
     FILE *fd;
 } storj_upload_opts_t;
 
+typedef struct {
+    const char *hmac;
+} storj_file_meta_t;
+
 /** @brief A structure that keeps state between multiple worker threads,
  * and for referencing a download to apply actions to an in-progress download.
  *
@@ -269,10 +275,14 @@ typedef struct {
  */
 typedef struct {
     uint64_t total_bytes;
+    storj_file_meta_t *info;
+    bool requesting_info;
+    uint32_t info_fail_count;
     storj_env_t *env;
     const char *file_id;
     const char *bucket_id;
     FILE *destination;
+    struct hmac_sha512_ctx *hmac_ctx;
     storj_progress_cb progress_cb;
     storj_finished_download_cb finished_cb;
     bool finished;

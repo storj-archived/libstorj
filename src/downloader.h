@@ -17,6 +17,7 @@
 #define STORJ_MAX_REPORT_TRIES 2
 #define STORJ_MAX_TOKEN_TRIES 3
 #define STORJ_MAX_POINTER_TRIES 2
+#define STORJ_MAX_INFO_TRIES 6
 
 /** @brief Enumerable that defines that status of a pointer
  *
@@ -87,6 +88,18 @@ typedef struct {
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
 } shard_send_report_t;
+
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_bridge_options_t *options;
+    int status_code;
+    const char *bucket_id;
+    const char *file_id;
+    int error_status;
+    storj_file_meta_t *info;
+    /* state should not be modified in worker threads */
+    storj_download_state_t *state;
+} file_info_request_t;
 
 /** @brief A structure for sharing data with worker threads for replacing a
  * pointer with a new farmer.

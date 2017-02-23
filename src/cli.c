@@ -387,7 +387,16 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     fclose(fd);
     if (status) {
         // TODO send to stderr
-        printf("Download failure: %s\n", storj_strerror(status));
+        switch(status) {
+            case STORJ_FILE_DECRYPTION_ERROR:
+                printf("Unable to properly decrypt file, please check " \
+                       "that the correct encryption key (mnemonic) was " \
+                       "imported correctly.\n\n");
+                break;
+            default:
+                printf("Download failure: %s\n", storj_strerror(status));
+        }
+
         exit(status);
     }
     printf("Download Success!\n");
