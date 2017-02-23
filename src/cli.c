@@ -779,8 +779,8 @@ static void list_files_callback(uv_work_t *work_req, int status)
     }
 
 cleanup:
-    free(req->path);
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
     exit(ret_status);
@@ -814,6 +814,8 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
         printf("Failed to destroy bucket. (%i)\n", req->status_code);
     }
 
+    json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
