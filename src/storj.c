@@ -643,6 +643,8 @@ char *storj_strerror(int error_code)
             return "File is not found";
         case STORJ_BRIDGE_JSON_ERROR:
             return "Unexpected JSON response";
+        case STORJ_BRIDGE_FILEINFO_ERROR:
+            return "Bridge file info error";
         case STORJ_FARMER_REQUEST_ERROR:
             return "Farmer request error";
         case STORJ_FARMER_EXHAUSTED_ERROR:
