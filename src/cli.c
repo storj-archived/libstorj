@@ -898,6 +898,7 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
            json_object_get_string(transfer));
 
     json_object_put(req->response);
+    json_object_put(req->body);
     free(req);
     free(work_req);
 }
