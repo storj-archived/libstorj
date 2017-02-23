@@ -252,12 +252,16 @@
     }
   },
   "getfileinfo": {
-    "bucket": "8177a4ff1bf5672b2aa79f21",
+    "bucket": "368be0816766b28fd5f43af5",
     "mimetype": "video/ogg",
-    "filename": "TheMeaningOfLifeAndEverything.ogv",
+    "filename": "storj-test-download.data",
     "frame": "2f2133b1d23e0bc4123f96de",
     "size": 3193765382,
-    "id": "4f6b68174dd6eb8e0fcdfed7"
+    "id": "998960317b6725a3f8080c2b",
+    "hmac": {
+      "value": "f1ffb874fb4655b0609342c8ec8fec1f15464c2c65598e72b69c0631cf7f027bd7e347ee7832a303460a10b0e8ebbd78a98bdebaf3b31986a81d7fd302212936",
+      "type": "sha512"
+    }
   },
   "getfilepointers-0": [
     {

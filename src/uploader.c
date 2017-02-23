@@ -1542,12 +1542,8 @@ static void encrypt_file(uv_work_t *work)
     }
     state->hmac_id = hmac_id;
 
-    uint8_t file_key_as_hex[DETERMINISTIC_KEY_HEX_SIZE];
-    memset_zero(file_key_as_hex, DETERMINISTIC_KEY_HEX_SIZE);
-    str2hex(DETERMINISTIC_KEY_SIZE, state->file_key, file_key_as_hex);
-
     struct hmac_sha512_ctx hmac_ctx;
-    hmac_sha512_set_key(&hmac_ctx, DETERMINISTIC_KEY_HEX_SIZE, file_key_as_hex);
+    hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, pass);
 
     // Load original file and tmp file
     FILE *original_file = state->original_file;
