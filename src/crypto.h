@@ -17,8 +17,8 @@
 #include "bip39.h"
 #include "utils.h"
 
-#define FILE_ID_SIZE 24
-#define FILE_ID_HEX_SIZE 12
+#define FILE_ID_BY_NAME_SIZE 24
+#define FILE_ID_SIZE 40
 #define DETERMINISTIC_KEY_SIZE 64
 #define DETERMINISTIC_KEY_HEX_SIZE 32
 
@@ -48,14 +48,25 @@ void pbkdf2_hmac_sha512(unsigned key_length,
                         unsigned length, uint8_t *dst);
 
 /**
- * @brief Calculate file id by sha256ripemd160
+ * @brief Calculate file id by sha256ripemd160 of file data
+ *
+ * @param[in] fp Pointer to file data to be hashed
+ * @param[in] salt Prepended to the file data data
+ * @param[in] salt_len Length of the salt
+ * @param[out] buffer 20 byte character array that is the file's id
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int calculate_file_id(FILE *fp, char *salt, int salt_len, char **digest);
+
+/**
+ * @brief Calculate file id by sha256ripemd160 ny file_name
  *
  * @param[in] bucket Character array of bucket id
  * @param[in] file_name Character array of file name
  * @param[out] buffer 12 byte character array that is the file's id
  * @return A non-zero error value on failure and 0 on success.
  */
-int calculate_file_id(const char *bucket, const char *file_name, char **buffer);
+int calculate_file_id_by_name(const char *bucket, const char *file_name, char **buffer);
 
 /**
  * @brief Generate a bucket's key
