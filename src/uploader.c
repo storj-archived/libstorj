@@ -1169,13 +1169,6 @@ static void prepare_frame(uv_work_t *work)
     shard_meta_t *shard_meta = req->shard_meta;
     storj_upload_state_t *state = req->upload_state;
 
-    char path[64];
-    memset_zero(path, 64);
-    sprintf(path, "/proc/self/fd/%d", fileno(state->original_file));
-    printf("path: %s\n", path);
-
-    FILE *file = fopen(path, "r");
-
     // Set the challenges
     uint8_t buff[32];
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
@@ -1213,8 +1206,6 @@ static void prepare_frame(uv_work_t *work)
         sha256_update(&first_sha256_for_leaf[i], 32, (char *)&shard_meta->challenges[i]);
     }
 
-    fseek(file, shard_meta->index*state->shard_size, SEEK_SET);
-
     // Initialize the encryption context
     storj_encryption_ctx_t *ctx = prepare_encryption(state->file_key,
                                                    DETERMINISTIC_KEY_SIZE,
@@ -1231,7 +1222,47 @@ static void prepare_frame(uv_work_t *work)
     uint64_t total_read = 0;
 
     do {
-        read_bytes = fread(read_data, 1, AES_BLOCK_SIZE * 256, file);
+#ifdef _WIN32
+        OVERLAPPED overlapped;
+        memset(&overlapped, 0, sizeof(OVERLAPPED));
+
+        HANDLE hEvent;
+        hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        if (hEvent) {
+            overlapped.hEvent = hEvent;
+        } else {
+            printf("\nCreate event failed with error:%d",GetLastError());
+        }
+
+        overlapped.Offset = shard_meta->index*state->shard_size + total_read;
+
+        HANDLE file = (HANDLE)_get_osfhandle(fileno(state->original_file));
+        SetLastError(0);
+        bool RF = ReadFile(file, read_data, AES_BLOCK_SIZE * 256, NULL, &overlapped);
+        if ((RF==0) && GetLastError() == ERROR_IO_PENDING) {
+            printf ("Asynch readfile started. I can do other operations now\n");
+            while( !GetOverlappedResult(file, &overlapped, &read_bytes, FALSE)) {
+                if (GetLastError() == ERROR_IO_INCOMPLETE) {
+                    printf("I/O pending: %d .\n",GetLastError());
+                } else if  (GetLastError() == ERROR_HANDLE_EOF) {
+                    printf("End of file reached.\n");
+                    break;
+                } else {
+                    printf("GetOverlappedResult failed with error:%d\n",GetLastError());
+                    break;
+                }
+            }
+        } else if ((RF == 0) && GetLastError() != ERROR_IO_PENDING) {
+            printf ("Error reading file :%d\n",GetLastError());
+            goto clean_variables;
+        }
+
+        printf("ReadFile operation completed for %lld bytes\n",total_read);
+#else
+        read_bytes = pread(fileno(state->original_file),
+                           read_data, AES_BLOCK_SIZE * 256,
+                           shard_meta->index*state->shard_size + total_read);
+#endif
         total_read += read_bytes;
 
         // Encrypt data
@@ -1281,10 +1312,6 @@ static void prepare_frame(uv_work_t *work)
 clean_variables:
     if (ctx) {
         free_encryption_ctx(ctx);
-    }
-
-    if (file) {
-        fclose(file);
     }
 }
 
