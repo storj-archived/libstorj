@@ -71,6 +71,10 @@ extern "C" {
 // Queue related errors
 #define STORJ_QUEUE_ERROR 5000
 
+// Meta related errors 6000 to 6999
+#define STORJ_META_ENCRYPTION_ERROR 6000
+#define STORJ_META_DECRYPTION_ERROR 6001
+
 // Exchange report codes
 #define STORJ_REPORT_SUCCESS 1000
 #define STORJ_REPORT_FAILURE 1100
@@ -351,6 +355,7 @@ typedef struct {
     uint32_t shard_concurrency;
     char *file_id;
     const char *file_name;
+    const char *encrypted_file_name;
     FILE *original_file;
     char *file_key;
     uint64_t file_size;
@@ -495,7 +500,6 @@ int storj_decrypt_auth(const char *buffer,
                        char **bridge_user,
                        char **bridge_pass,
                        char **mnemonic);
-
 
 /**
  * @brief Will get the current unix timestamp in milliseconds

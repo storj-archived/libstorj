@@ -405,3 +405,144 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
 
     return 0;
 }
+
+int encrypt_meta(const char *filemeta,
+                 uint8_t *encrypt_key,
+                 uint8_t *encrypt_iv,
+                 uint32_t encrypt_iv_size,
+                 char **buffer_base64)
+{
+    struct gcm_aes256_ctx ctx2;
+    gcm_aes256_set_key(&ctx2, encrypt_key);
+    gcm_aes256_set_iv(&ctx2, encrypt_iv_size, encrypt_iv);
+
+    int pos = 0;
+    size_t length = strlen(filemeta);
+    size_t remain = length;
+    while (pos < length) {
+        int len = AES_BLOCK_SIZE;
+        if (remain < AES_BLOCK_SIZE) {
+            len = remain;
+        }
+        gcm_aes256_update(&ctx2, len, filemeta + pos);
+        pos += AES_BLOCK_SIZE;
+        remain -= AES_BLOCK_SIZE;
+    }
+
+    pos = 0;
+    remain = length;
+    uint8_t cipher_text[length];
+    while (pos < length) {
+        int len = AES_BLOCK_SIZE;
+        if (remain < AES_BLOCK_SIZE) {
+            len = remain;
+        }
+        gcm_aes256_encrypt(&ctx2, len, cipher_text + pos, filemeta + pos);
+        pos += AES_BLOCK_SIZE;
+        remain -= AES_BLOCK_SIZE;
+    }
+
+    uint8_t digest[GCM_DIGEST_SIZE];
+    gcm_aes256_digest(&ctx2, GCM_DIGEST_SIZE, digest);
+
+    uint32_t buf_len = GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + length;
+    uint8_t buf[buf_len];
+    memcpy(buf, digest, GCM_DIGEST_SIZE);
+    memcpy(buf + GCM_DIGEST_SIZE, encrypt_iv, encrypt_iv_size);
+    memcpy(buf + GCM_DIGEST_SIZE + encrypt_iv_size, &cipher_text, length);
+
+    *buffer_base64 = calloc(BASE64_ENCODE_LENGTH(buf_len) + 1, sizeof(uint8_t));
+    if (!*buffer_base64) {
+        //STORJ_MEMORY_ERROR
+        return 1;
+    }
+
+    struct base64_encode_ctx ctx3;
+    base64_encode_init(&ctx3);
+    base64_encode_update(&ctx3, *buffer_base64, buf_len, buf);
+    base64_encode_final(&ctx3, *buffer_base64);
+
+    return 0;
+}
+
+int decrypt_meta(const char *buffer_base64,
+                 uint8_t *decrypt_key,
+                 char **filemeta)
+{
+    uint32_t buffer_len = BASE64_DECODE_LENGTH(strlen(buffer_base64));
+    uint8_t *buffer = calloc(buffer_len, sizeof(uint8_t));
+    if (!*buffer) {
+        //STORJ_MEMORY_ERROR
+        return 1;
+    }
+
+    size_t decode_len = 0;
+    struct base64_decode_ctx ctx3;
+    base64_decode_init(&ctx3);
+    base64_decode_update(&ctx3, &decode_len, buffer,
+                         strlen(buffer_base64), buffer_base64);
+    if (!base64_decode_final(&ctx3)) {
+        return 1;
+    }
+
+    if (GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + 1 > buffer_len) {
+        //STORJ_META_DECRYPTION_ERROR
+        return 1;
+    }
+    size_t length = buffer_len - GCM_DIGEST_SIZE - SHA256_DIGEST_SIZE;
+
+    uint8_t digest[GCM_DIGEST_SIZE];
+    uint8_t iv[SHA256_DIGEST_SIZE];
+    uint8_t cipher_text[length];
+    uint8_t clear_text[length];
+
+    memcpy(&digest, buffer, GCM_DIGEST_SIZE);
+    memcpy(&iv, buffer + GCM_DIGEST_SIZE, SHA256_DIGEST_SIZE);
+    memcpy(&cipher_text, buffer + GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE, length);
+
+    struct gcm_aes256_ctx ctx2;
+    gcm_aes256_set_key(&ctx2, decrypt_key);
+    gcm_aes256_set_iv(&ctx2, SHA256_DIGEST_SIZE, iv);
+
+    int pos = 0;
+    size_t remain = length;
+    while (pos < length) {
+        int len = AES_BLOCK_SIZE;
+        if (remain < AES_BLOCK_SIZE) {
+            len = remain;
+        }
+        gcm_aes256_update(&ctx2, len, cipher_text + pos);
+        pos += AES_BLOCK_SIZE;
+        remain -= AES_BLOCK_SIZE;
+    }
+
+    pos = 0;
+    remain = length;
+    while (pos < length) {
+        int len = AES_BLOCK_SIZE;
+        if (remain < AES_BLOCK_SIZE) {
+            len = remain;
+        }
+        gcm_aes256_decrypt(&ctx2, len, clear_text + pos, cipher_text + pos);
+        pos += AES_BLOCK_SIZE;
+        remain -= AES_BLOCK_SIZE;
+    }
+
+    uint8_t actual_digest[GCM_DIGEST_SIZE];
+    gcm_aes256_digest(&ctx2, GCM_DIGEST_SIZE, actual_digest);
+
+    int digest_match = memcmp(actual_digest, digest, GCM_DIGEST_SIZE);
+    if (digest_match != 0) {
+        //STORJ_META_DECRYPTION_ERROR
+        return 1;
+    }
+
+    *filemeta = calloc(length + 1, sizeof(char));
+    if (!&filemeta) {
+        //STORJ_MEMORY_ERROR
+        return 1;
+    }
+    memcpy(*filemeta, &clear_text, length);
+
+    return 0;
+}

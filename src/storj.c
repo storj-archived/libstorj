@@ -638,6 +638,10 @@ char *storj_strerror(int error_code)
             return "File size error";
         case STORJ_FILE_DECRYPTION_ERROR:
             return "File decryption error";
+        case STORJ_META_ENCRYPTION_ERROR:
+            return "Meta encryption error";
+        case STORJ_META_DECRYPTION_ERROR:
+            return "Meta decryption error";
         case STORJ_TRANSFER_CANCELED:
             return "File transfer canceled";
         case STORJ_MEMORY_ERROR:

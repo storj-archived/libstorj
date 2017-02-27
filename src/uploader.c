@@ -383,8 +383,8 @@ static void create_bucket_entry(uv_work_t *work)
     json_object *frame = json_object_new_string(state->frame_id);
     json_object_object_add(body, "frame", frame);
 
-    json_object *file_name = json_object_new_string(state->file_name);
-    json_object_object_add(body, "filename",file_name);
+    json_object *file_name = json_object_new_string(state->encrypted_file_name);
+    json_object_object_add(body, "filename", file_name);
 
     struct json_object *hmac = json_object_new_object();
 
@@ -1790,26 +1790,63 @@ static void prepare_upload_state(uv_work_t *work)
         state->shard[i].work = NULL;
     }
 
-    // Generate encryption key && Calculate deterministic file id
+    // Get the bucket key to encrypt the filename
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(state->env->encrypt_options->mnemonic,
+                        state->bucket_id,
+                        &bucket_key_as_str);
+
+    uint8_t bucket_key[DETERMINISTIC_KEY_HEX_SIZE];
+    if (str2hex(strlen(bucket_key_as_str), bucket_key_as_str, bucket_key)) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    free(bucket_key_as_str);
+
+    // Hash the bucket key for filename encryption
+    struct sha256_ctx ctx1;
+    sha256_init(&ctx1);
+    sha256_update(&ctx1, DETERMINISTIC_KEY_HEX_SIZE, bucket_key);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    sha256_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    // Generate the synthetic iv for filename encryption
+    struct sha256_ctx ctx2;
+    sha256_init(&ctx2);
+    sha256_update(&ctx2, strlen(state->bucket_id), state->bucket_id);
+    sha256_update(&ctx2, strlen(state->file_name), state->file_name);
+    uint8_t filename_iv[SHA256_DIGEST_SIZE];
+    sha256_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
+
+    char *encrypted_file_name;
+    encrypt_meta(state->file_name, bucket_key, filename_iv, SHA256_DIGEST_SIZE,
+                 &encrypted_file_name);
+
+    state->encrypted_file_name = encrypted_file_name;
+
+    // Calculate deterministic file id from encrypted file name
     char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
     if (!file_id) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
     }
+
+    calculate_file_id(state->bucket_id, state->encrypted_file_name, &file_id);
+
+    file_id[FILE_ID_SIZE] = '\0';
+    state->file_id = file_id;
+
+    // Caculate the file encryption key based on file id
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     if (!file_key) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
     }
-
-    calculate_file_id(state->bucket_id, state->file_name, &file_id);
-
-    file_id[FILE_ID_SIZE] = '\0';
-    state->file_id = file_id;
-
     if (generate_file_key(state->env->encrypt_options->mnemonic,
                           state->bucket_id,
-                          state->file_id, &file_key)) {
+                          state->file_id,
+                          &file_key)) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
     }
@@ -1907,6 +1944,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->shard_concurrency = opts->shard_concurrency;
     state->file_id = NULL;
     state->file_name = opts->file_name;
+    state->encrypted_file_name = NULL;
     state->original_file = opts->fd;
     state->file_key = NULL;
     state->file_size = 0;
