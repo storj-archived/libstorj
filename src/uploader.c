@@ -1169,6 +1169,13 @@ static void prepare_frame(uv_work_t *work)
     shard_meta_t *shard_meta = req->shard_meta;
     storj_upload_state_t *state = req->upload_state;
 
+    char path[64];
+    memset_zero(path, 64);
+    sprintf(path, "/proc/self/fd/%d", fileno(state->original_file));
+    printf("path: %s\n", path);
+
+    FILE *file = fopen(path, "r");
+
     // Set the challenges
     uint8_t buff[32];
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
@@ -1206,7 +1213,7 @@ static void prepare_frame(uv_work_t *work)
         sha256_update(&first_sha256_for_leaf[i], 32, (char *)&shard_meta->challenges[i]);
     }
 
-    fseek(state->original_file, shard_meta->index*state->shard_size, SEEK_SET);
+    fseek(file, shard_meta->index*state->shard_size, SEEK_SET);
 
     // Initialize the encryption context
     storj_encryption_ctx_t *ctx = prepare_encryption(state->file_key,
@@ -1224,7 +1231,7 @@ static void prepare_frame(uv_work_t *work)
     uint64_t total_read = 0;
 
     do {
-        read_bytes = fread(read_data, 1, AES_BLOCK_SIZE * 256, state->original_file);
+        read_bytes = fread(read_data, 1, AES_BLOCK_SIZE * 256, file);
         total_read += read_bytes;
 
         // Encrypt data
@@ -1274,6 +1281,10 @@ static void prepare_frame(uv_work_t *work)
 clean_variables:
     if (ctx) {
         free_encryption_ctx(ctx);
+    }
+
+    if (file) {
+        fclose(file);
     }
 }
 
