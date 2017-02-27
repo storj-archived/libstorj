@@ -14,12 +14,15 @@
 #include <string.h>
 #include <stdarg.h>
 #include <math.h>
+#include <stdbool.h>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <time.h>
 #else
 #include <sys/time.h>
+
+ssize_t pread(int fd, void *buf, size_t count, uint64_t offset);
 #endif
 
 int hex2str(unsigned length, uint8_t *data, char *buffer);

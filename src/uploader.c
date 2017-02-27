@@ -1106,9 +1106,6 @@ static void after_prepare_frame(uv_work_t *work, int status)
                   "Shard (%d) hash: %s", shard_meta->index,
                   state->shard[shard_meta->index].meta->hash);
 
-    printf("Shard (%d) hash: %s\n", shard_meta->index,
-                      state->shard[shard_meta->index].meta->hash);
-
     // Add challenges_as_str
     state->log->debug(state->env->log_options, state->handle,
                       "Challenges for shard index %d",
@@ -1222,45 +1219,10 @@ static void prepare_frame(uv_work_t *work)
     unsigned long int total_read = 0;
 
     do {
-#ifdef _WIN32
-        OVERLAPPED overlapped;
-        memset(&overlapped, 0, sizeof(OVERLAPPED));
-
-        HANDLE hEvent;
-        hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-        if (hEvent) {
-            overlapped.hEvent = hEvent;
-        } else {
-            printf("\nCreate event failed with error:%d",GetLastError());
-        }
-
-        overlapped.Offset = shard_meta->index*state->shard_size + total_read;
-
-        HANDLE file = (HANDLE)_get_osfhandle(fileno(state->original_file));
-        SetLastError(0);
-        bool RF = ReadFile(file, read_data, AES_BLOCK_SIZE * 256, &read_bytes, &overlapped);
-        if ((RF==0) && GetLastError() == ERROR_IO_PENDING) {
-            // printf ("Asynch readfile started. I can do other operations now\n");
-            while( !GetOverlappedResult(file, &overlapped, &read_bytes, TRUE)) {
-                if (GetLastError() == ERROR_IO_INCOMPLETE) {
-                    // printf("I/O pending: %d .\n",GetLastError());
-                } else if  (GetLastError() == ERROR_HANDLE_EOF) {
-                    // printf("End of file reached.\n");
-                    break;
-                } else {
-                    // printf("GetOverlappedResult failed with error:%d\n",GetLastError());
-                    break;
-                }
-            }
-        } else if ((RF == 0) && GetLastError() != ERROR_IO_PENDING) {
-            // printf ("Error reading file :%d\n",GetLastError());
-            goto clean_variables;
-        }
-#else
         read_bytes = pread(fileno(state->original_file),
                            read_data, AES_BLOCK_SIZE * 256,
                            shard_meta->index*state->shard_size + total_read);
-#endif
+
         total_read += read_bytes;
 
         // Encrypt data
