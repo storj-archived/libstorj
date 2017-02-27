@@ -1218,8 +1218,8 @@ static void prepare_frame(uv_work_t *work)
     memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
     char read_data[AES_BLOCK_SIZE * 256];
     memset_zero(read_data, AES_BLOCK_SIZE * 256);
-    uint64_t read_bytes = 0;
-    uint64_t total_read = 0;
+    unsigned long int read_bytes = 0;
+    unsigned long int total_read = 0;
 
     do {
 #ifdef _WIN32
@@ -1238,26 +1238,24 @@ static void prepare_frame(uv_work_t *work)
 
         HANDLE file = (HANDLE)_get_osfhandle(fileno(state->original_file));
         SetLastError(0);
-        bool RF = ReadFile(file, read_data, AES_BLOCK_SIZE * 256, NULL, &overlapped);
+        bool RF = ReadFile(file, read_data, AES_BLOCK_SIZE * 256, &read_bytes, &overlapped);
         if ((RF==0) && GetLastError() == ERROR_IO_PENDING) {
-            printf ("Asynch readfile started. I can do other operations now\n");
-            while( !GetOverlappedResult(file, &overlapped, &read_bytes, FALSE)) {
+            // printf ("Asynch readfile started. I can do other operations now\n");
+            while( !GetOverlappedResult(file, &overlapped, &read_bytes, TRUE)) {
                 if (GetLastError() == ERROR_IO_INCOMPLETE) {
-                    printf("I/O pending: %d .\n",GetLastError());
+                    // printf("I/O pending: %d .\n",GetLastError());
                 } else if  (GetLastError() == ERROR_HANDLE_EOF) {
-                    printf("End of file reached.\n");
+                    // printf("End of file reached.\n");
                     break;
                 } else {
-                    printf("GetOverlappedResult failed with error:%d\n",GetLastError());
+                    // printf("GetOverlappedResult failed with error:%d\n",GetLastError());
                     break;
                 }
             }
         } else if ((RF == 0) && GetLastError() != ERROR_IO_PENDING) {
-            printf ("Error reading file :%d\n",GetLastError());
+            // printf ("Error reading file :%d\n",GetLastError());
             goto clean_variables;
         }
-
-        printf("ReadFile operation completed for %lld bytes\n",total_read);
 #else
         read_bytes = pread(fileno(state->original_file),
                            read_data, AES_BLOCK_SIZE * 256,
