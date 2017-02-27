@@ -1270,6 +1270,7 @@ static void prepare_frame(uv_work_t *work)
 
         memcpy(shard_meta->tree[i], buff2, RIPEMD160_DIGEST_SIZE*2 + 1);
     }
+    free(buff2);
 
 clean_variables:
     if (ctx) {

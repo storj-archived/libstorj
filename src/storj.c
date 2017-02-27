@@ -425,6 +425,7 @@ int storj_destroy_env(storj_env_t *env)
     free(env->http_options);
 
     // free the event loop
+    uv_loop_close(env->loop);
     free(env->loop);
 
     // free the log levels
