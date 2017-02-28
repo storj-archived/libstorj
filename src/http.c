@@ -17,8 +17,7 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
     }
 
     size_t read_bytes = 0;
-    size_t buflen = size * nmemb;
-    size_t to_read = (buflen / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;
+    size_t buflen = size * nmemb / AES_BLOCK_SIZE * AES_BLOCK_SIZE;
     uint8_t clr_txt[buflen];
     memset_zero(clr_txt, buflen);
 
