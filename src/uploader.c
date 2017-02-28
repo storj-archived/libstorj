@@ -1182,7 +1182,13 @@ static void prepare_frame(uv_work_t *work)
         memcpy(shard_meta->challenges[i], buff, 32);
 
         // Convert the uint8_t challenges to character arrays
-        hex2str(32, buff, (char *)shard_meta->challenges_as_str[i]);
+        char *challenge_as_str = hex2str(32, buff);
+        if (!challenge_as_str) {
+            req->error_status = STORJ_MEMORY_ERROR;
+            goto clean_variables;
+        }
+        memcpy(shard_meta->challenges_as_str[i], challenge_as_str, strlen(challenge_as_str));
+        free(challenge_as_str);
     }
 
     // Hash of the shard_data
@@ -1240,7 +1246,13 @@ static void prepare_frame(uv_work_t *work)
     ripemd160_of_str(prehash_sha256, SHA256_DIGEST_SIZE, prehash_ripemd160);
 
     // Shard Hash
-    hex2str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160, shard_meta->hash);
+    char *hash = hex2str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160);
+    if (!hash) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        goto clean_variables;
+    }
+    memcpy(shard_meta->hash, hash, strlen(hash));
+    free(hash);
 
     uint8_t preleaf_sha256[SHA256_DIGEST_SIZE];
     memset_zero(preleaf_sha256, SHA256_DIGEST_SIZE);
@@ -1595,8 +1607,13 @@ static void encrypt_file(uv_work_t *work)
     memset_zero(hmac_id_hex, SHA512_DIGEST_SIZE);
     hmac_sha512_digest (&hmac_ctx, SHA512_DIGEST_SIZE, hmac_id_hex);
 
-    hex2str(SHA512_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
-    state->hmac_id[SHA512_DIGEST_SIZE *2] = '\0';
+    char *hmac_id_str = hex2str(SHA512_DIGEST_SIZE, hmac_id_hex);
+    if (!hmac_id_str) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+    memcpy(state->hmac_id, hmac_id_str, strlen(hmac_id_str) + 1);
+    free(hmac_id_str);
 
 clean_variables:
     if (encrypted_file) {

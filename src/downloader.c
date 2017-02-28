@@ -1368,9 +1368,11 @@ static void queue_next_work(storj_download_state_t *state)
             memset_zero(hmac, SHA512_DIGEST_SIZE);
             hmac_sha512_digest(state->hmac_ctx, SHA512_DIGEST_SIZE, hmac);
 
-            char hmac_str[SHA512_DIGEST_SIZE *2 + 2];
-            hex2str(SHA512_DIGEST_SIZE, hmac, hmac_str);
-            hmac_str[SHA512_DIGEST_SIZE *2] = '\0';
+            char *hmac_str = hex2str(SHA512_DIGEST_SIZE, hmac);
+            if (!hmac_str) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
 
             if (state->info && state->info->hmac) {
                 if (0 != strcmp(state->info->hmac, hmac_str)) {
@@ -1386,6 +1388,7 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished = true;
             state->finished_cb(state->error_status, state->destination, state->handle);
 
+            free(hmac_str);
             free_download_state(state);
         }
 

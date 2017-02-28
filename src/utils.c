@@ -2,17 +2,20 @@
 
 // TODO possibly use ccan/str/hex/hex.c code for decode and encoding hex
 
-int hex2str(unsigned length, uint8_t *data, char *buffer)
+char *hex2str(unsigned length, uint8_t *data)
 {
     unsigned i;
 
-    memset(buffer, '\0', length*2 + 1);
-
-    for (i = 0; i<length; i++) {
-        sprintf(&buffer[i*2], "%02x ", data[i]);
+    char *buffer = calloc(length * 2 + 2, sizeof(char));
+    if (!buffer) {
+        return NULL;
     }
 
-    return 0;
+    for (i = 0; i<length; i++) {
+        sprintf(&buffer[i*2], "%02x", data[i]);
+    }
+
+    return buffer;
 }
 
 void print_int_array(uint8_t *array, unsigned length)
@@ -27,15 +30,19 @@ void print_int_array(uint8_t *array, unsigned length)
     printf("}\n");
 }
 
-int str2hex(unsigned length, char *data, uint8_t *buffer)
+char *str2hex(unsigned length, char *data)
 {
     unsigned i;
 
-    memset(buffer, '\0', length/2 + 1);
+    char *buffer = calloc(length/2 + 1, sizeof(char));
+    if (!buffer) {
+        return NULL;
+    }
 
     unsigned int *tmp = calloc(length/2, sizeof(unsigned int));
     if (!tmp) {
-        return 1;
+        free(buffer);
+        return NULL;
     }
 
     for (i = 0; i<(length/2); i++) {
@@ -45,7 +52,7 @@ int str2hex(unsigned length, char *data, uint8_t *buffer)
 
     free(tmp);
 
-    return 0;
+    return buffer;
 }
 
 char *str_concat_many(int count, ...)

@@ -22,11 +22,11 @@
 #include <sys/time.h>
 #endif
 
-int hex2str(unsigned length, uint8_t *data, char *buffer);
+char *hex2str(unsigned length, uint8_t *data);
 
 void print_int_array(uint8_t *array, unsigned length);
 
-int str2hex(unsigned length, char *data, uint8_t *buffer);
+char *str2hex(unsigned length, char *data);
 
 char *str_concat_many(int count, ...);
 
