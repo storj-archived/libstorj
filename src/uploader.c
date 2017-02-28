@@ -184,6 +184,14 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->exclude);
     }
 
+    if (state->encryption_ctr) {
+        free(state->encryption_ctr);
+    }
+
+    if (state->encryption_key) {
+        free(state->encryption_key);
+    }
+
     if (state->shard) {
         for (int i = 0; i < state->total_shards; i++ ) {
 
@@ -206,6 +214,23 @@ static void cleanup_state(storj_upload_state_t *state)
     state->finished_cb(state->error_status, state->handle);
 
     free(state);
+}
+
+static void free_encryption_ctx(storj_encryption_ctx_t *ctx)
+{
+    if (ctx->encryption_ctr) {
+        free(ctx->encryption_ctr);
+    }
+
+    if (ctx->encryption_key) {
+        free(ctx->encryption_key);
+    }
+
+    if (ctx->ctx) {
+        free(ctx->ctx);
+    }
+
+    free(ctx);
 }
 
 static uint64_t check_file(storj_env_t *env, const char *filepath)
@@ -545,12 +570,14 @@ static void push_shard(uv_work_t *work)
 
     uint64_t file_position = req->shard_index * state->shard_size;
 
-    storj_encryption_ctx_t *ctx = prepare_encryption(state->file_key,
-                                                   DETERMINISTIC_KEY_SIZE,
-                                                   state->file_id,
-                                                   FILE_ID_SIZE);
-
-    increment_ctr_aes_iv(ctx->iv, req->shard_index*state->shard_size);
+    // Initialize the encryption context
+    storj_encryption_ctx_t *encryption_ctx = calloc(sizeof(storj_encryption_ctx_t), sizeof(char));
+    encryption_ctx->ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
+    encryption_ctx->encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
+    memcpy(encryption_ctx->encryption_ctr, state->encryption_ctr, AES_BLOCK_SIZE);
+    aes256_set_encrypt_key(encryption_ctx->ctx, state->encryption_key);
+    // Increment the iv to proper placement because we may be reading from the middle of the file
+    increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_index*state->shard_size);
 
     int req_status = put_shard(req->http_options,
                                shard->pointer->farmer_node_id,
@@ -561,7 +588,7 @@ static void push_shard(uv_work_t *work)
                                shard->meta->size,
                                state->original_file,
                                file_position,
-                               ctx,
+                               encryption_ctx,
                                shard->pointer->token,
                                &status_code,
                                &req->progress_handle,
@@ -578,7 +605,7 @@ static void push_shard(uv_work_t *work)
 
     req->status_code = status_code;
 
-    free_encryption_ctx(ctx);
+    free_encryption_ctx(encryption_ctx);
 }
 
 static void progress_put_shard(uv_async_t* async)
@@ -1210,12 +1237,12 @@ static void prepare_frame(uv_work_t *work)
     }
 
     // Initialize the encryption context
-    storj_encryption_ctx_t *ctx = prepare_encryption(state->file_key,
-                                                   DETERMINISTIC_KEY_SIZE,
-                                                   state->file_id,
-                                                   FILE_ID_SIZE);
+    char *encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
+    memcpy(encryption_ctr, state->encryption_ctr, AES_BLOCK_SIZE);
+    struct aes256_ctx *encryption_ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
+    aes256_set_encrypt_key(encryption_ctx, state->encryption_key);
     // Increment the iv to proper placement because we may be reading from the middle of the file
-    increment_ctr_aes_iv(ctx->iv, shard_meta->index*state->shard_size);
+    increment_ctr_aes_iv(encryption_ctr, shard_meta->index*state->shard_size);
 
     uint8_t cphr_txt[AES_BLOCK_SIZE * 256];
     memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
@@ -1232,8 +1259,8 @@ static void prepare_frame(uv_work_t *work)
         total_read += read_bytes;
 
         // Encrypt data
-        ctr_crypt(ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
-                  AES_BLOCK_SIZE, ctx->iv, read_bytes,
+        ctr_crypt(encryption_ctx, (nettle_cipher_func *)aes256_encrypt,
+                  AES_BLOCK_SIZE, encryption_ctr, read_bytes,
                   (uint8_t *)cphr_txt, (uint8_t *)read_data);
 
         sha256_update(&shard_hash_ctx, read_bytes, cphr_txt);
@@ -1276,8 +1303,12 @@ static void prepare_frame(uv_work_t *work)
     }
 
 clean_variables:
-    if (ctx) {
-        free_encryption_ctx(ctx);
+    if (encryption_ctr) {
+        free(encryption_ctr);
+    }
+
+    if (encryption_ctx) {
+        free(encryption_ctx);
     }
 
     if (buff2) {
@@ -1429,67 +1460,40 @@ static void queue_request_frame_id(storj_upload_state_t *state)
  * pre_pass - file_key
  * pre_salt - file_id
  */
-static storj_encryption_ctx_t *prepare_encryption(char *pre_pass, int pre_pass_size, char *pre_salt, int pre_salt_size)
+static int prepare_encryption_key(storj_upload_state_t *state,
+                               char *pre_pass,
+                               int pre_pass_size,
+                               char *pre_salt,
+                               int pre_salt_size)
 {
-    storj_encryption_ctx_t *encryption_ctx = malloc(sizeof(storj_encryption_ctx_t));
-
-    // Initialize context for encryption
-    encryption_ctx->ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
-    if (!encryption_ctx->ctx) {
-        return NULL;
-    }
-
     // Convert file key to password
-    encryption_ctx->pass = calloc(SHA256_DIGEST_SIZE + 1, sizeof(char));
-    if (!encryption_ctx->pass) {
-        return NULL;
+    state->encryption_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(char));
+    if (!state->encryption_key) {
+        return 1;
     }
 
-    sha256_of_str((uint8_t *)pre_pass, pre_pass_size, encryption_ctx->pass);
-    encryption_ctx->pass[SHA256_DIGEST_SIZE] = '\0';
+    sha256_of_str((uint8_t *)pre_pass, pre_pass_size, state->encryption_key);
+    state->encryption_key[SHA256_DIGEST_SIZE] = '\0';
 
     // Convert file id to salt
-    encryption_ctx->salt = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(char));
-    if (!encryption_ctx->salt) {
-        return NULL;
-    }
-    ripemd160_of_str((uint8_t *)pre_salt, pre_salt_size, encryption_ctx->salt);
-    encryption_ctx->salt[RIPEMD160_DIGEST_SIZE] = '\0';
-
-    // Set the encryption password
-    aes256_set_encrypt_key(encryption_ctx->ctx, encryption_ctx->pass);
+    char salt[RIPEMD160_DIGEST_SIZE + 1];
+    memset_zero(salt, RIPEMD160_DIGEST_SIZE + 1);
+    ripemd160_of_str((uint8_t *)pre_salt, pre_salt_size, salt);
+    salt[RIPEMD160_DIGEST_SIZE] = '\0';
 
     // We only need the first 16 bytes of the salt because it's CTR mode
-    encryption_ctx->iv = calloc(AES_BLOCK_SIZE, sizeof(char));
-    if (!encryption_ctx->iv) {
-        return NULL;
+    state->encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
+    if (!state->encryption_ctr) {
+        return 1;
     }
 
-    memcpy(encryption_ctx->iv, encryption_ctx->salt, AES_BLOCK_SIZE);
+    memcpy(state->encryption_ctr, salt, AES_BLOCK_SIZE);
 
-    return encryption_ctx;
+    return 0;
+
 }
-
-static void free_encryption_ctx(storj_encryption_ctx_t *ctx)
-{
-    if (ctx->iv) {
-        free(ctx->iv);
-    }
-
-    if (ctx->pass) {
-        free(ctx->pass);
-    }
-
-    if (ctx->salt) {
-        free(ctx->salt);
-    }
-
-    if (ctx->ctx) {
-        free(ctx->ctx);
-    }
-
-    free(ctx);
-}
+//    // Set the encryption password
+//    aes256_set_encrypt_key(encryption_ctx->ctx, state->encryption_key);
 
 static void after_send_exchange_report(uv_work_t *work, int status)
 {
@@ -1777,11 +1781,7 @@ static void prepare_upload_state(uv_work_t *work)
     file_key[DETERMINISTIC_KEY_SIZE] = '\0';
     state->file_key = file_key;
 
-
-    storj_encryption_ctx_t *ctx = prepare_encryption(file_key,
-                                                   DETERMINISTIC_KEY_SIZE,
-                                                   file_id,
-                                                   FILE_ID_SIZE);
+    prepare_encryption_key(state, file_key, DETERMINISTIC_KEY_SIZE, file_id, FILE_ID_SIZE);
 
     // Context for getting hmac_id
     char *hmac_id = calloc(SHA512_DIGEST_SIZE *2 + 2, sizeof(char));
@@ -1792,7 +1792,7 @@ static void prepare_upload_state(uv_work_t *work)
     state->hmac_id = hmac_id;
 
     struct hmac_sha512_ctx hmac_ctx;
-    hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, ctx->pass);
+    hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, state->encryption_key);
 
     char clr_txt[AES_BLOCK_SIZE * 256];
     if (state->original_file) {
@@ -1814,9 +1814,6 @@ static void prepare_upload_state(uv_work_t *work)
 
     hex2str(SHA512_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
     state->hmac_id[SHA512_DIGEST_SIZE *2] = '\0';
-
-    free_encryption_ctx(ctx);
-
 }
 
 int storj_bridge_store_file_cancel(storj_upload_state_t *state)
@@ -1882,6 +1879,8 @@ int storj_bridge_store_file(storj_env_t *env,
     state->exclude = NULL;
     state->frame_id = NULL;
     state->hmac_id = NULL;
+    state->encryption_key = NULL;
+    state->encryption_ctr = NULL;
 
     state->requesting_frame = false;
     state->completed_upload = false;

@@ -85,9 +85,8 @@ extern "C" {
 #define STORJ_SHARD_CHALLENGES 4
 
 typedef struct {
-  uint8_t *iv;
-  uint8_t *salt;
-  uint8_t *pass;
+  uint8_t *encryption_ctr;
+  uint8_t *encryption_key;
   struct aes256_ctx *ctx;
 } storj_encryption_ctx_t ;
 
@@ -367,6 +366,8 @@ typedef struct {
     char *exclude;
     char *frame_id;
     char *hmac_id;
+    char *encryption_key;
+    char *encryption_ctr;
 
     bool requesting_frame;
     bool completed_upload;

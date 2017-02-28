@@ -107,10 +107,11 @@ static shard_meta_t *shard_meta_new();
 static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state);
 static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state);
 static uv_work_t *uv_work_new();
-static storj_encryption_ctx_t *prepare_encryption(char *pre_pass,
-                                                  int pre_pass_size,
-                                                  char *pre_salt,
-                                                  int pre_salt_size);
+static int prepare_encryption_key(storj_upload_state_t *state,
+                               char *pre_pass,
+                               int pre_pass_size,
+                               char *pre_salt,
+                               int pre_salt_size);
 
 static uint64_t check_file(storj_env_t *env, const char *filepath);
 
