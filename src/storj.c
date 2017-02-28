@@ -17,6 +17,21 @@ static void json_request_worker(uv_work_t *work)
     req->status_code = status_code;
 }
 
+
+static void list_files_request_worker(uv_work_t *work)
+{
+    list_files_request_t *req = work->data;
+    int status_code = 0;
+
+    req->error_code = fetch_json(req->http_options,
+                                 req->options, req->method, req->path, req->body,
+                                 req->auth, NULL, &req->response, &status_code);
+
+    // TODO decrypt file names
+
+    req->status_code = status_code;
+}
+
 static uv_work_t *uv_work_new()
 {
     uv_work_t *work = malloc(sizeof(uv_work_t));
@@ -33,6 +48,34 @@ static json_request_t *json_request_new(
     void *handle)
 {
     json_request_t *req = malloc(sizeof(json_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->http_options = http_options;
+    req->options = options;
+    req->method = method;
+    req->path = path;
+    req->auth = auth;
+    req->body = request_body;
+    req->response = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
+static list_files_request_t *list_files_request_new(
+    storj_http_options_t *http_options,
+    storj_bridge_options_t *options,
+    char *method,
+    char *path,
+    struct json_object *request_body,
+    bool auth,
+    void *handle)
+{
+    list_files_request_t *req = malloc(sizeof(list_files_request_t));
     if (!req) {
         return NULL;
     }
@@ -725,13 +768,21 @@ int storj_bridge_list_files(storj_env_t *env,
         return STORJ_MEMORY_ERROR;
     }
 
-    uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
-                                            true, handle);
+
+    uv_work_t *work = uv_work_new();
     if (!work) {
         return STORJ_MEMORY_ERROR;
     }
+    work->data = list_files_request_new(env->http_options,
+                                        env->bridge_options, "GET", path,
+                                        NULL, true, handle);
 
-    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    return uv_queue_work(env->loop, (uv_work_t*) work,
+                         list_files_request_worker, cb);
 }
 
 int storj_bridge_create_bucket_token(storj_env_t *env,

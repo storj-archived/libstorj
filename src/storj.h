@@ -191,6 +191,21 @@ typedef struct {
     void *handle;
 } json_request_t;
 
+/** @brief A structure for queueing list files request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_bridge_options_t *options;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
+    struct json_object *response;
+    int error_code;
+    int status_code;
+    void *handle;
+} list_files_request_t;
+
 typedef enum {
     BUCKET_PUSH,
     BUCKET_PULL
