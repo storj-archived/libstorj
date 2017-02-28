@@ -1272,6 +1272,10 @@ clean_variables:
     if (ctx) {
         free_encryption_ctx(ctx);
     }
+
+    if (buff2) {
+        free(buff2);
+    }
 }
 
 static void queue_prepare_frame(storj_upload_state_t *state, int index)
@@ -1803,6 +1807,8 @@ static void prepare_upload_state(uv_work_t *work)
 
     hex2str(SHA512_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
     state->hmac_id[SHA512_DIGEST_SIZE *2] = '\0';
+
+    free_encryption_ctx(ctx);
 
 }
 
