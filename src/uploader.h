@@ -17,13 +17,6 @@
 #define STORJ_NULL -1
 #define STORJ_MAX_REPORT_TRIES 2
 
-typedef struct {
-  uint8_t *iv;
-  uint8_t *salt;
-  uint8_t *pass;
-  struct aes256_ctx *ctx;
-} storj_encryption_ctx_t ;
-
 typedef enum {
     CANCELED = 0,
     AWAITING_PREPARE_FRAME = 1,
@@ -43,18 +36,6 @@ typedef struct {
     shard_meta_t *shard_meta;
     storj_log_levels_t *log;
 } frame_builder_t;
-
-typedef struct {
-    char *file_id;
-    char *file_key;
-    FILE *original_file;
-    const char *file_name;
-    char *tmp_path;
-    uint64_t file_size;
-    storj_upload_state_t *upload_state;
-    storj_log_levels_t *log;
-    int error_status;
-} encrypt_file_meta_t;
 
 typedef struct {
     storj_http_options_t *http_options;
@@ -141,7 +122,6 @@ static void free_encryption_ctx(storj_encryption_ctx_t *ctx);
 static void queue_next_work(storj_upload_state_t *state);
 
 static void queue_request_frame_id(storj_upload_state_t *state);
-static void queue_encrypt_file(storj_upload_state_t *state);
 static void queue_prepare_frame(storj_upload_state_t *state, int index);
 static void queue_push_frame(storj_upload_state_t *state, int index);
 static void queue_push_shard(storj_upload_state_t *state, int index);
@@ -150,7 +130,6 @@ static void queue_send_exchange_report(storj_upload_state_t *state, int index);
 
 static void request_token(uv_work_t *work);
 static void request_frame_id(uv_work_t *work);
-static void encrypt_file(uv_work_t *work);
 static void prepare_frame(uv_work_t *work);
 static void push_frame(uv_work_t *work);
 static void push_shard(uv_work_t *work);
@@ -159,7 +138,6 @@ static void send_exchange_report(uv_work_t *work);
 
 static void after_request_token(uv_work_t *work, int status);
 static void after_request_frame_id(uv_work_t *work, int status);
-static void after_encrypt_file(uv_work_t *work, int status);
 static void after_prepare_frame(uv_work_t *work, int status);
 static void after_push_frame(uv_work_t *work, int status);
 static void after_push_shard(uv_work_t *work, int status);

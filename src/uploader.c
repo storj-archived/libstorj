@@ -184,15 +184,6 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->exclude);
     }
 
-    if (state->tmp_path) {
-        // Delete the tmp_path file
-        if( access( state->tmp_path, F_OK ) != -1 ) {
-            unlink(state->tmp_path);
-        }
-
-        free(state->tmp_path);
-    }
-
     if (state->shard) {
         for (int i = 0; i < state->total_shards; i++ ) {
 
@@ -549,6 +540,11 @@ static void push_shard(uv_work_t *work)
 
     uint64_t file_position = req->shard_index * state->shard_size;
 
+    storj_encryption_ctx_t *ctx = prepare_encryption(state->file_key,
+                                                   DETERMINISTIC_KEY_SIZE,
+                                                   state->file_id,
+                                                   FILE_ID_SIZE);
+
     int req_status = put_shard(req->http_options,
                                shard->pointer->farmer_node_id,
                                "http",
@@ -556,8 +552,9 @@ static void push_shard(uv_work_t *work)
                                atoi(shard->pointer->farmer_port),
                                shard->meta->hash,
                                shard->meta->size,
-                               state->tmp_path,
+                               state->original_file,
                                file_position,
+                               ctx,
                                shard->pointer->token,
                                &status_code,
                                &req->progress_handle,
@@ -573,6 +570,8 @@ static void push_shard(uv_work_t *work)
     req->end = get_time_milliseconds();
 
     req->status_code = status_code;
+
+    free_encryption_ctx(ctx);
 }
 
 static void progress_put_shard(uv_async_t* async)
@@ -1415,53 +1414,6 @@ static void queue_request_frame_id(storj_upload_state_t *state)
     state->requesting_frame = true;
 }
 
-static void after_encrypt_file(uv_work_t *work, int status)
-{
-    encrypt_file_meta_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
-
-    state->pending_work_count -= 1;
-    state->encrypting_file = false;
-
-    if (status == UV_ECANCELED) {
-        state->encrypt_file_count = 0;
-        goto clean_variables;
-    }
-
-    state->encrypt_file_count += 1;
-
-    if (req->error_status) {
-        state->error_status = req->error_status;
-        goto clean_variables;
-    }
-
-    if (check_file(state->env, req->tmp_path) == state->file_size) {
-        state->encrypting_file = false;
-        state->tmp_path = calloc(strlen(req->tmp_path) +1, sizeof(char));
-        if (!state->tmp_path) {
-            state->error_status = STORJ_MEMORY_ERROR;
-            goto clean_variables;
-        }
-        strcpy(state->tmp_path, req->tmp_path);
-
-        state->log->info(state->env->log_options,
-                         state->handle,
-                         "Successfully completed file encryption");
-
-    } else if (state->encrypt_file_count == 6) {
-        state->error_status = STORJ_FILE_ENCRYPTION_ERROR;
-    }
-
-clean_variables:
-    queue_next_work(state);
-    if (req->tmp_path) {
-        free(req->tmp_path);
-    }
-
-    free(req);
-    free(work);
-}
-
 /**
  * pre_pass - file_key
  * pre_salt - file_id
@@ -1526,165 +1478,6 @@ static void free_encryption_ctx(storj_encryption_ctx_t *ctx)
     }
 
     free(ctx);
-}
-
-static void encrypt_file(uv_work_t *work)
-{
-    encrypt_file_meta_t *req = work->data;
-    storj_upload_state_t *state = req->upload_state;
-
-    req->log->info(state->env->log_options,
-                   state->handle,
-                   "[%s] Encrypting file... (retry: %d)",
-                   state->file_name,
-                   state->encrypt_file_count);
-
-    // Set tmp file
-    if (state->env->encrypt_options->tmp_path) {
-        int file_name_len = strlen(state->file_name);
-        char *tmp_folder = strdup(state->env->encrypt_options->tmp_path);
-        int tmp_folder_len = strlen(tmp_folder);
-        if (tmp_folder[tmp_folder_len - 1] == separator()) {
-            tmp_folder[tmp_folder_len - 1] = '\0';
-        }
-
-        char *tmp_path = calloc(
-            tmp_folder_len + 2 + file_name_len + 6 + 1,
-            sizeof(char)
-        );
-        if (!tmp_path) {
-            req->error_status = STORJ_MEMORY_ERROR;
-            return;
-        }
-
-        sprintf(tmp_path,
-            "%s%c%s%s%c",
-            tmp_folder,
-            separator(),
-            state->file_name,
-            ".crypt",
-            '\0');
-
-        req->tmp_path = tmp_path;
-
-        free(tmp_folder);
-    } else {
-        req->log->error(state->env->log_options, state->handle,
-                        "No valid temp path set");
-
-        req->error_status = STORJ_FILE_WRITE_ERROR;
-    }
-
-    storj_encryption_ctx_t *ctx = prepare_encryption(req->file_key,
-                                                   DETERMINISTIC_KEY_SIZE,
-                                                   req->file_id,
-                                                   FILE_ID_SIZE);
-
-    // Context for getting hmac_id
-    char *hmac_id = calloc(SHA512_DIGEST_SIZE *2 + 2, sizeof(char));
-    if (!hmac_id) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-    state->hmac_id = hmac_id;
-
-    struct hmac_sha512_ctx hmac_ctx;
-    hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, ctx->pass);
-
-    // Load original file and tmp file
-    FILE *original_file = state->original_file;
-    FILE *encrypted_file = fopen(req->tmp_path, "w+");
-
-    char clr_txt[AES_BLOCK_SIZE * 256 + 1];
-    char cphr_txt[AES_BLOCK_SIZE * 256 + 1];
-
-    memset(clr_txt, '\0', AES_BLOCK_SIZE * 256 + 1);
-    memset(cphr_txt, '\0', AES_BLOCK_SIZE * 256 + 1);
-
-    if (original_file) {
-        size_t bytes_read = 0;
-        // read up to sizeof(buffer) bytes
-        while ((bytes_read = fread(clr_txt, 1, AES_BLOCK_SIZE * 256,
-                                   original_file)) > 0) {
-
-            // Update hmac for hmac_id
-            hmac_sha512_update(&hmac_ctx, bytes_read, clr_txt);
-
-            // Encrypt data
-            ctr_crypt(ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
-                      AES_BLOCK_SIZE, ctx->iv, bytes_read,
-                      (uint8_t *)cphr_txt, (uint8_t *)clr_txt);
-
-            if (!encrypted_file) {
-
-                req->log->warn(state->env->log_options,
-                               state->handle,
-                               "Pointer to %s dropped.", req->tmp_path);
-
-                goto clean_variables;
-            }
-
-            fwrite(
-                cphr_txt,
-                bytes_read,
-                1,
-                encrypted_file
-            );
-
-            memset(clr_txt, '\0', AES_BLOCK_SIZE * 256 + 1);
-            memset(cphr_txt, '\0', AES_BLOCK_SIZE * 256 + 1);
-        }
-    }
-
-    uint8_t hmac_id_hex[SHA512_DIGEST_SIZE];
-    memset_zero(hmac_id_hex, SHA512_DIGEST_SIZE);
-    hmac_sha512_digest (&hmac_ctx, SHA512_DIGEST_SIZE, hmac_id_hex);
-
-    hex2str(SHA512_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
-    state->hmac_id[SHA512_DIGEST_SIZE *2] = '\0';
-
-clean_variables:
-    if (encrypted_file) {
-        fclose(encrypted_file);
-    }
-
-    free_encryption_ctx(ctx);
-}
-
-static void queue_encrypt_file(storj_upload_state_t *state)
-{
-    if (state->encrypting_file) {
-        return;
-    }
-    uv_work_t *work = uv_work_new();
-
-    encrypt_file_meta_t *req = malloc(sizeof(encrypt_file_meta_t));
-    if (!req) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    req->file_id = state->file_id;
-    req->file_key = state->file_key;
-    req->file_name = state->file_name;
-    req->original_file = state->original_file;
-    req->file_size = state->file_size;
-    req->upload_state = state;
-    req->log = state->log;
-    req->error_status = 0;
-
-    work->data = req;
-
-    state->pending_work_count += 1;
-    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
-                               encrypt_file, after_encrypt_file);
-
-    if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
-        return;
-    }
-
-    state->encrypting_file = true;
 }
 
 static void after_send_exchange_report(uv_work_t *work, int status)
@@ -1843,20 +1636,13 @@ static void queue_next_work(storj_upload_state_t *state)
         return cleanup_state(state);
     }
 
-    // Encrypt the file
-    if (!state->tmp_path && !state->encrypting_file) {
-        queue_encrypt_file(state);
-    }
-
     if (!state->frame_id && !state->requesting_frame) {
         queue_request_frame_id(state);
     }
 
-    if (state->tmp_path) {
-        for (int index = 0; index < state->total_shards; index++ ) {
-            if (state->shard[index].progress == AWAITING_PREPARE_FRAME) {
-                queue_prepare_frame(state, index);
-            }
+    for (int index = 0; index < state->total_shards; index++ ) {
+        if (state->shard[index].progress == AWAITING_PREPARE_FRAME) {
+            queue_prepare_frame(state, index);
         }
     }
 
@@ -1876,7 +1662,7 @@ static void queue_next_work(storj_upload_state_t *state)
     // NB: This needs to be the last thing, there is a bug with mingw
     // builds and uv_async_init, where leaving a block will cause the state
     // pointer to change values.
-    if (state->frame_id && state->tmp_path) {
+    if (state->frame_id) {
         queue_push_frame_and_shard(state);
     }
 }
@@ -1979,6 +1765,45 @@ static void prepare_upload_state(uv_work_t *work)
 
     file_key[DETERMINISTIC_KEY_SIZE] = '\0';
     state->file_key = file_key;
+
+
+    storj_encryption_ctx_t *ctx = prepare_encryption(file_key,
+                                                   DETERMINISTIC_KEY_SIZE,
+                                                   file_id,
+                                                   FILE_ID_SIZE);
+
+    // Context for getting hmac_id
+    char *hmac_id = calloc(SHA512_DIGEST_SIZE *2 + 2, sizeof(char));
+    if (!hmac_id) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+    state->hmac_id = hmac_id;
+
+    struct hmac_sha512_ctx hmac_ctx;
+    hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, ctx->pass);
+
+    char clr_txt[AES_BLOCK_SIZE * 256];
+    if (state->original_file) {
+        size_t bytes_read = 0;
+        // read up to sizeof(buffer) bytes
+        while ((bytes_read = fread(clr_txt, 1, AES_BLOCK_SIZE * 256,
+                                   state->original_file)) > 0) {
+
+            // Update hmac for hmac_id
+            hmac_sha512_update(&hmac_ctx, bytes_read, clr_txt);
+
+            memset(clr_txt, '\0', AES_BLOCK_SIZE * 256);
+        }
+    }
+
+    uint8_t hmac_id_hex[SHA512_DIGEST_SIZE];
+    memset_zero(hmac_id_hex, SHA512_DIGEST_SIZE);
+    hmac_sha512_digest (&hmac_ctx, SHA512_DIGEST_SIZE, hmac_id_hex);
+
+    hex2str(SHA512_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
+    state->hmac_id[SHA512_DIGEST_SIZE *2] = '\0';
+
 }
 
 int storj_bridge_store_file_cancel(storj_upload_state_t *state)
@@ -2034,7 +1859,6 @@ int storj_bridge_store_file(storj_env_t *env,
     state->original_file = opts->fd;
     state->file_key = NULL;
     state->file_size = 0;
-    state->tmp_path = NULL;
     state->bucket_id = opts->bucket_id;
     state->bucket_key = NULL;
     state->completed_shards = 0;
@@ -2048,7 +1872,6 @@ int storj_bridge_store_file(storj_env_t *env,
 
     state->requesting_frame = false;
     state->completed_upload = false;
-    state->encrypting_file = false;
     state->creating_bucket_entry = false;
     state->received_all_pointers = false;
     state->final_callback_called = false;
@@ -2057,7 +1880,6 @@ int storj_bridge_store_file(storj_env_t *env,
     state->progress_finished = false;
 
     state->frame_request_count = 0;
-    state->encrypt_file_count = 0;
     state->add_bucket_entry_count = 0;
 
     state->progress_cb = progress_cb;
