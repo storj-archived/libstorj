@@ -367,6 +367,11 @@ static void create_bucket_entry(uv_work_t *work)
                                     &response,
                                     &status_code);
 
+    req->log->debug(state->env->log_options,
+                    state->handle,
+                    "fn[create_bucket_entry] - JSON Response: %s",
+                    json_object_to_json_string(response));
+
 
     if (request_status) {
         req->log->warn(state->env->log_options, state->handle,
@@ -544,6 +549,8 @@ static void push_shard(uv_work_t *work)
                                                    DETERMINISTIC_KEY_SIZE,
                                                    state->file_id,
                                                    FILE_ID_SIZE);
+
+    increment_ctr_aes_iv(ctx->iv, req->shard_index*state->shard_size);
 
     int req_status = put_shard(req->http_options,
                                shard->pointer->farmer_node_id,
