@@ -109,6 +109,20 @@ static shard_meta_t *shard_meta_new()
     return meta;
 }
 
+static storj_encryption_ctx_t *prepare_encryption_ctx(uint8_t *ctr, uint8_t *pass)
+{
+    storj_encryption_ctx_t *ctx = calloc(sizeof(storj_encryption_ctx_t), sizeof(char));
+
+    ctx->ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
+    ctx->encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
+
+    memcpy(ctx->encryption_ctr, ctr, AES_BLOCK_SIZE);
+
+    aes256_set_encrypt_key(ctx->ctx, pass);
+
+    return ctx;
+}
+
 static void shard_meta_cleanup(shard_meta_t *shard_meta)
 {
     if (shard_meta->hash != NULL) {
@@ -571,11 +585,8 @@ static void push_shard(uv_work_t *work)
     uint64_t file_position = req->shard_index * state->shard_size;
 
     // Initialize the encryption context
-    storj_encryption_ctx_t *encryption_ctx = calloc(sizeof(storj_encryption_ctx_t), sizeof(char));
-    encryption_ctx->ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
-    encryption_ctx->encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
-    memcpy(encryption_ctx->encryption_ctr, state->encryption_ctr, AES_BLOCK_SIZE);
-    aes256_set_encrypt_key(encryption_ctx->ctx, state->encryption_key);
+    storj_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
+                                                                    state->encryption_key);
     // Increment the iv to proper placement because we may be reading from the middle of the file
     increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_index*state->shard_size);
 
@@ -605,7 +616,9 @@ static void push_shard(uv_work_t *work)
 
     req->status_code = status_code;
 
-    free_encryption_ctx(encryption_ctx);
+    if (encryption_ctx) {
+        free_encryption_ctx(encryption_ctx);
+    }
 }
 
 static void progress_put_shard(uv_async_t* async)
@@ -1237,12 +1250,10 @@ static void prepare_frame(uv_work_t *work)
     }
 
     // Initialize the encryption context
-    char *encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
-    memcpy(encryption_ctr, state->encryption_ctr, AES_BLOCK_SIZE);
-    struct aes256_ctx *encryption_ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
-    aes256_set_encrypt_key(encryption_ctx, state->encryption_key);
+    storj_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
+                                                                    state->encryption_key);
     // Increment the iv to proper placement because we may be reading from the middle of the file
-    increment_ctr_aes_iv(encryption_ctr, shard_meta->index*state->shard_size);
+    increment_ctr_aes_iv(encryption_ctx->encryption_ctr, shard_meta->index*state->shard_size);
 
     uint8_t cphr_txt[AES_BLOCK_SIZE * 256];
     memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
@@ -1259,8 +1270,8 @@ static void prepare_frame(uv_work_t *work)
         total_read += read_bytes;
 
         // Encrypt data
-        ctr_crypt(encryption_ctx, (nettle_cipher_func *)aes256_encrypt,
-                  AES_BLOCK_SIZE, encryption_ctr, read_bytes,
+        ctr_crypt(encryption_ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
+                  AES_BLOCK_SIZE, encryption_ctx->encryption_ctr, read_bytes,
                   (uint8_t *)cphr_txt, (uint8_t *)read_data);
 
         sha256_update(&shard_hash_ctx, read_bytes, cphr_txt);
@@ -1303,12 +1314,8 @@ static void prepare_frame(uv_work_t *work)
     }
 
 clean_variables:
-    if (encryption_ctr) {
-        free(encryption_ctr);
-    }
-
     if (encryption_ctx) {
-        free(encryption_ctx);
+        free_encryption_ctx(encryption_ctx);
     }
 
     if (buff2) {
@@ -1492,8 +1499,6 @@ static int prepare_encryption_key(storj_upload_state_t *state,
     return 0;
 
 }
-//    // Set the encryption password
-//    aes256_set_encrypt_key(encryption_ctx->ctx, state->encryption_key);
 
 static void after_send_exchange_report(uv_work_t *work, int status)
 {
