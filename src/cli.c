@@ -541,6 +541,7 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
     }
 
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
@@ -683,6 +684,12 @@ clear_variables:
     if (root_dir) {
         free(root_dir);
     }
+    if (user_file) {
+        free(user_file);
+    }
+    if (host) {
+        free(host);
+    }
 
     return status;
 }
@@ -698,6 +705,11 @@ static void register_callback(uv_work_t *work_req, int status)
         struct json_object *error;
         json_object_object_get_ex(req->response, "error", &error);
         printf("Error: %s\n", json_object_get_string(error));
+
+        user_options_t *handle = (user_options_t *) req->handle;
+        free(handle->user);
+        free(handle->host);
+        free(handle->pass);
     } else {
         struct json_object *email;
         json_object_object_get_ex(req->response, "email", &email);
@@ -736,12 +748,14 @@ static void register_callback(uv_work_t *work_req, int status)
     }
 
     json_object_put(req->response);
+    json_object_put(req->body);
     free(req);
     free(work_req);
 }
 
 static void list_files_callback(uv_work_t *work_req, int status)
 {
+    int ret_status = 0;
     assert(status == 0);
     json_request_t *req = work_req->data;
 
@@ -750,10 +764,9 @@ static void list_files_callback(uv_work_t *work_req, int status)
     }
 
     if (req->response == NULL) {
-        free(req);
-        free(work_req);
         printf("Failed to list files.\n");
-        exit(1);
+        ret_status = 1;
+        goto cleanup;
     }
     int num_files = json_object_array_length(req->response);
 
@@ -781,9 +794,12 @@ static void list_files_callback(uv_work_t *work_req, int status)
                 json_object_get_string(id));
     }
 
+cleanup:
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
+    exit(ret_status);
 }
 
 static void delete_file_callback(uv_work_t *work_req, int status)
@@ -797,6 +813,8 @@ static void delete_file_callback(uv_work_t *work_req, int status)
         printf("Failed to remove file from bucket. (%i)\n", req->status_code);
     }
 
+    json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
@@ -812,6 +830,8 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
         printf("Failed to destroy bucket. (%i)\n", req->status_code);
     }
 
+    json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
@@ -896,6 +916,7 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
            json_object_get_string(transfer));
 
     json_object_put(req->response);
+    json_object_put(req->body);
     free(req);
     free(work_req);
 }
@@ -1097,6 +1118,10 @@ int main(int argc, char **argv)
         http_options.proxy_url = NULL;
     }
 
+    char *user = NULL;
+    char *pass = NULL;
+    char *mnemonic = NULL;
+
     if (strcmp(command, "get-info") == 0) {
         printf("Storj bridge: %s\n\n", storj_bridge);
 
@@ -1129,7 +1154,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        char *user = calloc(BUFSIZ, sizeof(char));
+        user = calloc(BUFSIZ, sizeof(char));
         if (!user) {
             return 1;
         }
@@ -1137,7 +1162,7 @@ int main(int argc, char **argv)
         get_input(user);
 
         printf("Bridge password: ");
-        char *pass = calloc(BUFSIZ, sizeof(char));
+        pass = calloc(BUFSIZ, sizeof(char));
         if (!pass) {
             return 1;
         }
@@ -1164,9 +1189,9 @@ int main(int argc, char **argv)
         free(root_dir);
 
         // First, get auth from environment variables
-        char *user = getenv("STORJ_BRIDGE_USER");
-        char *pass = getenv("STORJ_BRIDGE_PASS");
-        char *mnemonic = getenv("STORJ_MNEMONIC");
+        user = getenv("STORJ_BRIDGE_USER");
+        pass = getenv("STORJ_BRIDGE_PASS");
+        mnemonic = getenv("STORJ_MNEMONIC");
         char *keypass = getenv("STORJ_KEYPASS");
 
         // Second, try to get from encrypted user file
@@ -1194,19 +1219,32 @@ int main(int argc, char **argv)
             if (storj_decrypt_read_auth(user_file, key, &file_user,
                                         &file_pass, &file_mnemonic)) {
                 printf("Unable to read user file. Invalid keypass or path.\n");
+                free(key);
+                free(user_file);
+                free(file_user);
+                free(file_pass);
+                free(file_mnemonic);
                 goto end_program;
             }
+            free(key);
+            free(user_file);
 
             if (!user && file_user) {
                 user = file_user;
+            } else if (file_user) {
+                free(file_user);
             }
 
             if (!pass && file_pass) {
                 pass = file_pass;
+            } else if (file_pass) {
+                free(file_pass);
             }
 
             if (!mnemonic && file_mnemonic) {
                 mnemonic = file_mnemonic;
+            } else if (file_mnemonic) {
+                free(file_mnemonic);
             }
 
         }
@@ -1372,16 +1410,18 @@ int main(int argc, char **argv)
         goto end_program;
     }
 
-    // shutdown
-    int uv_status = uv_loop_close(env->loop);
-    if (uv_status == UV_EBUSY) {
-        status = 1;
-        goto end_program;
-    }
-
 end_program:
     if (env) {
         storj_destroy_env(env);
+    }
+    if (user) {
+        free(user);
+    }
+    if (pass) {
+        free(pass);
+    }
+    if (mnemonic) {
+        free(mnemonic);
     }
     return status;
 }
