@@ -113,7 +113,7 @@ void check_delete_bucket(uv_work_t *work_req, int status)
 void check_list_files(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    list_files_request_t *req = work_req->data;
     assert(req->handle == NULL);
     assert(req->response != NULL);
 

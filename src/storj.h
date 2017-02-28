@@ -191,16 +191,31 @@ typedef struct {
     void *handle;
 } json_request_t;
 
+/** @brief A structure for that describes a bucket entry/file
+ */
+typedef struct {
+    const char *filename;
+    const char *mimetype;
+    uint64_t size;
+    const char *hmac;
+    const char *id;
+    bool decrypted;
+} storj_file_meta_t;
+
 /** @brief A structure for queueing list files request work
  */
 typedef struct {
     storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
     storj_bridge_options_t *options;
+    const char *bucket_id;
     char *method;
     char *path;
     bool auth;
     struct json_object *body;
     struct json_object *response;
+    storj_file_meta_t *files;
+    uint32_t total_files;
     int error_code;
     int status_code;
     void *handle;
@@ -282,10 +297,6 @@ typedef struct {
     const char *file_name;
     FILE *fd;
 } storj_upload_opts_t;
-
-typedef struct {
-    const char *hmac;
-} storj_file_meta_t;
 
 /** @brief A structure that keeps state between multiple worker threads,
  * and for referencing a download to apply actions to an in-progress download.

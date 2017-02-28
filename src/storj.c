@@ -27,9 +27,81 @@ static void list_files_request_worker(uv_work_t *work)
                                  req->options, req->method, req->path, req->body,
                                  req->auth, NULL, &req->response, &status_code);
 
-    // TODO decrypt file names
-
     req->status_code = status_code;
+
+    int num_files = 0;
+    if (req->response != NULL) {
+        num_files = json_object_array_length(req->response);
+    }
+
+    if (num_files > 0) {
+        req->files = malloc(sizeof(storj_file_meta_t) * num_files);
+        req->total_files = num_files;
+    }
+
+    // Get the bucket key to encrypt the filename
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(req->encrypt_options->mnemonic,
+                        req->bucket_id,
+                        &bucket_key_as_str);
+
+    uint8_t bucket_key[DETERMINISTIC_KEY_HEX_SIZE];
+    if (str2hex(strlen(bucket_key_as_str), bucket_key_as_str, bucket_key)) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    free(bucket_key_as_str);
+
+    // Hash the bucket key for filename encryption
+    struct sha256_ctx ctx1;
+    sha256_init(&ctx1);
+    sha256_update(&ctx1, DETERMINISTIC_KEY_HEX_SIZE, bucket_key);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    sha256_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    struct json_object *file;
+    struct json_object *filename;
+    struct json_object *mimetype;
+    struct json_object *size;
+    struct json_object *id;
+
+    for (int i = 0; i < num_files; i++) {
+        file = json_object_array_get_idx(req->response, i);
+
+        json_object_object_get_ex(file, "filename", &filename);
+        json_object_object_get_ex(file, "mimetype", &mimetype);
+        json_object_object_get_ex(file, "size", &size);
+        json_object_object_get_ex(file, "id", &id);
+
+        storj_file_meta_t *file = &req->files[i];
+
+        file->mimetype = json_object_get_string(mimetype);
+        file->size = json_object_get_int64(size);
+        file->hmac = NULL; // TODO though this value is not needed here
+        file->id = json_object_get_string(id);
+        file->decrypted = false;
+        file->filename = NULL;
+
+        // Attempt to decrypt the filename, otherwise
+        // we will default the filename to the encrypted text.
+        // The decrypted flag will be set to indicate the status
+        // of decryption for alternative display.
+        const char *encrypted_file_name = json_object_get_string(filename);
+        if (!encrypted_file_name) {
+            continue;
+        }
+        char *decrypted_file_name;
+        int error_status = decrypt_meta(encrypted_file_name, key,
+                                        &decrypted_file_name);
+        if (!error_status) {
+            file->decrypted = true;
+            file->filename = decrypted_file_name;
+        } else {
+            file->decrypted = false;
+            file->filename = encrypted_file_name;
+        }
+    }
 }
 
 static uv_work_t *uv_work_new()
@@ -69,6 +141,8 @@ static json_request_t *json_request_new(
 static list_files_request_t *list_files_request_new(
     storj_http_options_t *http_options,
     storj_bridge_options_t *options,
+    storj_encrypt_options_t *encrypt_options,
+    const char *bucket_id,
     char *method,
     char *path,
     struct json_object *request_body,
@@ -82,11 +156,15 @@ static list_files_request_t *list_files_request_new(
 
     req->http_options = http_options;
     req->options = options;
+    req->encrypt_options = encrypt_options;
+    req->bucket_id = bucket_id;
     req->method = method;
     req->path = path;
     req->auth = auth;
     req->body = request_body;
     req->response = NULL;
+    req->files = NULL;
+    req->total_files = 0;
     req->error_code = 0;
     req->status_code = 0;
     req->handle = handle;
@@ -768,13 +846,14 @@ int storj_bridge_list_files(storj_env_t *env,
         return STORJ_MEMORY_ERROR;
     }
 
-
     uv_work_t *work = uv_work_new();
     if (!work) {
         return STORJ_MEMORY_ERROR;
     }
     work->data = list_files_request_new(env->http_options,
-                                        env->bridge_options, "GET", path,
+                                        env->bridge_options,
+                                        env->encrypt_options,
+                                        id, "GET", path,
                                         NULL, true, handle);
 
     if (!work->data) {

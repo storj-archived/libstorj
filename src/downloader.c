@@ -1285,6 +1285,14 @@ static void request_info(uv_work_t *work)
         req->info = malloc(sizeof(storj_file_meta_t));
         req->info->hmac = strdup(hmac);
 
+        // TODO set these values, however the are currently
+        // not used within the downloader
+        req->info->filename = NULL;
+        req->info->mimetype = NULL;
+        req->info->size = 0;
+        req->info->id = NULL;
+        req->info->decrypted = false;
+
     } else if (status_code == 403 || status_code == 401) {
         req->error_status = STORJ_BRIDGE_AUTH_ERROR;
     } else if (status_code == 404) {

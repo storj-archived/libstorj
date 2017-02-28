@@ -758,7 +758,7 @@ static void list_files_callback(uv_work_t *work_req, int status)
 {
     int ret_status = 0;
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    list_files_request_t *req = work_req->data;
 
     if (req->status_code != 200) {
         printf("Request failed with status code: %i\n", req->status_code);
