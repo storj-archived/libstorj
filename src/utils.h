@@ -19,6 +19,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <time.h>
+#include <io.h>
 
 ssize_t pread(int fd, void *buf, size_t count, uint64_t offset);
 #else
