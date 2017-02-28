@@ -112,9 +112,19 @@ static shard_meta_t *shard_meta_new()
 static storj_encryption_ctx_t *prepare_encryption_ctx(uint8_t *ctr, uint8_t *pass)
 {
     storj_encryption_ctx_t *ctx = calloc(sizeof(storj_encryption_ctx_t), sizeof(char));
+    if (!ctx) {
+        return NULL;
+    }
 
     ctx->ctx = calloc(sizeof(struct aes256_ctx), sizeof(char));
+    if (!ctx->ctx) {
+        return NULL;
+    }
+
     ctx->encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
+    if (!ctx->encryption_ctr) {
+        return NULL;
+    }
 
     memcpy(ctx->encryption_ctr, ctr, AES_BLOCK_SIZE);
 
@@ -587,6 +597,10 @@ static void push_shard(uv_work_t *work)
     // Initialize the encryption context
     storj_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
                                                                     state->encryption_key);
+    if (!encryption_ctx) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto clean_variables;
+    }
     // Increment the iv to proper placement because we may be reading from the middle of the file
     increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_index*state->shard_size);
 
@@ -616,6 +630,7 @@ static void push_shard(uv_work_t *work)
 
     req->status_code = status_code;
 
+clean_variables:
     if (encryption_ctx) {
         free_encryption_ctx(encryption_ctx);
     }
@@ -1252,6 +1267,10 @@ static void prepare_frame(uv_work_t *work)
     // Initialize the encryption context
     storj_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
                                                                     state->encryption_key);
+    if (!encryption_ctx) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto clean_variables;
+    }
     // Increment the iv to proper placement because we may be reading from the middle of the file
     increment_ctr_aes_iv(encryption_ctx->encryption_ctr, shard_meta->index*state->shard_size);
 
