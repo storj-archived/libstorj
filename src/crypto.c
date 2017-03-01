@@ -459,8 +459,8 @@ int encrypt_meta(const char *filemeta,
 
     struct base64_encode_ctx ctx3;
     base64_encode_init(&ctx3);
-    base64_encode_update(&ctx3, *buffer_base64, buf_len, buf);
-    base64_encode_final(&ctx3, *buffer_base64);
+    size_t out_len = base64_encode_update(&ctx3, *buffer_base64, buf_len, buf);
+    base64_encode_final(&ctx3, *buffer_base64 + out_len);
 
     return 0;
 }
@@ -471,7 +471,7 @@ int decrypt_meta(const char *buffer_base64,
 {
     uint32_t buffer_len = BASE64_DECODE_LENGTH(strlen(buffer_base64));
     uint8_t *buffer = calloc(buffer_len, sizeof(uint8_t));
-    if (!*buffer) {
+    if (!buffer) {
         //STORJ_MEMORY_ERROR
         return 1;
     }
@@ -479,8 +479,10 @@ int decrypt_meta(const char *buffer_base64,
     size_t decode_len = 0;
     struct base64_decode_ctx ctx3;
     base64_decode_init(&ctx3);
-    base64_decode_update(&ctx3, &decode_len, buffer,
-                         strlen(buffer_base64), buffer_base64);
+    if (!base64_decode_update(&ctx3, &decode_len, buffer,
+                              strlen(buffer_base64), (uint8_t  *)buffer_base64)) {
+        return 1;
+    }
     if (!base64_decode_final(&ctx3)) {
         return 1;
     }
