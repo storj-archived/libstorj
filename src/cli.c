@@ -1189,9 +1189,15 @@ int main(int argc, char **argv)
         free(root_dir);
 
         // First, get auth from environment variables
-        user = getenv("STORJ_BRIDGE_USER");
-        pass = getenv("STORJ_BRIDGE_PASS");
-        mnemonic = getenv("STORJ_MNEMONIC");
+        user = getenv("STORJ_BRIDGE_USER") ?
+            strdup(getenv("STORJ_BRIDGE_USER")) : NULL;
+
+        pass = getenv("STORJ_BRIDGE_PASS") ?
+            strdup(getenv("STORJ_BRIDGE_PASS")) : NULL;
+
+        mnemonic = getenv("STORJ_MNEMONIC") ?
+            strdup(getenv("STORJ_MNEMONIC")) : NULL;
+
         char *keypass = getenv("STORJ_KEYPASS");
 
         // Second, try to get from encrypted user file
