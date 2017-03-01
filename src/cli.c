@@ -807,7 +807,7 @@ static void delete_file_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
 
-    if (req->status_code == 200) {
+    if (req->status_code == 200 || req->status_code == 204) {
         printf("File was successfully removed from bucket.\n");
     } else {
         printf("Failed to remove file from bucket. (%i)\n", req->status_code);
