@@ -764,35 +764,20 @@ static void list_files_callback(uv_work_t *work_req, int status)
         printf("Request failed with status code: %i\n", req->status_code);
     }
 
-    if (req->response == NULL) {
-        printf("Failed to list files.\n");
-        ret_status = 1;
-        goto cleanup;
-    }
-    int num_files = json_object_array_length(req->response);
-
-    if (num_files == 0) {
+    if (req->total_files == 0) {
         printf("No files for bucket.\n");
     }
 
-    struct json_object *file;
-    struct json_object *filename;
-    struct json_object *mimetype;
-    struct json_object *size;
-    struct json_object *id;
+    for (int i = 0; i < req->total_files; i++) {
 
-    for (int i = 0; i < num_files; i++) {
-        file = json_object_array_get_idx(req->response, i);
-        json_object_object_get_ex(file, "filename", &filename);
-        json_object_object_get_ex(file, "mimetype", &mimetype);
-        json_object_object_get_ex(file, "size", &size);
-        json_object_object_get_ex(file, "id", &id);
-        // print out the name attribute
-        printf("Name: %s, Type: %s, Size: %s bytes, ID: %s\n",
-                json_object_get_string(filename),
-                json_object_get_string(mimetype),
-                json_object_get_string(size),
-                json_object_get_string(id));
+        storj_file_meta_t *file = &req->files[i];
+
+        printf("Name: %s, Type: %s, Size: %lu bytes, Decrypted: %s, ID: %s\n",
+               file->filename,
+               file->mimetype,
+               file->size,
+               file->decrypted ? "true" : "false",
+               file->id);
     }
 
 cleanup:
