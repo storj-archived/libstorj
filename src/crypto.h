@@ -163,9 +163,8 @@ int decrypt_data(const char *passphrase,
  * null terminated string.
  *
  * @param[in] filemeta - The null terminated filename
- * @param[in] encrypt_key - The key used to encrypt the file meta
- * @param[in] encrypt_iv - The iv to use for encryption
- * @param[in] encrypt_iv_size - The number of bytes for the encrypt_iv
+ * @param[in] encrypt_key - The key used to encrypt the file meta (32 bytes)
+ * @param[in] encrypt_iv - The iv to use for encryption (32 bytes)
  * @param[out] buffer_base64 - The base64 encoded encrypted data including
  * digest, iv and cipher text
  * @return A non-zero value on error, zero on success.
@@ -173,7 +172,6 @@ int decrypt_data(const char *passphrase,
 int encrypt_meta(const char *filemeta,
                  uint8_t *encrypt_key,
                  uint8_t *encrypt_iv,
-                 uint32_t encrypt_iv_size,
                  char **buffer_base64);
 
 /**
@@ -182,7 +180,7 @@ int encrypt_meta(const char *filemeta,
  * This will decrypt file meta information.
  *
  * @param[in] buffer_base64 - The base64 encrypted data
- * @param[in] decrypt_key - The key used to decrypt the file
+ * @param[in] decrypt_key - The key used to decrypt the file (32 bytes)
  * @param[out] filemeta - The null terminated filename
  * @return A non-zero value on error, zero on success.
  */

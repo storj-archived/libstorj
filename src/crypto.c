@@ -409,12 +409,11 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
 int encrypt_meta(const char *filemeta,
                  uint8_t *encrypt_key,
                  uint8_t *encrypt_iv,
-                 uint32_t encrypt_iv_size,
                  char **buffer_base64)
 {
     struct gcm_aes256_ctx ctx2;
     gcm_aes256_set_key(&ctx2, encrypt_key);
-    gcm_aes256_set_iv(&ctx2, encrypt_iv_size, encrypt_iv);
+    gcm_aes256_set_iv(&ctx2, SHA256_DIGEST_SIZE, encrypt_iv);
 
     int pos = 0;
     size_t length = strlen(filemeta);
@@ -436,8 +435,8 @@ int encrypt_meta(const char *filemeta,
     uint32_t buf_len = GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + length;
     uint8_t buf[buf_len];
     memcpy(buf, digest, GCM_DIGEST_SIZE);
-    memcpy(buf + GCM_DIGEST_SIZE, encrypt_iv, encrypt_iv_size);
-    memcpy(buf + GCM_DIGEST_SIZE + encrypt_iv_size, &cipher_text, length);
+    memcpy(buf + GCM_DIGEST_SIZE, encrypt_iv, SHA256_DIGEST_SIZE);
+    memcpy(buf + GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE, &cipher_text, length);
 
     size_t base64_len = BASE64_ENCODE_LENGTH(buf_len);
     *buffer_base64 = calloc(base64_len + 3, sizeof(uint8_t));

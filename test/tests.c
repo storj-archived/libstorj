@@ -1269,7 +1269,7 @@ int test_meta_encryption_name(char *filename)
                       129,82};
 
     char *buffer = NULL;
-    encrypt_meta(filename, encrypt_key, iv, 32, &buffer);
+    encrypt_meta(filename, encrypt_key, iv, &buffer);
 
     char *buffer2 = NULL;
     int status = decrypt_meta(buffer, encrypt_key, &buffer2);

@@ -1820,8 +1820,7 @@ static void prepare_upload_state(uv_work_t *work)
     sha256_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
 
     char *encrypted_file_name;
-    encrypt_meta(state->file_name, key, filename_iv, SHA256_DIGEST_SIZE,
-                 &encrypted_file_name);
+    encrypt_meta(state->file_name, key, filename_iv, &encrypted_file_name);
 
     state->encrypted_file_name = encrypted_file_name;
 
