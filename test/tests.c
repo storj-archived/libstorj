@@ -58,7 +58,7 @@ void check_bridge_get_info(uv_work_t *work_req, int status)
 void check_get_buckets(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    get_buckets_request_t *req = work_req->data;
     assert(req->handle == NULL);
     assert(json_object_is_type(req->response, json_type_array) == 1);
 

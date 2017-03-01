@@ -23,6 +23,7 @@
 #define FILE_ID_HEX_SIZE 12
 #define DETERMINISTIC_KEY_SIZE 64
 #define DETERMINISTIC_KEY_HEX_SIZE 32
+#define BUCKET_NAME_MAGIC "398734aab3c4c30c9f22590e83a95f7e43556a45fc2b3060e0c39fde31f50272"
 
 // TODO use *buffer for out instead of **buffer for many of these methods
 // and figure out if we need null termination, and if so have this be set within

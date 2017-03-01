@@ -17,6 +17,83 @@ static void json_request_worker(uv_work_t *work)
     req->status_code = status_code;
 }
 
+static void get_buckets_request_worker(uv_work_t *work)
+{
+    get_buckets_request_t *req = work->data;
+    int status_code = 0;
+
+    req->error_code = fetch_json(req->http_options,
+                                 req->options, req->method, req->path, req->body,
+                                 req->auth, NULL, &req->response, &status_code);
+
+    req->status_code = status_code;
+
+    int num_buckets = 0;
+    if (req->response != NULL) {
+        num_buckets = json_object_array_length(req->response);
+    }
+
+    if (num_buckets > 0) {
+        req->buckets = malloc(sizeof(storj_bucket_meta_t) * num_buckets);
+        req->total_buckets = num_buckets;
+    }
+
+    // Derive a key based on the master seed
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(req->encrypt_options->mnemonic,
+                        BUCKET_NAME_MAGIC,
+                        &bucket_key_as_str);
+
+    uint8_t bucket_key[DETERMINISTIC_KEY_HEX_SIZE];
+    if (str2hex(strlen(bucket_key_as_str), bucket_key_as_str, bucket_key)) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    free(bucket_key_as_str);
+
+    // Hash the bucket key for bucketname encryption
+    struct sha256_ctx ctx1;
+    sha256_init(&ctx1);
+    sha256_update(&ctx1, DETERMINISTIC_KEY_HEX_SIZE, bucket_key);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    sha256_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    struct json_object *bucket_item;
+    struct json_object *name;
+    struct json_object *id;
+
+    for (int i = 0; i < num_buckets; i++) {
+        bucket_item = json_object_array_get_idx(req->response, i);
+
+        json_object_object_get_ex(bucket_item, "id", &id);
+        json_object_object_get_ex(bucket_item, "name", &name);
+
+        storj_bucket_meta_t *bucket = &req->buckets[i];
+        bucket->id = json_object_get_string(id);
+        bucket->decrypted = false;
+        bucket->name = NULL;
+
+        // Attempt to decrypt the name, otherwise
+        // we will default the name to the encrypted text.
+        // The decrypted flag will be set to indicate the status
+        // of decryption for alternative display.
+        const char *encrypted_name = json_object_get_string(name);
+        if (!encrypted_name) {
+            continue;
+        }
+        char *decrypted_name;
+        int error_status = decrypt_meta(encrypted_name, key,
+                                        &decrypted_name);
+        if (!error_status) {
+            bucket->decrypted = true;
+            bucket->name = decrypted_name;
+        } else {
+            bucket->decrypted = false;
+            bucket->name = encrypted_name;
+        }
+    }
+}
 
 static void list_files_request_worker(uv_work_t *work)
 {
@@ -165,6 +242,38 @@ static list_files_request_t *list_files_request_new(
     req->response = NULL;
     req->files = NULL;
     req->total_files = 0;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
+static get_buckets_request_t *get_buckets_request_new(
+    storj_http_options_t *http_options,
+    storj_bridge_options_t *options,
+    storj_encrypt_options_t *encrypt_options,
+    char *method,
+    char *path,
+    struct json_object *request_body,
+    bool auth,
+    void *handle)
+{
+    get_buckets_request_t *req = malloc(sizeof(get_buckets_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->http_options = http_options;
+    req->options = options;
+    req->encrypt_options = encrypt_options;
+    req->method = method;
+    req->path = path;
+    req->auth = auth;
+    req->body = request_body;
+    req->response = NULL;
+    req->buckets = NULL;
+    req->total_buckets = 0;
     req->error_code = 0;
     req->status_code = 0;
     req->handle = handle;
@@ -789,13 +898,21 @@ int storj_bridge_get_info(storj_env_t *env, void *handle, uv_after_work_cb cb)
 
 int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb)
 {
-    uv_work_t *work = json_request_work_new(env, "GET", "/buckets", NULL,
-                                            true, handle);
+    uv_work_t *work = uv_work_new();
     if (!work) {
         return STORJ_MEMORY_ERROR;
     }
+    work->data = get_buckets_request_new(env->http_options,
+                                         env->bridge_options,
+                                         env->encrypt_options,
+                                         "GET", "/buckets",
+                                         NULL, true, handle);
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
 
-    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+    return uv_queue_work(env->loop, (uv_work_t*) work,
+                         get_buckets_request_worker, cb);
 }
 
 int storj_bridge_create_bucket(storj_env_t *env,

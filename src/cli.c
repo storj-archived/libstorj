@@ -825,42 +825,20 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
 static void get_buckets_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    get_buckets_request_t *req = work_req->data;
 
-    if (req->status_code != 200) {
+    if (req->status_code != 200 && req->status_code != 304) {
         printf("Request failed with status code: %i\n", req->status_code);
     }
 
-    if (req->response == NULL) {
-        free(req);
-        free(work_req);
-        printf("Failed to list buckets.\n");
-        exit(1);
-    }
-
-    int num_buckets = json_object_array_length(req->response);
-    struct json_object *bucket;
-    struct json_object *id;
-    struct json_object *name;
-    struct json_object *storage;
-    struct json_object *transfer;
-
-    if (num_buckets == 0) {
+    if (req->total_buckets == 0) {
         printf("No buckets.\n");
     }
 
-    for (int i = 0; i < num_buckets; i++) {
-        bucket = json_object_array_get_idx(req->response, i);
-        json_object_object_get_ex(bucket, "id", &id);
-        json_object_object_get_ex(bucket, "name", &name);
-        json_object_object_get_ex(bucket, "storage", &storage);
-        json_object_object_get_ex(bucket, "transfer", &transfer);
-        // print out the name attribute
-        printf("ID: \"%s\", Name: %s, Storage: %s, Transfer: %s\n",
-               json_object_get_string(id),
-               json_object_get_string(name),
-               json_object_get_string(storage),
-               json_object_get_string(transfer));
+    for (int i = 0; i < req->total_buckets; i++) {
+        storj_bucket_meta_t *bucket = &req->buckets[i];
+        printf("ID: %s \tDecrypted: %s \tName: %s\n",
+               bucket->id, bucket->decrypted ? "true" : "false", bucket->name);
     }
 
     json_object_put(req->response);
