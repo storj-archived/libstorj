@@ -117,7 +117,6 @@ typedef struct {
  */
 typedef struct storj_encrypt_options {
     const char *mnemonic;
-    const char *tmp_path;
 } storj_encrypt_options_t;
 
 
@@ -355,7 +354,6 @@ typedef struct {
     FILE *original_file;
     char *file_key;
     uint64_t file_size;
-    char *tmp_path;
     const char *bucket_id;
     char *bucket_key;
     uint32_t completed_shards;
