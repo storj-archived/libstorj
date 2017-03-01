@@ -1814,6 +1814,7 @@ static void prepare_upload_state(uv_work_t *work)
     // Generate the synthetic iv for filename encryption
     struct sha256_ctx ctx2;
     sha256_init(&ctx2);
+    sha256_update(&ctx2, SHA256_DIGEST_SIZE, key);
     sha256_update(&ctx2, strlen(state->bucket_id), state->bucket_id);
     sha256_update(&ctx2, strlen(state->file_name), state->file_name);
     uint8_t filename_iv[SHA256_DIGEST_SIZE];
