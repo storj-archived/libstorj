@@ -419,18 +419,6 @@ int encrypt_meta(const char *filemeta,
     int pos = 0;
     size_t length = strlen(filemeta);
     size_t remain = length;
-    while (pos < length) {
-        int len = AES_BLOCK_SIZE;
-        if (remain < AES_BLOCK_SIZE) {
-            len = remain;
-        }
-        gcm_aes256_update(&ctx2, len, filemeta + pos);
-        pos += AES_BLOCK_SIZE;
-        remain -= AES_BLOCK_SIZE;
-    }
-
-    pos = 0;
-    remain = length;
     uint8_t cipher_text[length];
     while (pos < length) {
         int len = AES_BLOCK_SIZE;
@@ -451,7 +439,8 @@ int encrypt_meta(const char *filemeta,
     memcpy(buf + GCM_DIGEST_SIZE, encrypt_iv, encrypt_iv_size);
     memcpy(buf + GCM_DIGEST_SIZE + encrypt_iv_size, &cipher_text, length);
 
-    *buffer_base64 = calloc(BASE64_ENCODE_LENGTH(buf_len) + 1, sizeof(uint8_t));
+    size_t base64_len = BASE64_ENCODE_LENGTH(buf_len);
+    *buffer_base64 = calloc(base64_len + 3, sizeof(uint8_t));
     if (!*buffer_base64) {
         //STORJ_MEMORY_ERROR
         return 1;
@@ -460,7 +449,7 @@ int encrypt_meta(const char *filemeta,
     struct base64_encode_ctx ctx3;
     base64_encode_init(&ctx3);
     size_t out_len = base64_encode_update(&ctx3, *buffer_base64, buf_len, buf);
-    base64_encode_final(&ctx3, *buffer_base64 + out_len);
+    out_len += base64_encode_final(&ctx3, *buffer_base64 + out_len);
 
     return 0;
 }
@@ -480,18 +469,20 @@ int decrypt_meta(const char *buffer_base64,
     struct base64_decode_ctx ctx3;
     base64_decode_init(&ctx3);
     if (!base64_decode_update(&ctx3, &decode_len, buffer,
-                              strlen(buffer_base64), (uint8_t  *)buffer_base64)) {
+                              strlen(buffer_base64), buffer_base64)) {
         return 1;
     }
+
     if (!base64_decode_final(&ctx3)) {
         return 1;
     }
 
-    if (GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + 1 > buffer_len) {
+    if (GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + 1 > decode_len) {
         //STORJ_META_DECRYPTION_ERROR
         return 1;
     }
-    size_t length = buffer_len - GCM_DIGEST_SIZE - SHA256_DIGEST_SIZE;
+
+    size_t length = decode_len - GCM_DIGEST_SIZE - SHA256_DIGEST_SIZE;
 
     uint8_t digest[GCM_DIGEST_SIZE];
     uint8_t iv[SHA256_DIGEST_SIZE];
@@ -508,18 +499,6 @@ int decrypt_meta(const char *buffer_base64,
 
     int pos = 0;
     size_t remain = length;
-    while (pos < length) {
-        int len = AES_BLOCK_SIZE;
-        if (remain < AES_BLOCK_SIZE) {
-            len = remain;
-        }
-        gcm_aes256_update(&ctx2, len, cipher_text + pos);
-        pos += AES_BLOCK_SIZE;
-        remain -= AES_BLOCK_SIZE;
-    }
-
-    pos = 0;
-    remain = length;
     while (pos < length) {
         int len = AES_BLOCK_SIZE;
         if (remain < AES_BLOCK_SIZE) {

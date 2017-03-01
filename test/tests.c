@@ -1258,6 +1258,47 @@ int test_read_write_encrypted_file()
     return 0;
 }
 
+int test_meta_encryption_name(char *filename)
+{
+
+    uint8_t encrypt_key[32] = {215,99,0,133,172,219,64,35,54,53,171,23,146,160,
+                               81,126,137,21,253,171,48,217,184,188,8,137,3,
+                               4,83,50,30,251};
+    uint8_t iv[32] = {70,219,247,135,162,7,93,193,44,123,188,234,203,115,129,
+                      82,70,219,247,135,162,7,93,193,44,123,188,234,203,115,
+                      129,82};
+
+    char *buffer = NULL;
+    encrypt_meta(filename, encrypt_key, iv, 32, &buffer);
+
+    char *buffer2 = NULL;
+    int status = decrypt_meta(buffer, encrypt_key, &buffer2);
+    if (status != 0) {
+        return 1;
+    }
+
+    if (strcmp(filename, buffer2) != 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
+int test_meta_encryption()
+{
+    for (int i = 1; i < 24; i++) {
+        char *filename = calloc(i, sizeof(char));
+        memset(filename, 'a', i);
+        if (test_meta_encryption_name(filename)) {
+            fail("test_meta_encryption");
+            printf("Failed with filename: %s\n", filename);
+            return 1;
+        }
+    }
+    pass("test_meta_encryption");
+    return 0;
+}
+
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
 {
@@ -1321,6 +1362,7 @@ int main(void)
     test_generate_file_key();
     test_increment_ctr_aes_iv();
     test_read_write_encrypted_file();
+    test_meta_encryption();
     printf("\n");
 
     printf("Test Suite: Utils\n");
