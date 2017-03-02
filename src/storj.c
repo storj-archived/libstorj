@@ -50,6 +50,8 @@ static void create_bucket_request_worker(uv_work_t *work)
     uint8_t bucketname_iv[SHA256_DIGEST_SIZE];
     hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
 
+    free(bucket_key);
+
     // Encrypt the bucket name
     char *encrypted_bucket_name;
     encrypt_meta(req->bucket_name, key, bucketname_iv, &encrypted_bucket_name);
@@ -121,6 +123,8 @@ static void get_buckets_request_worker(uv_work_t *work)
     uint8_t key[SHA256_DIGEST_SIZE];
     hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
 
+    free(bucket_key);
+
     struct json_object *bucket_item;
     struct json_object *name;
     struct json_object *id;
@@ -152,7 +156,7 @@ static void get_buckets_request_worker(uv_work_t *work)
             bucket->name = decrypted_name;
         } else {
             bucket->decrypted = false;
-            bucket->name = encrypted_name;
+            bucket->name = strdup(encrypted_name);
         }
     }
 }
@@ -240,7 +244,7 @@ static void list_files_request_worker(uv_work_t *work)
             file->filename = decrypted_file_name;
         } else {
             file->decrypted = false;
-            file->filename = encrypted_file_name;
+            file->filename = strdup(encrypted_file_name);
         }
     }
 }
@@ -1005,6 +1009,18 @@ int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb
                          get_buckets_request_worker, cb);
 }
 
+void storj_free_get_buckets_request(get_buckets_request_t *req)
+{
+    json_object_put(req->response);
+    if (req->buckets && req->total_buckets > 0) {
+        for (int i = 0; i < req->total_buckets; i++) {
+            free((char *)req->buckets[i].name);
+        }
+    }
+    free(req->buckets);
+    free(req);
+}
+
 int storj_bridge_create_bucket(storj_env_t *env,
                                const char *name,
                                void *handle,
@@ -1073,6 +1089,19 @@ int storj_bridge_list_files(storj_env_t *env,
 
     return uv_queue_work(env->loop, (uv_work_t*) work,
                          list_files_request_worker, cb);
+}
+
+void storj_free_list_files_request(list_files_request_t *req)
+{
+    json_object_put(req->response);
+    free(req->path);
+    if (req->files && req->total_files > 0) {
+        for (int i = 0; i < req->total_files; i++) {
+            free((char *)req->files[i].filename);
+        }
+    }
+    free(req->files);
+    free(req);
 }
 
 int storj_bridge_create_bucket_token(storj_env_t *env,

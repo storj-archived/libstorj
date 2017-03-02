@@ -638,6 +638,13 @@ int storj_bridge_get_buckets(storj_env_t *env,
                              uv_after_work_cb cb);
 
 /**
+ * @brief Will free all structs for get buckets request
+ *
+ * @param[in] req - The work request from storj_bridge_get_buckets callback
+ */
+void storj_free_get_buckets_request(get_buckets_request_t *req);
+
+/**
  * @brief Create a bucket.
  *
  * @param[in] env The storj environment struct
@@ -678,6 +685,14 @@ int storj_bridge_list_files(storj_env_t *env,
                             const char *id,
                             void *handle,
                             uv_after_work_cb cb);
+
+
+/**
+ * @brief Will free all structs for list files request
+ *
+ * @param[in] req - The work request from storj_bridge_list_files callback
+ */
+void storj_free_list_files_request(list_files_request_t *req);
 
 /**
  * @brief Create a PUSH or PULL bucket token.

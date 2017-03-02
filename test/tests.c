@@ -68,9 +68,7 @@ void check_get_buckets(uv_work_t *work_req, int status)
     assert(success == 1);
     pass("storj_bridge_get_buckets");
 
-    json_object_put(req->response);
-    free(req->buckets);
-    free(req);
+    storj_free_get_buckets_request(req);
     free(work_req);
 }
 
@@ -130,10 +128,7 @@ void check_list_files(uv_work_t *work_req, int status)
 
     pass("storj_bridge_list_files");
 
-    json_object_put(req->response);
-    free(req->path);
-    free(req->files);
-    free(req);
+    storj_free_list_files_request(req);
     free(work_req);
 }
 
