@@ -25,6 +25,8 @@
 #define DETERMINISTIC_KEY_HEX_SIZE 32
 #define BUCKET_NAME_MAGIC "398734aab3c4c30c9f22590e83a95f7e43556a45fc2b3060e0c39fde31f50272"
 
+static const uint8_t BUCKET_META_MAGIC[32] = {66,150,71,16,50,114,88,160,163,35,154,65,162,213,226,215,70,138,57,61,52,19,210,170,38,164,162,200,86,201,2,81};
+
 // TODO use *buffer for out instead of **buffer for many of these methods
 // and figure out if we need null termination, and if so have this be set within
 // the functions rather than needing to do this outside.

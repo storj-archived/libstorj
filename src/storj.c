@@ -28,7 +28,7 @@ static void create_bucket_request_worker(uv_work_t *work)
                         BUCKET_NAME_MAGIC,
                         &bucket_key_as_str);
 
-    uint8_t bucket_key[DETERMINISTIC_KEY_HEX_SIZE];
+    uint8_t bucket_key[DETERMINISTIC_KEY_HEX_SIZE + 1];
     if (str2hex(strlen(bucket_key_as_str), bucket_key_as_str, bucket_key)) {
         req->error_code = STORJ_MEMORY_ERROR;
         return;
@@ -36,20 +36,19 @@ static void create_bucket_request_worker(uv_work_t *work)
 
     free(bucket_key_as_str);
 
-    // Hash the bucket key for bucket name encryption
-    struct sha256_ctx ctx1;
-    sha256_init(&ctx1);
-    sha256_update(&ctx1, DETERMINISTIC_KEY_HEX_SIZE, bucket_key);
+    // Get bucket name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
     uint8_t key[SHA256_DIGEST_SIZE];
-    sha256_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
 
-    // Generate the synthetic iv for bucket name encryption
-    struct sha256_ctx ctx2;
-    sha256_init(&ctx2);
-    sha256_update(&ctx2, SHA256_DIGEST_SIZE, key);
-    sha256_update(&ctx2, strlen(req->bucket_name), req->bucket_name);
+    // Generate the synthetic iv with first half of hmac w/ name
+    struct hmac_sha512_ctx ctx2;
+    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx2, strlen(req->bucket_name), req->bucket_name);
     uint8_t bucketname_iv[SHA256_DIGEST_SIZE];
-    sha256_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
+    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
 
     // Encrypt the bucket name
     char *encrypted_bucket_name;
@@ -113,12 +112,12 @@ static void get_buckets_request_worker(uv_work_t *work)
 
     free(bucket_key_as_str);
 
-    // Hash the bucket key for bucketname encryption
-    struct sha256_ctx ctx1;
-    sha256_init(&ctx1);
-    sha256_update(&ctx1, DETERMINISTIC_KEY_HEX_SIZE, bucket_key);
+    // Get bucket name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
     uint8_t key[SHA256_DIGEST_SIZE];
-    sha256_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
 
     struct json_object *bucket_item;
     struct json_object *name;
@@ -177,7 +176,7 @@ static void list_files_request_worker(uv_work_t *work)
         req->total_files = num_files;
     }
 
-    // Get the bucket key to encrypt the filename
+    // Get the bucket key to encrypt the filename from bucket id
     char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     generate_bucket_key(req->encrypt_options->mnemonic,
                         req->bucket_id,
@@ -191,12 +190,12 @@ static void list_files_request_worker(uv_work_t *work)
 
     free(bucket_key_as_str);
 
-    // Hash the bucket key for filename encryption
-    struct sha256_ctx ctx1;
-    sha256_init(&ctx1);
-    sha256_update(&ctx1, DETERMINISTIC_KEY_HEX_SIZE, bucket_key);
+    // Get file name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
     uint8_t key[SHA256_DIGEST_SIZE];
-    sha256_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
 
     struct json_object *file;
     struct json_object *filename;

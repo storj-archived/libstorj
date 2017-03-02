@@ -1804,21 +1804,20 @@ static void prepare_upload_state(uv_work_t *work)
 
     free(bucket_key_as_str);
 
-    // Hash the bucket key for filename encryption
-    struct sha256_ctx ctx1;
-    sha256_init(&ctx1);
-    sha256_update(&ctx1, DETERMINISTIC_KEY_HEX_SIZE, bucket_key);
+    // Get file name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
     uint8_t key[SHA256_DIGEST_SIZE];
-    sha256_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
 
-    // Generate the synthetic iv for filename encryption
-    struct sha256_ctx ctx2;
-    sha256_init(&ctx2);
-    sha256_update(&ctx2, SHA256_DIGEST_SIZE, key);
-    sha256_update(&ctx2, strlen(state->bucket_id), state->bucket_id);
-    sha256_update(&ctx2, strlen(state->file_name), state->file_name);
+    // Generate the synthetic iv with first half of hmac w/ bucket and filename
+    struct hmac_sha512_ctx ctx2;
+    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx2, strlen(state->bucket_id), state->bucket_id);
+    hmac_sha512_update(&ctx2, strlen(state->file_name), state->file_name);
     uint8_t filename_iv[SHA256_DIGEST_SIZE];
-    sha256_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
+    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
 
     char *encrypted_file_name;
     encrypt_meta(state->file_name, key, filename_iv, &encrypted_file_name);
