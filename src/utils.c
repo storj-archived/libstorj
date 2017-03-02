@@ -180,4 +180,9 @@ ssize_t pread(int fd, void *buf, size_t count, uint64_t offset)
 
     return read_bytes;
 }
+
+ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
+{
+
+}
 #endif

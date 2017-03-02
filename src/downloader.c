@@ -966,12 +966,12 @@ static void write_shard(uv_work_t *work)
                        req->shard_total_bytes,
                        req->shard_data);
 
-    if (req->shard_total_bytes != fwrite(req->shard_data,
-                                         sizeof(char),
+    if (req->shard_total_bytes != pwrite(fileno(req->destination),
+                                         req->shard_data,
                                          req->shard_total_bytes,
-                                         req->destination)) {
+                                         req->pointer_index * req->state->shard_size)) {
 
-        req->error_status = ferror(req->destination);
+        req->error_status = STORJ_FILE_WRITE_ERROR;
     }
 }
 
