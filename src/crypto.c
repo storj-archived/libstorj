@@ -469,14 +469,17 @@ int decrypt_meta(const char *buffer_base64,
     base64_decode_init(&ctx3);
     if (!base64_decode_update(&ctx3, &decode_len, buffer,
                               strlen(buffer_base64), buffer_base64)) {
+        free(buffer);
         return 1;
     }
 
     if (!base64_decode_final(&ctx3)) {
+        free(buffer);
         return 1;
     }
 
     if (GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + 1 > decode_len) {
+        free(buffer);
         //STORJ_META_DECRYPTION_ERROR
         return 1;
     }
