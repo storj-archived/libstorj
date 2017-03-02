@@ -1,21 +1,16 @@
 #include "utils.h"
 
-// TODO possibly use ccan/str/hex/hex.c code for decode and encoding hex
-
-char *hex2str(unsigned length, uint8_t *data)
+char *hex2str(size_t length, uint8_t *data)
 {
-    unsigned i;
-
-    char *buffer = calloc(length * 2 + 2, sizeof(char));
-    if (!buffer) {
+    size_t encode_len = BASE16_ENCODE_LENGTH(length);
+    uint8_t *result = calloc(encode_len + 1, sizeof(uint8_t));
+    if (!result) {
         return NULL;
     }
 
-    for (i = 0; i<length; i++) {
-        sprintf(&buffer[i*2], "%02x", data[i]);
-    }
+    base16_encode_update(result, length, data);
 
-    return buffer;
+    return result;
 }
 
 void print_int_array(uint8_t *array, unsigned length)
@@ -30,29 +25,31 @@ void print_int_array(uint8_t *array, unsigned length)
     printf("}\n");
 }
 
-char *str2hex(unsigned length, char *data)
+uint8_t *str2hex(size_t length, char *data)
 {
-    unsigned i;
-
-    char *buffer = calloc(length/2 + 1, sizeof(char));
-    if (!buffer) {
+    char *result = calloc(BASE16_DECODE_LENGTH(length) + 1, sizeof(char));
+    if (!result) {
         return NULL;
     }
 
-    unsigned int *tmp = calloc(length/2, sizeof(unsigned int));
-    if (!tmp) {
-        free(buffer);
+    struct base16_decode_ctx *ctx = malloc(sizeof(struct base16_decode_ctx));
+    base16_decode_init(ctx);
+
+    size_t decode_len = 0;
+    if (!base16_decode_update(ctx, &decode_len, result, length, data)) {
+        free(result);
+        free(ctx);
         return NULL;
     }
 
-    for (i = 0; i<(length/2); i++) {
-        sscanf(data + (i*2), "%2x", tmp + i);
-        buffer[i] = (uint8_t)tmp[i];
+    if (!base16_decode_final(ctx)) {
+        free(result);
+        free(ctx);
+        return NULL;
     }
 
-    free(tmp);
-
-    return buffer;
+    free(ctx);
+    return result;
 }
 
 char *str_concat_many(int count, ...)

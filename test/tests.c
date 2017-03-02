@@ -1122,6 +1122,36 @@ int test_str2hex()
     return 0;
 }
 
+int test_hex2str()
+{
+    uint8_t data[32] = {99,36,66,186,46,95,40,163,164,230,141,203,11,69,
+                              209,216,240,151,213,180,116,121,215,78,34,89,5,
+                              90,162,90,8,170};
+
+    char *result = hex2str(32, data);
+    if (!result) {
+        fail("test_hex2str");
+        return 0;
+    }
+
+    char *expected = "632442ba2e5f28a3a4e68dcb0b45d1d8f097d5b47479d74e2259055aa25a08aa";
+
+    int failed = 0;
+    if (strcmp(expected, result) != 0) {
+        failed = 1;
+    }
+
+    if (failed) {
+        fail("test_hex2str");
+    } else {
+        pass("test_hex2str");
+    }
+
+    free(result);
+
+    return 0;
+}
+
 int test_get_time_milliseconds()
 {
     double time = get_time_milliseconds();
@@ -1295,6 +1325,7 @@ int main(void)
 
     printf("Test Suite: Utils\n");
     test_str2hex();
+    test_hex2str();
     test_get_time_milliseconds();
 
     int num_failed = tests_ran - test_status;

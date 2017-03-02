@@ -14,6 +14,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <math.h>
+#include <nettle/base16.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -22,11 +23,11 @@
 #include <sys/time.h>
 #endif
 
-char *hex2str(unsigned length, uint8_t *data);
+char *hex2str(size_t length, uint8_t *data);
 
 void print_int_array(uint8_t *array, unsigned length);
 
-char *str2hex(unsigned length, char *data);
+uint8_t *str2hex(size_t length, char *data);
 
 char *str_concat_many(int count, ...);
 
