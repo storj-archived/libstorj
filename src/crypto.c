@@ -492,6 +492,8 @@ int decrypt_meta(const char *buffer_base64,
     memcpy(&iv, buffer + GCM_DIGEST_SIZE, SHA256_DIGEST_SIZE);
     memcpy(&cipher_text, buffer + GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE, length);
 
+    free(buffer);
+
     struct gcm_aes256_ctx ctx2;
     gcm_aes256_set_key(&ctx2, decrypt_key);
     gcm_aes256_set_iv(&ctx2, SHA256_DIGEST_SIZE, iv);

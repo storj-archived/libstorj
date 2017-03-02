@@ -63,6 +63,8 @@ static void create_bucket_request_worker(uv_work_t *work)
                                  req->bridge_options, "POST", "/buckets", body,
                                  true, NULL, &req->response, &status_code);
 
+    json_object_put(body);
+
     if (req->response != NULL) {
         req->bucket = malloc(sizeof(storj_bucket_meta_t));
 
@@ -196,6 +198,8 @@ static void list_files_request_worker(uv_work_t *work)
     hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
     uint8_t key[SHA256_DIGEST_SIZE];
     hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    free(bucket_key);
 
     struct json_object *file;
     struct json_object *filename;

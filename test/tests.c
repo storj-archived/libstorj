@@ -69,6 +69,7 @@ void check_get_buckets(uv_work_t *work_req, int status)
     pass("storj_bridge_get_buckets");
 
     json_object_put(req->response);
+    free(req->buckets);
     free(req);
     free(work_req);
 }
@@ -89,6 +90,8 @@ void check_create_bucket(uv_work_t *work_req, int status)
     pass("storj_bridge_create_bucket");
 
     json_object_put(req->response);
+    free((char *)req->encrypted_bucket_name);
+    free(req->bucket);
     free(req);
     free(work_req);
 }
@@ -129,6 +132,7 @@ void check_list_files(uv_work_t *work_req, int status)
 
     json_object_put(req->response);
     free(req->path);
+    free(req->files);
     free(req);
     free(work_req);
 }
@@ -1280,6 +1284,9 @@ int test_meta_encryption_name(char *filename)
         return 1;
     }
 
+    free(buffer);
+    free(buffer2);
+
     return 0;
 }
 
@@ -1293,6 +1300,7 @@ int test_meta_encryption()
             printf("Failed with filename: %s\n", filename);
             return 1;
         }
+        free(filename);
     }
     pass("test_meta_encryption");
     return 0;

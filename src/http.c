@@ -531,8 +531,9 @@ int fetch_json(storj_http_options_t *http_options,
     // Include body if request body json is provided
     struct curl_slist *json_chunk = NULL;
     http_body_send_t *post_body = NULL;
+    const char *req_buf = NULL;
     if (request_body) {
-        const char *req_buf = json_object_to_json_string(request_body);
+        req_buf = json_object_to_json_string(request_body);
 
         json_chunk = curl_slist_append(json_chunk,
                                        "Content-Type: application/json");

@@ -204,6 +204,10 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->hmac_id);
     }
 
+    if (state->encrypted_file_name) {
+        free((char *)state->encrypted_file_name);
+    }
+
     if (state->exclude) {
         free(state->exclude);
     }
@@ -1818,6 +1822,8 @@ static void prepare_upload_state(uv_work_t *work)
     hmac_sha512_update(&ctx2, strlen(state->file_name), state->file_name);
     uint8_t filename_iv[SHA256_DIGEST_SIZE];
     hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
+
+    free(bucket_key);
 
     char *encrypted_file_name;
     encrypt_meta(state->file_name, key, filename_iv, &encrypted_file_name);
