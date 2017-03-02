@@ -23,6 +23,7 @@
 #include <io.h>
 
 ssize_t pread(int fd, void *buf, size_t count, uint64_t offset);
+ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 #else
 #include <sys/time.h>
 #endif
