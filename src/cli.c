@@ -849,38 +849,22 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
 static void create_bucket_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    create_bucket_request_t *req = work_req->data;
 
     if (req->status_code != 201) {
         printf("Request failed with status code: %i\n", req->status_code);
     }
 
-    if (req->response == NULL) {
-        free(req);
-        free(work_req);
+    if (req->bucket != NULL) {
+        printf("ID: %s \tDecrypted: %s \tName: %s\n",
+               req->bucket->id,
+               req->bucket->decrypted ? "true" : "false",
+               req->bucket->name);
+    } else {
         printf("Failed to add bucket.\n");
-        exit(1);
     }
 
-    struct json_object *bucket;
-    struct json_object *id;
-    struct json_object *name;
-    struct json_object *storage;
-    struct json_object *transfer;
-
-    json_object_object_get_ex(req->response, "id", &id);
-    json_object_object_get_ex(req->response, "name", &name);
-    json_object_object_get_ex(req->response, "storage", &storage);
-    json_object_object_get_ex(req->response, "transfer", &transfer);
-    // print out the name attribute
-    printf("ID: \"%s\", Name: %s, Storage: %s, Transfer: %s\n",
-           json_object_get_string(id),
-           json_object_get_string(name),
-           json_object_get_string(storage),
-           json_object_get_string(transfer));
-
     json_object_put(req->response);
-    json_object_put(req->body);
     free(req);
     free(work_req);
 }

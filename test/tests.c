@@ -76,7 +76,7 @@ void check_get_buckets(uv_work_t *work_req, int status)
 void check_create_bucket(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    create_bucket_request_t *req = work_req->data;
     assert(req->handle == NULL);
 
     struct json_object* value;
@@ -88,7 +88,6 @@ void check_create_bucket(uv_work_t *work_req, int status)
     assert(strcmp(name, "backups") == 0);
     pass("storj_bridge_create_bucket");
 
-    json_object_put(req->body);
     json_object_put(req->response);
     free(req);
     free(work_req);

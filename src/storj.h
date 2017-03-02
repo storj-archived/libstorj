@@ -199,6 +199,21 @@ typedef struct {
     bool decrypted;
 } storj_bucket_meta_t;
 
+/** @brief A structure for queueing create bucket request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *bridge_options;
+    const char *bucket_name;
+    const char *encrypted_bucket_name;
+    struct json_object *response;
+    storj_bucket_meta_t *bucket;
+    int error_code;
+    int status_code;
+    void *handle;
+} create_bucket_request_t;
+
 /** @brief A structure for queueing list buckets request work
  */
 typedef struct {
