@@ -1270,6 +1270,27 @@ static void request_info(uv_work_t *work)
                              "hmac not an object");
             goto clean_up;
         }
+
+        // check the type of hmac
+        struct json_object *hmac_type;
+        if (!json_object_object_get_ex(hmac_obj, "type", &hmac_type)) {
+            state->log->warn(state->env->log_options, state->handle,
+                             "hmac.type missing from response");
+            goto clean_up;
+        }
+        if (!json_object_is_type(hmac_type, json_type_string)) {
+            state->log->warn(state->env->log_options, state->handle,
+                             "hmac.type not a string");
+            goto clean_up;
+        }
+        char *hmac_type_str = (char *)json_object_get_string(hmac_type);
+        if (0 != strcmp(hmac_type_str, "sha512")) {
+            state->log->warn(state->env->log_options, state->handle,
+                             "hmac.type is unknown");
+            goto clean_up;
+        }
+
+        // get the hmac vlaue
         struct json_object *hmac_value;
         if (!json_object_object_get_ex(hmac_obj, "value", &hmac_value)) {
             state->log->warn(state->env->log_options, state->handle,
