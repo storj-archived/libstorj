@@ -28,8 +28,8 @@ static void create_bucket_request_worker(uv_work_t *work)
                         BUCKET_NAME_MAGIC,
                         &bucket_key_as_str);
 
-    uint8_t bucket_key[DETERMINISTIC_KEY_HEX_SIZE + 1];
-    if (str2hex(strlen(bucket_key_as_str), bucket_key_as_str, bucket_key)) {
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
         req->error_code = STORJ_MEMORY_ERROR;
         return;
     }
@@ -104,8 +104,8 @@ static void get_buckets_request_worker(uv_work_t *work)
                         BUCKET_NAME_MAGIC,
                         &bucket_key_as_str);
 
-    uint8_t bucket_key[DETERMINISTIC_KEY_HEX_SIZE + 1];
-    if (str2hex(strlen(bucket_key_as_str), bucket_key_as_str, bucket_key)) {
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
         req->error_code = STORJ_MEMORY_ERROR;
         return;
     }
@@ -182,8 +182,8 @@ static void list_files_request_worker(uv_work_t *work)
                         req->bucket_id,
                         &bucket_key_as_str);
 
-    uint8_t bucket_key[DETERMINISTIC_KEY_HEX_SIZE + 1];
-    if (str2hex(strlen(bucket_key_as_str), bucket_key_as_str, bucket_key)) {
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
         req->error_code = STORJ_MEMORY_ERROR;
         return;
     }

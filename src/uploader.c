@@ -1796,8 +1796,8 @@ static void prepare_upload_state(uv_work_t *work)
                         state->bucket_id,
                         &bucket_key_as_str);
 
-    uint8_t bucket_key[DETERMINISTIC_KEY_HEX_SIZE + 1];
-    if (str2hex(strlen(bucket_key_as_str), bucket_key_as_str, bucket_key)) {
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
     }
