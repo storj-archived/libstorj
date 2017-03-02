@@ -1288,7 +1288,7 @@ int test_meta_encryption_name(char *filename)
 int test_meta_encryption()
 {
     for (int i = 1; i < 24; i++) {
-        char *filename = calloc(i, sizeof(char));
+        char *filename = calloc(i + 1, sizeof(char));
         memset(filename, 'a', i);
         if (test_meta_encryption_name(filename)) {
             fail("test_meta_encryption");
