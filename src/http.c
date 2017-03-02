@@ -17,7 +17,9 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
     }
 
     size_t read_bytes = 0;
-    size_t buflen = size * nmemb;
+    size_t buflen = size * nmemb / AES_BLOCK_SIZE * AES_BLOCK_SIZE;
+    uint8_t clr_txt[buflen];
+    memset_zero(clr_txt, buflen);
 
     if (buflen > 0) {
         if (body->remain < buflen) {
@@ -25,7 +27,11 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
         }
 
         // Read shard data from file
-        read_bytes = fread(buffer, 1, buflen, body->fd);
+        read_bytes = pread(fileno(body->fd), clr_txt, buflen, body->offset + body->total_sent);
+
+        ctr_crypt(body->ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
+                  AES_BLOCK_SIZE, body->ctx->encryption_ctr, read_bytes,
+                  (uint8_t *)buffer, (uint8_t *)clr_txt);
 
         if (ferror(body->fd)) {
             return CURL_READFUNC_ABORT;
@@ -35,6 +41,8 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
         body->bytes_since_progress += read_bytes;
 
         body->remain -= read_bytes;
+
+        memset_zero(clr_txt, buflen);
     }
 
     // give progress updates at set interval
@@ -59,8 +67,9 @@ int put_shard(storj_http_options_t *http_options,
               int port,
               char *shard_hash,
               uint64_t shard_total_bytes,
-              char *encrypted_file_path,
+              FILE *original_file,
               uint64_t file_position,
+              storj_encryption_ctx_t *ctx,
               char *token,
               int *status_code,
               uv_async_t *progress_handle,
@@ -114,25 +123,17 @@ int put_shard(storj_http_options_t *http_options,
 
     shard_body_send_t *shard_body = NULL;
 
-    FILE *encrypted_file = NULL;
 
-    if (encrypted_file_path && shard_total_bytes) {
-
-        // Open file for reading
-        encrypted_file = fopen(encrypted_file_path, "r");
-        if (!encrypted_file) {
-            return 1;
-        }
-
-        // Seek to shard's location in file
-        fseek(encrypted_file, file_position, SEEK_SET);
+    if (original_file && shard_total_bytes) {
 
         shard_body = malloc(sizeof(shard_body_send_t));
         if (!shard_body) {
             return 1;
         }
 
-        shard_body->fd = encrypted_file;
+        shard_body->fd = original_file;
+        shard_body->offset = file_position;
+        shard_body->ctx = ctx;
         shard_body->length = shard_total_bytes;
         shard_body->remain = shard_total_bytes;
         shard_body->total_sent = 0;
@@ -149,10 +150,6 @@ int put_shard(storj_http_options_t *http_options,
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_ignore_receive);
 
     int req = curl_easy_perform(curl);
-
-    if (encrypted_file) {
-        fclose(encrypted_file);
-    }
 
     curl_slist_free_all(content_chunk);
     curl_slist_free_all(node_chunk);

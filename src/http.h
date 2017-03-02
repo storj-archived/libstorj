@@ -16,6 +16,8 @@
 #endif
 
 #include "storj.h"
+#include "utils.h"
+#include "crypto.h"
 
 #define SHARD_PROGRESS_INTERVAL BUFSIZ * 150
 
@@ -47,6 +49,8 @@ typedef struct {
 
 typedef struct {
     FILE *fd;
+    storj_encryption_ctx_t *ctx;
+    uint64_t offset;
     uint64_t length;
     uint64_t remain;
     uint64_t total_sent;
@@ -99,8 +103,9 @@ int put_shard(storj_http_options_t *http_options,
               int port,
               char *shard_hash,
               uint64_t shard_total_bytes,
-              char *encrypted_file_path,
+              FILE *original_file,
               uint64_t file_position,
+              storj_encryption_ctx_t *ctx,
               char *token,
               int *status_code,
               uv_async_t *progress_handle,

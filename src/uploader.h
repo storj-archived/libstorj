@@ -38,18 +38,6 @@ typedef struct {
 } frame_builder_t;
 
 typedef struct {
-    char *file_id;
-    char *file_key;
-    FILE *original_file;
-    const char *file_name;
-    char *tmp_path;
-    uint64_t file_size;
-    storj_upload_state_t *upload_state;
-    storj_log_levels_t *log;
-    int error_status;
-} encrypt_file_meta_t;
-
-typedef struct {
     storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     int status_code;
@@ -119,17 +107,22 @@ static shard_meta_t *shard_meta_new();
 static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state);
 static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state);
 static uv_work_t *uv_work_new();
+static int prepare_encryption_key(storj_upload_state_t *state,
+                               char *pre_pass,
+                               int pre_pass_size,
+                               char *pre_salt,
+                               int pre_salt_size);
 
 static uint64_t check_file(storj_env_t *env, const char *filepath);
 
 static void shard_meta_cleanup(shard_meta_t *shard_meta);
 static void pointer_cleanup(farmer_pointer_t *farmer_pointer);
 static void cleanup_state(storj_upload_state_t *state);
+static void free_encryption_ctx(storj_encryption_ctx_t *ctx);
 
 static void queue_next_work(storj_upload_state_t *state);
 
 static void queue_request_frame_id(storj_upload_state_t *state);
-static void queue_encrypt_file(storj_upload_state_t *state);
 static void queue_prepare_frame(storj_upload_state_t *state, int index);
 static void queue_push_frame(storj_upload_state_t *state, int index);
 static void queue_push_shard(storj_upload_state_t *state, int index);
@@ -138,7 +131,6 @@ static void queue_send_exchange_report(storj_upload_state_t *state, int index);
 
 static void request_token(uv_work_t *work);
 static void request_frame_id(uv_work_t *work);
-static void encrypt_file(uv_work_t *work);
 static void prepare_frame(uv_work_t *work);
 static void push_frame(uv_work_t *work);
 static void push_shard(uv_work_t *work);
@@ -147,7 +139,6 @@ static void send_exchange_report(uv_work_t *work);
 
 static void after_request_token(uv_work_t *work, int status);
 static void after_request_frame_id(uv_work_t *work, int status);
-static void after_encrypt_file(uv_work_t *work, int status);
 static void after_prepare_frame(uv_work_t *work, int status);
 static void after_push_frame(uv_work_t *work, int status);
 static void after_push_shard(uv_work_t *work, int status);

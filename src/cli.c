@@ -46,7 +46,8 @@ static inline void noop() {};
     "  list-mirrors <bucket-id> file-id>\n\n"                           \
     "downloading and uploading files\n"                                 \
     "  upload-file <bucket-id> <path>\n"                                \
-    "  download-file <bucket-id> <file-id> <path>\n\n"                  \
+    "  download-file <bucket-id> <file-id> <path>\n"                    \
+    "  stream-file <bucket-id> <file-id>\n\n"                           \
     "bridge api information\n"                                          \
     "  get-info\n\n"                                                    \
     "options:\n"                                                        \
@@ -807,7 +808,7 @@ static void delete_file_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     json_request_t *req = work_req->data;
 
-    if (req->status_code == 200) {
+    if (req->status_code == 200 || req->status_code == 204) {
         printf("File was successfully removed from bucket.\n");
     } else {
         printf("Failed to remove file from bucket. (%i)\n", req->status_code);
@@ -1189,9 +1190,15 @@ int main(int argc, char **argv)
         free(root_dir);
 
         // First, get auth from environment variables
-        user = getenv("STORJ_BRIDGE_USER");
-        pass = getenv("STORJ_BRIDGE_PASS");
-        mnemonic = getenv("STORJ_MNEMONIC");
+        user = getenv("STORJ_BRIDGE_USER") ?
+            strdup(getenv("STORJ_BRIDGE_USER")) : NULL;
+
+        pass = getenv("STORJ_BRIDGE_PASS") ?
+            strdup(getenv("STORJ_BRIDGE_PASS")) : NULL;
+
+        mnemonic = getenv("STORJ_MNEMONIC") ?
+            strdup(getenv("STORJ_MNEMONIC")) : NULL;
+
         char *keypass = getenv("STORJ_KEYPASS");
 
         // Second, try to get from encrypted user file
@@ -1296,8 +1303,7 @@ int main(int argc, char **argv)
         };
 
         storj_encrypt_options_t encrypt_options = {
-            .mnemonic = mnemonic,
-            .tmp_path = NULL
+            .mnemonic = mnemonic
         };
 
         env = storj_init_env(&options, &encrypt_options,
@@ -1319,6 +1325,20 @@ int main(int argc, char **argv)
             }
 
             if (download_file(env, bucket_id, file_id, path)) {
+                status = 1;
+                goto end_program;
+            }
+        } else if (strcmp(command, "stream-file") == 0) {
+            char *bucket_id = argv[command_index + 1];
+            char *file_id = argv[command_index + 2];
+
+            if (!bucket_id || !file_id) {
+                printf("Missing arguments: <bucket-id> <file-id>\n");
+                status = 1;
+                goto end_program;
+            }
+
+            if (download_file(env, bucket_id, file_id, NULL)) {
                 status = 1;
                 goto end_program;
             }

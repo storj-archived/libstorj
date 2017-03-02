@@ -14,11 +14,15 @@
 #include <string.h>
 #include <stdarg.h>
 #include <math.h>
+#include <stdbool.h>
 #include <nettle/base16.h>
 
 #ifdef _WIN32
 #include <windows.h>
 #include <time.h>
+#include <io.h>
+
+ssize_t pread(int fd, void *buf, size_t count, uint64_t offset);
 #else
 #include <sys/time.h>
 #endif

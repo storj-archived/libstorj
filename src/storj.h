@@ -84,6 +84,12 @@ extern "C" {
 
 #define STORJ_SHARD_CHALLENGES 4
 
+typedef struct {
+  uint8_t *encryption_ctr;
+  uint8_t *encryption_key;
+  struct aes256_ctx *ctx;
+} storj_encryption_ctx_t ;
+
 typedef enum {
     STORJ_REPORT_NOT_PREPARED = 0,
     STORJ_REPORT_AWAITING_SEND = 1,
@@ -111,7 +117,6 @@ typedef struct {
  */
 typedef struct storj_encrypt_options {
     const char *mnemonic;
-    const char *tmp_path;
 } storj_encrypt_options_t;
 
 
@@ -349,7 +354,6 @@ typedef struct {
     FILE *original_file;
     char *file_key;
     uint64_t file_size;
-    char *tmp_path;
     const char *bucket_id;
     char *bucket_key;
     uint32_t completed_shards;
@@ -360,10 +364,11 @@ typedef struct {
     char *exclude;
     char *frame_id;
     char *hmac_id;
+    char *encryption_key;
+    char *encryption_ctr;
 
     bool requesting_frame;
     bool completed_upload;
-    bool encrypting_file;
     bool creating_bucket_entry;
     bool received_all_pointers;
     bool final_callback_called;
@@ -372,7 +377,6 @@ typedef struct {
     bool progress_finished;
 
     int frame_request_count;
-    int encrypt_file_count;
     int add_bucket_entry_count;
 
     storj_progress_cb progress_cb;
