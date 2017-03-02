@@ -46,7 +46,8 @@ static inline void noop() {};
     "  list-mirrors <bucket-id> file-id>\n\n"                           \
     "downloading and uploading files\n"                                 \
     "  upload-file <bucket-id> <path>\n"                                \
-    "  download-file <bucket-id> <file-id> <path>\n\n"                  \
+    "  download-file <bucket-id> <file-id> <path>\n"                    \
+    "  stream-file <bucket-id> <file-id>\n\n"                           \
     "bridge api information\n"                                          \
     "  get-info\n\n"                                                    \
     "options:\n"                                                        \
@@ -1324,6 +1325,20 @@ int main(int argc, char **argv)
             }
 
             if (download_file(env, bucket_id, file_id, path)) {
+                status = 1;
+                goto end_program;
+            }
+        } else if (strcmp(command, "stream-file") == 0) {
+            char *bucket_id = argv[command_index + 1];
+            char *file_id = argv[command_index + 2];
+
+            if (!bucket_id || !file_id) {
+                printf("Missing arguments: <bucket-id> <file-id>\n");
+                status = 1;
+                goto end_program;
+            }
+
+            if (download_file(env, bucket_id, file_id, NULL)) {
                 status = 1;
                 goto end_program;
             }
