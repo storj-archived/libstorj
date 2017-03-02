@@ -1848,7 +1848,12 @@ static void prepare_upload_state(uv_work_t *work)
     memset_zero(hmac_id_hex, SHA512_DIGEST_SIZE);
     hmac_sha512_digest (&hmac_ctx, SHA512_DIGEST_SIZE, hmac_id_hex);
 
-    hex2str(SHA512_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
+    char *hmac_id_str = hex2str(SHA512_DIGEST_SIZE, hmac_id_hex);
+    if (!hmac_id_str) {
+        return;
+    }
+    memcpy(state->hmac_id, hmac_id_str, strlen(hmac_id_str));
+    free(hmac_id_str);
     state->hmac_id[SHA512_DIGEST_SIZE *2] = '\0';
 }
 
