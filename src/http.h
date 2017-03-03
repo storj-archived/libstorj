@@ -19,7 +19,7 @@
 #include "utils.h"
 #include "crypto.h"
 
-#define SHARD_PROGRESS_INTERVAL BUFSIZ * 150
+#define SHARD_PROGRESS_INTERVAL BUFSIZ * 75
 
 /** @brief A structure for sharing download progress state between threads.
  *
