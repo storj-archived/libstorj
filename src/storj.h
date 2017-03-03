@@ -263,27 +263,6 @@ typedef struct {
     void *handle;
 } list_files_request_t;
 
-
-/** @brief A structure for checking info for a specific file id
- */
-typedef struct {
-    storj_http_options_t *http_options;
-    storj_encrypt_options_t *encrypt_options;
-    storj_bridge_options_t *options;
-    const char *bucket_id;
-    const char *file_id;
-    char *method;
-    char *path;
-    bool auth;
-    struct json_object *body;
-    struct json_object *response;
-    storj_file_meta_t *file;
-    uint32_t total_files;
-    int error_code;
-    int status_code;
-    void *handle;
-} get_file_request_t;
-
 typedef enum {
     BUCKET_PUSH,
     BUCKET_PULL
