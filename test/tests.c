@@ -1043,7 +1043,7 @@ int test_generate_file_key()
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     char *expected_file_key = "fe5fe4dcc5cb094666957d135341283d1af766cfe3174b75e15935ef5387c533";
 
-    calculate_file_id(bucket_id, file_name, &file_id);
+    calculate_file_id(bucket_id, file_name, file_id);
     file_id[FILE_ID_SIZE] = '\0';
     generate_file_key(mnemonic, bucket_id, file_id, &file_key);
     file_key[DETERMINISTIC_KEY_SIZE] = '\0';
@@ -1073,7 +1073,7 @@ int test_calculate_file_id()
     char *file_id = calloc(24 + 1, sizeof(char));
     char *expected_file_id = "852b6c9a0ba914a31e301a4b";
 
-    calculate_file_id(bucket_id, file_name, &file_id);
+    calculate_file_id(bucket_id, file_name, file_id);
 
     int check = memcmp(file_id, expected_file_id, 24);
     if (check != 0) {

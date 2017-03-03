@@ -1943,7 +1943,7 @@ static void prepare_upload_state(uv_work_t *work)
         return;
     }
 
-    calculate_file_id(state->bucket_id, state->encrypted_file_name, &file_id);
+    calculate_file_id(state->bucket_id, state->encrypted_file_name, file_id);
 
     file_id[FILE_ID_SIZE] = '\0';
     state->file_id = file_id;

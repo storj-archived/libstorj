@@ -1,6 +1,6 @@
 #include "crypto.h"
 
-int calculate_file_id(const char *bucket, const char *file_name, char **buffer)
+int calculate_file_id(const char *bucket, const char *file_name, char *buffer)
 {
     // Combine bucket and file_name
     int name_len = strlen(bucket) + strlen(file_name);
@@ -24,7 +24,7 @@ int calculate_file_id(const char *bucket, const char *file_name, char **buffer)
     }
 
     //Copy the result into buffer
-    memcpy(*buffer, ripemd160_str, FILE_ID_SIZE);
+    memcpy(buffer, ripemd160_str, FILE_ID_SIZE);
     free(ripemd160_str);
 
     return 0;
