@@ -420,10 +420,24 @@ static int download_file(storj_env_t *env, char *bucket_id,
                          char *file_id, char *path)
 {
     FILE *fd = NULL;
+    char user_input[BUFSIZ];
+    memset(user_input, '\0', BUFSIZ);
 
     if(access(path, F_OK) != -1 ) {
-        printf("Error: File already exists at path [%s].\n", path);
-        return 1;
+        printf("Warning: File already exists at path [%s].\n", path);
+        while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0)
+        {
+            memset(user_input, '\0', BUFSIZ);
+            printf("Would you like to overwrite [%s]: [y/n] ", path);
+            get_input(user_input);
+        }
+
+        if (strcmp(user_input, "n") == 0) {
+            printf("\nCanceled overwriting of [%s].\n", path);
+            return 1;
+        }
+
+        unlink(path);
     }
 
     if (path) {
