@@ -145,4 +145,9 @@ static void after_push_shard(uv_work_t *work, int status);
 static void after_create_bucket_entry(uv_work_t *work, int status);
 static void after_send_exchange_report(uv_work_t *work, int status);
 
+static void queue_verify_bucket_id(storj_upload_state_t *state);
+static void queue_verify_file_id(storj_upload_state_t *state);
+static void verify_bucket_id_callback(uv_work_t *work_req, int status);
+static void verify_file_id_callback(uv_work_t *work_req, int status);
+
 #endif /* STORJ_UPLOADER_H */

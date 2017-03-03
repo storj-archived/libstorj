@@ -50,6 +50,7 @@ extern "C" {
 #define STORJ_BRIDGE_POINTER_ERROR 1010
 #define STORJ_BRIDGE_REPOINTER_ERROR 1011
 #define STORJ_BRIDGE_FILEINFO_ERROR 1012
+#define STORJ_BRIDGE_BUCKET_FILE_EXISTS 1013
 
 // Farmer related errors 2000 to 2999
 #define STORJ_FARMER_REQUEST_ERROR 2000
@@ -262,6 +263,27 @@ typedef struct {
     void *handle;
 } list_files_request_t;
 
+
+/** @brief A structure for checking info for a specific file id
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    const char *bucket_id;
+    const char *file_id;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
+    struct json_object *response;
+    storj_file_meta_t *file;
+    uint32_t total_files;
+    int error_code;
+    int status_code;
+    void *handle;
+} check_file_request_t;
+
 typedef enum {
     BUCKET_PUSH,
     BUCKET_PULL
@@ -445,6 +467,8 @@ typedef struct {
     bool received_all_pointers;
     bool final_callback_called;
     bool canceled;
+    bool bucket_verified;
+    bool file_verified;
 
     bool progress_finished;
 
@@ -686,6 +710,21 @@ int storj_bridge_list_files(storj_env_t *env,
                             void *handle,
                             uv_after_work_cb cb);
 
+/**
+ * @brief Get a info of specific file in bucket.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] file_id The file id
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int storj_bridge_check_file(storj_env_t *env,
+                            const char *bucket_id,
+                            const char *file_id,
+                            void *handle,
+                            uv_after_work_cb cb);
 
 /**
  * @brief Will free all structs for list files request
