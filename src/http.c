@@ -369,6 +369,8 @@ int fetch_shard(storj_http_options_t *http_options,
     int req = curl_easy_perform(curl);
 
     curl_slist_free_all(node_chunk);
+    free(body->tail);
+    free(body->aes256_ctx);
 
     int error_code = 0;
 
