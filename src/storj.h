@@ -374,6 +374,7 @@ typedef struct {
     uint32_t pointer_fail_count;
     bool requesting_pointers;
     int error_status;
+    bool write_async;
     bool writing;
     char *token;
     bool requesting_token;

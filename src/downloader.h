@@ -69,6 +69,7 @@ typedef struct {
     uint64_t byte_position;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
+    bool write_async;
     char *shard_data;
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
