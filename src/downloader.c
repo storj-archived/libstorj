@@ -970,29 +970,7 @@ static void write_shard(uv_work_t *work)
     shard_request_write_t *req = work->data;
     req->error_status = 0;
 
-    // multiple write shards will not happen at the same
-    // time so it should be safe here to use hmac_ctx on state
-    // within a worker thread
-
-    if (req->state->write_async) {
-        char read_data[BUFSIZ];
-        size_t read_bytes = 0;
-        size_t total_read = 0;
-        uint64_t file_position = req->pointer_index * req->state->shard_size;
-
-        do {
-            read_bytes = pread(fileno(req->destination),
-                               read_data, BUFSIZ, file_position);
-            total_read += read_bytes;
-            hmac_sha512_update(req->state->hmac_ctx, read_bytes, read_data);
-
-        } while(total_read < req->shard_total_bytes && read_bytes > 0);
-
-    } else {
-        hmac_sha512_update(req->state->hmac_ctx,
-                           req->shard_total_bytes,
-                           req->shard_data);
-
+    if (!req->state->write_async) {
         if (req->shard_total_bytes != fwrite(req->shard_data,
                                              sizeof(char),
                                              req->shard_total_bytes,
