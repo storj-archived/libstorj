@@ -978,10 +978,10 @@ static void write_shard(uv_work_t *work)
         size_t read_bytes = 0;
         size_t total_read = 0;
         uint64_t file_position = req->pointer_index * req->state->shard_size;
-        fseek(req->destination, file_position, SEEK_SET);
 
         do {
-            read_bytes = fread(read_data, 1, BUFSIZ, req->destination);
+            read_bytes = pread(fileno(req->destination),
+                               read_data, BUFSIZ, file_position);
             total_read += read_bytes;
             hmac_sha512_update(req->state->hmac_ctx, read_bytes, read_data);
 
