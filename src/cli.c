@@ -16,6 +16,8 @@
 
 #include "storj.h"
 
+#define STORJ_THREADPOOL_SIZE "64"
+
 typedef struct {
     char *user;
     char *pass;
@@ -982,6 +984,16 @@ int main(int argc, char **argv)
     };
 
     int index = 0;
+
+    // The default is usually 4 threads, we want to increase to the
+    // locally set default value.
+#ifdef _WIN32
+    if (!getenv("UV_THREADPOOL_SIZE")) {
+        _putenv_s("UV_THREADPOOL_SIZE", STORJ_THREADPOOL_SIZE);
+    }
+#else
+    setenv("UV_THREADPOOL_SIZE", STORJ_THREADPOOL_SIZE, 0);
+#endif
 
     char *storj_bridge = getenv("STORJ_BRIDGE");
     int c;

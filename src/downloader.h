@@ -12,7 +12,8 @@
 #include "utils.h"
 #include "crypto.h"
 
-#define STORJ_DOWNLOAD_CONCURRENCY 4
+#define STORJ_DOWNLOAD_CONCURRENCY 24
+#define STORJ_DOWNLOAD_WRITESYNC_CONCURRENCY 4
 #define STORJ_DEFAULT_MIRRORS 5
 #define STORJ_MAX_REPORT_TRIES 2
 #define STORJ_MAX_TOKEN_TRIES 3
@@ -69,6 +70,7 @@ typedef struct {
     uint64_t byte_position;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
+    bool write_async;
     char *shard_data;
     /* state should not be modified in worker threads */
     storj_download_state_t *state;

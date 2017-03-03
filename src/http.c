@@ -198,18 +198,68 @@ static size_t body_shard_receive(void *buffer, size_t size, size_t nmemb,
         return CURL_READFUNC_ABORT;
     }
 
-    if (body->length + buflen > body->shard_total_bytes) {
+    if (body->length + body->tail_position + buflen > body->shard_total_bytes) {
         return CURL_READFUNC_ABORT;
     }
 
+    // Resize the buffer if necessary
+    if (body->tail_position + buflen > body->tail_length) {
+        body->tail_length = (body->tail_position + buflen) * 2;
+        body->tail = realloc(body->tail, body->tail_length);
+
+        if (!body->tail) {
+            return CURL_READFUNC_ABORT;
+        }
+    }
+
+    // Copy buffer to tail
+    memcpy(body->tail + body->tail_position, buffer, buflen);
+
+    size_t writelen = body->tail_position + buflen;
+    if (body->length + writelen != body->shard_total_bytes) {
+        writelen = (writelen / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;
+    }
+
     // Update the hash
-    sha256_update(body->sha256_ctx, buflen, (uint8_t *)buffer);
+    sha256_update(body->sha256_ctx, writelen, (uint8_t *)body->tail);
 
-    // Copy the data
-    memcpy(body->data + body->length, buffer, buflen);
+    // Decrypt the shard
+    ctr_crypt(body->aes256_ctx, (nettle_cipher_func *)aes256_encrypt,
+              AES_BLOCK_SIZE, body->decrypt_ctr,
+              writelen,
+              (uint8_t *)body->tail,
+              (uint8_t *)body->tail);
 
-    body->length += buflen;
-    body->bytes_since_progress += buflen;
+    if (body->write_async) {
+        // Write directly to the file at the correct position
+        if (writelen == pwrite(fileno(body->destination),
+                               body->tail,
+                               writelen,
+                               body->file_position)) {
+
+            body->file_position += writelen;
+        } else {
+            // TODO handle error
+            return CURL_READFUNC_ABORT;
+        }
+    } else {
+        // Copy the data to internal buffer to write later
+        memcpy(body->data + body->length, body->tail, writelen);
+    }
+
+    body->length += writelen;
+    body->bytes_since_progress += writelen;
+
+    // Move any remaining data to the beginning and mark position
+    size_t tailing_size = body->tail_position + buflen - writelen;
+    if (tailing_size > 0) {
+        uint8_t tmp[tailing_size];
+        memcpy(&tmp, body->tail + writelen, tailing_size);
+        memcpy(body->tail, &tmp, tailing_size);
+        body->tail_position = tailing_size;
+    } else {
+        body->tail_position = 0;
+    }
 
     // Give progress updates at set interval
     if (body->progress_handle &&
@@ -233,6 +283,11 @@ int fetch_shard(storj_http_options_t *http_options,
                 uint64_t shard_total_bytes,
                 char *shard_data,
                 char *token,
+                uint8_t *decrypt_key,
+                uint8_t *decrypt_ctr,
+                FILE *destination,
+                uint64_t file_position,
+                bool write_async,
                 int *status_code,
                 uv_async_t *progress_handle,
                 bool *canceled)
@@ -283,6 +338,10 @@ int fetch_shard(storj_http_options_t *http_options,
     if (!body) {
         return 1;
     }
+
+    body->tail = malloc(BUFSIZ);
+    body->tail_length = BUFSIZ;
+    body->tail_position = 0;
     body->data = shard_data;
     body->length = 0;
     body->progress_handle = progress_handle;
@@ -294,11 +353,24 @@ int fetch_shard(storj_http_options_t *http_options,
         return 1;
     }
     sha256_init(body->sha256_ctx);
+
+    body->aes256_ctx = malloc(sizeof(struct aes256_ctx));
+    if (!body->aes256_ctx) {
+        return 1;
+    }
+    aes256_set_encrypt_key(body->aes256_ctx, decrypt_key);
+
+    body->destination = destination;
+    body->decrypt_ctr = decrypt_ctr;
+    body->write_async = write_async;
+    body->file_position = file_position;
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
 
     int req = curl_easy_perform(curl);
 
     curl_slist_free_all(node_chunk);
+    free(body->tail);
+    free(body->aes256_ctx);
 
     int error_code = 0;
 

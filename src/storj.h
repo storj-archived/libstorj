@@ -387,6 +387,7 @@ typedef struct {
     bool canceled;
     uint64_t shard_size;
     uint32_t total_shards;
+    int download_max_concurrency;
     uint32_t completed_shards;
     uint32_t resolving_shards;
     storj_pointer_t *pointers;
@@ -396,6 +397,7 @@ typedef struct {
     uint32_t pointer_fail_count;
     bool requesting_pointers;
     int error_status;
+    bool write_async;
     bool writing;
     char *token;
     bool requesting_token;

@@ -19,7 +19,7 @@
 #include "utils.h"
 #include "crypto.h"
 
-#define SHARD_PROGRESS_INTERVAL BUFSIZ * 150
+#define SHARD_PROGRESS_INTERVAL BUFSIZ * 75
 
 /** @brief A structure for sharing download progress state between threads.
  *
@@ -60,6 +60,9 @@ typedef struct {
 } shard_body_send_t;
 
 typedef struct {
+    uint8_t *tail;
+    size_t tail_position;
+    size_t tail_length;
     uint8_t *data;
     size_t length;
     size_t bytes_since_progress;
@@ -67,6 +70,11 @@ typedef struct {
     uv_async_t *progress_handle;
     bool *canceled;
     struct sha256_ctx *sha256_ctx;
+    bool write_async;
+    struct aes256_ctx *aes256_ctx;
+    uint8_t *decrypt_ctr;
+    FILE *destination;
+    uint64_t file_position;
 } shard_body_receive_t;
 
 typedef struct {
@@ -137,6 +145,11 @@ int fetch_shard(storj_http_options_t *http_options,
                 uint64_t shard_total_bytes,
                 char *shard_data,
                 char *token,
+                uint8_t *decrypt_key,
+                uint8_t *decrypt_ctr,
+                FILE *destination,
+                uint64_t file_position,
+                bool write_async,
                 int *status_code,
                 uv_async_t *progress_handle,
                 bool *canceled);
