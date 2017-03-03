@@ -69,7 +69,7 @@ static inline void noop() {};
     "  STORJ_MNEMONIC            file encryption mnemonic key\n\n"
 
 
-#define CLI_VERSION "libstorj-1.0.0-alpha"
+#define CLI_VERSION "libstorj-1.0.0-beta1"
 
 static void json_logger(const char *message, int level, void *handle)
 {
