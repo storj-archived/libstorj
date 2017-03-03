@@ -857,7 +857,7 @@ static void queue_request_shards(storj_download_state_t *state)
 
     int i = 0;
 
-    while (state->resolving_shards < STORJ_DOWNLOAD_CONCURRENCY &&
+    while (state->resolving_shards < state->download_max_concurrency &&
            i < state->total_pointers) {
 
         storj_pointer_t *pointer = &state->pointers[i];
@@ -1521,6 +1521,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->finished_cb = finished_cb;
     state->finished = false;
     state->total_shards = 0;
+    state->download_max_concurrency = STORJ_DOWNLOAD_CONCURRENCY;
     state->completed_shards = 0;
     state->resolving_shards = 0;
     state->total_pointers = 0;
@@ -1543,6 +1544,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     // write to destination synchronously if stdout
     if (fileno(destination) == 1) {
         state->write_async = false;
+        state->download_max_concurrency = STORJ_DOWNLOAD_WRITESYNC_CONCURRENCY;
     } else {
         state->write_async = true;
     }
