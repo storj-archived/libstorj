@@ -973,7 +973,6 @@ static void write_shard(uv_work_t *work)
     // multiple write shards will not happen at the same
     // time so it should be safe here to use hmac_ctx on state
     // within a worker thread
-
     if (req->state->write_async) {
         char read_data[BUFSIZ];
         size_t read_bytes = 0;

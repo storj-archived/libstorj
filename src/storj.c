@@ -938,6 +938,8 @@ char *storj_strerror(int error_code)
             return "Bucket is not found";
         case STORJ_BRIDGE_FILE_NOTFOUND_ERROR:
             return "File is not found";
+        case STORJ_BRIDGE_BUCKET_FILE_EXISTS:
+            return "File already exists";
         case STORJ_BRIDGE_JSON_ERROR:
             return "Unexpected JSON response";
         case STORJ_BRIDGE_FILEINFO_ERROR:
@@ -1056,6 +1058,25 @@ int storj_bridge_delete_bucket(storj_env_t *env,
 
     uv_work_t *work = json_request_work_new(env, "DELETE", path,
                                             NULL, true, handle);
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+}
+
+int storj_bridge_get_bucket(storj_env_t *env,
+                            const char *id,
+                            void *handle,
+                            uv_after_work_cb cb)
+{
+    char *path = str_concat_many(2, "/buckets/", id);
+    if (!path) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
+                                            true, handle);
     if (!work) {
         return STORJ_MEMORY_ERROR;
     }

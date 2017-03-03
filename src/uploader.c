@@ -1675,6 +1675,103 @@ static void queue_push_frame_and_shard(storj_upload_state_t *state)
     }
 }
 
+static void verify_bucket_id_callback(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    storj_upload_state_t *state = req->handle;
+
+    state->log->info(state->env->log_options, state->handle,
+                     "Checking if bucket id [%s] exists", state->bucket_id);
+
+    state->pending_work_count -= 1;
+    state->bucket_verify_count += 1;
+
+    if (req->status_code == 200) {
+        state->bucket_verified = true;
+        goto clean_variables;
+    } else if (req->status_code == 404) {
+        state->log->error(state->env->log_options, state->handle,
+                         "Bucket [%s] doesn't exist", state->bucket_id);
+        state->error_status = STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR;
+    } else {
+        state->log->error(state->env->log_options, state->handle,
+                         "Request failed with status code: %i", req->status_code);
+
+         if (state->bucket_verify_count == 6) {
+             state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+             state->bucket_verify_count = 0;
+         }
+
+         goto clean_variables;
+    }
+    state->bucket_verified = true;
+
+clean_variables:
+    queue_next_work(state);
+
+    json_object_put(req->response);
+    free(req->path);
+    free(req);
+    free(work_req);
+}
+
+static void queue_verify_bucket_id(storj_upload_state_t *state)
+{
+    state->pending_work_count += 1;
+    storj_bridge_get_bucket(state->env, state->bucket_id, state, verify_bucket_id_callback);
+}
+
+static void verify_file_id_callback(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    storj_upload_state_t *state = req->handle;
+
+    state->log->info(state->env->log_options, state->handle,
+                     "Checking if file id [%s] already exists...", state->file_id);
+
+    state->pending_work_count -= 1;
+    state->file_verify_count += 1;
+
+    if (req->status_code == 404) {
+        state->file_verified = true;
+        goto clean_variables;
+    } else if (req->status_code == 200) {
+        state->log->error(state->env->log_options, state->handle,
+                         "File [%s] already exists", state->file_id);
+        state->error_status = STORJ_BRIDGE_BUCKET_FILE_EXISTS;
+    } else {
+        state->log->error(state->env->log_options, state->handle,
+                         "Request failed with status code: %i", req->status_code);
+
+        if (state->file_verify_count == 6) {
+            state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+            state->file_verify_count = 0;
+        }
+
+        goto clean_variables;
+    }
+
+    state->file_verified = true;
+
+clean_variables:
+    queue_next_work(state);
+
+    json_object_put(req->response);
+    free(req->path);
+    free(req);
+    free(work_req);
+}
+
+static void queue_verify_file_id(storj_upload_state_t *state)
+{
+    state->pending_work_count += 1;
+    storj_bridge_get_file_info(state->env,
+                               state->bucket_id,
+                               state->file_id,
+                               state,
+                               verify_file_id_callback);
+}
+
 static void queue_next_work(storj_upload_state_t *state)
 {
     if (state->canceled) {
@@ -1689,6 +1786,15 @@ static void queue_next_work(storj_upload_state_t *state)
     // report upload complete
     if (state->completed_upload) {
         return cleanup_state(state);
+    }
+
+    // Verify bucket_id is exists
+    if (!state->bucket_verified) {
+        return queue_verify_bucket_id(state);
+    }
+
+    if (!state->file_verified) {
+        return queue_verify_file_id(state);
     }
 
     if (!state->frame_id && !state->requesting_frame) {
@@ -1972,11 +2078,15 @@ int storj_bridge_store_file(storj_env_t *env,
     state->received_all_pointers = false;
     state->final_callback_called = false;
     state->canceled = false;
+    state->bucket_verified = false;
+    state->file_verified = false;
 
     state->progress_finished = false;
 
     state->frame_request_count = 0;
     state->add_bucket_entry_count = 0;
+    state->file_verify_count = 0;
+    state->bucket_verify_count = 0;
 
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;

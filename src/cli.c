@@ -421,6 +421,11 @@ static int download_file(storj_env_t *env, char *bucket_id,
 {
     FILE *fd = NULL;
 
+    if(access(path, F_OK) != -1 ) {
+        printf("Error: File already exists at path [%s].\n", path);
+        return 1;
+    }
+
     if (path) {
         fd = fopen(path, "w+");
     } else {
