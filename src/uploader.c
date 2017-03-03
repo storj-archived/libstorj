@@ -439,6 +439,52 @@ static void create_bucket_entry(uv_work_t *work)
     free(path);
 }
 
+static int prepare_bucket_entry_hmac(storj_upload_state_t *state)
+{
+    struct hmac_sha512_ctx hmac_ctx;
+    hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, state->encryption_key);
+
+    for (int i = 0; i < state->total_shards; i++) {
+
+        shard_tracker_t *shard = &state->shard[i];
+
+        if (!shard->meta ||
+            !shard->meta->hash ||
+            strlen(shard->meta->hash) != RIPEMD160_DIGEST_SIZE * 2) {
+            return 1;
+        }
+
+        struct base16_decode_ctx base16_ctx;
+        base16_decode_init(&base16_ctx);
+
+        size_t decode_len = 0;
+        uint8_t hash[RIPEMD160_DIGEST_SIZE];
+        if (!base16_decode_update(&base16_ctx, &decode_len, hash,
+                                  RIPEMD160_DIGEST_SIZE * 2, shard->meta->hash)) {
+            return 1;
+
+        }
+        if (!base16_decode_final(&base16_ctx) ||
+            decode_len != RIPEMD160_DIGEST_SIZE) {
+            return 1;
+        }
+        hmac_sha512_update(&hmac_ctx, RIPEMD160_DIGEST_SIZE, hash);
+    }
+
+    uint8_t digest_raw[SHA512_DIGEST_SIZE];
+    hmac_sha512_digest(&hmac_ctx, SHA512_DIGEST_SIZE, digest_raw);
+
+    size_t digest_len = BASE16_ENCODE_LENGTH(SHA512_DIGEST_SIZE);
+    state->hmac_id = calloc(digest_len + 1, sizeof(char));
+    if (!state->hmac_id) {
+        return 1;
+    }
+
+    base16_encode_update(state->hmac_id, SHA512_DIGEST_SIZE, digest_raw);
+
+    return 0;
+}
+
 static void queue_create_bucket_entry(storj_upload_state_t *state)
 {
     uv_work_t *work = uv_work_new();
@@ -450,6 +496,11 @@ static void queue_create_bucket_entry(storj_upload_state_t *state)
     post_to_bucket_request_t *req = malloc(sizeof(post_to_bucket_request_t));
     if (!req) {
         state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    if (prepare_bucket_entry_hmac(state)) {
+        state->error_status = STORJ_FILE_GENERATE_HMAC_ERROR;
         return;
     }
 
@@ -1966,43 +2017,6 @@ static void prepare_upload_state(uv_work_t *work)
     state->file_key = file_key;
 
     prepare_encryption_key(state, file_key, DETERMINISTIC_KEY_SIZE, file_id, FILE_ID_SIZE);
-
-    // Context for getting hmac_id
-    char *hmac_id = calloc(SHA512_DIGEST_SIZE *2 + 2, sizeof(char));
-    if (!hmac_id) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-    state->hmac_id = hmac_id;
-
-    struct hmac_sha512_ctx hmac_ctx;
-    hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, state->encryption_key);
-
-    char clr_txt[AES_BLOCK_SIZE * 256];
-    if (state->original_file) {
-        size_t bytes_read = 0;
-        // read up to sizeof(buffer) bytes
-        while ((bytes_read = fread(clr_txt, 1, AES_BLOCK_SIZE * 256,
-                                   state->original_file)) > 0) {
-
-            // Update hmac for hmac_id
-            hmac_sha512_update(&hmac_ctx, bytes_read, clr_txt);
-
-            memset(clr_txt, '\0', AES_BLOCK_SIZE * 256);
-        }
-    }
-
-    uint8_t hmac_id_hex[SHA512_DIGEST_SIZE];
-    memset_zero(hmac_id_hex, SHA512_DIGEST_SIZE);
-    hmac_sha512_digest (&hmac_ctx, SHA512_DIGEST_SIZE, hmac_id_hex);
-
-    char *hmac_id_str = hex2str(SHA512_DIGEST_SIZE, hmac_id_hex);
-    if (!hmac_id_str) {
-        return;
-    }
-    memcpy(state->hmac_id, hmac_id_str, strlen(hmac_id_str));
-    free(hmac_id_str);
-    state->hmac_id[SHA512_DIGEST_SIZE *2] = '\0';
 }
 
 int storj_bridge_store_file_cancel(storj_upload_state_t *state)

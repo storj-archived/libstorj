@@ -65,6 +65,7 @@ extern "C" {
 #define STORJ_FILE_ENCRYPTION_ERROR 3002
 #define STORJ_FILE_SIZE_ERROR 3003
 #define STORJ_FILE_DECRYPTION_ERROR 3004
+#define STORJ_FILE_GENERATE_HMAC_ERROR 3005
 
 // Memory related errors
 #define STORJ_MEMORY_ERROR 4000
@@ -359,7 +360,6 @@ typedef struct {
     const char *file_id;
     const char *bucket_id;
     FILE *destination;
-    struct hmac_sha512_ctx *hmac_ctx;
     storj_progress_cb progress_cb;
     storj_finished_download_cb finished_cb;
     bool finished;
@@ -383,6 +383,7 @@ typedef struct {
     uint32_t token_fail_count;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
+    const char *hmac;
     uint32_t pending_work_count;
     storj_log_levels_t *log;
     void *handle;

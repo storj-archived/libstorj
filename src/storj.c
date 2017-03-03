@@ -964,6 +964,8 @@ char *storj_strerror(int error_code)
             return "File size error";
         case STORJ_FILE_DECRYPTION_ERROR:
             return "File decryption error";
+        case STORJ_FILE_GENERATE_HMAC_ERROR:
+            return "File hmac generation error";
         case STORJ_META_ENCRYPTION_ERROR:
             return "Meta encryption error";
         case STORJ_META_DECRYPTION_ERROR:
