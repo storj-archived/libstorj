@@ -982,7 +982,7 @@ int main(int argc, char **argv)
 
     // The default is usually 4 threads, we want to increase to the
     // locally set default value.
-    setenv("UV_THREADPOOL_SIZE", STORJ_THREADPOOL_SIZE, 1);
+    setenv("UV_THREADPOOL_SIZE", STORJ_THREADPOOL_SIZE, 0);
 
     char *storj_bridge = getenv("STORJ_BRIDGE");
     int c;
