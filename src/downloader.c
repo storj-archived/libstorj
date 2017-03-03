@@ -52,7 +52,10 @@ static void free_download_state(storj_download_state_t *state)
         free(state->info);
     }
 
-    free(state->hmac_ctx);
+    if (state->hmac)  {
+        free((char *)state->hmac);
+    }
+
     free(state->pointers);
     free(state);
 }
@@ -1377,6 +1380,55 @@ static void queue_request_info(storj_download_state_t *state)
 
 }
 
+static int prepare_file_hmac(storj_download_state_t *state)
+{
+    // initialize the hmac with the decrypt key
+    struct hmac_sha512_ctx hmac_ctx;
+    hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, state->decrypt_key);
+
+    for (int i = 0; i < state->total_pointers; i++) {
+
+        storj_pointer_t *pointer = &state->pointers[i];
+
+        if (!pointer->shard_hash ||
+            strlen(pointer->shard_hash) != RIPEMD160_DIGEST_SIZE * 2) {
+            return 1;
+        }
+
+        struct base16_decode_ctx base16_ctx;
+        base16_decode_init(&base16_ctx);
+
+        size_t decode_len = 0;
+        uint8_t hash[RIPEMD160_DIGEST_SIZE];
+        if (!base16_decode_update(&base16_ctx,
+                                  &decode_len,
+                                  hash,
+                                  RIPEMD160_DIGEST_SIZE * 2,
+                                  pointer->shard_hash)) {
+            return 1;
+
+        }
+        if (!base16_decode_final(&base16_ctx) ||
+            decode_len != RIPEMD160_DIGEST_SIZE) {
+            return 1;
+        }
+        hmac_sha512_update(&hmac_ctx, RIPEMD160_DIGEST_SIZE, hash);
+    }
+
+    uint8_t digest_raw[SHA512_DIGEST_SIZE];
+    hmac_sha512_digest(&hmac_ctx, SHA512_DIGEST_SIZE, digest_raw);
+
+    size_t digest_len = BASE16_ENCODE_LENGTH(SHA512_DIGEST_SIZE);
+    state->hmac = calloc(digest_len + 1, sizeof(char));
+    if (!state->hmac) {
+        return 1;
+    }
+
+    base16_encode_update((char *)state->hmac, SHA512_DIGEST_SIZE, digest_raw);
+
+    return 0;
+}
+
 static void queue_next_work(storj_download_state_t *state)
 {
     // report any errors
@@ -1402,18 +1454,14 @@ static void queue_next_work(storj_download_state_t *state)
 
         if (!state->finished && state->pending_work_count == 0) {
 
-            uint8_t hmac[SHA512_DIGEST_SIZE];
-            memset_zero(hmac, SHA512_DIGEST_SIZE);
-            hmac_sha512_digest(state->hmac_ctx, SHA512_DIGEST_SIZE, hmac);
-
-            char *hmac_str = hex2str(SHA512_DIGEST_SIZE, hmac);
-            if (!hmac_str) {
-                state->error_status = STORJ_MEMORY_ERROR;
+            // calculate the hmac of all shard hashes
+            if (!prepare_file_hmac(state)) {
+                state->error_status = STORJ_FILE_GENERATE_HMAC_ERROR;
                 return;
             }
 
             if (state->info && state->info->hmac) {
-                if (0 != strcmp(state->info->hmac, hmac_str)) {
+                if (0 != strcmp(state->info->hmac, state->hmac)) {
                     state->error_status = STORJ_FILE_DECRYPTION_ERROR;
                 }
             } else {
@@ -1426,7 +1474,6 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished = true;
             state->finished_cb(state->error_status, state->destination, state->handle);
 
-            free(hmac_str);
             free_download_state(state);
         }
 
@@ -1495,7 +1542,6 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->file_id = file_id;
     state->bucket_id = bucket_id;
     state->destination = destination;
-    state->hmac_ctx = malloc(sizeof(struct hmac_sha512_ctx));
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
     state->finished = false;
@@ -1515,6 +1561,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->token_fail_count = 0;
     state->shard_size = 0;
     state->excluded_farmer_ids = NULL;
+    state->hmac = NULL;
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
@@ -1574,9 +1621,6 @@ int storj_bridge_resolve_file(storj_env_t *env,
 
         state->decrypt_ctr = decrypt_ctr;
     };
-
-    // initialize the hmac with the decrypt key
-    hmac_sha512_set_key(state->hmac_ctx, SHA256_DIGEST_SIZE, state->decrypt_key);
 
     // start download
     queue_next_work(state);
