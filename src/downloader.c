@@ -879,6 +879,7 @@ static void queue_request_shards(storj_download_state_t *state)
             req->byte_position = state->shard_size * i;
             req->token = pointer->token;
             req->write_async = state->write_async;
+            req->error_status = 0;
 
             // TODO assert max bytes for shard
             if (state->write_async) {
