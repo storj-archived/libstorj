@@ -50,6 +50,7 @@ extern "C" {
 #define STORJ_BRIDGE_POINTER_ERROR 1010
 #define STORJ_BRIDGE_REPOINTER_ERROR 1011
 #define STORJ_BRIDGE_FILEINFO_ERROR 1012
+#define STORJ_BRIDGE_BUCKET_FILE_EXISTS 1013
 
 // Farmer related errors 2000 to 2999
 #define STORJ_FARMER_REQUEST_ERROR 2000
@@ -448,11 +449,15 @@ typedef struct {
     bool received_all_pointers;
     bool final_callback_called;
     bool canceled;
+    bool bucket_verified;
+    bool file_verified;
 
     bool progress_finished;
 
     int frame_request_count;
     int add_bucket_entry_count;
+    int bucket_verify_count;
+    int file_verify_count;
 
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;
@@ -676,6 +681,20 @@ int storj_bridge_delete_bucket(storj_env_t *env,
                                uv_after_work_cb cb);
 
 /**
+ * @brief Get a info of specific bucket.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int storj_bridge_get_bucket(storj_env_t *env,
+                            const char *id,
+                            void *handle,
+                            uv_after_work_cb cb);
+
+/**
  * @brief Get a list of all files in a bucket.
  *
  * @param[in] env The storj environment struct
@@ -688,7 +707,6 @@ int storj_bridge_list_files(storj_env_t *env,
                             const char *id,
                             void *handle,
                             uv_after_work_cb cb);
-
 
 /**
  * @brief Will free all structs for list files request

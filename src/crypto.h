@@ -60,7 +60,7 @@ void pbkdf2_hmac_sha512(unsigned key_length,
  * @param[out] buffer 12 byte character array that is the file's id
  * @return A non-zero error value on failure and 0 on success.
  */
-int calculate_file_id(const char *bucket, const char *file_name, char **buffer);
+int calculate_file_id(const char *bucket, const char *file_name, char *buffer);
 
 /**
  * @brief Generate a bucket's key
