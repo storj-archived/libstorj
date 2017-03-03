@@ -13,6 +13,8 @@
 #include <nettle/pbkdf2.h>
 #include <nettle/sha.h>
 #include <nettle/ctr.h>
+#include <nettle/gcm.h>
+#include <nettle/base64.h>
 
 #include "bip39.h"
 #include "utils.h"
@@ -21,6 +23,9 @@
 #define FILE_ID_HEX_SIZE 12
 #define DETERMINISTIC_KEY_SIZE 64
 #define DETERMINISTIC_KEY_HEX_SIZE 32
+#define BUCKET_NAME_MAGIC "398734aab3c4c30c9f22590e83a95f7e43556a45fc2b3060e0c39fde31f50272"
+
+static const uint8_t BUCKET_META_MAGIC[32] = {66,150,71,16,50,114,88,160,163,35,154,65,162,213,226,215,70,138,57,61,52,19,210,170,38,164,162,200,86,201,2,81};
 
 // TODO use *buffer for out instead of **buffer for many of these methods
 // and figure out if we need null termination, and if so have this be set within
@@ -152,5 +157,38 @@ int decrypt_data(const char *passphrase,
                  const char *salt,
                  const char *data,
                  char **result);
+
+/**
+ * @brief Will encrypt file meta
+ *
+ * This will encrypt file meta information using AES-256-GCM. The
+ * resulting buffer will concat digest, iv and cipher text as base54
+ * null terminated string.
+ *
+ * @param[in] filemeta - The null terminated filename
+ * @param[in] encrypt_key - The key used to encrypt the file meta (32 bytes)
+ * @param[in] encrypt_iv - The iv to use for encryption (32 bytes)
+ * @param[out] buffer_base64 - The base64 encoded encrypted data including
+ * digest, iv and cipher text
+ * @return A non-zero value on error, zero on success.
+ */
+int encrypt_meta(const char *filemeta,
+                 uint8_t *encrypt_key,
+                 uint8_t *encrypt_iv,
+                 char **buffer_base64);
+
+/**
+ * @brief Will decrypt file meta
+ *
+ * This will decrypt file meta information.
+ *
+ * @param[in] buffer_base64 - The base64 encrypted data
+ * @param[in] decrypt_key - The key used to decrypt the file (32 bytes)
+ * @param[out] filemeta - The null terminated filename
+ * @return A non-zero value on error, zero on success.
+ */
+int decrypt_meta(const char *buffer_base64,
+                 uint8_t *decrypt_key,
+                 char **filemeta);
 
 #endif /* STORJ_CRYPTO_H */

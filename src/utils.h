@@ -15,6 +15,7 @@
 #include <stdarg.h>
 #include <math.h>
 #include <stdbool.h>
+#include <nettle/base16.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -27,11 +28,11 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 #include <sys/time.h>
 #endif
 
-int hex2str(unsigned length, uint8_t *data, char *buffer);
+char *hex2str(size_t length, uint8_t *data);
 
 void print_int_array(uint8_t *array, unsigned length);
 
-int str2hex(unsigned length, char *data, uint8_t *buffer);
+uint8_t *str2hex(size_t length, char *data);
 
 char *str_concat_many(int count, ...);
 

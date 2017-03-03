@@ -58,7 +58,7 @@ void check_bridge_get_info(uv_work_t *work_req, int status)
 void check_get_buckets(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    get_buckets_request_t *req = work_req->data;
     assert(req->handle == NULL);
     assert(json_object_is_type(req->response, json_type_array) == 1);
 
@@ -68,15 +68,14 @@ void check_get_buckets(uv_work_t *work_req, int status)
     assert(success == 1);
     pass("storj_bridge_get_buckets");
 
-    json_object_put(req->response);
-    free(req);
+    storj_free_get_buckets_request(req);
     free(work_req);
 }
 
 void check_create_bucket(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    create_bucket_request_t *req = work_req->data;
     assert(req->handle == NULL);
 
     struct json_object* value;
@@ -88,8 +87,9 @@ void check_create_bucket(uv_work_t *work_req, int status)
     assert(strcmp(name, "backups") == 0);
     pass("storj_bridge_create_bucket");
 
-    json_object_put(req->body);
     json_object_put(req->response);
+    free((char *)req->encrypted_bucket_name);
+    free(req->bucket);
     free(req);
     free(work_req);
 }
@@ -113,7 +113,7 @@ void check_delete_bucket(uv_work_t *work_req, int status)
 void check_list_files(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    list_files_request_t *req = work_req->data;
     assert(req->handle == NULL);
     assert(req->response != NULL);
 
@@ -128,9 +128,7 @@ void check_list_files(uv_work_t *work_req, int status)
 
     pass("storj_bridge_list_files");
 
-    json_object_put(req->response);
-    free(req->path);
-    free(req);
+    storj_free_list_files_request(req);
     free(work_req);
 }
 
@@ -1097,9 +1095,8 @@ int test_calculate_file_id()
 int test_str2hex()
 {
     char *data = "632442ba2e5f28a3a4e68dcb0b45d1d8f097d5b47479d74e2259055aa25a08aa";
-    uint8_t *buffer = calloc(32 + 1, sizeof(uint8_t));
 
-    str2hex(64, data, buffer);
+    uint8_t *buffer = str2hex(64, data);
 
     uint8_t expected[32] = {99,36,66,186,46,95,40,163,164,230,141,203,11,69,
                               209,216,240,151,213,180,116,121,215,78,34,89,5,
@@ -1119,6 +1116,36 @@ int test_str2hex()
     }
 
     free(buffer);
+
+    return 0;
+}
+
+int test_hex2str()
+{
+    uint8_t data[32] = {99,36,66,186,46,95,40,163,164,230,141,203,11,69,
+                              209,216,240,151,213,180,116,121,215,78,34,89,5,
+                              90,162,90,8,170};
+
+    char *result = hex2str(32, data);
+    if (!result) {
+        fail("test_hex2str");
+        return 0;
+    }
+
+    char *expected = "632442ba2e5f28a3a4e68dcb0b45d1d8f097d5b47479d74e2259055aa25a08aa";
+
+    int failed = 0;
+    if (strcmp(expected, result) != 0) {
+        failed = 1;
+    }
+
+    if (failed) {
+        fail("test_hex2str");
+    } else {
+        pass("test_hex2str");
+    }
+
+    free(result);
 
     return 0;
 }
@@ -1229,6 +1256,51 @@ int test_read_write_encrypted_file()
     return 0;
 }
 
+int test_meta_encryption_name(char *filename)
+{
+
+    uint8_t encrypt_key[32] = {215,99,0,133,172,219,64,35,54,53,171,23,146,160,
+                               81,126,137,21,253,171,48,217,184,188,8,137,3,
+                               4,83,50,30,251};
+    uint8_t iv[32] = {70,219,247,135,162,7,93,193,44,123,188,234,203,115,129,
+                      82,70,219,247,135,162,7,93,193,44,123,188,234,203,115,
+                      129,82};
+
+    char *buffer = NULL;
+    encrypt_meta(filename, encrypt_key, iv, &buffer);
+
+    char *buffer2 = NULL;
+    int status = decrypt_meta(buffer, encrypt_key, &buffer2);
+    if (status != 0) {
+        return 1;
+    }
+
+    if (strcmp(filename, buffer2) != 0) {
+        return 1;
+    }
+
+    free(buffer);
+    free(buffer2);
+
+    return 0;
+}
+
+int test_meta_encryption()
+{
+    for (int i = 1; i < 24; i++) {
+        char *filename = calloc(i + 1, sizeof(char));
+        memset(filename, 'a', i);
+        if (test_meta_encryption_name(filename)) {
+            fail("test_meta_encryption");
+            printf("Failed with filename: %s\n", filename);
+            return 1;
+        }
+        free(filename);
+    }
+    pass("test_meta_encryption");
+    return 0;
+}
+
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
 {
@@ -1292,10 +1364,12 @@ int main(void)
     test_generate_file_key();
     test_increment_ctr_aes_iv();
     test_read_write_encrypted_file();
+    test_meta_encryption();
     printf("\n");
 
     printf("Test Suite: Utils\n");
     test_str2hex();
+    test_hex2str();
     test_get_time_milliseconds();
 
     int num_failed = tests_ran - test_status;

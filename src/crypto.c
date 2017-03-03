@@ -18,12 +18,14 @@ int calculate_file_id(const char *bucket, const char *file_name, char **buffer)
     ripemd160_of_str(sha256_digest, SHA256_DIGEST_SIZE, ripemd160_digest);
 
     // Convert ripemd160 hex to character array
-    char ripemd160_str[RIPEMD160_DIGEST_SIZE*2+1];
-    memset(ripemd160_str, '\0', RIPEMD160_DIGEST_SIZE*2+1);
-    hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest, ripemd160_str);
+    char *ripemd160_str = hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
+    if (!ripemd160_str) {
+        return 1;
+    }
 
     //Copy the result into buffer
     memcpy(*buffer, ripemd160_str, FILE_ID_SIZE);
+    free(ripemd160_str);
 
     return 0;
 }
@@ -37,14 +39,16 @@ int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
     ripmd160sha256(data, data_size, &ripemd160_digest);
 
     // Convert ripemd160 hex to character array
-    char ripemd160_str[RIPEMD160_DIGEST_SIZE*2+1];
-    memset(ripemd160_str, '\0', RIPEMD160_DIGEST_SIZE*2+1);
-    hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest, ripemd160_str);
+    char *ripemd160_str = hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
+    if (!ripemd160_str) {
+        return 1;
+    }
 
     //Copy the result into buffer
     memcpy(*digest, ripemd160_str, RIPEMD160_DIGEST_SIZE * 2);
 
     free(ripemd160_digest);
+    free(ripemd160_str);
 
     return 0;
 }
@@ -102,9 +106,10 @@ int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size,
     }
 
     // Convert ripemd160 hex to character array
-    char ripemd160_str[RIPEMD160_DIGEST_SIZE*2+1];
-    memset(ripemd160_str, '\0', RIPEMD160_DIGEST_SIZE*2+1);
-    hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest, ripemd160_str);
+    char *ripemd160_str = hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
+    if (!ripemd160_str) {
+        return 1;
+    }
 
     //Copy the result into buffer
     memcpy(*digest, ripemd160_str, RIPEMD160_DIGEST_SIZE * 2);
@@ -168,9 +173,8 @@ int get_deterministic_key(const char *key, int key_len,
     sha512input[input_len] = '\0';
 
     // Convert input to hexdata
-    uint8_t sha512input_as_hex[input_len / 2 + 1];
-    memset(sha512input_as_hex, '\0', input_len / 2 + 1);
-    if (str2hex(input_len, sha512input, sha512input_as_hex)) {
+    uint8_t *sha512input_as_hex = str2hex(input_len, sha512input);
+    if (!sha512input_as_hex) {
         return 1;
     }
 
@@ -179,9 +183,10 @@ int get_deterministic_key(const char *key, int key_len,
     sha512_of_str(sha512input_as_hex, input_len / 2, sha512_digest);
 
     // Convert Sha512 hex to character array
-    char sha512_str[SHA512_DIGEST_SIZE * 2 + 1];
-    memset(sha512_str, '\0', RIPEMD160_DIGEST_SIZE * 2 + 1);
-    hex2str(SHA512_DIGEST_SIZE, sha512_digest, sha512_str);
+    char *sha512_str = hex2str(SHA512_DIGEST_SIZE, sha512_digest);
+    if (!sha512_str) {
+        return 1;
+    }
 
     //First 64 bytes of sha512
     memcpy(*buffer, sha512_str, DETERMINISTIC_KEY_SIZE);
@@ -192,6 +197,8 @@ int get_deterministic_key(const char *key, int key_len,
     memset_zero(sha512input, input_len + 1);
 
     free(sha512input);
+    free(sha512input_as_hex);
+    free(sha512_str);
 
     return 0;
 }
@@ -290,8 +297,8 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
     }
     int enc_len = len / 2;
     int data_size = enc_len - SHA256_DIGEST_SIZE;
-    uint8_t *enc = calloc(enc_len + 1, sizeof(uint8_t));
-    if (str2hex(len, (char *)data, enc)) {
+    uint8_t *enc = str2hex(len, (char *)data);
+    if (!enc) {
         return 1;
     }
 
@@ -385,17 +392,142 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
 
 
     // Convert to hex string
-    *result = calloc(buffer_size * 2 + 2, sizeof(char));
+    *result = hex2str(buffer_size, buffer);
     if (!*result) {
         return 1;
     }
-    hex2str(buffer_size, buffer, *result);
 
     free(buffer);
     free(data_hash);
     free(ctx1);
     free(ctx2);
     free(key);
+
+    return 0;
+}
+
+int encrypt_meta(const char *filemeta,
+                 uint8_t *encrypt_key,
+                 uint8_t *encrypt_iv,
+                 char **buffer_base64)
+{
+    struct gcm_aes256_ctx ctx2;
+    gcm_aes256_set_key(&ctx2, encrypt_key);
+    gcm_aes256_set_iv(&ctx2, SHA256_DIGEST_SIZE, encrypt_iv);
+
+    int pos = 0;
+    size_t length = strlen(filemeta);
+    size_t remain = length;
+    uint8_t cipher_text[length];
+    while (pos < length) {
+        int len = AES_BLOCK_SIZE;
+        if (remain < AES_BLOCK_SIZE) {
+            len = remain;
+        }
+        gcm_aes256_encrypt(&ctx2, len, cipher_text + pos, filemeta + pos);
+        pos += AES_BLOCK_SIZE;
+        remain -= AES_BLOCK_SIZE;
+    }
+
+    uint8_t digest[GCM_DIGEST_SIZE];
+    gcm_aes256_digest(&ctx2, GCM_DIGEST_SIZE, digest);
+
+    uint32_t buf_len = GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + length;
+    uint8_t buf[buf_len];
+    memcpy(buf, digest, GCM_DIGEST_SIZE);
+    memcpy(buf + GCM_DIGEST_SIZE, encrypt_iv, SHA256_DIGEST_SIZE);
+    memcpy(buf + GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE, &cipher_text, length);
+
+    size_t base64_len = BASE64_ENCODE_LENGTH(buf_len);
+    *buffer_base64 = calloc(base64_len + 3, sizeof(uint8_t));
+    if (!*buffer_base64) {
+        //STORJ_MEMORY_ERROR
+        return 1;
+    }
+
+    struct base64_encode_ctx ctx3;
+    base64_encode_init(&ctx3);
+    size_t out_len = base64_encode_update(&ctx3, *buffer_base64, buf_len, buf);
+    out_len += base64_encode_final(&ctx3, *buffer_base64 + out_len);
+
+    return 0;
+}
+
+int decrypt_meta(const char *buffer_base64,
+                 uint8_t *decrypt_key,
+                 char **filemeta)
+{
+    uint32_t buffer_len = BASE64_DECODE_LENGTH(strlen(buffer_base64));
+    uint8_t *buffer = calloc(buffer_len, sizeof(uint8_t));
+    if (!buffer) {
+        //STORJ_MEMORY_ERROR
+        return 1;
+    }
+
+    size_t decode_len = 0;
+    struct base64_decode_ctx ctx3;
+    base64_decode_init(&ctx3);
+    if (!base64_decode_update(&ctx3, &decode_len, buffer,
+                              strlen(buffer_base64), buffer_base64)) {
+        free(buffer);
+        return 1;
+    }
+
+    if (!base64_decode_final(&ctx3)) {
+        free(buffer);
+        return 1;
+    }
+
+    if (GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + 1 > decode_len) {
+        free(buffer);
+        //STORJ_META_DECRYPTION_ERROR
+        return 1;
+    }
+
+    size_t length = decode_len - GCM_DIGEST_SIZE - SHA256_DIGEST_SIZE;
+
+    uint8_t digest[GCM_DIGEST_SIZE];
+    uint8_t iv[SHA256_DIGEST_SIZE];
+    uint8_t cipher_text[length];
+    uint8_t clear_text[length];
+
+    memcpy(&digest, buffer, GCM_DIGEST_SIZE);
+    memcpy(&iv, buffer + GCM_DIGEST_SIZE, SHA256_DIGEST_SIZE);
+    memcpy(&cipher_text, buffer + GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE, length);
+
+    free(buffer);
+
+    struct gcm_aes256_ctx ctx2;
+    gcm_aes256_set_key(&ctx2, decrypt_key);
+    gcm_aes256_set_iv(&ctx2, SHA256_DIGEST_SIZE, iv);
+
+    int pos = 0;
+    size_t remain = length;
+    while (pos < length) {
+        int len = AES_BLOCK_SIZE;
+        if (remain < AES_BLOCK_SIZE) {
+            len = remain;
+        }
+        gcm_aes256_decrypt(&ctx2, len, clear_text + pos, cipher_text + pos);
+        pos += AES_BLOCK_SIZE;
+        remain -= AES_BLOCK_SIZE;
+    }
+
+    uint8_t actual_digest[GCM_DIGEST_SIZE];
+    gcm_aes256_digest(&ctx2, GCM_DIGEST_SIZE, actual_digest);
+
+    int digest_match = memcmp(actual_digest, digest, GCM_DIGEST_SIZE);
+    if (digest_match != 0) {
+        //STORJ_META_DECRYPTION_ERROR
+        return 1;
+    }
+
+    *filemeta = calloc(length + 1, sizeof(char));
+    if (!&filemeta) {
+        //STORJ_MEMORY_ERROR
+        return 1;
+    }
+    memcpy(*filemeta, &clear_text, length);
 
     return 0;
 }

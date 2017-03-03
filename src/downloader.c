@@ -1270,6 +1270,27 @@ static void request_info(uv_work_t *work)
                              "hmac not an object");
             goto clean_up;
         }
+
+        // check the type of hmac
+        struct json_object *hmac_type;
+        if (!json_object_object_get_ex(hmac_obj, "type", &hmac_type)) {
+            state->log->warn(state->env->log_options, state->handle,
+                             "hmac.type missing from response");
+            goto clean_up;
+        }
+        if (!json_object_is_type(hmac_type, json_type_string)) {
+            state->log->warn(state->env->log_options, state->handle,
+                             "hmac.type not a string");
+            goto clean_up;
+        }
+        char *hmac_type_str = (char *)json_object_get_string(hmac_type);
+        if (0 != strcmp(hmac_type_str, "sha512")) {
+            state->log->warn(state->env->log_options, state->handle,
+                             "hmac.type is unknown");
+            goto clean_up;
+        }
+
+        // get the hmac vlaue
         struct json_object *hmac_value;
         if (!json_object_object_get_ex(hmac_obj, "value", &hmac_value)) {
             state->log->warn(state->env->log_options, state->handle,
@@ -1284,6 +1305,14 @@ static void request_info(uv_work_t *work)
         char *hmac = (char *)json_object_get_string(hmac_value);
         req->info = malloc(sizeof(storj_file_meta_t));
         req->info->hmac = strdup(hmac);
+
+        // TODO set these values, however the are currently
+        // not used within the downloader
+        req->info->filename = NULL;
+        req->info->mimetype = NULL;
+        req->info->size = 0;
+        req->info->id = NULL;
+        req->info->decrypted = false;
 
     } else if (status_code == 403 || status_code == 401) {
         req->error_status = STORJ_BRIDGE_AUTH_ERROR;
@@ -1368,9 +1397,11 @@ static void queue_next_work(storj_download_state_t *state)
             memset_zero(hmac, SHA512_DIGEST_SIZE);
             hmac_sha512_digest(state->hmac_ctx, SHA512_DIGEST_SIZE, hmac);
 
-            char hmac_str[SHA512_DIGEST_SIZE *2 + 2];
-            hex2str(SHA512_DIGEST_SIZE, hmac, hmac_str);
-            hmac_str[SHA512_DIGEST_SIZE *2] = '\0';
+            char *hmac_str = hex2str(SHA512_DIGEST_SIZE, hmac);
+            if (!hmac_str) {
+                state->error_status = STORJ_MEMORY_ERROR;
+                return;
+            }
 
             if (state->info && state->info->hmac) {
                 if (0 != strcmp(state->info->hmac, hmac_str)) {
@@ -1386,6 +1417,7 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished = true;
             state->finished_cb(state->error_status, state->destination, state->handle);
 
+            free(hmac_str);
             free_download_state(state);
         }
 

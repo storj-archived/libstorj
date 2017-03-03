@@ -204,6 +204,10 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->hmac_id);
     }
 
+    if (state->encrypted_file_name) {
+        free((char *)state->encrypted_file_name);
+    }
+
     if (state->exclude) {
         free(state->exclude);
     }
@@ -383,8 +387,8 @@ static void create_bucket_entry(uv_work_t *work)
     json_object *frame = json_object_new_string(state->frame_id);
     json_object_object_add(body, "frame", frame);
 
-    json_object *file_name = json_object_new_string(state->file_name);
-    json_object_object_add(body, "filename",file_name);
+    json_object *file_name = json_object_new_string(state->encrypted_file_name);
+    json_object_object_add(body, "filename", file_name);
 
     struct json_object *hmac = json_object_new_object();
 
@@ -1236,7 +1240,13 @@ static void prepare_frame(uv_work_t *work)
         memcpy(shard_meta->challenges[i], buff, 32);
 
         // Convert the uint8_t challenges to character arrays
-        hex2str(32, buff, (char *)shard_meta->challenges_as_str[i]);
+        char *challenge_as_str = hex2str(32, buff);
+        if (!challenge_as_str) {
+            req->error_status = STORJ_MEMORY_ERROR;
+            goto clean_variables;
+        }
+        memcpy(shard_meta->challenges_as_str[i], challenge_as_str, strlen(challenge_as_str));
+        free(challenge_as_str);
     }
 
     // Hash of the shard_data
@@ -1312,7 +1322,13 @@ static void prepare_frame(uv_work_t *work)
     ripemd160_of_str(prehash_sha256, SHA256_DIGEST_SIZE, prehash_ripemd160);
 
     // Shard Hash
-    hex2str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160, shard_meta->hash);
+    char *hash = hex2str(RIPEMD160_DIGEST_SIZE, prehash_ripemd160);
+    if (!hash) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        goto clean_variables;
+    }
+    memcpy(shard_meta->hash, hash, strlen(hash));
+    free(hash);
 
     uint8_t preleaf_sha256[SHA256_DIGEST_SIZE];
     memset_zero(preleaf_sha256, SHA256_DIGEST_SIZE);
@@ -1778,26 +1794,64 @@ static void prepare_upload_state(uv_work_t *work)
         state->shard[i].work = NULL;
     }
 
-    // Generate encryption key && Calculate deterministic file id
+    // Get the bucket key to encrypt the filename
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(state->env->encrypt_options->mnemonic,
+                        state->bucket_id,
+                        &bucket_key_as_str);
+
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    free(bucket_key_as_str);
+
+    // Get file name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    // Generate the synthetic iv with first half of hmac w/ bucket and filename
+    struct hmac_sha512_ctx ctx2;
+    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx2, strlen(state->bucket_id), state->bucket_id);
+    hmac_sha512_update(&ctx2, strlen(state->file_name), state->file_name);
+    uint8_t filename_iv[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
+
+    free(bucket_key);
+
+    char *encrypted_file_name;
+    encrypt_meta(state->file_name, key, filename_iv, &encrypted_file_name);
+
+    state->encrypted_file_name = encrypted_file_name;
+
+    // Calculate deterministic file id from encrypted file name
     char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
     if (!file_id) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
     }
+
+    calculate_file_id(state->bucket_id, state->encrypted_file_name, &file_id);
+
+    file_id[FILE_ID_SIZE] = '\0';
+    state->file_id = file_id;
+
+    // Caculate the file encryption key based on file id
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     if (!file_key) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
     }
-
-    calculate_file_id(state->bucket_id, state->file_name, &file_id);
-
-    file_id[FILE_ID_SIZE] = '\0';
-    state->file_id = file_id;
-
     if (generate_file_key(state->env->encrypt_options->mnemonic,
                           state->bucket_id,
-                          state->file_id, &file_key)) {
+                          state->file_id,
+                          &file_key)) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
     }
@@ -1836,7 +1890,12 @@ static void prepare_upload_state(uv_work_t *work)
     memset_zero(hmac_id_hex, SHA512_DIGEST_SIZE);
     hmac_sha512_digest (&hmac_ctx, SHA512_DIGEST_SIZE, hmac_id_hex);
 
-    hex2str(SHA512_DIGEST_SIZE, hmac_id_hex, state->hmac_id);
+    char *hmac_id_str = hex2str(SHA512_DIGEST_SIZE, hmac_id_hex);
+    if (!hmac_id_str) {
+        return;
+    }
+    memcpy(state->hmac_id, hmac_id_str, strlen(hmac_id_str));
+    free(hmac_id_str);
     state->hmac_id[SHA512_DIGEST_SIZE *2] = '\0';
 }
 
@@ -1890,6 +1949,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->shard_concurrency = opts->shard_concurrency;
     state->file_id = NULL;
     state->file_name = opts->file_name;
+    state->encrypted_file_name = NULL;
     state->original_file = opts->fd;
     state->file_key = NULL;
     state->file_size = 0;

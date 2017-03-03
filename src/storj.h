@@ -71,6 +71,10 @@ extern "C" {
 // Queue related errors
 #define STORJ_QUEUE_ERROR 5000
 
+// Meta related errors 6000 to 6999
+#define STORJ_META_ENCRYPTION_ERROR 6000
+#define STORJ_META_DECRYPTION_ERROR 6001
+
 // Exchange report codes
 #define STORJ_REPORT_SUCCESS 1000
 #define STORJ_REPORT_FAILURE 1100
@@ -187,6 +191,77 @@ typedef struct {
     void *handle;
 } json_request_t;
 
+/** @brief A structure for that describes a bucket
+ */
+typedef struct {
+    const char *name;
+    const char *id;
+    bool decrypted;
+} storj_bucket_meta_t;
+
+/** @brief A structure for queueing create bucket request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *bridge_options;
+    const char *bucket_name;
+    const char *encrypted_bucket_name;
+    struct json_object *response;
+    storj_bucket_meta_t *bucket;
+    int error_code;
+    int status_code;
+    void *handle;
+} create_bucket_request_t;
+
+/** @brief A structure for queueing list buckets request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
+    struct json_object *response;
+    storj_bucket_meta_t *buckets;
+    uint32_t total_buckets;
+    int error_code;
+    int status_code;
+    void *handle;
+} get_buckets_request_t;
+
+/** @brief A structure for that describes a bucket entry/file
+ */
+typedef struct {
+    const char *filename;
+    const char *mimetype;
+    uint64_t size;
+    const char *hmac;
+    const char *id;
+    bool decrypted;
+} storj_file_meta_t;
+
+/** @brief A structure for queueing list files request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    const char *bucket_id;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
+    struct json_object *response;
+    storj_file_meta_t *files;
+    uint32_t total_files;
+    int error_code;
+    int status_code;
+    void *handle;
+} list_files_request_t;
+
 typedef enum {
     BUCKET_PUSH,
     BUCKET_PULL
@@ -263,10 +338,6 @@ typedef struct {
     const char *file_name;
     FILE *fd;
 } storj_upload_opts_t;
-
-typedef struct {
-    const char *hmac;
-} storj_file_meta_t;
 
 /** @brief A structure that keeps state between multiple worker threads,
  * and for referencing a download to apply actions to an in-progress download.
@@ -351,6 +422,7 @@ typedef struct {
     uint32_t shard_concurrency;
     char *file_id;
     const char *file_name;
+    const char *encrypted_file_name;
     FILE *original_file;
     char *file_key;
     uint64_t file_size;
@@ -496,7 +568,6 @@ int storj_decrypt_auth(const char *buffer,
                        char **bridge_pass,
                        char **mnemonic);
 
-
 /**
  * @brief Will get the current unix timestamp in milliseconds
  *
@@ -567,6 +638,13 @@ int storj_bridge_get_buckets(storj_env_t *env,
                              uv_after_work_cb cb);
 
 /**
+ * @brief Will free all structs for get buckets request
+ *
+ * @param[in] req - The work request from storj_bridge_get_buckets callback
+ */
+void storj_free_get_buckets_request(get_buckets_request_t *req);
+
+/**
  * @brief Create a bucket.
  *
  * @param[in] env The storj environment struct
@@ -607,6 +685,14 @@ int storj_bridge_list_files(storj_env_t *env,
                             const char *id,
                             void *handle,
                             uv_after_work_cb cb);
+
+
+/**
+ * @brief Will free all structs for list files request
+ *
+ * @param[in] req - The work request from storj_bridge_list_files callback
+ */
+void storj_free_list_files_request(list_files_request_t *req);
 
 /**
  * @brief Create a PUSH or PULL bucket token.
