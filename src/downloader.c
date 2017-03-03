@@ -1455,9 +1455,8 @@ static void queue_next_work(storj_download_state_t *state)
         if (!state->finished && state->pending_work_count == 0) {
 
             // calculate the hmac of all shard hashes
-            if (!prepare_file_hmac(state)) {
+            if (prepare_file_hmac(state)) {
                 state->error_status = STORJ_FILE_GENERATE_HMAC_ERROR;
-                return;
             }
 
             if (state->info && state->info->hmac) {
