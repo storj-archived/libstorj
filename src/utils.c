@@ -184,4 +184,46 @@ ssize_t pread(int fd, void *buf, size_t count, uint64_t offset)
 
     return read_bytes;
 }
+
+ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
+{
+    long unsigned int written_bytes = 0;
+
+    OVERLAPPED overlapped;
+    memset(&overlapped, 0, sizeof(OVERLAPPED));
+
+    HANDLE hEvent;
+    hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (hEvent) {
+        overlapped.hEvent = hEvent;
+    } else {
+        printf("\nCreate event failed with error:%d",GetLastError());
+        return 0;
+    }
+
+    overlapped.Offset = offset;
+
+    HANDLE file = (HANDLE)_get_osfhandle(fd);
+    SetLastError(0);
+    bool RF = WriteFile(file, buf, count, &written_bytes, &overlapped);
+    if ((RF==0) && GetLastError() == ERROR_IO_PENDING) {
+        // Asynch readfile started. I can do other operations now
+        while( !GetOverlappedResult(file, &overlapped, &written_bytes, TRUE)) {
+            if (GetLastError() == ERROR_IO_INCOMPLETE) {
+                // printf("I/O pending: %d .\n",GetLastError());
+            } else if  (GetLastError() == ERROR_HANDLE_EOF) {
+                // printf("End of file reached.\n");
+                return 0;
+            } else {
+                // printf("GetOverlappedResult failed with error:%d\n",GetLastError());
+                return 0;
+            }
+        }
+    } else if ((RF == 0) && GetLastError() != ERROR_IO_PENDING) {
+        // printf ("Error reading file :%d\n",GetLastError());
+        return 0;
+    }
+
+    return written_bytes;
+}
 #endif
