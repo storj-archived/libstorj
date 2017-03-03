@@ -1684,6 +1684,7 @@ static void verify_bucket_id_callback(uv_work_t *work_req, int status)
                      "Checking if bucket id [%s] exists", state->bucket_id);
 
     state->pending_work_count -= 1;
+    state->bucket_verify_count += 1;
 
     if (req->status_code == 200) {
         state->bucket_verified = true;
@@ -1695,9 +1696,14 @@ static void verify_bucket_id_callback(uv_work_t *work_req, int status)
     } else {
         state->log->error(state->env->log_options, state->handle,
                          "Request failed with status code: %i", req->status_code);
-        goto clean_variables;
-    }
 
+         if (state->bucket_verify_count == 6) {
+             state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+             state->bucket_verify_count = 0;
+         }
+
+         goto clean_variables;
+    }
     state->bucket_verified = true;
 
 clean_variables:
@@ -1724,6 +1730,7 @@ static void verify_file_id_callback(uv_work_t *work_req, int status)
                      "Checking if file id [%s] already exists...", state->file_id);
 
     state->pending_work_count -= 1;
+    state->file_verify_count += 1;
 
     if (req->status_code == 404) {
         state->file_verified = true;
@@ -1735,6 +1742,12 @@ static void verify_file_id_callback(uv_work_t *work_req, int status)
     } else {
         state->log->error(state->env->log_options, state->handle,
                          "Request failed with status code: %i", req->status_code);
+
+        if (state->file_verify_count == 6) {
+            state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+            state->file_verify_count = 0;
+        }
+
         goto clean_variables;
     }
 
@@ -2072,6 +2085,8 @@ int storj_bridge_store_file(storj_env_t *env,
 
     state->frame_request_count = 0;
     state->add_bucket_entry_count = 0;
+    state->file_verify_count = 0;
+    state->bucket_verify_count = 0;
 
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;

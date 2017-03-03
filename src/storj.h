@@ -455,6 +455,8 @@ typedef struct {
 
     int frame_request_count;
     int add_bucket_entry_count;
+    int bucket_verify_count;
+    int file_verify_count;
 
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;
