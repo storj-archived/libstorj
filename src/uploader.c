@@ -1677,7 +1677,7 @@ static void queue_push_frame_and_shard(storj_upload_state_t *state)
 
 static void verify_bucket_id_callback(uv_work_t *work_req, int status)
 {
-    get_buckets_request_t *req = work_req->data;
+    json_request_t *req = work_req->data;
     storj_upload_state_t *state = req->handle;
 
     state->log->info(state->env->log_options, state->handle,
@@ -1685,28 +1685,17 @@ static void verify_bucket_id_callback(uv_work_t *work_req, int status)
 
     state->pending_work_count -= 1;
 
-    // TODO: add loop count
-    if (req->status_code != 200 && req->status_code != 304) {
+    if (req->status_code == 200) {
+        state->bucket_verified = true;
+        goto clean_variables;
+    } else if (req->status_code == 404) {
+        state->log->error(state->env->log_options, state->handle,
+                         "Bucket [%s] doesn't exist", state->bucket_id);
+        state->error_status = STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR;
+    } else {
         state->log->error(state->env->log_options, state->handle,
                          "Request failed with status code: %i", req->status_code);
         goto clean_variables;
-    }
-
-    bool exists = false;
-    for (int i = 0; i < req->total_buckets; i++) {
-        storj_bucket_meta_t *bucket = &req->buckets[i];
-        if (strcmp(bucket->id, state->bucket_id) == 0) {
-            exists = true;
-        }
-    }
-
-    if (exists == false) {
-        state->log->error(state->env->log_options, state->handle,
-                         "Bucket id [%s] does not exist", state->bucket_id);
-        state->error_status = STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR;
-    } else {
-        state->log->info(state->env->log_options, state->handle,
-                         "Bucket id [%s] found.", state->bucket_id);
     }
 
     state->bucket_verified = true;
@@ -1715,6 +1704,7 @@ clean_variables:
     queue_next_work(state);
 
     json_object_put(req->response);
+    free(req->path);
     free(req);
     free(work_req);
 }
@@ -1722,32 +1712,33 @@ clean_variables:
 static void queue_verify_bucket_id(storj_upload_state_t *state)
 {
     state->pending_work_count += 1;
-    storj_bridge_get_buckets(state->env, state, verify_bucket_id_callback);
+    storj_bridge_get_bucket(state->env, state->bucket_id, state, verify_bucket_id_callback);
 }
 
 static void verify_file_id_callback(uv_work_t *work_req, int status)
 {
-    list_files_request_t *req = work_req->data;
+    json_request_t *req = work_req->data;
     storj_upload_state_t *state = req->handle;
 
-    printf("Hi");
-
     state->log->info(state->env->log_options, state->handle,
-                     "Checking if file id [%s] already exists", state->file_id);
+                     "Checking if file id [%s] already exists...", state->file_id);
 
     state->pending_work_count -= 1;
 
-    if (req->status_code == 200) {
+    if (req->status_code == 404) {
+        state->file_verified = true;
+        goto clean_variables;
+    } else if (req->status_code == 200) {
         state->log->error(state->env->log_options, state->handle,
                          "File [%s] already exists", state->file_id);
         state->error_status = STORJ_BRIDGE_BUCKET_FILE_EXISTS;
-    } else if (req->status_code == 304) {
+    } else {
         state->log->error(state->env->log_options, state->handle,
                          "Request failed with status code: %i", req->status_code);
         goto clean_variables;
     }
 
-    state->file_verified == true;
+    state->file_verified = true;
 
 clean_variables:
     queue_next_work(state);
@@ -1760,13 +1751,12 @@ clean_variables:
 
 static void queue_verify_file_id(storj_upload_state_t *state)
 {
-    printf("Hi");
     state->pending_work_count += 1;
-    storj_bridge_check_file(state->env,
-                            state->bucket_id,
-                            state->file_id,
-                            state,
-                            verify_file_id_callback);
+    storj_bridge_get_file_info(state->env,
+                               state->bucket_id,
+                               state->file_id,
+                               state,
+                               verify_file_id_callback);
 }
 
 static void queue_next_work(storj_upload_state_t *state)
@@ -1784,7 +1774,7 @@ static void queue_next_work(storj_upload_state_t *state)
     if (state->completed_upload) {
         return cleanup_state(state);
     }
-    
+
     // Verify bucket_id is exists
     if (!state->bucket_verified) {
         return queue_verify_bucket_id(state);

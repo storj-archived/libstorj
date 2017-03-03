@@ -282,7 +282,7 @@ typedef struct {
     int error_code;
     int status_code;
     void *handle;
-} check_file_request_t;
+} get_file_request_t;
 
 typedef enum {
     BUCKET_PUSH,
@@ -697,6 +697,20 @@ int storj_bridge_delete_bucket(storj_env_t *env,
                                uv_after_work_cb cb);
 
 /**
+ * @brief Get a info of specific bucket.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int storj_bridge_get_bucket(storj_env_t *env,
+                            const char *id,
+                            void *handle,
+                            uv_after_work_cb cb);
+
+/**
  * @brief Get a list of all files in a bucket.
  *
  * @param[in] env The storj environment struct
@@ -707,22 +721,6 @@ int storj_bridge_delete_bucket(storj_env_t *env,
  */
 int storj_bridge_list_files(storj_env_t *env,
                             const char *id,
-                            void *handle,
-                            uv_after_work_cb cb);
-
-/**
- * @brief Get a info of specific file in bucket.
- *
- * @param[in] env The storj environment struct
- * @param[in] bucket_id The bucket id
- * @param[in] file_id The file id
- * @param[in] handle A pointer that will be available in the callback
- * @param[in] cb A function called with response when complete
- * @return A non-zero error value on failure and 0 on success.
- */
-int storj_bridge_check_file(storj_env_t *env,
-                            const char *bucket_id,
-                            const char *file_id,
                             void *handle,
                             uv_after_work_cb cb);
 
