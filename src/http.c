@@ -503,6 +503,7 @@ int fetch_json(storj_http_options_t *http_options,
     if (!curl) {
         return 1;
     }
+
     char *user_pass = NULL;
 
     // Set the url
@@ -602,6 +603,7 @@ int fetch_json(storj_http_options_t *http_options,
 
     // Include body if request body json is provided
     struct curl_slist *json_chunk = NULL;
+    struct curl_slist *content_length_chunk = NULL;
     http_body_send_t *post_body = NULL;
     const char *req_buf = NULL;
     if (request_body) {
@@ -610,6 +612,13 @@ int fetch_json(storj_http_options_t *http_options,
         json_chunk = curl_slist_append(json_chunk,
                                        "Content-Type: application/json");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, json_chunk);
+
+        char content_length_header[BUFSIZ];
+        memset(content_length_header, '\0', BUFSIZ);
+        sprintf(content_length_header, "Content-Length: %lu", strlen(req_buf));
+
+        content_length_chunk = curl_slist_append(content_length_chunk, content_length_header);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, content_length_chunk);
 
         post_body = malloc(sizeof(http_body_send_t));
         if (!post_body) {
