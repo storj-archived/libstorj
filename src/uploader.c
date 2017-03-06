@@ -1012,16 +1012,16 @@ static void push_frame(uv_work_t *work)
                                     &response,
                                     &status_code);
 
+    req->log->debug(state->env->log_options, state->handle,
+                    "fn[push_frame] - JSON Response: %s",
+                    json_object_to_json_string(response));
+
     if (request_status) {
         req->log->warn(state->env->log_options, state->handle,
                        "Push frame error: %i", request_status);
         req->error_status = STORJ_BRIDGE_REQUEST_ERROR;
         goto clean_variables;
     }
-
-    req->log->debug(state->env->log_options, state->handle,
-                    "fn[push_frame] - JSON Response: %s",
-                    json_object_to_json_string(response));
 
     struct json_object *obj_token;
     if (!json_object_object_get_ex(response, "token", &obj_token)) {

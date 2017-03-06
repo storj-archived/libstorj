@@ -504,7 +504,7 @@ int fetch_json(storj_http_options_t *http_options,
         return 1;
     }
 
-        // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
     char *user_pass = NULL;
 
