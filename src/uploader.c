@@ -912,7 +912,7 @@ static void after_push_frame(uv_work_t *work, int status)
         );
 
     } else if (state->shard[req->shard_index].push_frame_request_count == 6) {
-        state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
+        state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
     } else {
         state->shard[req->shard_index].progress = AWAITING_PUSH_FRAME;
     }
@@ -1473,13 +1473,16 @@ static void request_frame_id(uv_work_t *work)
                    state->file_name,
                    state->frame_request_count);
 
+    // Prepare the body
+    struct json_object *body = json_object_new_object();
+
     int status_code;
     struct json_object *response = NULL;
     int request_status = fetch_json(req->http_options,
                                     req->options,
                                     "POST",
                                     "/frames",
-                                    NULL,
+                                    body,
                                     true,
                                     NULL,
                                     &response,
@@ -1520,6 +1523,7 @@ cleanup:
     req->status_code = status_code;
 
     json_object_put(response);
+    json_object_put(body);
 }
 
 static void queue_request_frame_id(storj_upload_state_t *state)

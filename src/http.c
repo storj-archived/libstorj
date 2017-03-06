@@ -504,6 +504,8 @@ int fetch_json(storj_http_options_t *http_options,
         return 1;
     }
 
+        // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
     char *user_pass = NULL;
 
     // Set the url
@@ -630,6 +632,11 @@ int fetch_json(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_READFUNCTION, body_json_send);
         curl_easy_setopt(curl, CURLOPT_READDATA, (void *)post_body);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, strlen(req_buf));
+    } else {
+        content_length_chunk = curl_slist_append(content_length_chunk, "Content-Length: 0");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, content_length_chunk);
+        json_chunk = curl_slist_append(json_chunk, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, json_chunk);
     }
 
     int req = curl_easy_perform(curl);
@@ -642,6 +649,10 @@ int fetch_json(storj_http_options_t *http_options,
 
     if (json_chunk) {
         curl_slist_free_all(json_chunk);
+    }
+
+    if (content_length_chunk) {
+        curl_slist_free_all(content_length_chunk);
     }
 
     if (post_body) {
