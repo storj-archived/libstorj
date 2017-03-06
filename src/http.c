@@ -107,19 +107,17 @@ int put_shard(storj_http_options_t *http_options,
 
     curl_easy_setopt(curl, CURLOPT_POST, 1);
 
-    struct curl_slist *content_chunk = NULL;
-    content_chunk = curl_slist_append(content_chunk, "Content-Type: application/octet-stream");
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, content_chunk);
+    struct curl_slist *header_list = NULL;
+    header_list = curl_slist_append(header_list, "Content-Type: application/octet-stream");
 
-    struct curl_slist *node_chunk = NULL;
     char *header = calloc(17 + 40 + 1, sizeof(char));
     if (!header) {
         return 1;
     }
     strcat(header, "x-storj-node-id: ");
     strncat(header, farmer_id, 40);
-    node_chunk = curl_slist_append(node_chunk, header);
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, node_chunk);
+    header_list = curl_slist_append(header_list, header);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
 
     shard_body_send_t *shard_body = NULL;
 
@@ -151,8 +149,7 @@ int put_shard(storj_http_options_t *http_options,
 
     int req = curl_easy_perform(curl);
 
-    curl_slist_free_all(content_chunk);
-    curl_slist_free_all(node_chunk);
+    curl_slist_free_all(header_list);
     free(header);
 
     if (*canceled) {
@@ -504,7 +501,7 @@ int fetch_json(storj_http_options_t *http_options,
         return 1;
     }
 
-    // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
     char *user_pass = NULL;
 
@@ -590,7 +587,7 @@ int fetch_json(storj_http_options_t *http_options,
 
     }
 
-    struct curl_slist *token_chunk = NULL;
+    struct curl_slist *header_list = NULL;
     if (token) {
         char *token_header = calloc(9 + strlen(token) + 1, sizeof(char));
         if (!token_header) {
@@ -598,29 +595,26 @@ int fetch_json(storj_http_options_t *http_options,
         }
         strcat(token_header, "X-Token: ");
         strcat(token_header, token);
-        token_chunk = curl_slist_append(token_chunk, token_header);
+        header_list = curl_slist_append(header_list, token_header);
         free(token_header);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, token_chunk);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
     }
 
     // Include body if request body json is provided
-    struct curl_slist *json_chunk = NULL;
-    struct curl_slist *content_length_chunk = NULL;
     http_body_send_t *post_body = NULL;
     const char *req_buf = NULL;
     if (request_body) {
         req_buf = json_object_to_json_string(request_body);
 
-        json_chunk = curl_slist_append(json_chunk,
+        header_list = curl_slist_append(header_list,
                                        "Content-Type: application/json");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, json_chunk);
 
         char content_length_header[BUFSIZ];
         memset(content_length_header, '\0', BUFSIZ);
         sprintf(content_length_header, "Content-Length: %lu", strlen(req_buf));
 
-        content_length_chunk = curl_slist_append(content_length_chunk, content_length_header);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, content_length_chunk);
+        header_list = curl_slist_append(header_list, content_length_header);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
 
         post_body = malloc(sizeof(http_body_send_t));
         if (!post_body) {
@@ -633,26 +627,17 @@ int fetch_json(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_READDATA, (void *)post_body);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, strlen(req_buf));
     } else {
-        content_length_chunk = curl_slist_append(content_length_chunk, "Content-Length: 0");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, content_length_chunk);
-        json_chunk = curl_slist_append(json_chunk, "Content-Type: application/json");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, json_chunk);
+        header_list = curl_slist_append(header_list, "Content-Length: 0");
+        header_list = curl_slist_append(header_list, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
     }
 
     int req = curl_easy_perform(curl);
 
     free(url);
 
-    if (token_chunk) {
-        curl_slist_free_all(token_chunk);
-    }
-
-    if (json_chunk) {
-        curl_slist_free_all(json_chunk);
-    }
-
-    if (content_length_chunk) {
-        curl_slist_free_all(content_length_chunk);
+    if (header_list) {
+        curl_slist_free_all(header_list);
     }
 
     if (post_body) {
