@@ -1473,20 +1473,13 @@ static void request_frame_id(uv_work_t *work)
                    state->file_name,
                    state->frame_request_count);
 
-    struct json_object *body = json_object_new_object();
-
-    req->log->debug(state->env->log_options,
-                    state->handle,
-                    "fn[request_frame_id] - JSON body: %s",
-                    json_object_to_json_string(body));
-
     int status_code;
     struct json_object *response = NULL;
     int request_status = fetch_json(req->http_options,
                                     req->options,
                                     "POST",
                                     "/frames",
-                                    body,
+                                    NULL,
                                     true,
                                     NULL,
                                     &response,
@@ -1527,7 +1520,6 @@ cleanup:
     req->status_code = status_code;
 
     json_object_put(response);
-    json_object_put(body);
 }
 
 static void queue_request_frame_id(storj_upload_state_t *state)
