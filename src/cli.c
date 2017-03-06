@@ -782,7 +782,7 @@ static void list_files_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     list_files_request_t *req = work_req->data;
 
-    if (req->status_code == 500) {
+    if (req->status_code == 404) {
         printf("Bucket id [%s] does not exist\n", req->bucket_id);
         goto cleanup;
     }
@@ -878,7 +878,7 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     create_bucket_request_t *req = work_req->data;
 
-    if (req->status_code == 500) {
+    if (req->status_code == 404) {
         printf("Cannot create bucket [%s]. Name already exists \n", req->bucket->name);
         goto clean_variables;
     }
