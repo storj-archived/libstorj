@@ -69,7 +69,7 @@ static inline void noop() {};
     "  STORJ_MNEMONIC            file encryption mnemonic key\n\n"
 
 
-#define CLI_VERSION "libstorj-1.0.0-alpha"
+#define CLI_VERSION "libstorj-1.0.0-beta1"
 
 static void json_logger(const char *message, int level, void *handle)
 {
@@ -782,6 +782,11 @@ static void list_files_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     list_files_request_t *req = work_req->data;
 
+    if (req->status_code == 404) {
+        printf("Bucket id [%s] does not exist\n", req->bucket_id);
+        goto cleanup;
+    }
+
     if (req->status_code != 200) {
         printf("Request failed with status code: %i\n", req->status_code);
     }
@@ -873,8 +878,14 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     create_bucket_request_t *req = work_req->data;
 
+    if (req->status_code == 404) {
+        printf("Cannot create bucket [%s]. Name already exists \n", req->bucket->name);
+        goto clean_variables;
+    }
+
     if (req->status_code != 201) {
         printf("Request failed with status code: %i\n", req->status_code);
+        goto clean_variables;
     }
 
     if (req->bucket != NULL) {
@@ -886,6 +897,7 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
         printf("Failed to add bucket.\n");
     }
 
+clean_variables:
     json_object_put(req->response);
     free(req);
     free(work_req);
