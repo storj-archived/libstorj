@@ -800,7 +800,7 @@ static void list_files_callback(uv_work_t *work_req, int status)
 
         storj_file_meta_t *file = &req->files[i];
 
-        printf("ID: %s \tSize: %lu bytes \tDecrypted: %s \tType: %s \tName: %s\n",
+        printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tName: %s\n",
                file->id,
                file->size,
                file->decrypted ? "true" : "false",

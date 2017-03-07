@@ -912,7 +912,7 @@ static void after_push_frame(uv_work_t *work, int status)
         );
 
     } else if (state->shard[req->shard_index].push_frame_request_count == 6) {
-        state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
+        state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
     } else {
         state->shard[req->shard_index].progress = AWAITING_PUSH_FRAME;
     }
@@ -1012,16 +1012,16 @@ static void push_frame(uv_work_t *work)
                                     &response,
                                     &status_code);
 
+    req->log->debug(state->env->log_options, state->handle,
+                    "fn[push_frame] - JSON Response: %s",
+                    json_object_to_json_string(response));
+
     if (request_status) {
         req->log->warn(state->env->log_options, state->handle,
                        "Push frame error: %i", request_status);
         req->error_status = STORJ_BRIDGE_REQUEST_ERROR;
         goto clean_variables;
     }
-
-    req->log->debug(state->env->log_options, state->handle,
-                    "fn[push_frame] - JSON Response: %s",
-                    json_object_to_json_string(response));
 
     struct json_object *obj_token;
     if (!json_object_object_get_ex(response, "token", &obj_token)) {
@@ -1473,13 +1473,16 @@ static void request_frame_id(uv_work_t *work)
                    state->file_name,
                    state->frame_request_count);
 
+    // Prepare the body
+    struct json_object *body = json_object_new_object();
+
     int status_code;
     struct json_object *response = NULL;
     int request_status = fetch_json(req->http_options,
                                     req->options,
                                     "POST",
                                     "/frames",
-                                    NULL,
+                                    body,
                                     true,
                                     NULL,
                                     &response,
@@ -1520,6 +1523,7 @@ cleanup:
     req->status_code = status_code;
 
     json_object_put(response);
+    json_object_put(body);
 }
 
 static void queue_request_frame_id(storj_upload_state_t *state)
