@@ -625,7 +625,7 @@ static int import_keys(user_options_t *options)
     }
 
     if (!pass) {
-        printf("Password: ");
+        printf("Bridge password: ");
         pass = calloc(BUFSIZ, sizeof(char));
         if (!pass) {
             status = 1;
@@ -642,16 +642,31 @@ static int import_keys(user_options_t *options)
             goto clear_variables;
         }
 
+        printf("\nIf you've previously uploaded files, please enter your" \
+               " existing encryption key. \nOtherwise leave the field blank" \
+               " to generate a new key.\n\n");
+
         printf("Encryption key: ");
         get_input(mnemonic_input);
         num_chars = strlen(mnemonic_input);
 
-        mnemonic = calloc(num_chars + 1, sizeof(char));
-        if (!mnemonic) {
-            status = 1;
-            goto clear_variables;
+        if (num_chars == 0) {
+            printf("\n");
+            generate_mnemonic(&mnemonic);
+            printf("\n");
+
+            printf("Encryption key: %s\n", mnemonic);
+            printf("\n");
+            printf("Please make sure to backup this key in a safe location. " \
+                   "If the key is lost, the data uploaded will also be lost.\n\n");
+        } else {
+            mnemonic = calloc(num_chars + 1, sizeof(char));
+            if (!mnemonic) {
+                status = 1;
+                goto clear_variables;
+            }
+            memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
         }
-        memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
 
         if (!storj_mnemonic_check(mnemonic)) {
             printf("Encryption key integrity check failed.\n");
@@ -662,7 +677,9 @@ static int import_keys(user_options_t *options)
 
     if (!key) {
         key = calloc(BUFSIZ, sizeof(char));
-        if (get_password_verify("Encryption passphrase: ", key, 0)) {
+        printf("We now need to save these settings. Please enter a passphrase" \
+               " to lock your settings.\n\n");
+        if (get_password_verify("Unlock passphrase: ", key, 0)) {
             printf("Unable to store encrypted authentication.\n");
             status = 1;
             goto clear_variables;
@@ -746,7 +763,7 @@ static void register_callback(uv_work_t *work_req, int status)
         generate_mnemonic(&mnemonic);
         printf("\n");
 
-        printf("Encryption key:\n%s\n", mnemonic);
+        printf("Encryption key: %s\n", mnemonic);
         printf("\n");
         printf("Please make sure to backup this key in a safe location. " \
                "If the key is lost, the data uploaded will also be lost.\n\n");
@@ -961,7 +978,7 @@ static int export_keys(char *host)
 
     if (access(user_file, F_OK) != -1) {
         key = calloc(BUFSIZ, sizeof(char));
-        printf("Encryption passphrase: ");
+        printf("Unlock passphrase: ");
         get_password(key);
         printf("\n\n");
 
@@ -1208,7 +1225,7 @@ int main(int argc, char **argv)
                 if (!key) {
                     return 1;
                 }
-                printf("Encryption passphrase: ");
+                printf("Unlock passphrase: ");
                 get_password(key);
                 printf("\n");
             }
