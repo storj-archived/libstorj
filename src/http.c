@@ -141,7 +141,7 @@ int put_shard(storj_http_options_t *http_options,
 
         curl_easy_setopt(curl, CURLOPT_READFUNCTION, body_shard_send);
         curl_easy_setopt(curl, CURLOPT_READDATA, (void *)shard_body);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, shard_total_bytes);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, (uint64_t)shard_total_bytes);
     }
 
     // Ignore any data sent back, we only need to know the status code
