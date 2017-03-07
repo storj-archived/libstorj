@@ -501,7 +501,7 @@ int fetch_json(storj_http_options_t *http_options,
         return 1;
     }
 
-    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
     char *user_pass = NULL;
 
@@ -609,11 +609,6 @@ int fetch_json(storj_http_options_t *http_options,
         header_list = curl_slist_append(header_list,
                                        "Content-Type: application/json");
 
-        char content_length_header[BUFSIZ];
-        memset(content_length_header, '\0', BUFSIZ);
-        sprintf(content_length_header, "Content-Length: %lu", strlen(req_buf));
-
-        header_list = curl_slist_append(header_list, content_length_header);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
 
         post_body = malloc(sizeof(http_body_send_t));
@@ -625,7 +620,7 @@ int fetch_json(storj_http_options_t *http_options,
 
         curl_easy_setopt(curl, CURLOPT_READFUNCTION, body_json_send);
         curl_easy_setopt(curl, CURLOPT_READDATA, (void *)post_body);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, strlen(req_buf));
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, (uint64_t)strlen(req_buf));
     } else {
         header_list = curl_slist_append(header_list, "Content-Length: 0");
         header_list = curl_slist_append(header_list, "Content-Type: application/json");

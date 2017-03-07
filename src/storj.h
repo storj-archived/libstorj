@@ -23,6 +23,8 @@ extern "C" {
 #include <uv.h>
 #include <curl/curl.h>
 
+#include <inttypes.h>
+
 #ifdef _WIN32
 #include <time.h>
 #endif
