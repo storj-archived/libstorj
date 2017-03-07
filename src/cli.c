@@ -66,7 +66,7 @@ static inline void noop() {};
     "(e.g. https://api.storj.io)\n"                                     \
     "  STORJ_BRIDGE_USER         bridge username\n"                     \
     "  STORJ_BRIDGE_PASS         bridge password\n"                     \
-    "  STORJ_MNEMONIC            file encryption mnemonic key\n\n"
+    "  STORJ_ENCRYPTION_KEY      file encryption key\n\n"
 
 
 #define CLI_VERSION "libstorj-1.0.0-beta1"
@@ -219,7 +219,7 @@ static int generate_mnemonic(char **mnemonic)
 
     int generate_code = storj_mnemonic_generate(strength, mnemonic);
     if (*mnemonic == NULL || generate_code == 0) {
-        printf("Failed to generate mnemonic.\n");
+        printf("Failed to generate encryption key.\n");
         status = 1;
         status = generate_mnemonic(mnemonic);
     }
@@ -393,7 +393,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
         switch(status) {
             case STORJ_FILE_DECRYPTION_ERROR:
                 printf("Unable to properly decrypt file, please check " \
-                       "that the correct encryption key (mnemonic) was " \
+                       "that the correct encryption key was " \
                        "imported correctly.\n\n");
                 break;
             default:
@@ -642,7 +642,7 @@ static int import_keys(user_options_t *options)
             goto clear_variables;
         }
 
-        printf("Mnemonic: ");
+        printf("Encryption key: ");
         get_input(mnemonic_input);
         num_chars = strlen(mnemonic_input);
 
@@ -654,7 +654,7 @@ static int import_keys(user_options_t *options)
         memcpy(mnemonic, mnemonic_input, num_chars * sizeof(char));
 
         if (!storj_mnemonic_check(mnemonic)) {
-            printf("Mnemonic integrity check failed.\n");
+            printf("Encryption key integrity check failed.\n");
             status = 1;
             goto clear_variables;
         }
@@ -682,7 +682,7 @@ static int import_keys(user_options_t *options)
     }
 
     printf("Successfully stored bridge username, password, and encryption "\
-           "mnemonic key to %s\n\n",
+           "key to %s\n\n",
            user_file);
 
 clear_variables:
@@ -746,7 +746,7 @@ static void register_callback(uv_work_t *work_req, int status)
         generate_mnemonic(&mnemonic);
         printf("\n");
 
-        printf("Encryption Key:\n%s\n", mnemonic);
+        printf("Encryption key:\n%s\n", mnemonic);
         printf("\n");
         printf("Please make sure to backup this key in a safe location. " \
                "If the key is lost, the data uploaded will also be lost.\n\n");
@@ -971,7 +971,7 @@ static int export_keys(char *host)
             goto clear_variables;
         }
 
-        printf("Username:\t%s\nPassword:\t%s\nMnemonic:\t%s\n",
+        printf("Username:\t%s\nPassword:\t%s\nEncryption key:\t%s\n",
                user, pass, mnemonic);
     }
 
@@ -1188,8 +1188,8 @@ int main(int argc, char **argv)
         pass = getenv("STORJ_BRIDGE_PASS") ?
             strdup(getenv("STORJ_BRIDGE_PASS")) : NULL;
 
-        mnemonic = getenv("STORJ_MNEMONIC") ?
-            strdup(getenv("STORJ_MNEMONIC")) : NULL;
+        mnemonic = getenv("STORJ_ENCRYPTION_KEY") ?
+            strdup(getenv("STORJ_ENCRYPTION_KEY")) : NULL;
 
         char *keypass = getenv("STORJ_KEYPASS");
 
@@ -1276,15 +1276,21 @@ int main(int argc, char **argv)
         }
 
         if (!mnemonic) {
-            printf("Encryption mnemonic key: ");
-            mnemonic = calloc(BUFSIZ, sizeof(char));
+            printf("Encryption key: ");
+            char *mnemonic_input = malloc(BUFSIZ);
+            if (mnemonic_input == NULL) {
+                return 1;
+            }
+            get_input(mnemonic_input);
+            int num_chars = strlen(mnemonic_input);
+            mnemonic = calloc(num_chars + 1, sizeof(char));
             if (!mnemonic) {
                 return 1;
             }
-            get_password(mnemonic);
+            memcpy(mnemonic, mnemonic_input, num_chars);
+            free(mnemonic_input);
             printf("\n");
         }
-
 
         storj_bridge_options_t options = {
             .proto = proto,
