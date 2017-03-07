@@ -785,9 +785,10 @@ static void list_files_callback(uv_work_t *work_req, int status)
     if (req->status_code == 404) {
         printf("Bucket id [%s] does not exist\n", req->bucket_id);
         goto cleanup;
-    }
-
-    if (req->status_code != 200) {
+    } else if (req->status_code == 400) {
+        printf("Bucket id [%s] is invalid\n", req->bucket_id);
+        goto cleanup;
+    } else if (req->status_code != 200) {
         printf("Request failed with status code: %i\n", req->status_code);
     }
 
