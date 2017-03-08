@@ -93,7 +93,8 @@ static void get_buckets_request_worker(uv_work_t *work)
     req->status_code = status_code;
 
     int num_buckets = 0;
-    if (req->response != NULL) {
+    if (req->response != NULL &&
+        json_object_is_type(req->response, json_type_array)) {
         num_buckets = json_object_array_length(req->response);
     }
 
@@ -173,7 +174,8 @@ static void list_files_request_worker(uv_work_t *work)
     req->status_code = status_code;
 
     int num_files = 0;
-    if (req->response != NULL && json_object_get_type(req->response) == json_type_array) {
+    if (req->response != NULL &&
+        json_object_is_type(req->response, json_type_array)) {
         num_files = json_object_array_length(req->response);
     }
 

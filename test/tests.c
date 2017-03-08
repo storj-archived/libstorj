@@ -13,6 +13,15 @@ storj_bridge_options_t bridge_options = {
     .pass  = "dce18e67025a8fd68cab186e196a9f8bcca6c9e4a7ad0be8a6f5e48f3abd1b04"
 };
 
+// setup bridge options to point to mock server (with incorrect auth)
+storj_bridge_options_t bridge_options_bad = {
+    .proto = "http",
+    .host  = "localhost",
+    .port  = 8091,
+    .user  = "testuser@storj.io",
+    .pass  = "bad password"
+};
+
 storj_encrypt_options_t encrypt_options = {
     .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
 };
@@ -67,6 +76,20 @@ void check_get_buckets(uv_work_t *work_req, int status)
     int success = json_object_object_get_ex(bucket, "id", &value);
     assert(success == 1);
     pass("storj_bridge_get_buckets");
+
+    storj_free_get_buckets_request(req);
+    free(work_req);
+}
+
+void check_get_buckets_badauth(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_buckets_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(req->buckets == NULL);
+    assert(req->status_code == 401);
+
+    pass("storj_bridge_get_buckets_badauth");
 
     storj_free_get_buckets_request(req);
     free(work_req);
@@ -127,6 +150,21 @@ void check_list_files(uv_work_t *work_req, int status)
     assert(strcmp(id, "f18b5ca437b1ca3daa14969f") == 0);
 
     pass("storj_bridge_list_files");
+
+    storj_free_list_files_request(req);
+    free(work_req);
+}
+
+void check_list_files_badauth(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    list_files_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(req->response == NULL);
+    assert(req->files == NULL);
+    assert(req->status_code == 401);
+
+    pass("storj_bridge_list_files_badauth");
 
     storj_free_list_files_request(req);
     free(work_req);
@@ -651,6 +689,39 @@ int test_download_cancel()
 
 
     free(download_file);
+    storj_destroy_env(env);
+
+    return 0;
+}
+
+int test_api_badauth()
+{
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&bridge_options_bad,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
+
+    assert(env != NULL);
+
+    int status = 0;
+
+    // get buckets
+    status = storj_bridge_get_buckets(env, NULL, check_get_buckets_badauth);
+    assert(status == 0);
+
+    char *bucket_id = "368be0816766b28fd5f43af5";
+
+    // list files in a bucket
+    status = storj_bridge_list_files(env, bucket_id, NULL,
+                                     check_list_files_badauth);
+    assert(status == 0);
+
+    // run all queued events
+    if (uv_run(env->loop, UV_RUN_DEFAULT)) {
+        return 1;
+    }
+
     storj_destroy_env(env);
 
     return 0;
@@ -1336,6 +1407,7 @@ int main(void)
 
     printf("Test Suite: API\n");
     test_api();
+    test_api_badauth();
     printf("\n");
 
     printf("Test Suite: Uploads\n");
