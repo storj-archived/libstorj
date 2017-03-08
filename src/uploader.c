@@ -221,7 +221,8 @@ static void cleanup_state(storj_upload_state_t *state)
     }
 
     if (state->shard) {
-        for (int i = 0; i < state->total_shards; i++ ) {
+        int i;
+        for (i = 0; i < state->total_shards; i++ ) {
 
             state->log->debug(state->env->log_options, state->handle,
                               "fn[cleanup_state] - Cleaning up shard %d", i);
@@ -444,7 +445,8 @@ static int prepare_bucket_entry_hmac(storj_upload_state_t *state)
     struct hmac_sha512_ctx hmac_ctx;
     hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, state->encryption_key);
 
-    for (int i = 0; i < state->total_shards; i++) {
+    int i;
+    for (i = 0; i < state->total_shards; i++) {
 
         shard_tracker_t *shard = &state->shard[i];
 
@@ -703,7 +705,8 @@ static void progress_put_shard(uv_async_t* async)
     uint64_t uploaded_bytes = 0;
     uint64_t total_bytes = 0;
 
-    for (int i = 0; i < state->total_shards; i++) {
+    int i;
+    for (i = 0; i < state->total_shards; i++) {
 
         shard_tracker_t *shard = &state->shard[i];
 
@@ -955,7 +958,8 @@ static void push_frame(uv_work_t *work)
 
     // Add challenges
     json_object *challenges = json_object_new_array();
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    int i;
+    for (i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         json_object_array_add(challenges,
                               json_object_new_string(
                                   (char *)shard_meta->challenges_as_str[i]));
@@ -964,7 +968,7 @@ static void push_frame(uv_work_t *work)
 
     // Add Tree
     json_object *tree = json_object_new_array();
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         json_object_array_add(tree,
                               json_object_new_string(
                                   (char *)shard_meta->tree[i]));
@@ -1227,7 +1231,8 @@ static void after_prepare_frame(uv_work_t *work, int status)
                       "Challenges for shard index %d",
                       shard_meta->index);
 
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    int i;
+    for (i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[shard_meta->index].meta->challenges_as_str[i],
                shard_meta->challenges_as_str[i],
                32);
@@ -1244,7 +1249,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
                       "Tree for shard index %d",
                       shard_meta->index);
 
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[shard_meta->index].meta->tree[i],
                shard_meta->tree[i],
                32);
@@ -1284,7 +1289,8 @@ static void prepare_frame(uv_work_t *work)
 
     // Set the challenges
     uint8_t buff[32];
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    int i;
+    for (i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memset_zero(buff, 32);
 
         random_buffer(buff, 32);
@@ -1320,7 +1326,7 @@ static void prepare_frame(uv_work_t *work)
 
     // Calculate the merkle tree with challenges
     struct sha256_ctx first_sha256_for_leaf[STORJ_SHARD_CHALLENGES];
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         sha256_init(&first_sha256_for_leaf[i]);
         sha256_update(&first_sha256_for_leaf[i], 32, (char *)&shard_meta->challenges[i]);
     }
@@ -1356,7 +1362,7 @@ static void prepare_frame(uv_work_t *work)
 
         sha256_update(&shard_hash_ctx, read_bytes, cphr_txt);
 
-        for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+        for (i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
             sha256_update(&first_sha256_for_leaf[i], read_bytes, cphr_txt);
         }
 
@@ -1386,7 +1392,7 @@ static void prepare_frame(uv_work_t *work)
     uint8_t preleaf_ripemd160[RIPEMD160_DIGEST_SIZE];
     memset_zero(preleaf_ripemd160, RIPEMD160_DIGEST_SIZE);
     char *buff2 = calloc(RIPEMD160_DIGEST_SIZE*2 +1, sizeof(char));
-    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+    for (i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         // finish first sha256 for leaf
         sha256_digest(&first_sha256_for_leaf[i], SHA256_DIGEST_SIZE, preleaf_sha256);
 
@@ -1708,7 +1714,8 @@ static void queue_send_exchange_report(storj_upload_state_t *state, int index)
 
 static void queue_push_frame_and_shard(storj_upload_state_t *state)
 {
-    for (int index = 0; index < state->total_shards; index++) {
+    int index;
+    for (index = 0; index < state->total_shards; index++) {
 
         if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
             state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
@@ -1848,7 +1855,8 @@ static void queue_next_work(storj_upload_state_t *state)
         queue_request_frame_id(state);
     }
 
-    for (int index = 0; index < state->total_shards; index++ ) {
+    int index;
+    for (index = 0; index < state->total_shards; index++ ) {
         if (state->shard[index].progress == AWAITING_PREPARE_FRAME) {
             queue_prepare_frame(state, index);
         }
@@ -1861,7 +1869,7 @@ static void queue_next_work(storj_upload_state_t *state)
         queue_create_bucket_entry(state);
     }
 
-    for (int index = 0; index < state->total_shards; index++ ) {
+    for (index = 0; index < state->total_shards; index++ ) {
         if (state->shard[index].report->send_status == STORJ_REPORT_AWAITING_SEND) {
             queue_send_exchange_report(state, index);
         }
@@ -1923,7 +1931,8 @@ static void prepare_upload_state(uv_work_t *work)
         return;
     }
 
-    for (int i = 0; i < state->total_shards; i++) {
+    int i;
+    for (i = 0; i < state->total_shards; i++) {
         state->shard[i].progress = AWAITING_PREPARE_FRAME;
         state->shard[i].push_frame_request_count = 0;
         state->shard[i].push_shard_request_count = 0;
@@ -2028,7 +2037,8 @@ int storj_bridge_store_file_cancel(storj_upload_state_t *state)
     // loop over all shards, and cancel any that are queued to be uploaded
     // any uploads that are in-progress will monitor the state->canceled
     // status and exit when set to true
-    for (int i = 0; i < state->total_shards; i++) {
+    int i;
+    for (i = 0; i < state->total_shards; i++) {
         shard_tracker_t *shard = &state->shard[i];
         if (shard->progress == PUSHING_SHARD) {
             uv_cancel((uv_req_t *)shard->work);

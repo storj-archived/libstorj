@@ -130,7 +130,8 @@ static void get_buckets_request_worker(uv_work_t *work)
     struct json_object *name;
     struct json_object *id;
 
-    for (int i = 0; i < num_buckets; i++) {
+    int i;
+    for (i = 0; i < num_buckets; i++) {
         bucket_item = json_object_array_get_idx(req->response, i);
 
         json_object_object_get_ex(bucket_item, "id", &id);
@@ -213,7 +214,8 @@ static void list_files_request_worker(uv_work_t *work)
     struct json_object *size;
     struct json_object *id;
 
-    for (int i = 0; i < num_files; i++) {
+    int i;
+    for (i = 0; i < num_files; i++) {
         file = json_object_array_get_idx(req->response, i);
 
         json_object_object_get_ex(file, "filename", &filename);
@@ -1019,7 +1021,8 @@ void storj_free_get_buckets_request(get_buckets_request_t *req)
 {
     json_object_put(req->response);
     if (req->buckets && req->total_buckets > 0) {
-        for (int i = 0; i < req->total_buckets; i++) {
+        int i;
+        for (i = 0; i < req->total_buckets; i++) {
             free((char *)req->buckets[i].name);
         }
     }
@@ -1121,7 +1124,8 @@ void storj_free_list_files_request(list_files_request_t *req)
     json_object_put(req->response);
     free(req->path);
     if (req->files && req->total_files > 0) {
-        for (int i = 0; i < req->total_files; i++) {
+        int i;
+        for (i = 0; i < req->total_files; i++) {
             free((char *)req->files[i].filename);
         }
     }

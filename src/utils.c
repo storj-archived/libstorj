@@ -16,7 +16,8 @@ char *hex2str(size_t length, uint8_t *data)
 void print_int_array(uint8_t *array, unsigned length)
 {
     printf("{");
-    for (int i = 0; i < length; i++) {
+    int i;
+    for (i = 0; i < length; i++) {
         printf("%i", array[i]);
         if (i != length - 1) {
             printf(",");
@@ -58,7 +59,8 @@ char *str_concat_many(int count, ...)
 
     va_list args;
     va_start(args, count);
-    for (int i = 0; i < count; i++) {
+    int i;
+    for (i = 0; i < count; i++) {
         char *item = va_arg(args, char *);
         length += strlen(item);
     }
@@ -70,7 +72,7 @@ char *str_concat_many(int count, ...)
     }
 
     va_start(args, count);
-    for (int i = 0; i < count; i++) {
+    for (i = 0; i < count; i++) {
         char *item = va_arg(args, char *);
         strcat(combined, item);
     }

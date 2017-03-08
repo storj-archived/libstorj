@@ -419,7 +419,8 @@ int fetch_shard(storj_http_options_t *http_options,
     if (!hash) {
         return 1;
     }
-    for (unsigned i = 0; i < RIPEMD160_DIGEST_SIZE; i++) {
+    unsigned i;
+    for (i = 0; i < RIPEMD160_DIGEST_SIZE; i++) {
         sprintf(&hash[i*2], "%02x", hash_rmd160[i]);
     }
 
@@ -566,7 +567,8 @@ int fetch_json(storj_http_options_t *http_options,
         sha256_init(&ctx);
         sha256_update(&ctx, strlen(options->pass), (uint8_t *)options->pass);
         sha256_digest(&ctx, SHA256_DIGEST_SIZE, pass_hash);
-        for (unsigned i = 0; i < SHA256_DIGEST_SIZE; i++) {
+        unsigned i;
+        for (i = 0; i < SHA256_DIGEST_SIZE; i++) {
             sprintf(&pass[i*2], "%02x", pass_hash[i]);
         }
 
