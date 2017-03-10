@@ -315,6 +315,7 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
     struct gcm_aes256_ctx gcm_ctx;
     gcm_aes256_set_key(&gcm_ctx, key);
     gcm_aes256_set_iv(&gcm_ctx, SHA256_DIGEST_SIZE, data_iv);
+    free(key);
 
     // Decrypt the data
     *result = calloc(data_size + 1, sizeof(char));
@@ -365,6 +366,7 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
     struct gcm_aes256_ctx gcm_ctx;
     gcm_aes256_set_key(&gcm_ctx, key);
     gcm_aes256_set_iv(&gcm_ctx, SHA256_DIGEST_SIZE, data_iv);
+    free(key);
 
     int pos = 0;
     size_t remain = data_size;
@@ -402,7 +404,7 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
     }
 
     free(buffer);
-    free(key);
+
 
     return 0;
 }
