@@ -1394,7 +1394,7 @@ static void prepare_frame(uv_work_t *work)
         ripemd160_of_str(preleaf_sha256, SHA256_DIGEST_SIZE, preleaf_ripemd160);
 
         // sha256 and ripemd160 again
-        ripmd160sha256_as_string(preleaf_ripemd160, RIPEMD160_DIGEST_SIZE, buff2);
+        ripemd160sha256_as_string(preleaf_ripemd160, RIPEMD160_DIGEST_SIZE, buff2);
 
         memcpy(shard_meta->tree[i], buff2, RIPEMD160_DIGEST_SIZE*2 + 1);
     }

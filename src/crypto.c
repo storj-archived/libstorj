@@ -30,13 +30,13 @@ int calculate_file_id(const char *bucket, const char *file_name, char *buffer)
     return 0;
 }
 
-int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest)
+int ripemd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest)
 {
     uint8_t *ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     if (!ripemd160_digest) {
         return 1;
     }
-    ripmd160sha256(data, data_size, ripemd160_digest);
+    ripemd160sha256(data, data_size, ripemd160_digest);
 
     // Convert ripemd160 hex to character array
     char *ripemd160_str = hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
@@ -53,7 +53,7 @@ int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest)
     return 0;
 }
 
-int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest)
+int ripemd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest)
 {
     // Get the sha256 of the data
     uint8_t sha256_digest[SHA256_DIGEST_SIZE];
@@ -69,19 +69,19 @@ int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest)
     return 0;
 }
 
-int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest)
+int double_ripemd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest)
 {
     uint8_t *first_ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     if (!first_ripemd160_digest) {
         return 1;
     }
-    ripmd160sha256(data, data_size, first_ripemd160_digest);
+    ripemd160sha256(data, data_size, first_ripemd160_digest);
 
     uint8_t *second_ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     if (!second_ripemd160_digest) {
         return 1;
     }
-    ripmd160sha256(first_ripemd160_digest, RIPEMD160_DIGEST_SIZE,
+    ripemd160sha256(first_ripemd160_digest, RIPEMD160_DIGEST_SIZE,
                    second_ripemd160_digest);
 
 
@@ -94,14 +94,14 @@ int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest)
     return 0;
 }
 
-int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size,
+int double_ripemd160sha256_as_string(uint8_t *data, uint64_t data_size,
                                     char **digest)
 {
     uint8_t *ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     if (!ripemd160_digest) {
         return 1;
     }
-    if (double_ripmd160sha256(data, data_size, ripemd160_digest)) {
+    if (double_ripemd160sha256(data, data_size, ripemd160_digest)) {
         return 1;
     }
 

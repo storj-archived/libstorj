@@ -37,13 +37,13 @@ int sha512_of_str(const uint8_t *str, int str_len, uint8_t *digest);
 
 int ripemd160_of_str(const uint8_t *str, int str_len, uint8_t *digest);
 
-int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest);
+int ripemd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest);
 
-int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest);
+int ripemd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest);
 
-int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest);
+int double_ripemd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest);
 
-int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size,
+int double_ripemd160sha256_as_string(uint8_t *data, uint64_t data_size,
                                     char **digest);
 
 void pbkdf2_hmac_sha512(unsigned key_length,
