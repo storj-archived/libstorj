@@ -81,14 +81,14 @@ char *str_concat_many(int count, ...)
 
 void random_buffer(uint8_t *buf, size_t len)
 {
-    // TODO check os portability for randomness
     static FILE *frand = NULL;
 #ifdef _WIN32
-    srand((unsigned)time(NULL));
-    size_t i;
-    for (i = 0; i < len; i++) {
-        buf[i] = rand() % 0xFF;
-    }
+    HCRYPTPROV hProvider;
+    int ret = CryptAcquireContextW(&hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
+    assert(ret);
+    ret = CryptGenRandom(hProvider, len, buf);
+    assert(ret);
+    CryptReleaseContext(hProvider, 0);
 #else
     if (!frand) {
         frand = fopen("/dev/urandom", "r");
