@@ -30,7 +30,7 @@ int calculate_file_id(const char *bucket, const char *file_name, char *buffer)
     return 0;
 }
 
-int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
+int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest)
 {
     uint8_t *ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     if (!ripemd160_digest) {
@@ -45,7 +45,7 @@ int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char **digest)
     }
 
     //Copy the result into buffer
-    memcpy(*digest, ripemd160_str, RIPEMD160_DIGEST_SIZE * 2);
+    memcpy(digest, ripemd160_str, RIPEMD160_DIGEST_SIZE * 2);
 
     free(ripemd160_digest);
     free(ripemd160_str);
