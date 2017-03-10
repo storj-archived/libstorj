@@ -27,10 +27,6 @@
 
 static const uint8_t BUCKET_META_MAGIC[32] = {66,150,71,16,50,114,88,160,163,35,154,65,162,213,226,215,70,138,57,61,52,19,210,170,38,164,162,200,86,201,2,81};
 
-// TODO use *buffer for out instead of **buffer for many of these methods
-// and figure out if we need null termination, and if so have this be set within
-// the functions rather than needing to do this outside.
-
 int sha256_of_str(const uint8_t *str, int str_len, uint8_t *digest);
 
 int sha512_of_str(const uint8_t *str, int str_len, uint8_t *digest);
