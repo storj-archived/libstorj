@@ -41,7 +41,7 @@ int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest);
 
 int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest);
 
-int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest);
+int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest);
 
 int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size,
                                     char **digest);

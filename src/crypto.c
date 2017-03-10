@@ -69,7 +69,7 @@ int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest)
     return 0;
 }
 
-int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest)
+int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest)
 {
     uint8_t *first_ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     if (!first_ripemd160_digest) {
@@ -86,7 +86,7 @@ int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest)
 
 
     //Copy the result into buffer
-    memcpy(*digest, second_ripemd160_digest, RIPEMD160_DIGEST_SIZE);
+    memcpy(digest, second_ripemd160_digest, RIPEMD160_DIGEST_SIZE);
 
     free(first_ripemd160_digest);
     free(second_ripemd160_digest);
@@ -101,7 +101,7 @@ int double_ripmd160sha256_as_string(uint8_t *data, uint64_t data_size,
     if (!ripemd160_digest) {
         return 1;
     }
-    if (double_ripmd160sha256(data, data_size, &ripemd160_digest)) {
+    if (double_ripmd160sha256(data, data_size, ripemd160_digest)) {
         return 1;
     }
 
