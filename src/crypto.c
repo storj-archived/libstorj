@@ -36,7 +36,7 @@ int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest)
     if (!ripemd160_digest) {
         return 1;
     }
-    ripmd160sha256(data, data_size, &ripemd160_digest);
+    ripmd160sha256(data, data_size, ripemd160_digest);
 
     // Convert ripemd160 hex to character array
     char *ripemd160_str = hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
@@ -53,7 +53,7 @@ int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest)
     return 0;
 }
 
-int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest)
+int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest)
 {
     // Get the sha256 of the data
     uint8_t sha256_digest[SHA256_DIGEST_SIZE];
@@ -64,7 +64,7 @@ int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest)
     ripemd160_of_str(sha256_digest, SHA256_DIGEST_SIZE, ripemd160_digest);
 
     //Copy the result into buffer
-    memcpy(*digest, ripemd160_digest, RIPEMD160_DIGEST_SIZE);
+    memcpy(digest, ripemd160_digest, RIPEMD160_DIGEST_SIZE);
 
     return 0;
 }
@@ -75,14 +75,14 @@ int double_ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest)
     if (!first_ripemd160_digest) {
         return 1;
     }
-    ripmd160sha256(data, data_size, &first_ripemd160_digest);
+    ripmd160sha256(data, data_size, first_ripemd160_digest);
 
     uint8_t *second_ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
     if (!second_ripemd160_digest) {
         return 1;
     }
     ripmd160sha256(first_ripemd160_digest, RIPEMD160_DIGEST_SIZE,
-                   &second_ripemd160_digest);
+                   second_ripemd160_digest);
 
 
     //Copy the result into buffer

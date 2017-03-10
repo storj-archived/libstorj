@@ -37,7 +37,7 @@ int sha512_of_str(const uint8_t *str, int str_len, uint8_t *digest);
 
 int ripemd160_of_str(const uint8_t *str, int str_len, uint8_t *digest);
 
-int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t **digest);
+int ripmd160sha256(uint8_t *data, uint64_t data_size, uint8_t *digest);
 
 int ripmd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest);
 
