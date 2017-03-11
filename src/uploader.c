@@ -1892,7 +1892,7 @@ static void prepare_upload_state(uv_work_t *work)
 
     // Get the file size, expect to be up to 10tb
 #ifdef _WIN32
-    struct __stat64 st;
+    struct _stati64 st;
 
     if(_fstati64(fileno(state->original_file), &st) != 0) {
         state->error_status = STORJ_FILE_INTEGRITY_ERROR;
