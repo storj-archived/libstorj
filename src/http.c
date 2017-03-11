@@ -339,7 +339,7 @@ int fetch_shard(storj_http_options_t *http_options,
     body->tail = malloc(BUFSIZ);
     body->tail_length = BUFSIZ;
     body->tail_position = 0;
-    body->data = shard_data;
+    body->data = (uint8_t *)shard_data;
     body->length = 0;
     body->progress_handle = progress_handle;
     body->shard_total_bytes = shard_total_bytes;
@@ -656,7 +656,7 @@ int fetch_json(storj_http_options_t *http_options,
     *response = NULL;
 
     if (body->data) {
-        *response = json_tokener_parse(body->data);
+        *response = json_tokener_parse((char *)body->data);
     }
 
     curl_easy_cleanup(curl);

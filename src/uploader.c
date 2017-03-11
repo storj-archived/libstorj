@@ -460,7 +460,8 @@ static int prepare_bucket_entry_hmac(storj_upload_state_t *state)
         size_t decode_len = 0;
         uint8_t hash[RIPEMD160_DIGEST_SIZE];
         if (!base16_decode_update(&base16_ctx, &decode_len, hash,
-                                  RIPEMD160_DIGEST_SIZE * 2, shard->meta->hash)) {
+                                  RIPEMD160_DIGEST_SIZE * 2,
+                                  (uint8_t *)shard->meta->hash)) {
             return 1;
 
         }
@@ -480,7 +481,7 @@ static int prepare_bucket_entry_hmac(storj_upload_state_t *state)
         return 1;
     }
 
-    base16_encode_update(state->hmac_id, SHA512_DIGEST_SIZE, digest_raw);
+    base16_encode_update((uint8_t *)state->hmac_id, SHA512_DIGEST_SIZE, digest_raw);
 
     return 0;
 }
@@ -1322,7 +1323,7 @@ static void prepare_frame(uv_work_t *work)
     struct sha256_ctx first_sha256_for_leaf[STORJ_SHARD_CHALLENGES];
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         sha256_init(&first_sha256_for_leaf[i]);
-        sha256_update(&first_sha256_for_leaf[i], 32, (char *)&shard_meta->challenges[i]);
+        sha256_update(&first_sha256_for_leaf[i], 32, (uint8_t *)&shard_meta->challenges[i]);
     }
 
     // Initialize the encryption context
@@ -1567,7 +1568,7 @@ static int prepare_encryption_key(storj_upload_state_t *state,
     // Convert file id to salt
     char salt[RIPEMD160_DIGEST_SIZE + 1];
     memset_zero(salt, RIPEMD160_DIGEST_SIZE + 1);
-    ripemd160_of_str((uint8_t *)pre_salt, pre_salt_size, salt);
+    ripemd160_of_str((uint8_t *)pre_salt, pre_salt_size, (uint8_t *)salt);
     salt[RIPEMD160_DIGEST_SIZE] = '\0';
 
     // We only need the first 16 bytes of the salt because it's CTR mode
@@ -1971,8 +1972,10 @@ static void prepare_upload_state(uv_work_t *work)
     // Generate the synthetic iv with first half of hmac w/ bucket and filename
     struct hmac_sha512_ctx ctx2;
     hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx2, strlen(state->bucket_id), state->bucket_id);
-    hmac_sha512_update(&ctx2, strlen(state->file_name), state->file_name);
+    hmac_sha512_update(&ctx2, strlen(state->bucket_id),
+                       (uint8_t *)state->bucket_id);
+    hmac_sha512_update(&ctx2, strlen(state->file_name),
+                       (uint8_t *)state->file_name);
     uint8_t filename_iv[SHA256_DIGEST_SIZE];
     hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
 

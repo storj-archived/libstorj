@@ -1404,7 +1404,7 @@ static int prepare_file_hmac(storj_download_state_t *state)
                                   &decode_len,
                                   hash,
                                   RIPEMD160_DIGEST_SIZE * 2,
-                                  pointer->shard_hash)) {
+                                  (uint8_t *)pointer->shard_hash)) {
             return 1;
 
         }
@@ -1424,7 +1424,7 @@ static int prepare_file_hmac(storj_download_state_t *state)
         return 1;
     }
 
-    base16_encode_update((char *)state->hmac, SHA512_DIGEST_SIZE, digest_raw);
+    base16_encode_update((uint8_t *)state->hmac, SHA512_DIGEST_SIZE, digest_raw);
 
     return 0;
 }

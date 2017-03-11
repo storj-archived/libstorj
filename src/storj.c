@@ -46,7 +46,8 @@ static void create_bucket_request_worker(uv_work_t *work)
     // Generate the synthetic iv with first half of hmac w/ name
     struct hmac_sha512_ctx ctx2;
     hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx2, strlen(req->bucket_name), req->bucket_name);
+    hmac_sha512_update(&ctx2, strlen(req->bucket_name),
+                       (uint8_t *)req->bucket_name);
     uint8_t bucketname_iv[SHA256_DIGEST_SIZE];
     hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
 

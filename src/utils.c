@@ -10,7 +10,7 @@ char *hex2str(size_t length, uint8_t *data)
 
     base16_encode_update(result, length, data);
 
-    return result;
+    return (char *)result;
 }
 
 void print_int_array(uint8_t *array, unsigned length)
@@ -36,7 +36,8 @@ uint8_t *str2hex(size_t length, char *data)
     base16_decode_init(ctx);
 
     size_t decode_len = 0;
-    if (!base16_decode_update(ctx, &decode_len, result, length, data)) {
+    if (!base16_decode_update(ctx, &decode_len, (uint8_t *)result,
+                              length, (uint8_t *)data)) {
         free(result);
         free(ctx);
         return NULL;
@@ -49,7 +50,7 @@ uint8_t *str2hex(size_t length, char *data)
     }
 
     free(ctx);
-    return result;
+    return (uint8_t *)result;
 }
 
 char *str_concat_many(int count, ...)

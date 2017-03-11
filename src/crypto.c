@@ -326,7 +326,8 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
         if (remain < AES_BLOCK_SIZE) {
             len = remain;
         }
-        gcm_aes256_decrypt(&gcm_ctx, len, *result + pos, cipher_text + pos);
+        gcm_aes256_decrypt(&gcm_ctx, len, (uint8_t *)*result + pos,
+                           cipher_text + pos);
         pos += AES_BLOCK_SIZE;
         remain -= AES_BLOCK_SIZE;
     }
@@ -376,7 +377,8 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
         if (remain < AES_BLOCK_SIZE) {
             len = remain;
         }
-        gcm_aes256_encrypt(&gcm_ctx, len, cipher_text + pos, data + pos);
+        gcm_aes256_encrypt(&gcm_ctx, len, cipher_text + pos,
+                           (uint8_t *)data + pos);
         pos += AES_BLOCK_SIZE;
         remain -= AES_BLOCK_SIZE;
     }
@@ -427,7 +429,8 @@ int encrypt_meta(const char *filemeta,
         if (remain < AES_BLOCK_SIZE) {
             len = remain;
         }
-        gcm_aes256_encrypt(&ctx2, len, cipher_text + pos, filemeta + pos);
+        gcm_aes256_encrypt(&ctx2, len, cipher_text + pos,
+                           (uint8_t *)filemeta + pos);
         pos += AES_BLOCK_SIZE;
         remain -= AES_BLOCK_SIZE;
     }
@@ -450,8 +453,9 @@ int encrypt_meta(const char *filemeta,
 
     struct base64_encode_ctx ctx3;
     base64_encode_init(&ctx3);
-    size_t out_len = base64_encode_update(&ctx3, *buffer_base64, buf_len, buf);
-    out_len += base64_encode_final(&ctx3, *buffer_base64 + out_len);
+    size_t out_len = base64_encode_update(&ctx3, (uint8_t *)*buffer_base64,
+                                          buf_len, buf);
+    out_len += base64_encode_final(&ctx3, (uint8_t *)*buffer_base64 + out_len);
 
     return 0;
 }
@@ -471,7 +475,7 @@ int decrypt_meta(const char *buffer_base64,
     struct base64_decode_ctx ctx3;
     base64_decode_init(&ctx3);
     if (!base64_decode_update(&ctx3, &decode_len, buffer,
-                              strlen(buffer_base64), buffer_base64)) {
+                              strlen(buffer_base64), (uint8_t *)buffer_base64)) {
         free(buffer);
         return 1;
     }
@@ -526,7 +530,7 @@ int decrypt_meta(const char *buffer_base64,
     }
 
     *filemeta = calloc(length + 1, sizeof(char));
-    if (!&filemeta) {
+    if (!*filemeta) {
         //STORJ_MEMORY_ERROR
         return 1;
     }
