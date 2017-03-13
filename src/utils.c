@@ -143,6 +143,38 @@ void memset_zero(void *v, size_t n)
 #endif
 }
 
+uint64_t determine_shard_size(uint64_t file_size, int accumulator)
+{
+    if (file_size <= 0) {
+        return 0;
+    }
+
+    accumulator = accumulator ? accumulator : 0;
+
+    // Determine hops back by accumulator
+    int hops = ((accumulator - SHARD_MULTIPLES_BACK) < 0 ) ?
+        0 : accumulator - SHARD_MULTIPLES_BACK;
+
+    uint64_t byte_multiple = shard_size(accumulator);
+    double check = (double) file_size / byte_multiple;
+
+    // Determine if bytemultiple is highest bytemultiple that is still <= size
+    if (check > 0 && check <= 1) {
+        while (hops > 0 && shard_size(hops) > MAX_SHARD_SIZE) {
+            hops = hops - 1 <= 0 ? 0 : hops - 1;
+        }
+
+        return shard_size(hops);
+    }
+
+    // Maximum of 2 ^ 41 * 8 * 1024 * 1024
+    if (accumulator > 41) {
+        return 0;
+    }
+
+    return determine_shard_size(file_size, ++accumulator);
+}
+
 #ifdef _WIN32
 ssize_t pread(int fd, void *buf, size_t count, uint64_t offset)
 {

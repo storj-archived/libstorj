@@ -283,57 +283,6 @@ static uint64_t check_file(storj_env_t *env, const char *filepath)
     return size;
 }
 
-static uint64_t determine_shard_size(storj_upload_state_t *state,
-                                     int accumulator)
-{
-    int shard_concurrency;
-    uint64_t file_size;
-
-    if (!state->file_size) {
-        state->log->error(state->env->log_options, state->handle,
-                          "File size is unknown");
-
-        return 0;
-    } else {
-        file_size = state->file_size;
-    }
-
-    if (!state->shard_concurrency) {
-        shard_concurrency = 3;
-    } else {
-        shard_concurrency = state->shard_concurrency;
-    }
-
-    accumulator = accumulator ? accumulator : 0;
-
-    // Determine hops back by accumulator
-    int hops = ((accumulator - SHARD_MULTIPLES_BACK) < 0 ) ?
-        0 : accumulator - SHARD_MULTIPLES_BACK;
-
-    uint64_t byte_multiple = shard_size(accumulator);
-    double check = (double) file_size / byte_multiple;
-
-    // Determine if bytemultiple is highest bytemultiple that is still <= size
-    if (check > 0 && check <= 1) {
-
-        // Certify the number of concurrency * shard_size doesn't exceed freemem
-        //TODO: 1GB max memory
-        while (hops > 0 &&
-               (MAX_SHARD_SIZE / shard_size(hops) <= shard_concurrency)) {
-            hops = hops - 1 <= 0 ? 0 : hops - 1;
-        }
-
-        return shard_size(hops);
-    }
-
-    // Maximum of 2 ^ 41 * 8 * 1024 * 1024
-    if (accumulator > 41) {
-        return 0;
-    }
-
-    return determine_shard_size(state, ++accumulator);
-}
-
 static void after_create_bucket_entry(uv_work_t *work, int status)
 {
     post_to_bucket_request_t *req = work->data;
@@ -1909,8 +1858,8 @@ static void prepare_upload_state(uv_work_t *work)
     state->file_size = st.st_size;
 
     // Set Shard calculations
-    state->shard_size = determine_shard_size(state, 0);
-    if (!state->shard_size) {
+    state->shard_size = determine_shard_size(state->file_size, 0);
+    if (!state->shard_size || state->shard_size == 0) {
         state->error_status = STORJ_FILE_SIZE_ERROR;
         return;
     }

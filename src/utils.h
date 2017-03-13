@@ -28,6 +28,9 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 #include <sys/time.h>
 #endif
 
+#define MAX_SHARD_SIZE 1073741824
+#define SHARD_MULTIPLES_BACK 4
+
 char *hex2str(size_t length, uint8_t *data);
 
 void print_int_array(uint8_t *array, unsigned length);
@@ -43,5 +46,7 @@ uint64_t shard_size(int hops);
 uint64_t get_time_milliseconds();
 
 void memset_zero(void *v, size_t n);
+
+uint64_t determine_shard_size(uint64_t file_size, int accumulator);
 
 #endif /* STORJ_UTILS_H */

@@ -12,8 +12,6 @@
 #include "utils.h"
 #include "crypto.h"
 
-#define MAX_SHARD_SIZE 1073741824
-#define SHARD_MULTIPLES_BACK 4
 #define STORJ_NULL -1
 #define STORJ_MAX_REPORT_TRIES 2
 

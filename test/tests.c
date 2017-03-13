@@ -1235,6 +1235,80 @@ int test_get_time_milliseconds()
     return 0;
 }
 
+int test_determine_shard_size()
+{
+    uint64_t file_size;
+    uint64_t shard_size;
+    uint64_t expected_shard_size;
+
+    // 1000 bytes should be 8Mb
+    file_size = 1000;
+    expected_shard_size = 8388608;
+    shard_size = determine_shard_size(file_size, 0);
+
+    if (shard_size != expected_shard_size) {
+        fail("test_determine_shard_size");
+        printf("\t\texpected shard_size: %" PRIu64 "\n", expected_shard_size);
+        printf("\t\tactual shard_size:   %" PRIu64 "\n", shard_size);
+
+        return 1;
+    }
+
+    file_size = 134217729;
+    expected_shard_size = 16777216;
+    shard_size = determine_shard_size(file_size, 0);
+
+    if (shard_size != expected_shard_size) {
+        fail("test_determine_shard_size");
+        printf("\t\texpected shard_size: %" PRIu64 "\n", expected_shard_size);
+        printf("\t\tactual shard_size:   %" PRIu64 "\n", shard_size);
+
+        return 1;
+    }
+
+    file_size = 268435457;
+    expected_shard_size = 33554432;
+    shard_size = determine_shard_size(file_size, 0);
+
+    if (shard_size != expected_shard_size) {
+        fail("test_determine_shard_size");
+        printf("\t\texpected shard_size: %" PRIu64 "\n", expected_shard_size);
+        printf("\t\tactual shard_size:   %" PRIu64 "\n", shard_size);
+
+        return 1;
+    }
+
+    // Make sure we stop at max file size
+    file_size = 1012001737418240;
+    expected_shard_size = 1073741824;
+    shard_size = determine_shard_size(file_size, 0);
+
+    if (shard_size != expected_shard_size) {
+        fail("test_determine_shard_size");
+        printf("\t\texpected shard_size: %" PRIu64 "\n", expected_shard_size);
+        printf("\t\tactual shard_size:   %" PRIu64 "\n", shard_size);
+
+        return 1;
+    }
+
+    // Test fail case
+    file_size = 0;
+    expected_shard_size = 0;
+    shard_size = determine_shard_size(file_size, 0);
+
+    if (shard_size != expected_shard_size) {
+        fail("test_determine_shard_size");
+        printf("\t\texpected shard_size: %" PRIu64 "\n", expected_shard_size);
+        printf("\t\tactual shard_size:   %" PRIu64 "\n", shard_size);
+
+        return 1;
+    }
+
+    pass("test_determine_shard_size");
+
+    return 0;
+}
+
 int test_increment_ctr_aes_iv()
 {
     uint8_t iv[16] = {188,14,95,229,78,112,182,107,
@@ -1443,6 +1517,7 @@ int main(void)
     test_str2hex();
     test_hex2str();
     test_get_time_milliseconds();
+    test_determine_shard_size();
 
     int num_failed = tests_ran - test_status;
     printf(KGRN "\nPASSED: %i" RESET, test_status);
