@@ -19,7 +19,8 @@ static void free_exchange_report(storj_exchange_report_t *report)
 
 static void free_download_state(storj_download_state_t *state)
 {
-    for (int i = 0; i < state->total_pointers; i++) {
+    int i;
+    for (i = 0; i < state->total_pointers; i++) {
         storj_pointer_t *pointer = &state->pointers[i];
 
         free(pointer->token);
@@ -434,7 +435,8 @@ static void append_pointers_to_state(storj_download_state_t *state,
         state->total_pointers = total_pointers;
         state->total_shards = total_pointers;
 
-        for (int i = 0; i < length; i++) {
+        int i;
+        for (i = 0; i < length; i++) {
 
             // get the relative index
             int j = i + prev_total_pointers;
@@ -540,8 +542,9 @@ static void queue_request_pointers(storj_download_state_t *state)
         return;
     }
 
+    int i;
     // queue request to replace pointer if any pointers have failure
-    for (int i = 0; i < state->total_pointers; i++) {
+    for (i = 0; i < state->total_pointers; i++) {
 
         storj_pointer_t *pointer = &state->pointers[i];
 
@@ -755,7 +758,8 @@ static void report_progress(storj_download_state_t *state)
     uint64_t downloaded_bytes = 0;
     uint64_t total_bytes = 0;
 
-    for (int i = 0; i < state->total_pointers; i++) {
+    int i;
+    for (i = 0; i < state->total_pointers; i++) {
 
         storj_pointer_t *pointer = &state->pointers[i];
 
@@ -1152,8 +1156,8 @@ static void after_send_exchange_report(uv_work_t *work, int status)
 
 static void queue_send_exchange_reports(storj_download_state_t *state)
 {
-
-    for (int i = 0; i < state->total_pointers; i++) {
+    int i;
+    for (i = 0; i < state->total_pointers; i++) {
 
         storj_pointer_t *pointer = &state->pointers[i];
 
@@ -1386,7 +1390,8 @@ static int prepare_file_hmac(storj_download_state_t *state)
     struct hmac_sha512_ctx hmac_ctx;
     hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, state->decrypt_key);
 
-    for (int i = 0; i < state->total_pointers; i++) {
+    int i;
+    for (i = 0; i < state->total_pointers; i++) {
 
         storj_pointer_t *pointer = &state->pointers[i];
 
@@ -1509,7 +1514,8 @@ int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
     // loop over all pointers, and cancel any that are queued to be downloaded
     // any downloads that are in-progress will monitor the state->canceled
     // status and exit when set to true
-    for (int i = 0; i < state->total_pointers; i++) {
+    int i;
+    for (i = 0; i < state->total_pointers; i++) {
         storj_pointer_t *pointer = &state->pointers[i];
         if (pointer->status == POINTER_BEING_DOWNLOADED) {
             uv_cancel((uv_req_t *)pointer->work);
