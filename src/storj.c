@@ -959,6 +959,10 @@ char *storj_strerror(int error_code)
             return "Farmer request integrity error";
         case STORJ_FILE_INTEGRITY_ERROR:
             return "File integrity error";
+        case STORJ_FILE_READ_ERROR:
+            return "File read error";
+        case STORJ_FILE_WRITE_ERROR:
+            return "File write error";
         case STORJ_BRIDGE_FRAME_ERROR:
             return "Bridge frame request error";
         case STORJ_FILE_ENCRYPTION_ERROR:

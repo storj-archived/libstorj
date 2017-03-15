@@ -1280,7 +1280,7 @@ int test_determine_shard_size()
 
     // Make sure we stop at max file size
     file_size = 1012001737418240;
-    expected_shard_size = 1073741824;
+    expected_shard_size = 4294967296;
     shard_size = determine_shard_size(file_size, 0);
 
     if (shard_size != expected_shard_size) {

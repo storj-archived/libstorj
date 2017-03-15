@@ -188,8 +188,9 @@ ssize_t pread(int fd, void *buf, size_t count, uint64_t offset)
     if (hEvent) {
         overlapped.hEvent = hEvent;
     } else {
-        printf("\nCreate event failed with error:%d",GetLastError());
-        return 0;
+        errno = GetLastError();
+        // printf("Create event failed with error: %d\n",GetLastError());
+        return -1;
     }
 
     overlapped.Offset = offset;
@@ -197,22 +198,27 @@ ssize_t pread(int fd, void *buf, size_t count, uint64_t offset)
     HANDLE file = (HANDLE)_get_osfhandle(fd);
     SetLastError(0);
     bool RF = ReadFile(file, buf, count, &read_bytes, &overlapped);
-    if ((RF==0) && GetLastError() == ERROR_IO_PENDING) {
+    if ((RF == 0) && GetLastError() == ERROR_IO_PENDING) {
         // Asynch readfile started. I can do other operations now
         while( !GetOverlappedResult(file, &overlapped, &read_bytes, TRUE)) {
             if (GetLastError() == ERROR_IO_INCOMPLETE) {
-                // printf("I/O pending: %d .\n",GetLastError());
+                // printf("I/O pending: %d\n", GetLastError());
             } else if  (GetLastError() == ERROR_HANDLE_EOF) {
-                // printf("End of file reached.\n");
-                return 0;
+                errno = GetLastError();
+                // printf("End of file reached unexpectedly.\n");
+                return -1;
             } else {
-                // printf("GetOverlappedResult failed with error:%d\n",GetLastError());
-                return 0;
+                errno = GetLastError();
+                // printf("GetOverlappedResult failed with error: %d\n", GetLastError());
+                return -1;
             }
         }
-    } else if ((RF == 0) && GetLastError() != ERROR_IO_PENDING) {
-        // printf ("Error reading file :%d\n",GetLastError());
-        return 0;
+    } else if ((RF == 0) &&
+                GetLastError() != ERROR_IO_PENDING &&
+                GetLastError() != ERROR_HANDLE_EOF) { // For some reason it errors when it hits end of file so we don't want to check that
+        errno = GetLastError();
+        // printf ("Error reading file : %d\n", GetLastError());
+        return -1;
     }
 
     return read_bytes;
@@ -230,8 +236,9 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
     if (hEvent) {
         overlapped.hEvent = hEvent;
     } else {
-        printf("\nCreate event failed with error:%d",GetLastError());
-        return 0;
+        errno = GetLastError();
+        // printf("Create event failed with error: %d\n", GetLastError());
+        return -1;
     }
 
     overlapped.Offset = offset;
@@ -239,22 +246,25 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
     HANDLE file = (HANDLE)_get_osfhandle(fd);
     SetLastError(0);
     bool RF = WriteFile(file, buf, count, &written_bytes, &overlapped);
-    if ((RF==0) && GetLastError() == ERROR_IO_PENDING) {
+    if ((RF == 0) && GetLastError() == ERROR_IO_PENDING) {
         // Asynch readfile started. I can do other operations now
         while( !GetOverlappedResult(file, &overlapped, &written_bytes, TRUE)) {
             if (GetLastError() == ERROR_IO_INCOMPLETE) {
-                // printf("I/O pending: %d .\n",GetLastError());
+                // printf("I/O pending: %d\n", GetLastError());
             } else if  (GetLastError() == ERROR_HANDLE_EOF) {
-                // printf("End of file reached.\n");
-                return 0;
+                errno = GetLastError();
+                // printf("End of file reached unexpectedly.\n");
+                return -1;
             } else {
-                // printf("GetOverlappedResult failed with error:%d\n",GetLastError());
-                return 0;
+                errno = GetLastError();
+                // printf("GetOverlappedResult failed with error: %d\n", GetLastError());
+                return -1;
             }
         }
     } else if ((RF == 0) && GetLastError() != ERROR_IO_PENDING) {
-        // printf ("Error reading file :%d\n",GetLastError());
-        return 0;
+        errno = GetLastError();
+        // printf ("Error reading file :%d\n", GetLastError());
+        return -1;
     }
 
     return written_bytes;

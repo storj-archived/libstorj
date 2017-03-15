@@ -28,6 +28,10 @@ static size_t body_shard_send(void *buffer, size_t size, size_t nmemb,
 
         // Read shard data from file
         read_bytes = pread(fileno(body->fd), clr_txt, buflen, body->offset + body->total_sent);
+        if (read_bytes == -1) {
+            body->error_code = errno;
+            return CURL_READFUNC_ABORT;
+        }
 
         ctr_crypt(body->ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
                   AES_BLOCK_SIZE, body->ctx->encryption_ctr, read_bytes,
@@ -72,6 +76,7 @@ int put_shard(storj_http_options_t *http_options,
               storj_encryption_ctx_t *ctx,
               char *token,
               int *status_code,
+              int *read_code,
               uv_async_t *progress_handle,
               bool *canceled)
 {
@@ -138,6 +143,7 @@ int put_shard(storj_http_options_t *http_options,
         shard_body->bytes_since_progress = 0;
         shard_body->progress_handle = progress_handle;
         shard_body->canceled = canceled;
+        shard_body->error_code = 0;
 
         curl_easy_setopt(curl, CURLOPT_READFUNCTION, body_shard_send);
         curl_easy_setopt(curl, CURLOPT_READDATA, (void *)shard_body);
@@ -163,6 +169,10 @@ int put_shard(storj_http_options_t *http_options,
     }
 
     // set the status code
+    if (shard_body && shard_total_bytes) {
+        *read_code = shard_body->error_code;
+    }
+
     long int _status_code;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &_status_code);
     *status_code = (int)_status_code;
@@ -234,6 +244,11 @@ static size_t body_shard_receive(void *buffer, size_t size, size_t nmemb,
                                writelen,
                                body->file_position)) {
 
+        if (writelen == -1) {
+            body->error_code = errno;
+            return CURL_READFUNC_ABORT;
+        }
+
             body->file_position += writelen;
         } else {
             // TODO handle error
@@ -286,6 +301,7 @@ int fetch_shard(storj_http_options_t *http_options,
                 uint64_t file_position,
                 bool write_async,
                 int *status_code,
+                int *write_code,
                 uv_async_t *progress_handle,
                 bool *canceled)
 {
@@ -346,6 +362,7 @@ int fetch_shard(storj_http_options_t *http_options,
     body->bytes_since_progress = 0;
     body->canceled = canceled;
     body->sha256_ctx = malloc(sizeof(struct sha256_ctx));
+    body->error_code = 0;
     if (!body->sha256_ctx) {
         return 1;
     }
@@ -369,8 +386,13 @@ int fetch_shard(storj_http_options_t *http_options,
     free(body->tail);
     free(body->aes256_ctx);
 
-    int error_code = 0;
+    // set the status code
+    if (body) {
+        *write_code = body->error_code;
+    }
 
+
+    int error_code = 0;
     if (req != CURLE_OK) {
         // TODO include the actual http error code
         error_code = STORJ_FARMER_REQUEST_ERROR;

@@ -594,6 +594,7 @@ static void push_shard(uv_work_t *work)
                    state->shard[req->shard_index].push_shard_request_count);
 
     int status_code = 0;
+    int read_code = 0;
 
     req->start = get_time_milliseconds();
 
@@ -621,9 +622,14 @@ static void push_shard(uv_work_t *work)
                                encryption_ctx,
                                shard->pointer->token,
                                &status_code,
+                               &read_code,
                                &req->progress_handle,
                                req->canceled);
 
+    if (read_code != 0) {
+        req->log->error(state->env->log_options, state->handle,
+                        "Put shard read error: %i", read_code);
+    }
 
     if (req_status) {
         req->error_status = req_status;
@@ -1296,6 +1302,14 @@ static void prepare_frame(uv_work_t *work)
         read_bytes = pread(fileno(state->original_file),
                            read_data, AES_BLOCK_SIZE * 256,
                            shard_meta->index*state->shard_size + total_read);
+
+        if (read_bytes == -1) {
+            req->log->warn(state->env->log_options, state->handle,
+                           "Error reading file: %d",
+                           errno);
+            req->error_status = STORJ_FILE_READ_ERROR;
+            goto clean_variables;
+        }
 
         total_read += read_bytes;
 
