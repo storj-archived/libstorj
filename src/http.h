@@ -56,6 +56,7 @@ typedef struct {
     uint64_t total_sent;
     uint64_t bytes_since_progress;
     uv_async_t *progress_handle;
+    int error_code;
     bool *canceled;
 } shard_body_send_t;
 
@@ -75,6 +76,7 @@ typedef struct {
     uint8_t *decrypt_ctr;
     FILE *destination;
     uint64_t file_position;
+    int error_code;
 } shard_body_receive_t;
 
 typedef struct {
@@ -116,6 +118,7 @@ int put_shard(storj_http_options_t *http_options,
               storj_encryption_ctx_t *ctx,
               char *token,
               int *status_code,
+              int *read_code,
               uv_async_t *progress_handle,
               bool *canceled);
 
@@ -151,6 +154,7 @@ int fetch_shard(storj_http_options_t *http_options,
                 uint64_t file_position,
                 bool write_async,
                 int *status_code,
+                int *write_code,
                 uv_async_t *progress_handle,
                 bool *canceled);
 

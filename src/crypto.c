@@ -292,53 +292,51 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
 
     // Convert from hex string
     int len = strlen(data);
-    if (len / 2 < SHA256_DIGEST_SIZE + 1) {
+    if (len / 2 < GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + 1) {
         return 1;
     }
     int enc_len = len / 2;
-    int data_size = enc_len - SHA256_DIGEST_SIZE;
+    int data_size = enc_len - GCM_DIGEST_SIZE - SHA256_DIGEST_SIZE;
     uint8_t *enc = str2hex(len, (char *)data);
     if (!enc) {
         return 1;
     }
 
-    // Get hash from enc data
-    uint8_t *data_hash_ctr = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
-    uint8_t *data_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
-    memcpy(data_hash_ctr, enc, SHA256_DIGEST_SIZE);
-    memcpy(data_hash, enc, SHA256_DIGEST_SIZE);
+    // Get the expected digest and iv
+    uint8_t digest[GCM_DIGEST_SIZE];
+    uint8_t data_iv[SHA256_DIGEST_SIZE];
+    uint8_t cipher_text[data_size];
+    memcpy(&digest, enc, GCM_DIGEST_SIZE);
+    memcpy(&data_iv, enc + GCM_DIGEST_SIZE, SHA256_DIGEST_SIZE);
+    memcpy(&cipher_text, enc + GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE, data_size);
 
-    // Decrypt data
-    *result = calloc(data_size + 1, sizeof(uint8_t));
-    struct aes256_ctx *ctx1 = malloc(sizeof(struct aes256_ctx));
-    aes256_set_encrypt_key(ctx1, key);
-
-    free(key);
-
-    ctr_crypt(ctx1, (nettle_cipher_func *)aes256_encrypt,
-              AES_BLOCK_SIZE, data_hash_ctr,
-              data_size, (uint8_t *)*result, enc + SHA256_DIGEST_SIZE);
-
-    free(ctx1);
-
-    // Check that decryption matches expected hash
-    struct sha256_ctx *ctx2 = malloc(sizeof(struct sha256_ctx));
-    sha256_init(ctx2);
-    sha256_update(ctx2, data_size, (uint8_t *)*result);
-    sha256_update(ctx2, strlen(salt), (uint8_t *)salt);
-    uint8_t *decrypted_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
-    sha256_digest(ctx2, SHA256_DIGEST_SIZE, decrypted_hash);
-
-    free(ctx2);
-
-    int sha_match = memcmp(decrypted_hash, data_hash,
-                           SHA256_DIGEST_SIZE);
-    free(decrypted_hash);
-    free(data_hash_ctr);
-    free(data_hash);
     free(enc);
 
-    if (sha_match != 0) {
+    struct gcm_aes256_ctx gcm_ctx;
+    gcm_aes256_set_key(&gcm_ctx, key);
+    gcm_aes256_set_iv(&gcm_ctx, SHA256_DIGEST_SIZE, data_iv);
+    free(key);
+
+    // Decrypt the data
+    *result = calloc(data_size + 1, sizeof(char));
+    int pos = 0;
+    size_t remain = data_size;
+    while (pos < data_size) {
+        int len = AES_BLOCK_SIZE;
+        if (remain < AES_BLOCK_SIZE) {
+            len = remain;
+        }
+        gcm_aes256_decrypt(&gcm_ctx, len, (uint8_t *)*result + pos,
+                           cipher_text + pos);
+        pos += AES_BLOCK_SIZE;
+        remain -= AES_BLOCK_SIZE;
+    }
+
+    uint8_t actual_digest[GCM_DIGEST_SIZE];
+    gcm_aes256_digest(&gcm_ctx, GCM_DIGEST_SIZE, actual_digest);
+
+    int digest_match = memcmp(actual_digest, digest, GCM_DIGEST_SIZE);
+    if (digest_match != 0) {
         return 1;
     }
 
@@ -353,43 +351,53 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
         return 1;
     }
 
-    // Hash the data to create the ctr
     uint8_t data_size = strlen(data);
     if (data_size <= 0) {
         return 1;
     }
-    int buffer_size = data_size + SHA256_DIGEST_SIZE;
+
+    // Generate synthetic iv with first half of sha512 hmac of data
+    struct hmac_sha512_ctx hmac_ctx;
+    hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, key);
+    hmac_sha512_update(&hmac_ctx, data_size, (uint8_t *)data);
+    uint8_t data_iv[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&hmac_ctx, SHA256_DIGEST_SIZE, data_iv);
+
+    // Encrypt the data
+    struct gcm_aes256_ctx gcm_ctx;
+    gcm_aes256_set_key(&gcm_ctx, key);
+    gcm_aes256_set_iv(&gcm_ctx, SHA256_DIGEST_SIZE, data_iv);
+    free(key);
+
+    int pos = 0;
+    size_t remain = data_size;
+    uint8_t cipher_text[data_size];
+    while (pos < data_size) {
+        int len = AES_BLOCK_SIZE;
+        if (remain < AES_BLOCK_SIZE) {
+            len = remain;
+        }
+        gcm_aes256_encrypt(&gcm_ctx, len, cipher_text + pos,
+                           (uint8_t *)data + pos);
+        pos += AES_BLOCK_SIZE;
+        remain -= AES_BLOCK_SIZE;
+    }
+
+    // Get the digest
+    uint8_t digest[GCM_DIGEST_SIZE];
+    gcm_aes256_digest(&gcm_ctx, GCM_DIGEST_SIZE, digest);
+
+
+    // Copy the digest, iv and cipher text to a buffer
+    int buffer_size = GCM_DIGEST_SIZE + (SHA512_DIGEST_SIZE / 2) + data_size;
     uint8_t *buffer = calloc(buffer_size, sizeof(char));
     if (!buffer) {
         return 1;
     }
-
-    struct sha256_ctx *ctx1 = malloc(sizeof(struct sha256_ctx));
-    if (!ctx1) {
-        return 1;
-    }
-    sha256_init(ctx1);
-    sha256_update(ctx1, data_size, (uint8_t *)data);
-    sha256_update(ctx1, strlen(salt), (uint8_t *)salt);
-    uint8_t *data_hash = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
-    if (!data_hash) {
-        return 1;
-    }
-    sha256_digest(ctx1, SHA256_DIGEST_SIZE, data_hash);
-
-    // Copy hash to buffer
-    memcpy(buffer, data_hash, SHA256_DIGEST_SIZE);
-
-    // Encrypt data
-    struct aes256_ctx *ctx2 = malloc(sizeof(struct aes256_ctx));
-    if (!ctx2) {
-        return 1;
-    }
-    aes256_set_encrypt_key(ctx2, key);
-    ctr_crypt(ctx2, (nettle_cipher_func *)aes256_encrypt,
-              AES_BLOCK_SIZE, data_hash,
-              data_size, buffer + SHA256_DIGEST_SIZE, (uint8_t *)data);
-
+    memcpy(buffer, digest, GCM_DIGEST_SIZE);
+    memcpy(buffer + GCM_DIGEST_SIZE, data_iv, SHA256_DIGEST_SIZE);
+    memcpy(buffer + GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE,
+           &cipher_text, data_size);
 
     // Convert to hex string
     *result = hex2str(buffer_size, buffer);
@@ -398,10 +406,7 @@ int encrypt_data(const char *passphrase, const char *salt, const char *data,
     }
 
     free(buffer);
-    free(data_hash);
-    free(ctx1);
-    free(ctx2);
-    free(key);
+
 
     return 0;
 }
@@ -424,7 +429,8 @@ int encrypt_meta(const char *filemeta,
         if (remain < AES_BLOCK_SIZE) {
             len = remain;
         }
-        gcm_aes256_encrypt(&ctx2, len, cipher_text + pos, filemeta + pos);
+        gcm_aes256_encrypt(&ctx2, len, cipher_text + pos,
+                           (uint8_t *)filemeta + pos);
         pos += AES_BLOCK_SIZE;
         remain -= AES_BLOCK_SIZE;
     }
@@ -447,8 +453,9 @@ int encrypt_meta(const char *filemeta,
 
     struct base64_encode_ctx ctx3;
     base64_encode_init(&ctx3);
-    size_t out_len = base64_encode_update(&ctx3, *buffer_base64, buf_len, buf);
-    out_len += base64_encode_final(&ctx3, *buffer_base64 + out_len);
+    size_t out_len = base64_encode_update(&ctx3, (uint8_t *)*buffer_base64,
+                                          buf_len, buf);
+    out_len += base64_encode_final(&ctx3, (uint8_t *)*buffer_base64 + out_len);
 
     return 0;
 }
@@ -468,7 +475,7 @@ int decrypt_meta(const char *buffer_base64,
     struct base64_decode_ctx ctx3;
     base64_decode_init(&ctx3);
     if (!base64_decode_update(&ctx3, &decode_len, buffer,
-                              strlen(buffer_base64), buffer_base64)) {
+                              strlen(buffer_base64), (uint8_t *)buffer_base64)) {
         free(buffer);
         return 1;
     }
@@ -523,7 +530,7 @@ int decrypt_meta(const char *buffer_base64,
     }
 
     *filemeta = calloc(length + 1, sizeof(char));
-    if (!&filemeta) {
+    if (!*filemeta) {
         //STORJ_MEMORY_ERROR
         return 1;
     }

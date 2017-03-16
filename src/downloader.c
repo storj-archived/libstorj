@@ -691,6 +691,7 @@ static void request_shard(uv_work_t *work)
     shard_request_download_t *req = work->data;
 
     int status_code;
+    int write_code = 0;
 
     req->start = get_time_milliseconds();
 
@@ -711,10 +712,16 @@ static void request_shard(uv_work_t *work)
                                    file_position,
                                    req->write_async,
                                    &status_code,
+                                   &write_code,
                                    &req->progress_handle,
                                    req->canceled);
 
     req->end = get_time_milliseconds();
+
+    if (write_code != 0) {
+        req->state->log->error(req->state->env->log_options, req->state->handle,
+                        "Put shard read error: %i", write_code);
+    }
 
     if (error_status) {
         req->error_status = error_status;
@@ -1404,7 +1411,7 @@ static int prepare_file_hmac(storj_download_state_t *state)
                                   &decode_len,
                                   hash,
                                   RIPEMD160_DIGEST_SIZE * 2,
-                                  pointer->shard_hash)) {
+                                  (uint8_t *)pointer->shard_hash)) {
             return 1;
 
         }
@@ -1424,7 +1431,7 @@ static int prepare_file_hmac(storj_download_state_t *state)
         return 1;
     }
 
-    base16_encode_update((char *)state->hmac, SHA512_DIGEST_SIZE, digest_raw);
+    base16_encode_update((uint8_t *)state->hmac, SHA512_DIGEST_SIZE, digest_raw);
 
     return 0;
 }

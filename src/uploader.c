@@ -283,57 +283,6 @@ static uint64_t check_file(storj_env_t *env, const char *filepath)
     return size;
 }
 
-static uint64_t determine_shard_size(storj_upload_state_t *state,
-                                     int accumulator)
-{
-    int shard_concurrency;
-    uint64_t file_size;
-
-    if (!state->file_size) {
-        state->log->error(state->env->log_options, state->handle,
-                          "File size is unknown");
-
-        return 0;
-    } else {
-        file_size = state->file_size;
-    }
-
-    if (!state->shard_concurrency) {
-        shard_concurrency = 3;
-    } else {
-        shard_concurrency = state->shard_concurrency;
-    }
-
-    accumulator = accumulator ? accumulator : 0;
-
-    // Determine hops back by accumulator
-    int hops = ((accumulator - SHARD_MULTIPLES_BACK) < 0 ) ?
-        0 : accumulator - SHARD_MULTIPLES_BACK;
-
-    uint64_t byte_multiple = shard_size(accumulator);
-    double check = (double) file_size / byte_multiple;
-
-    // Determine if bytemultiple is highest bytemultiple that is still <= size
-    if (check > 0 && check <= 1) {
-
-        // Certify the number of concurrency * shard_size doesn't exceed freemem
-        //TODO: 1GB max memory
-        while (hops > 0 &&
-               (MAX_SHARD_SIZE / shard_size(hops) <= shard_concurrency)) {
-            hops = hops - 1 <= 0 ? 0 : hops - 1;
-        }
-
-        return shard_size(hops);
-    }
-
-    // Maximum of 2 ^ 41 * 8 * 1024 * 1024
-    if (accumulator > 41) {
-        return 0;
-    }
-
-    return determine_shard_size(state, ++accumulator);
-}
-
 static void after_create_bucket_entry(uv_work_t *work, int status)
 {
     post_to_bucket_request_t *req = work->data;
@@ -460,7 +409,8 @@ static int prepare_bucket_entry_hmac(storj_upload_state_t *state)
         size_t decode_len = 0;
         uint8_t hash[RIPEMD160_DIGEST_SIZE];
         if (!base16_decode_update(&base16_ctx, &decode_len, hash,
-                                  RIPEMD160_DIGEST_SIZE * 2, shard->meta->hash)) {
+                                  RIPEMD160_DIGEST_SIZE * 2,
+                                  (uint8_t *)shard->meta->hash)) {
             return 1;
 
         }
@@ -480,7 +430,7 @@ static int prepare_bucket_entry_hmac(storj_upload_state_t *state)
         return 1;
     }
 
-    base16_encode_update(state->hmac_id, SHA512_DIGEST_SIZE, digest_raw);
+    base16_encode_update((uint8_t *)state->hmac_id, SHA512_DIGEST_SIZE, digest_raw);
 
     return 0;
 }
@@ -644,6 +594,7 @@ static void push_shard(uv_work_t *work)
                    state->shard[req->shard_index].push_shard_request_count);
 
     int status_code = 0;
+    int read_code = 0;
 
     req->start = get_time_milliseconds();
 
@@ -671,9 +622,14 @@ static void push_shard(uv_work_t *work)
                                encryption_ctx,
                                shard->pointer->token,
                                &status_code,
+                               &read_code,
                                &req->progress_handle,
                                req->canceled);
 
+    if (read_code != 0) {
+        req->log->error(state->env->log_options, state->handle,
+                        "Put shard read error: %i", read_code);
+    }
 
     if (req_status) {
         req->error_status = req_status;
@@ -1325,7 +1281,7 @@ static void prepare_frame(uv_work_t *work)
     struct sha256_ctx first_sha256_for_leaf[STORJ_SHARD_CHALLENGES];
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         sha256_init(&first_sha256_for_leaf[i]);
-        sha256_update(&first_sha256_for_leaf[i], 32, (char *)&shard_meta->challenges[i]);
+        sha256_update(&first_sha256_for_leaf[i], 32, (uint8_t *)&shard_meta->challenges[i]);
     }
 
     // Initialize the encryption context
@@ -1349,6 +1305,14 @@ static void prepare_frame(uv_work_t *work)
         read_bytes = pread(fileno(state->original_file),
                            read_data, AES_BLOCK_SIZE * 256,
                            shard_meta->index*state->shard_size + total_read);
+
+        if (read_bytes == -1) {
+            req->log->warn(state->env->log_options, state->handle,
+                           "Error reading file: %d",
+                           errno);
+            req->error_status = STORJ_FILE_READ_ERROR;
+            goto clean_variables;
+        }
 
         total_read += read_bytes;
 
@@ -1570,7 +1534,7 @@ static int prepare_encryption_key(storj_upload_state_t *state,
     // Convert file id to salt
     char salt[RIPEMD160_DIGEST_SIZE + 1];
     memset_zero(salt, RIPEMD160_DIGEST_SIZE + 1);
-    ripemd160_of_str((uint8_t *)pre_salt, pre_salt_size, salt);
+    ripemd160_of_str((uint8_t *)pre_salt, pre_salt_size, (uint8_t *)salt);
     salt[RIPEMD160_DIGEST_SIZE] = '\0';
 
     // We only need the first 16 bytes of the salt because it's CTR mode
@@ -1894,7 +1858,7 @@ static void prepare_upload_state(uv_work_t *work)
 
     // Get the file size, expect to be up to 10tb
 #ifdef _WIN32
-    struct __stat64 st;
+    struct _stati64 st;
 
     if(_fstati64(fileno(state->original_file), &st) != 0) {
         state->error_status = STORJ_FILE_INTEGRITY_ERROR;
@@ -1911,8 +1875,8 @@ static void prepare_upload_state(uv_work_t *work)
     state->file_size = st.st_size;
 
     // Set Shard calculations
-    state->shard_size = determine_shard_size(state, 0);
-    if (!state->shard_size) {
+    state->shard_size = determine_shard_size(state->file_size, 0);
+    if (!state->shard_size || state->shard_size == 0) {
         state->error_status = STORJ_FILE_SIZE_ERROR;
         return;
     }
@@ -1974,8 +1938,10 @@ static void prepare_upload_state(uv_work_t *work)
     // Generate the synthetic iv with first half of hmac w/ bucket and filename
     struct hmac_sha512_ctx ctx2;
     hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx2, strlen(state->bucket_id), state->bucket_id);
-    hmac_sha512_update(&ctx2, strlen(state->file_name), state->file_name);
+    hmac_sha512_update(&ctx2, strlen(state->bucket_id),
+                       (uint8_t *)state->bucket_id);
+    hmac_sha512_update(&ctx2, strlen(state->file_name),
+                       (uint8_t *)state->file_name);
     uint8_t filename_iv[SHA256_DIGEST_SIZE];
     hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
 

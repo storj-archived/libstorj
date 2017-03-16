@@ -10,7 +10,7 @@ char *hex2str(size_t length, uint8_t *data)
 
     base16_encode_update(result, length, data);
 
-    return result;
+    return (char *)result;
 }
 
 void print_int_array(uint8_t *array, unsigned length)
@@ -36,7 +36,8 @@ uint8_t *str2hex(size_t length, char *data)
     base16_decode_init(ctx);
 
     size_t decode_len = 0;
-    if (!base16_decode_update(ctx, &decode_len, result, length, data)) {
+    if (!base16_decode_update(ctx, &decode_len, (uint8_t *)result,
+                              length, (uint8_t *)data)) {
         free(result);
         free(ctx);
         return NULL;
@@ -49,7 +50,7 @@ uint8_t *str2hex(size_t length, char *data)
     }
 
     free(ctx);
-    return result;
+    return (uint8_t *)result;
 }
 
 char *str_concat_many(int count, ...)
@@ -142,6 +143,38 @@ void memset_zero(void *v, size_t n)
 #endif
 }
 
+uint64_t determine_shard_size(uint64_t file_size, int accumulator)
+{
+    if (file_size <= 0) {
+        return 0;
+    }
+
+    accumulator = accumulator ? accumulator : 0;
+
+    // Determine hops back by accumulator
+    int hops = ((accumulator - SHARD_MULTIPLES_BACK) < 0 ) ?
+        0 : accumulator - SHARD_MULTIPLES_BACK;
+
+    uint64_t byte_multiple = shard_size(accumulator);
+    double check = (double) file_size / byte_multiple;
+
+    // Determine if bytemultiple is highest bytemultiple that is still <= size
+    if (check > 0 && check <= 1) {
+        while (hops > 0 && shard_size(hops) > MAX_SHARD_SIZE) {
+            hops = hops - 1 <= 0 ? 0 : hops - 1;
+        }
+
+        return shard_size(hops);
+    }
+
+    // Maximum of 2 ^ 41 * 8 * 1024 * 1024
+    if (accumulator > 41) {
+        return 0;
+    }
+
+    return determine_shard_size(file_size, ++accumulator);
+}
+
 #ifdef _WIN32
 ssize_t pread(int fd, void *buf, size_t count, uint64_t offset)
 {
@@ -150,36 +183,17 @@ ssize_t pread(int fd, void *buf, size_t count, uint64_t offset)
     OVERLAPPED overlapped;
     memset(&overlapped, 0, sizeof(OVERLAPPED));
 
-    HANDLE hEvent;
-    hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-    if (hEvent) {
-        overlapped.hEvent = hEvent;
-    } else {
-        printf("\nCreate event failed with error:%d",GetLastError());
-        return 0;
-    }
-
     overlapped.Offset = offset;
 
     HANDLE file = (HANDLE)_get_osfhandle(fd);
     SetLastError(0);
     bool RF = ReadFile(file, buf, count, &read_bytes, &overlapped);
-    if ((RF==0) && GetLastError() == ERROR_IO_PENDING) {
-        // Asynch readfile started. I can do other operations now
-        while( !GetOverlappedResult(file, &overlapped, &read_bytes, TRUE)) {
-            if (GetLastError() == ERROR_IO_INCOMPLETE) {
-                // printf("I/O pending: %d .\n",GetLastError());
-            } else if  (GetLastError() == ERROR_HANDLE_EOF) {
-                // printf("End of file reached.\n");
-                return 0;
-            } else {
-                // printf("GetOverlappedResult failed with error:%d\n",GetLastError());
-                return 0;
-            }
-        }
-    } else if ((RF == 0) && GetLastError() != ERROR_IO_PENDING) {
-        // printf ("Error reading file :%d\n",GetLastError());
-        return 0;
+
+     // For some reason it errors when it hits end of file so we don't want to check that
+    if ((RF == 0) && GetLastError() != ERROR_HANDLE_EOF) {
+        errno = GetLastError();
+        // printf ("Error reading file : %d\n", GetLastError());
+        return -1;
     }
 
     return read_bytes;
@@ -192,36 +206,15 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
     OVERLAPPED overlapped;
     memset(&overlapped, 0, sizeof(OVERLAPPED));
 
-    HANDLE hEvent;
-    hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-    if (hEvent) {
-        overlapped.hEvent = hEvent;
-    } else {
-        printf("\nCreate event failed with error:%d",GetLastError());
-        return 0;
-    }
-
     overlapped.Offset = offset;
 
     HANDLE file = (HANDLE)_get_osfhandle(fd);
     SetLastError(0);
     bool RF = WriteFile(file, buf, count, &written_bytes, &overlapped);
-    if ((RF==0) && GetLastError() == ERROR_IO_PENDING) {
-        // Asynch readfile started. I can do other operations now
-        while( !GetOverlappedResult(file, &overlapped, &written_bytes, TRUE)) {
-            if (GetLastError() == ERROR_IO_INCOMPLETE) {
-                // printf("I/O pending: %d .\n",GetLastError());
-            } else if  (GetLastError() == ERROR_HANDLE_EOF) {
-                // printf("End of file reached.\n");
-                return 0;
-            } else {
-                // printf("GetOverlappedResult failed with error:%d\n",GetLastError());
-                return 0;
-            }
-        }
-    } else if ((RF == 0) && GetLastError() != ERROR_IO_PENDING) {
-        // printf ("Error reading file :%d\n",GetLastError());
-        return 0;
+    if ((RF == 0)) {
+        errno = GetLastError();
+        // printf ("Error reading file :%d\n", GetLastError());
+        return -1;
     }
 
     return written_bytes;

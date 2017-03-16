@@ -68,6 +68,7 @@ extern "C" {
 #define STORJ_FILE_SIZE_ERROR 3003
 #define STORJ_FILE_DECRYPTION_ERROR 3004
 #define STORJ_FILE_GENERATE_HMAC_ERROR 3005
+#define STORJ_FILE_READ_ERROR 3006
 
 // Memory related errors
 #define STORJ_MEMORY_ERROR 4000
@@ -394,7 +395,7 @@ typedef struct {
 
 typedef struct {
     char *hash;
-    char *challenges[STORJ_SHARD_CHALLENGES][32];
+    uint8_t *challenges[STORJ_SHARD_CHALLENGES][32];
     char *challenges_as_str[STORJ_SHARD_CHALLENGES][64 + 1];
     // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
     char *tree[2 * STORJ_SHARD_CHALLENGES - 1][20 * 2 + 1];
@@ -442,8 +443,8 @@ typedef struct {
     char *exclude;
     char *frame_id;
     char *hmac_id;
-    char *encryption_key;
-    char *encryption_ctr;
+    uint8_t *encryption_key;
+    uint8_t *encryption_ctr;
 
     bool requesting_frame;
     bool completed_upload;
