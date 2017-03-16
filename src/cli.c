@@ -299,7 +299,8 @@ static void file_progress(double progress,
 
     printf("\r[");
     int pos = bar_width * progress;
-    for (int i = 0; i < bar_width; ++i) {
+    int i;
+    for (i = 0; i < bar_width; ++i) {
         if (i < pos) {
             printf("=");
         } else if (i == pos) {
@@ -506,7 +507,8 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
     struct json_object *port;
     struct json_object *node_id;
 
-    for (int i = 0; i < num_mirrors; i++) {
+    int i;
+    for (i = 0; i < num_mirrors; i++) {
         printf("Established\n");
         printf("-----------\n");
         printf("Shard: %i\n", i);
@@ -515,7 +517,8 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
                                  &established);
         int num_established =
             json_object_array_length(established);
-        for (int j = 0; j < num_established; j++) {
+        int j;
+        for (j = 0; j < num_established; j++) {
             item = json_object_array_get_idx(established, j);
             if (j == 0) {
                 json_object_object_get_ex(item, "shardHash",
@@ -542,7 +545,7 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
                                  &available);
         int num_available =
             json_object_array_length(available);
-        for (int j = 0; j < num_available; j++) {
+        for (j = 0; j < num_available; j++) {
             item = json_object_array_get_idx(available, j);
             if (j == 0) {
                 json_object_object_get_ex(item, "shardHash",
@@ -813,7 +816,8 @@ static void list_files_callback(uv_work_t *work_req, int status)
         printf("No files for bucket.\n");
     }
 
-    for (int i = 0; i < req->total_files; i++) {
+    int i;
+    for (i = 0; i < req->total_files; i++) {
 
         storj_file_meta_t *file = &req->files[i];
 
@@ -880,7 +884,8 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
         printf("No buckets.\n");
     }
 
-    for (int i = 0; i < req->total_buckets; i++) {
+    int i;
+    for (i = 0; i < req->total_buckets; i++) {
         storj_bucket_meta_t *bucket = &req->buckets[i];
         printf("ID: %s \tDecrypted: %s \tName: %s\n",
                bucket->id, bucket->decrypted ? "true" : "false", bucket->name);
