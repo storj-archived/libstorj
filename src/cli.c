@@ -643,8 +643,8 @@ static int import_keys(user_options_t *options)
         }
 
         printf("\nIf you've previously uploaded files, please enter your" \
-               " existing encryption key. \nOtherwise leave the field blank" \
-               " to generate a new key.\n\n");
+               " existing encryption key (12 to 24 words). \nOtherwise leave" \
+               " the field blank to generate a new key.\n\n");
 
         printf("Encryption key: ");
         get_input(mnemonic_input);
