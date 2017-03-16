@@ -933,8 +933,7 @@ static void push_frame(uv_work_t *work)
         char *exclude_list = calloc(strlen(state->exclude) + 1, sizeof(char));
         if (!exclude_list) {
             req->error_status = STORJ_MEMORY_ERROR;
-            // TODO safe to return here?
-            return;
+            goto clean_variables;
         }
         strcpy(exclude_list, state->exclude);
 
@@ -1109,8 +1108,12 @@ static void push_frame(uv_work_t *work)
     req->status_code = status_code;
 
 clean_variables:
-    json_object_put(response);
-    json_object_put(body);
+    if (response) {
+        json_object_put(response);
+    }
+    if (body) {
+        json_object_put(body);
+    }
 }
 
 static void queue_push_frame(storj_upload_state_t *state, int index)
