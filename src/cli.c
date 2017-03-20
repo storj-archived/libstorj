@@ -69,7 +69,7 @@ static inline void noop() {};
     "  STORJ_ENCRYPTION_KEY      file encryption key\n\n"
 
 
-#define CLI_VERSION "libstorj-1.0.0-beta3"
+#define CLI_VERSION "libstorj-1.0.0-beta4"
 
 static void json_logger(const char *message, int level, void *handle)
 {
@@ -643,8 +643,8 @@ static int import_keys(user_options_t *options)
         }
 
         printf("\nIf you've previously uploaded files, please enter your" \
-               " existing encryption key. \nOtherwise leave the field blank" \
-               " to generate a new key.\n\n");
+               " existing encryption key (12 to 24 words). \nOtherwise leave" \
+               " the field blank to generate a new key.\n\n");
 
         printf("Encryption key: ");
         get_input(mnemonic_input);

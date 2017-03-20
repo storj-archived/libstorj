@@ -52,7 +52,7 @@ Dependencies:
 brew install curl nettle json-c libuv
 ```
 
-### Cross Compiling Dependencies from Debian / Ubuntu
+### Cross Compiling Dependencies from Ubuntu 16.04
 
 **Windows**
 
@@ -81,7 +81,14 @@ Supported hosts include:
 - arm-linux-gnueabihf
 - aarch64-linux-gnu
 
-Dependencies:
+Many ARM based distributions are based on Debian Jessie that includes libc6@2.19. It may be necessary to cross compile using Ubuntu 14.04. This can be accomplished using chroot (see the documentation at https://help.ubuntu.com/community/BasicChroot).
+
+Once chroot is setup, you'll likely need to install a few additional tools (in addition to the main dependencies listed above):
+```
+apt-get install git bsdmainutils
+```
+
+And then install ARM toolchain dependencies:
 ```
 apt-get install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 ```
@@ -93,7 +100,7 @@ make HOST="arm-linux-gnueabihf"
 
 Configure command for libstorj-c:
 ```
-PKG_CONFIG_LIBDIR="$(pwd)/depends/build/arm-linux-gnueabihf/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/arm-linux-gnueabihf/include -L$(pwd)/depends/build/arm-linux-gnueabihf/lib -static" ./configure --host=arm-linux-gnueabihf --enable-static --disable-shared --prefix=$(pwd)/depends/build/arm-linux-gnueabihf
+PKG_CONFIG_LIBDIR="$(pwd)/depends/build/arm-linux-gnueabihf/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/arm-linux-gnueabihf/include -L$(pwd)/depends/build/arm-linux-gnueabihf/lib -static -std=gnu99" ./configure --host=arm-linux-gnueabihf --enable-static --disable-shared --prefix=$(pwd)/depends/build/arm-linux-gnueabihf
 ```
 
 **64-bit GNU/Linux**

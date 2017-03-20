@@ -894,6 +894,11 @@ static void push_frame(uv_work_t *work)
                    req->shard_index,
                    state->shard[req->shard_index].push_frame_request_count);
 
+    char resource[strlen(state->frame_id) + 9];
+    memset(resource, '\0', strlen(state->frame_id) + 9);
+    strcpy(resource, "/frames/");
+    strcat(resource, state->frame_id);
+
     // Prepare the body
     struct json_object *body = json_object_new_object();
 
@@ -946,11 +951,6 @@ static void push_frame(uv_work_t *work)
     }
 
     json_object_object_add(body, "exclude", exclude);
-
-    char resource[strlen(state->frame_id) + 9];
-    memset(resource, '\0', strlen(state->frame_id) + 9);
-    strcpy(resource, "/frames/");
-    strcat(resource, state->frame_id);
 
     req->log->debug(state->env->log_options, state->handle,
                     "fn[push_frame] - JSON body: %s", json_object_to_json_string(body));
