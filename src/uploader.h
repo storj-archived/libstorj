@@ -111,7 +111,7 @@ static int prepare_encryption_key(storj_upload_state_t *state,
                                char *pre_salt,
                                int pre_salt_size);
 
-static uint64_t check_file(storj_env_t *env, const char *filepath);
+static int frame_prep_in_progress(storj_upload_state_t *state);
 
 static void shard_meta_cleanup(shard_meta_t *shard_meta);
 static void pointer_cleanup(farmer_pointer_t *farmer_pointer);

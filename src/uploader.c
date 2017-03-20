@@ -261,28 +261,6 @@ static void free_encryption_ctx(storj_encryption_ctx_t *ctx)
     free(ctx);
 }
 
-static uint64_t check_file(storj_env_t *env, const char *filepath)
-{
-    int r = 0;
-    uv_fs_t *stat_req = malloc(sizeof(uv_fs_t));
-    if (!stat_req) {
-        return 0;
-    }
-
-    r = uv_fs_stat(env->loop, stat_req, filepath, NULL);
-    if (r < 0) {
-        const char *msg = uv_strerror(r);
-        free(stat_req);
-        return 0;
-    }
-
-    long long size = (stat_req->statbuf.st_size);
-
-    free(stat_req);
-
-    return size;
-}
-
 static void after_create_bucket_entry(uv_work_t *work, int status)
 {
     post_to_bucket_request_t *req = work->data;
@@ -1673,22 +1651,6 @@ static void queue_send_exchange_report(storj_upload_state_t *state, int index)
     }
 }
 
-static void queue_push_frame_and_shard(storj_upload_state_t *state)
-{
-    for (int index = 0; index < state->total_shards; index++) {
-
-        if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
-            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
-            queue_push_frame(state, index);
-        }
-
-        if (state->shard[index].progress == AWAITING_PUSH_SHARD &&
-            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
-            queue_push_shard(state, index);
-        }
-    }
-}
-
 static void verify_bucket_id_callback(uv_work_t *work_req, int status)
 {
     json_request_t *req = work_req->data;
@@ -1786,6 +1748,35 @@ static void queue_verify_file_id(storj_upload_state_t *state)
                                verify_file_id_callback);
 }
 
+// Check if a frame is already being prepared. We want to limit disk reads for dd
+static int frame_prep_in_progress(storj_upload_state_t *state) {
+    int preparing = 0;
+
+    for (int index = 0; index < state->total_shards; index++ ) {
+        if (state->shard[index].progress == PREPARING_FRAME) {
+            preparing += 1;
+        }
+    }
+
+    return preparing;
+}
+
+static void queue_push_frame_and_shard(storj_upload_state_t *state)
+{
+    for (int index = 0; index < state->total_shards; index++) {
+
+        if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
+            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
+            queue_push_frame(state, index);
+        }
+
+        if (state->shard[index].progress == AWAITING_PUSH_SHARD &&
+            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
+            queue_push_shard(state, index);
+        }
+    }
+}
+
 static void queue_next_work(storj_upload_state_t *state)
 {
     if (state->canceled) {
@@ -1816,7 +1807,8 @@ static void queue_next_work(storj_upload_state_t *state)
     }
 
     for (int index = 0; index < state->total_shards; index++ ) {
-        if (state->shard[index].progress == AWAITING_PREPARE_FRAME) {
+        if (state->shard[index].progress == AWAITING_PREPARE_FRAME &&
+            frame_prep_in_progress(state) < 1) { // TODO: make adjustable frame prepare limit
             queue_prepare_frame(state, index);
         }
     }
