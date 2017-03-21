@@ -1838,6 +1838,9 @@ static void begin_work_queue(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
 
+    // Load progress bar
+    state->progress_cb(0, 0, 0, NULL);
+
     state->pending_work_count -= 1;
     queue_next_work(state);
 
@@ -1974,6 +1977,8 @@ static void prepare_upload_state(uv_work_t *work)
     state->file_key = file_key;
 
     prepare_encryption_key(state, file_key, DETERMINISTIC_KEY_SIZE, file_id, FILE_ID_SIZE);
+
+
 }
 
 int storj_bridge_store_file_cancel(storj_upload_state_t *state)
