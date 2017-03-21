@@ -1779,6 +1779,11 @@ static void queue_push_frame_and_shard(storj_upload_state_t *state)
 
 static void queue_next_work(storj_upload_state_t *state)
 {
+    storj_log_levels_t *log = state->log;
+    storj_log_options_t *log_options = state->env->log_options;
+    void *handle = state->handle;
+    int *pending_work_count = &state->pending_work_count;
+
     if (state->canceled) {
         return cleanup_state(state);
     }
@@ -1795,15 +1800,18 @@ static void queue_next_work(storj_upload_state_t *state)
 
     // Verify bucket_id is exists
     if (!state->bucket_verified) {
-        return queue_verify_bucket_id(state);
+        queue_verify_bucket_id(state);
+        goto finish_up;
     }
 
     if (!state->file_verified) {
-        return queue_verify_file_id(state);
+        queue_verify_file_id(state);
+        goto finish_up;
     }
 
     if (!state->frame_id && !state->requesting_frame) {
         queue_request_frame_id(state);
+        goto finish_up;
     }
 
     for (int index = 0; index < state->total_shards; index++ ) {
@@ -1832,6 +1840,11 @@ static void queue_next_work(storj_upload_state_t *state)
     if (state->frame_id) {
         queue_push_frame_and_shard(state);
     }
+
+finish_up:
+
+    log->debug(log_options, handle,
+               "Pending work count: %d", *pending_work_count);
 }
 
 static void begin_work_queue(uv_work_t *work, int status)

@@ -553,6 +553,11 @@ static void queue_request_pointers(storj_download_state_t *state)
         if (pointer->status == POINTER_ERROR_REPORTED) {
 
             // exclude this farmer id from future requests
+            state->log->debug(state->env->log_options,
+                              state->handle,
+                              "Adding farmer_id %s to excluded list",
+                              pointer->report->farmer_id);
+
             if (!state->excluded_farmer_ids) {
                 state->excluded_farmer_ids = calloc(41, sizeof(char));
                 if (!state->excluded_farmer_ids) {
@@ -1483,7 +1488,7 @@ static void queue_next_work(storj_download_state_t *state)
             free_download_state(state);
         }
 
-        return;
+        goto finish_up;
     }
 
     if (!state->token) {
@@ -1502,6 +1507,12 @@ static void queue_next_work(storj_download_state_t *state)
 
     // send back download status reports to the bridge
     queue_send_exchange_reports(state);
+
+finish_up:
+
+    state->log->debug(state->env->log_options, state->handle,
+                      "Pending work count: %d", state->pending_work_count);
+
 }
 
 int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
