@@ -823,7 +823,6 @@ static void after_request_shard(uv_work_t *work, int status)
                 pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
         }
 
-        // TODO don't send error on canceled download
         if (req->shard_data) {
             free(req->shard_data);
         }
@@ -1165,6 +1164,10 @@ static void after_send_exchange_report(uv_work_t *work, int status)
 static void queue_send_exchange_reports(storj_download_state_t *state)
 {
 
+    if (state->canceled) {
+        return;
+    }
+
     for (int i = 0; i < state->total_pointers; i++) {
 
         storj_pointer_t *pointer = &state->pointers[i];
@@ -1505,7 +1508,6 @@ static void queue_next_work(storj_download_state_t *state)
 
     queue_request_shards(state);
 
-    // send back download status reports to the bridge
     queue_send_exchange_reports(state);
 
 finish_up:
