@@ -28,8 +28,8 @@ typedef enum {
 
 typedef enum {
     PREPARE_FRAME_LIMIT = 1,
-    PUSH_FRAME_LIMIT = 64,
-    PUSH_SHARD_LIMIT = 64
+    PUSH_FRAME_LIMIT = 32,
+    PUSH_SHARD_LIMIT = 32
 } storj_state_progress_limits_t;
 
 typedef struct {

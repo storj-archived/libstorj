@@ -1843,7 +1843,7 @@ static void begin_work_queue(uv_work_t *work, int status)
     storj_upload_state_t *state = work->data;
 
     // Load progress bar
-    state->progress_cb(0, 0, 0, NULL);
+    state->progress_cb(0, 0, 0, state->handle);
 
     state->pending_work_count -= 1;
     queue_next_work(state);
