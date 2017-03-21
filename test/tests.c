@@ -496,7 +496,6 @@ int test_upload()
 
     // upload file
     storj_upload_opts_t upload_opts = {
-        .shard_concurrency = 3,
         .bucket_id = "368be0816766b28fd5f43af5",
         .file_name = file_name,
         .fd = fopen(file, "r")
@@ -545,7 +544,6 @@ int test_upload_cancel()
 
     // upload file
     storj_upload_opts_t upload_opts = {
-        .shard_concurrency = 3,
         .bucket_id = "368be0816766b28fd5f43af5",
         .file_name = file_name,
         .fd = fopen(file, "r")

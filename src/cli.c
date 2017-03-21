@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -357,7 +356,9 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
     }
 
     storj_upload_opts_t upload_opts = {
-        .shard_concurrency = 3,
+        .prepare_frame_limit = 1,
+        .push_frame_limit = 64,
+        .push_shard_limit = 64,
         .bucket_id = bucket_id,
         .file_name = file_name,
         .fd = fd

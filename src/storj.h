@@ -338,7 +338,9 @@ typedef struct {
 /** @brief A structure for file upload options
  */
 typedef struct {
-    int shard_concurrency;
+    int prepare_frame_limit;
+    int push_frame_limit;
+    int push_shard_limit;
     const char *bucket_id;
     const char *file_name;
     FILE *fd;
@@ -456,6 +458,10 @@ typedef struct {
     bool file_verified;
 
     bool progress_finished;
+
+    int push_shard_limit;
+    int push_frame_limit;
+    int prepare_frame_limit;
 
     int frame_request_count;
     int add_bucket_entry_count;
