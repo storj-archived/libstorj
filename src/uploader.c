@@ -1184,7 +1184,7 @@ static void after_prepare_frame(uv_work_t *work, int status)
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         memcpy(state->shard[shard_meta->index].meta->tree[i],
                shard_meta->tree[i],
-               32);
+               40);
 
         state->log->debug(state->env->log_options, state->handle,
                           "Shard %d Leaf [%d]: %s", shard_meta->index, i,
