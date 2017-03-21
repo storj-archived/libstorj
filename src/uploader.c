@@ -1748,17 +1748,19 @@ static void queue_verify_file_id(storj_upload_state_t *state)
                                verify_file_id_callback);
 }
 
-// Check if a frame is already being prepared. We want to limit disk reads for dd
-static int frame_prep_in_progress(storj_upload_state_t *state) {
-    int preparing = 0;
+// Check if a frame/shard is already being prepared/pushed.
+// We want to limit disk reads for dd and network activity
+static int check_in_progress(storj_upload_state_t *state, int status)
+{
+    int active = 0;
 
     for (int index = 0; index < state->total_shards; index++ ) {
-        if (state->shard[index].progress == PREPARING_FRAME) {
-            preparing += 1;
+        if (state->shard[index].progress == status) {
+            active += 1;
         }
     }
 
-    return preparing;
+    return active;
 }
 
 static void queue_push_frame_and_shard(storj_upload_state_t *state)
@@ -1766,12 +1768,14 @@ static void queue_push_frame_and_shard(storj_upload_state_t *state)
     for (int index = 0; index < state->total_shards; index++) {
 
         if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
-            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
+            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED &&
+            check_in_progress(state, PUSHING_FRAME) < state->push_frame_limit) { // TODO: make adjustable frame push limit
             queue_push_frame(state, index);
         }
 
         if (state->shard[index].progress == AWAITING_PUSH_SHARD &&
-            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED) {
+            state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED &&
+            check_in_progress(state, PUSHING_SHARD) < state->push_shard_limit) { // TODO: make adjustable shard push limit
             queue_push_shard(state, index);
         }
     }
@@ -1816,7 +1820,7 @@ static void queue_next_work(storj_upload_state_t *state)
 
     for (int index = 0; index < state->total_shards; index++ ) {
         if (state->shard[index].progress == AWAITING_PREPARE_FRAME &&
-            frame_prep_in_progress(state) < 1) { // TODO: make adjustable frame prepare limit
+            check_in_progress(state, PREPARING_FRAME) < state->prepare_frame_limit) { // TODO: make adjustable frame prepare limit
             queue_prepare_frame(state, index);
         }
     }
@@ -1850,6 +1854,9 @@ finish_up:
 static void begin_work_queue(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
+
+    // Load progress bar
+    state->progress_cb(0, 0, 0, state->handle);
 
     state->pending_work_count -= 1;
     queue_next_work(state);
@@ -1987,6 +1994,8 @@ static void prepare_upload_state(uv_work_t *work)
     state->file_key = file_key;
 
     prepare_encryption_key(state, file_key, DETERMINISTIC_KEY_SIZE, file_id, FILE_ID_SIZE);
+
+
 }
 
 int storj_bridge_store_file_cancel(storj_upload_state_t *state)
@@ -2019,16 +2028,6 @@ int storj_bridge_store_file(storj_env_t *env,
                             storj_progress_cb progress_cb,
                             storj_finished_upload_cb finished_cb)
 {
-    if (opts->shard_concurrency < 1) {
-        env->log->error(env->log_options,
-                        handle,
-                        "Shard Concurrency (%i) can't be less than 1",
-                        opts->shard_concurrency);
-        return 1;
-    } else if (!opts->shard_concurrency) {
-        opts->shard_concurrency = 3;
-    }
-
     if (!opts->fd) {
         env->log->error(env->log_options, handle, "Invalid File descriptor");
         return 1;
@@ -2036,7 +2035,6 @@ int storj_bridge_store_file(storj_env_t *env,
 
     // setup upload state
     state->env = env;
-    state->shard_concurrency = opts->shard_concurrency;
     state->file_id = NULL;
     state->file_name = opts->file_name;
     state->encrypted_file_name = NULL;
@@ -2066,6 +2064,10 @@ int storj_bridge_store_file(storj_env_t *env,
     state->file_verified = false;
 
     state->progress_finished = false;
+
+    state->push_shard_limit = (opts->push_shard_limit > 0) ? (opts->push_shard_limit) : PUSH_SHARD_LIMIT;
+    state->push_frame_limit = (opts->push_frame_limit > 0) ? (opts->push_frame_limit) : PUSH_FRAME_LIMIT;
+    state->prepare_frame_limit = (opts->prepare_frame_limit > 0) ? (opts->prepare_frame_limit) : PREPARE_FRAME_LIMIT;
 
     state->frame_request_count = 0;
     state->add_bucket_entry_count = 0;

@@ -26,6 +26,12 @@ typedef enum {
     COMPLETED_PUSH_SHARD = 7
 } storj_state_progress_t;
 
+typedef enum {
+    PREPARE_FRAME_LIMIT = 1,
+    PUSH_FRAME_LIMIT = 32,
+    PUSH_SHARD_LIMIT = 32
+} storj_state_progress_limits_t;
+
 typedef struct {
     /* state should not be modified in worker threads */
     storj_upload_state_t *upload_state;
@@ -111,7 +117,7 @@ static int prepare_encryption_key(storj_upload_state_t *state,
                                char *pre_salt,
                                int pre_salt_size);
 
-static int frame_prep_in_progress(storj_upload_state_t *state);
+static int check_in_progress(storj_upload_state_t *state, int status);
 
 static void shard_meta_cleanup(shard_meta_t *shard_meta);
 static void pointer_cleanup(farmer_pointer_t *farmer_pointer);

@@ -297,6 +297,12 @@ static void file_progress(double progress,
 {
     int bar_width = 70;
 
+    if (progress == 0 && downloaded_bytes == 0) {
+        printf("Hashing File...");
+        fflush(stdout);
+        return;
+    }
+
     printf("\r[");
     int pos = bar_width * progress;
     for (int i = 0; i < bar_width; ++i) {
@@ -309,6 +315,7 @@ static void file_progress(double progress,
         }
     }
     printf("] %.*f%%", 2, progress * 100);
+
     fflush(stdout);
 }
 
@@ -349,7 +356,9 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
     }
 
     storj_upload_opts_t upload_opts = {
-        .shard_concurrency = 3,
+        .prepare_frame_limit = 1,
+        .push_frame_limit = 64,
+        .push_shard_limit = 64,
         .bucket_id = bucket_id,
         .file_name = file_name,
         .fd = fd
