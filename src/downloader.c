@@ -487,51 +487,58 @@ static void after_request_pointers(uv_work_t *work, int status)
 static void after_request_replace_pointer(uv_work_t *work, int status)
 {
     json_request_replace_pointer_t *req = work->data;
+    storj_download_state_t *state = req->state;
 
-    req->state->pending_work_count--;
-    req->state->requesting_pointers = false;
+    state->pending_work_count--;
+    state->requesting_pointers = false;
 
     free_bucket_token(req->state);
 
     if (status != 0) {
-        req->state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
+        state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
     } else if (req->error_status) {
-        req->state->error_status = req->error_status;
+        state->error_status = req->error_status;
     } else if (req->status_code != 200) {
-        req->state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
+        state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
 
         if (req->status_code > 0 && req->status_code < 500) {
-            req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+            state->error_status = STORJ_BRIDGE_POINTER_ERROR;
         } else {
-            req->state->pointer_fail_count += 1;
+            state->pointer_fail_count += 1;
         }
 
-        if (req->state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
-            req->state->pointer_fail_count = 0;
-            req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+        if (state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
+            state->pointer_fail_count = 0;
+            state->error_status = STORJ_BRIDGE_POINTER_ERROR;
         }
 
     } else if (!json_object_is_type(req->response, json_type_array)) {
-        req->state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
     } else {
         struct json_object *json = json_object_array_get_idx(req->response, 0);
-        // TODO check json
 
-        // TODO check that the index of pointer matches what is expected
-        // TODO check that the shard hash is the same
-
-        set_pointer_from_json(req->state,
-                              &req->state->pointers[req->pointer_index],
+        set_pointer_from_json(state,
+                              &state->pointers[req->pointer_index],
                               json,
                               true);
+
+        if (state->pointers[req->pointer_index].index != req->pointer_index) {
+
+            state->log->error(state->env->log_options,
+                              state->handle,
+                              "Replacement shard index %i does not match %i",
+                              state->pointers[req->pointer_index].index,
+                              req->pointer_index);
+
+            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        }
     }
 
-    queue_next_work(req->state);
+    queue_next_work(state);
 
     json_object_put(req->response);
     free(work->data);
     free(work);
-
 }
 
 static void queue_request_pointers(storj_download_state_t *state)
