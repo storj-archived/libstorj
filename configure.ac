@@ -48,4 +48,16 @@ AC_CONFIG_FILES([libstorj.pc:libstorj.pc.in])
 
 AC_CHECK_FUNCS([aligned_alloc posix_memalign])
 
+AC_ARG_ENABLE([debug],
+        [AS_HELP_STRING([--enable-debug],
+        [use debug compiler flags and macros (default is no)])],
+        [enable_debug=$enableval],
+        [enable_debug=no])
+
+if test "x$enable_debug" = xyes; then
+   CFLAGS="$CFLAGS -DDEBUG -g3 -O0"
+else
+   CFLAGS="$CFLAGS -O3"
+fi
+
 AC_OUTPUT
