@@ -1280,6 +1280,10 @@ static void prepare_frame(uv_work_t *work)
     unsigned long int total_read = 0;
 
     do {
+        if (state->canceled) {
+            goto clean_variables;
+        }
+
         read_bytes = pread(fileno(state->original_file),
                            read_data, AES_BLOCK_SIZE * 256,
                            shard_meta->index*state->shard_size + total_read);
