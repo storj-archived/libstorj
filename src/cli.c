@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -290,12 +291,29 @@ void close_signal(uv_handle_t *handle)
     ((void)0);
 }
 
+void hashing_int_handler(int sig){
+
+	char c;
+
+	signal(sig, SIG_IGN);
+	printf("\nCancel hashing & file upload? [y/n]\n");
+	c = getchar();
+	if(c == 'y' || c == 'Y')
+		exit(0);
+	else
+		signal(SIGINT, hashing_int_handler);
+	getchar();
+
+}
+
 static void file_progress(double progress,
                           uint64_t downloaded_bytes,
                           uint64_t total_bytes,
                           void *handle)
 {
     int bar_width = 70;
+
+	signal(SIGINT, hashing_int_handler);
 
     if (progress == 0 && downloaded_bytes == 0) {
         printf("Hashing File...");
