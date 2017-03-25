@@ -416,7 +416,6 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     printf("\n");
     fclose(fd);
     if (status) {
-        // TODO send to stderr
         switch(status) {
             case STORJ_FILE_DECRYPTION_ERROR:
                 fprintf(stderr, "Unable to properly decrypt file, please check " \
