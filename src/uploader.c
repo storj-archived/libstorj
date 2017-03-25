@@ -1283,7 +1283,7 @@ static void prepare_frame(uv_work_t *work)
         if (state->canceled) {
             goto clean_variables;
         }
-
+        
         read_bytes = pread(fileno(state->original_file),
                            read_data, AES_BLOCK_SIZE * 256,
                            shard_meta->index*state->shard_size + total_read);
@@ -1311,6 +1311,7 @@ static void prepare_frame(uv_work_t *work)
 
         memset_zero(read_data, AES_BLOCK_SIZE * 256);
         memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
+
     } while(total_read < state->shard_size && read_bytes > 0);
 
     shard_meta->size = total_read;
@@ -1334,7 +1335,8 @@ static void prepare_frame(uv_work_t *work)
     memset_zero(preleaf_sha256, SHA256_DIGEST_SIZE);
     uint8_t preleaf_ripemd160[RIPEMD160_DIGEST_SIZE];
     memset_zero(preleaf_ripemd160, RIPEMD160_DIGEST_SIZE);
-    char *buff2 = calloc(RIPEMD160_DIGEST_SIZE*2 +1, sizeof(char));
+    char leaf[RIPEMD160_DIGEST_SIZE*2 +1];
+    memset(leaf, '\0', RIPEMD160_DIGEST_SIZE*2 +1);
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         // finish first sha256 for leaf
         sha256_digest(&first_sha256_for_leaf[i], SHA256_DIGEST_SIZE, preleaf_sha256);
@@ -1343,18 +1345,14 @@ static void prepare_frame(uv_work_t *work)
         ripemd160_of_str(preleaf_sha256, SHA256_DIGEST_SIZE, preleaf_ripemd160);
 
         // sha256 and ripemd160 again
-        ripemd160sha256_as_string(preleaf_ripemd160, RIPEMD160_DIGEST_SIZE, buff2);
+        ripemd160sha256_as_string(preleaf_ripemd160, RIPEMD160_DIGEST_SIZE, leaf);
 
-        memcpy(shard_meta->tree[i], buff2, RIPEMD160_DIGEST_SIZE*2 + 1);
+        memcpy(shard_meta->tree[i], leaf, RIPEMD160_DIGEST_SIZE*2 + 1);
     }
 
 clean_variables:
     if (encryption_ctx) {
         free_encryption_ctx(encryption_ctx);
-    }
-
-    if (buff2) {
-        free(buff2);
     }
 }
 
