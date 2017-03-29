@@ -57,7 +57,7 @@ static inline void noop() {};
     "  -v, --version             output the version number\n"           \
     "  -u, --url <url>           set the base url for the api\n"        \
     "  -p, --proxy <url>         set the socks proxy "                  \
-    "(e.g. socks5://<host>:<port>)\n"                                   \
+    "(e.g. <[protocol://][user:password@]proxyhost[:port]>)\n"          \
     "  -l, --log <level>         set the log level (default 0)\n"       \
     "  -d, --debug               set the debug log level\n\n"           \
     "environment variables:\n"                                          \
