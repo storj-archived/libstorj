@@ -183,7 +183,8 @@ ssize_t pread(int fd, void *buf, size_t count, uint64_t offset)
     OVERLAPPED overlapped;
     memset(&overlapped, 0, sizeof(OVERLAPPED));
 
-    overlapped.Offset = offset;
+    overlapped.OffsetHigh = (uint32_t)((offset & 0xFFFFFFFF00000000LL) >> 32);
+    overlapped.Offset = (uint32_t)(offset & 0xFFFFFFFFLL);
 
     HANDLE file = (HANDLE)_get_osfhandle(fd);
     SetLastError(0);
@@ -206,7 +207,8 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
     OVERLAPPED overlapped;
     memset(&overlapped, 0, sizeof(OVERLAPPED));
 
-    overlapped.Offset = offset;
+    overlapped.OffsetHigh = (uint32_t)((offset & 0xFFFFFFFF00000000LL) >> 32);
+    overlapped.Offset = (uint32_t)(offset & 0xFFFFFFFFLL);
 
     HANDLE file = (HANDLE)_get_osfhandle(fd);
     SetLastError(0);
