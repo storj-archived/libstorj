@@ -113,7 +113,7 @@ uint64_t get_time_milliseconds() {
 
     FILETIME ft;
 
-    GetSystemTimePreciseAsFileTime(&ft);
+    GetSystemTimeAsFileTime(&ft);
 
     LARGE_INTEGER li;
     li.LowPart = ft.dwLowDateTime;
