@@ -199,6 +199,7 @@ typedef struct {
 /** @brief A structure for that describes a bucket
  */
 typedef struct {
+    const char *created;
     const char *name;
     const char *id;
     bool decrypted;
@@ -240,6 +241,7 @@ typedef struct {
 /** @brief A structure for that describes a bucket entry/file
  */
 typedef struct {
+    const char *created;
     const char *filename;
     const char *mimetype;
     uint64_t size;

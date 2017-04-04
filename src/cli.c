@@ -826,11 +826,12 @@ static void list_files_callback(uv_work_t *work_req, int status)
 
         storj_file_meta_t *file = &req->files[i];
 
-        printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tName: %s\n",
+        printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
                file->id,
                file->size,
                file->decrypted ? "true" : "false",
                file->mimetype,
+               file->created,
                file->filename);
     }
 
@@ -891,8 +892,9 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
 
     for (int i = 0; i < req->total_buckets; i++) {
         storj_bucket_meta_t *bucket = &req->buckets[i];
-        printf("ID: %s \tDecrypted: %s \tName: %s\n",
-               bucket->id, bucket->decrypted ? "true" : "false", bucket->name);
+        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
+               bucket->id, bucket->decrypted ? "true" : "false",
+               bucket->created, bucket->name);
     }
 
     json_object_put(req->response);

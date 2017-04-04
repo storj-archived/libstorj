@@ -129,6 +129,7 @@ static void get_buckets_request_worker(uv_work_t *work)
 
     struct json_object *bucket_item;
     struct json_object *name;
+    struct json_object *created;
     struct json_object *id;
 
     for (int i = 0; i < num_buckets; i++) {
@@ -136,10 +137,12 @@ static void get_buckets_request_worker(uv_work_t *work)
 
         json_object_object_get_ex(bucket_item, "id", &id);
         json_object_object_get_ex(bucket_item, "name", &name);
+        json_object_object_get_ex(bucket_item, "created", &created);
 
         storj_bucket_meta_t *bucket = &req->buckets[i];
         bucket->id = json_object_get_string(id);
         bucket->decrypted = false;
+        bucket->created = json_object_get_string(created);
         bucket->name = NULL;
 
         // Attempt to decrypt the name, otherwise
@@ -213,6 +216,7 @@ static void list_files_request_worker(uv_work_t *work)
     struct json_object *mimetype;
     struct json_object *size;
     struct json_object *id;
+    struct json_object *created;
 
     for (int i = 0; i < num_files; i++) {
         file = json_object_array_get_idx(req->response, i);
@@ -221,9 +225,11 @@ static void list_files_request_worker(uv_work_t *work)
         json_object_object_get_ex(file, "mimetype", &mimetype);
         json_object_object_get_ex(file, "size", &size);
         json_object_object_get_ex(file, "id", &id);
+        json_object_object_get_ex(file, "created", &created);
 
         storj_file_meta_t *file = &req->files[i];
 
+        file->created = json_object_get_string(created);
         file->mimetype = json_object_get_string(mimetype);
         file->size = json_object_get_int64(size);
         file->hmac = NULL; // TODO though this value is not needed here
