@@ -31,8 +31,8 @@
 #include <time.h>
 
 #define PROFILE
-#include "rs.h"
-#include "rs.c"
+#include "../src/rs.h"
+#include "../src/rs.c"
 
 void print_matrix1(gf* matrix, int nrows, int ncols);
 void print_matrix2(gf** matrix, int nrows, int ncols);
