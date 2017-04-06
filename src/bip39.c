@@ -81,6 +81,11 @@ int mnemonic_from_data(const uint8_t *data, int len, char **buffer)
         p++;
     }
 
+    *buffer = calloc(strlen(mnemo) + 1, sizeof(char));
+    if (!*buffer) {
+        return 0;
+    }
+
     strcpy(*buffer, mnemo);
 
     return 1;

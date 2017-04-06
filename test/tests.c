@@ -939,7 +939,7 @@ int test_storj_mnemonic_generate_256()
 {
     int status;
     int stren = 256;
-    char *mnemonic = calloc(250 * 2, sizeof(char));
+    char *mnemonic = NULL;
     storj_mnemonic_generate(stren, &mnemonic);
     status = storj_mnemonic_check(mnemonic);
 
@@ -961,7 +961,7 @@ int test_storj_mnemonic_generate()
 {
     int status;
     int stren = 128;
-    char *mnemonic = calloc(250, sizeof(char));
+    char *mnemonic = NULL;
     storj_mnemonic_generate(stren, &mnemonic);
     status = storj_mnemonic_check(mnemonic);
 
@@ -983,7 +983,7 @@ int test_mnemonic_generate()
 {
     int status;
     int stren = 128;
-    char *mnemonic = calloc(250, sizeof(char));
+    char *mnemonic = NULL;
     mnemonic_generate(stren, &mnemonic);
     status = mnemonic_check(mnemonic);
 

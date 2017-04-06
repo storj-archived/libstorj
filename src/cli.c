@@ -215,7 +215,7 @@ static int generate_mnemonic(char **mnemonic)
         free(*mnemonic);
     }
 
-    *mnemonic = calloc(250, sizeof(char));
+    *mnemonic = NULL;
 
     int generate_code = storj_mnemonic_generate(strength, mnemonic);
     if (*mnemonic == NULL || generate_code == 0) {
