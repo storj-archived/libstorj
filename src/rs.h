@@ -43,9 +43,9 @@ void reed_solomon_release(reed_solomon* rs);
  * fec_blocks[rs->data_shards][block_size]
  * */
 int reed_solomon_encode(reed_solomon* rs,
-        uint8_t** data_blocks,
-        uint8_t** fec_blocks,
-        int block_size);
+                        uint8_t** data_blocks,
+                        uint8_t** fec_blocks,
+                        int block_size);
 
 
 /**
@@ -59,12 +59,12 @@ int reed_solomon_encode(reed_solomon* rs,
  * nr_fec_blocks: the number of erased blocks
  * */
 int reed_solomon_decode(reed_solomon* rs,
-        uint8_t **data_blocks,
-        int block_size,
-        uint8_t **dec_fec_blocks,
-        unsigned int *fec_block_nos,
-        unsigned int *erased_blocks,
-        int nr_fec_blocks);
+                        uint8_t **data_blocks,
+                        int block_size,
+                        uint8_t **dec_fec_blocks,
+                        unsigned int *fec_block_nos,
+                        unsigned int *erased_blocks,
+                        int nr_fec_blocks);
 
 /**
  * encode a big size of buffer

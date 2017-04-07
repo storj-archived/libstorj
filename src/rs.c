@@ -148,8 +148,7 @@ static gf inverse[GF_SIZE+1];   /* inverse of field elem.       */
  * modnn(x) computes x % GF_SIZE, where GF_SIZE is 2**GF_BITS - 1,
  * without a slow divide.
  */
-static inline gf
-modnn(int x)
+static inline gf modnn(int x)
 {
     while (x >= GF_SIZE) {
     x -= GF_SIZE;
@@ -185,8 +184,7 @@ __attribute__((aligned (256)))
 #define GF_ADDMULC(dst, x) dst ^= __gf_mulc_[x]
 #define GF_MULC(dst, x) dst = __gf_mulc_[x]
 
-static void
-init_mul_table(void)
+static void init_mul_table(void)
 {
     int i, j;
     for (i=0; i< GF_SIZE+1; i++)
@@ -213,8 +211,7 @@ init_mul_table(void)
 /*
  * initialize the data structures used for computations in GF.
  */
-static void
-generate_gf(void)
+static void generate_gf(void)
 {
     int i;
     gf mask;
@@ -297,8 +294,7 @@ generate_gf(void)
 
 
 #define UNROLL 16 /* 1, 4, 8, 16 */
-static void
-slow_addmul1(gf *dst1, gf *src1, gf c, int sz)
+static void slow_addmul1(gf *dst1, gf *src1, gf c, int sz)
 {
     USE_GF_MULC ;
     register gf *dst = dst1, *src = src1 ;
@@ -337,7 +333,8 @@ slow_addmul1(gf *dst1, gf *src1, gf c, int sz)
 
 # define addmul1 slow_addmul1
 
-static void addmul(gf *dst, gf *src, gf c, int sz) {
+static void addmul(gf *dst, gf *src, gf c, int sz)
+{
     // fprintf(stderr, "Dst=%p Src=%p, gf=%02x sz=%d\n", dst, src, c, sz);
     if (c != 0) addmul1(dst, src, c, sz);
 }
@@ -357,8 +354,7 @@ static void addmul(gf *dst, gf *src, gf c, int sz) {
 #endif
 
 #define UNROLL 16 /* 1, 4, 8, 16 */
-static void
-slow_mul1(gf *dst1, gf *src1, gf c, int sz)
+static void slow_mul1(gf *dst1, gf *src1, gf c, int sz)
 {
     USE_GF_MULC ;
     register gf *dst = dst1, *src = src1 ;
@@ -397,7 +393,8 @@ slow_mul1(gf *dst1, gf *src1, gf c, int sz)
 
 # define mul1 slow_mul1
 
-static inline void mul(gf *dst, gf *src, gf c, int sz) {
+static inline void mul(gf *dst, gf *src, gf c, int sz)
+{
     /*fprintf(stderr, "%p = %02x * %p\n", dst, c, src);*/
     if (c != 0) mul1(dst, src, c, sz); else memset(dst, 0, c);
 }
@@ -409,8 +406,7 @@ static inline void mul(gf *dst, gf *src, gf c, int sz) {
  * Return non-zero if singular.
  */
 DEB( int pivloops=0; int pivswaps=0 ; /* diagnostic */)
-    static int
-invert_mat(gf *src, int k)
+static int invert_mat(gf *src, int k)
 {
     gf c, *p ;
     int irow, icol, row, col, i, ix ;
@@ -553,7 +549,8 @@ static long long rdtsc(void)
     return ( (((long long)hi) << 32) | ((long long) low));
 }
 
-void print_matrix1(gf* matrix, int nrows, int ncols) {
+void print_matrix1(gf* matrix, int nrows, int ncols)
+{
     int i, j;
     printf("matrix (%d,%d):\n", nrows, ncols);
     for(i = 0; i < nrows; i++) {
@@ -564,7 +561,8 @@ void print_matrix1(gf* matrix, int nrows, int ncols) {
     }
 }
 
-void print_matrix2(gf** matrix, int nrows, int ncols) {
+void print_matrix2(gf** matrix, int nrows, int ncols)
+{
     int i, j;
     printf("matrix (%d,%d):\n", nrows, ncols);
     for(i = 0; i < nrows; i++) {
@@ -578,7 +576,8 @@ void print_matrix2(gf** matrix, int nrows, int ncols) {
 #endif
 
 /* y = a**n */
-static gf galExp(gf a, gf n) {
+static gf galExp(gf a, gf n)
+{
     int logA;
     int logResult;
     if(0 == n) {
@@ -596,11 +595,13 @@ static gf galExp(gf a, gf n) {
     return gf_exp[logResult];
 }
 
-static inline gf galMultiply(gf a, gf b) {
+static inline gf galMultiply(gf a, gf b)
+{
     return gf_mul_table[ ((int)a << 8) + (int)b ];
 }
 
-static gf* vandermonde(int nrows, int ncols) {
+static gf* vandermonde(int nrows, int ncols)
+{
     int row, col, ptr;
     gf* matrix = (gf*)RS_MALLOC(nrows * ncols);
     if(NULL != matrix) {
@@ -618,7 +619,9 @@ static gf* vandermonde(int nrows, int ncols) {
 /*
  * Not check for input params
  * */
-static gf* sub_matrix(gf* matrix, int rmin, int cmin, int rmax, int cmax,  int nrows, int ncols) {
+static gf* sub_matrix(gf* matrix, int rmin, int cmin, int rmax, int cmax,
+                      int nrows, int ncols)
+{
     int i, j, ptr = 0;
     gf* new_m = (gf*)RS_MALLOC( (rmax-rmin) * (cmax-cmin) );
     if(NULL != new_m) {
@@ -633,7 +636,8 @@ static gf* sub_matrix(gf* matrix, int rmin, int cmin, int rmax, int cmax,  int n
 }
 
 /* y = a.dot(b) */
-static gf* multiply1(gf *a, int ar, int ac, gf *b, int br, int bc) {
+static gf* multiply1(gf *a, int ar, int ac, gf *b, int br, int bc)
+{
     gf *new_m, tg;
     int r, c, i, ptr = 0;
 
@@ -661,7 +665,9 @@ static gf* multiply1(gf *a, int ar, int ac, gf *b, int br, int bc) {
 
 /* copy from golang rs version */
 static inline int code_some_shards(gf* matrixRows, gf** inputs, gf** outputs,
-        int dataShards, int outputCount, int byteCount) {
+                                   int dataShards, int outputCount,
+                                   int byteCount)
+{
     gf* in;
     int iRow, c;
     for(c = 0; c < dataShards; c++) {
@@ -678,7 +684,8 @@ static inline int code_some_shards(gf* matrixRows, gf** inputs, gf** outputs,
     return 0;
 }
 
-reed_solomon* reed_solomon_new(int data_shards, int parity_shards) {
+reed_solomon* reed_solomon_new(int data_shards, int parity_shards)
+{
     gf* vm = NULL;
     gf* top = NULL;
     int err = 0;
@@ -758,7 +765,8 @@ reed_solomon* reed_solomon_new(int data_shards, int parity_shards) {
     return NULL;
 }
 
-void reed_solomon_release(reed_solomon* rs) {
+void reed_solomon_release(reed_solomon* rs)
+{
     if(NULL != rs) {
         if(NULL != rs->m) {
             RS_FREE(rs->m);
@@ -778,13 +786,14 @@ void reed_solomon_release(reed_solomon* rs) {
  * fec_blocks[rs->data_shards][block_size]
  * */
 int reed_solomon_encode(reed_solomon* rs,
-        uint8_t** data_blocks,
-        uint8_t** fec_blocks,
-        int block_size) {
+                        uint8_t** data_blocks,
+                        uint8_t** fec_blocks,
+                        int block_size)
+{
     assert(NULL != rs && NULL != rs->parity);
 
-    return code_some_shards(rs->parity, data_blocks, fec_blocks
-            , rs->data_shards, rs->parity_shards, block_size);
+    return code_some_shards(rs->parity, data_blocks, fec_blocks,
+                            rs->data_shards, rs->parity_shards, block_size);
 }
 
 /**
@@ -798,12 +807,13 @@ int reed_solomon_encode(reed_solomon* rs,
  * nr_fec_blocks: the number of erased blocks
  * */
 int reed_solomon_decode(reed_solomon* rs,
-        uint8_t **data_blocks,
-        int block_size,
-        uint8_t **dec_fec_blocks,
-        unsigned int *fec_block_nos,
-        unsigned int *erased_blocks,
-        int nr_fec_blocks) {
+                        uint8_t **data_blocks,
+                        int block_size,
+                        uint8_t **dec_fec_blocks,
+                        unsigned int *fec_block_nos,
+                        unsigned int *erased_blocks,
+                        int nr_fec_blocks)
+{
     /* use stack instead of malloc, define a small number of DATA_SHARDS_MAX to save memory */
     gf dataDecodeMatrix[DATA_SHARDS_MAX*DATA_SHARDS_MAX];
     uint8_t* subShards[DATA_SHARDS_MAX];
@@ -897,7 +907,8 @@ int reed_solomon_decode(reed_solomon* rs,
  * shards[nr_shards][block_size]
  * */
 int reed_solomon_encode2(reed_solomon* rs, uint8_t** data_blocks,
-                         uint8_t** fec_blocks, int nr_shards, int block_size) {
+                         uint8_t** fec_blocks, int nr_shards, int block_size)
+{
     int i, ds = rs->data_shards, ps = rs->parity_shards, ss = rs->shards;
     i = nr_shards / ss;
 
