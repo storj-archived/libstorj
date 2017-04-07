@@ -191,6 +191,7 @@ int test_create_encoding(
         int block_size
         ) {
     uint8_t **data_blocks;
+    uint8_t **fec_blocks;
     int data_shards, parity_shards;
     int i, n, nr_shards, nr_blocks, nr_fec_blocks;
 
@@ -202,13 +203,19 @@ int test_create_encoding(
     nr_fec_blocks = n * parity_shards;
     nr_shards = nr_blocks + nr_fec_blocks;
 
-    data_blocks = (uint8_t**)malloc(nr_shards * sizeof(uint8_t*));
-    for(i = 0; i < nr_shards; i++) {
+    data_blocks = (uint8_t**)malloc(nr_blocks * sizeof(uint8_t*));
+    for(i = 0; i < nr_blocks; i++) {
         data_blocks[i] = data + i*block_size;
     }
 
-    n = reed_solomon_encode2(rs, data_blocks, nr_shards, block_size);
+    fec_blocks = (uint8_t**)malloc(nr_fec_blocks * sizeof(uint8_t*));
+    for(i = 0; i < nr_fec_blocks; i++) {
+        fec_blocks[i] = data + (nr_blocks + i)*block_size;
+    }
+
+    n = reed_solomon_encode2(rs, data_blocks, fec_blocks, nr_shards, block_size);
     free(data_blocks);
+    free(fec_blocks);
 
     return n;
 }
@@ -221,6 +228,7 @@ int test_data_decode(
         int *erases,
         int erase_count) {
     uint8_t **data_blocks;
+    uint8_t **fec_blocks;
     uint8_t *zilch;
     int data_shards, parity_shards;
     int i, j, n, nr_shards, nr_blocks, nr_fec_blocks;
@@ -233,9 +241,14 @@ int test_data_decode(
     nr_fec_blocks = n * parity_shards;
     nr_shards = nr_blocks + nr_fec_blocks;
 
-    data_blocks = (uint8_t**)malloc(nr_shards * sizeof(uint8_t*));
-    for(i = 0; i < nr_shards; i++) {
+    data_blocks = (uint8_t**)malloc(nr_blocks * sizeof(uint8_t*));
+    for(i = 0; i < nr_blocks; i++) {
         data_blocks[i] = data + i*block_size;
+    }
+
+    fec_blocks = (uint8_t**)malloc(nr_fec_blocks * sizeof(uint8_t*));
+    for(i = 0; i < nr_fec_blocks; i++) {
+        fec_blocks[i] = data + (nr_blocks + i)*block_size;
     }
 
     zilch = (uint8_t*)calloc(1, nr_shards);
@@ -245,7 +258,8 @@ int test_data_decode(
         zilch[j] = 1; //mark as erased
     }
 
-    n = reed_solomon_reconstruct(rs, data_blocks, zilch, nr_shards, block_size);
+    n = reed_solomon_reconstruct(rs, data_blocks, fec_blocks, zilch,
+                                 nr_shards, block_size);
     free(data_blocks);
     free(zilch);
 
@@ -737,6 +751,7 @@ void test_004(void) {
     int i, j, n, seed, size, nrShards, nrBlocks, nrFecBlocks;
     uint8_t *origin, *data;
     uint8_t **data_blocks;
+    uint8_t **fec_blocks;
     uint8_t *zilch;
     reed_solomon *rs;
 
@@ -766,13 +781,18 @@ void test_004(void) {
     //print_buf(origin, "%d ", size);
     //print_buf(data, "%d ", nrShards*blockSize);
 
-    data_blocks = (uint8_t**)malloc( nrShards * sizeof(uint8_t**) );
-    for(i = 0; i < nrShards; i++) {
+    data_blocks = (uint8_t**)malloc(nrBlocks * sizeof(uint8_t**));
+    for(i = 0; i < nrBlocks; i++) {
         data_blocks[i] = data + i*blockSize;
     }
 
+    fec_blocks = (uint8_t**)malloc(nrFecBlocks * sizeof(uint8_t*));
+    for(i = 0; i < nrFecBlocks; i++) {
+        fec_blocks[i] = data + (nrBlocks + i)*blockSize;
+    }
+
     rs = reed_solomon_new(dataShards, parityShards);
-    reed_solomon_encode2(rs, data_blocks, nrShards, blockSize);
+    reed_solomon_encode2(rs, data_blocks, fec_blocks, nrShards, blockSize);
     i = memcmp(origin, data, size);
     assert(0 == i);
     //print_matrix2(data_blocks, nrShards, blockSize);
@@ -802,7 +822,8 @@ void test_004(void) {
         }
     }
 
-    reed_solomon_reconstruct(rs, data_blocks, zilch, nrShards, blockSize);
+    reed_solomon_reconstruct(rs, data_blocks, fec_blocks, zilch,
+                             nrShards, blockSize);
     i = memcmp(origin, data, size);
     //print_buf(origin, "%d ", nrBlocks);
     //print_buf(data, "%d ", nrBlocks);
@@ -812,6 +833,7 @@ void test_004(void) {
     free(origin);
     free(data);
     free(data_blocks);
+    free(fec_blocks);
     free(zilch);
     reed_solomon_release(rs);
 }
