@@ -1534,6 +1534,7 @@ static void create_parity_shards(uv_work_t *work)
     }
 
     uint64_t block_size = (state->file_size + state->total_data_shards - 1) / state->total_data_shards;
+    uint64_t parity_size = state->total_shards * block_size - state->file_size;
 
     // determine parity shard location
     char *tmp_folder = NULL;
@@ -1561,6 +1562,8 @@ static void create_parity_shards(uv_work_t *work)
                 '\0');
     } else {
         req->error_status = 1;
+        state->log->error(state->env->log_options, state->handle,
+                       "No temp folder set");
         goto clean_variables;
     }
 
@@ -1570,6 +1573,14 @@ static void create_parity_shards(uv_work_t *work)
         goto clean_variables;
     }
 
+    // TODO Find alternative method for fallocate on mac
+    int falloc_status = fallocate(fd_parity, FALLOC_FL_ZERO_RANGE, 0, parity_size);
+    if (falloc_status) {
+        req->error_status = 1;
+        state->log->error(state->env->log_options, state->handle,
+                       "could not allocate space for mmap parity shard file");
+        goto clean_variables;
+    }
 
 clean_variables:
     if (tmp_folder) {
