@@ -11,6 +11,7 @@
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
+#include <fcntl.h>
 
 #define STORJ_NULL -1
 #define STORJ_MAX_REPORT_TRIES 2

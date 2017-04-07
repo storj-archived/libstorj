@@ -456,6 +456,7 @@ typedef struct {
     // TODO: change this to opts or env
     bool rs;
     bool awaiting_parity_shards;
+    char *parity_file_path;
 
     bool requesting_frame;
     bool completed_upload;

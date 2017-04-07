@@ -220,6 +220,11 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->encryption_key);
     }
 
+    if (state->parity_file_path) {
+        unlink(state->parity_file_path);
+        free(state->parity_file_path);
+    }
+
     if (state->shard) {
         for (int i = 0; i < state->total_shards; i++ ) {
 
@@ -1538,7 +1543,6 @@ static void create_parity_shards(uv_work_t *work)
 
     // determine parity shard location
     char *tmp_folder = NULL;
-    char *tmp_path = NULL;
     if (state->env->tmp_path) {
         char *tmp_folder = strdup(state->env->tmp_path);
         int file_name_len = strlen(state->file_name);
@@ -1549,11 +1553,11 @@ static void create_parity_shards(uv_work_t *work)
             tmp_folder_len -= 1;
         }
 
-        tmp_path = calloc(
+        state->parity_file_path = calloc(
             tmp_folder_len + 1 + file_name_len + extension_len + 1,
             sizeof(char)
         );
-        sprintf(tmp_path,
+        sprintf(state->parity_file_path,
                 "%s%c%s%s%c",
                 tmp_folder,
                 separator(),
@@ -1567,14 +1571,14 @@ static void create_parity_shards(uv_work_t *work)
         goto clean_variables;
     }
 
-    int fd_parity = open(tmp_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    if (!fd_parity) {
+    int parity_fd = open(state->parity_file_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    if (!parity_fd) {
         req->error_status = 1;
         goto clean_variables;
     }
 
     // TODO Find alternative method for fallocate on mac
-    int falloc_status = fallocate(fd_parity, FALLOC_FL_ZERO_RANGE, 0, parity_size);
+    int falloc_status = fallocate(parity_fd, FALLOC_FL_ZERO_RANGE, 0, parity_size);
     if (falloc_status) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
@@ -1587,8 +1591,8 @@ clean_variables:
         free(tmp_folder);
     }
 
-    if (tmp_path) {
-        free(tmp_path);
+    if (parity_fd) {
+        close(parity_fd);
     }
 }
 
@@ -2196,6 +2200,7 @@ int storj_bridge_store_file(storj_env_t *env,
     // TODO: change this to env or opts
     state->rs = true;
     state->awaiting_parity_shards = true;
+    state->parity_file_path = NULL;
 
     state->requesting_frame = false;
     state->completed_upload = false;
