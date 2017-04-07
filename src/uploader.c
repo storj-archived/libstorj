@@ -371,7 +371,7 @@ static int prepare_bucket_entry_hmac(storj_upload_state_t *state)
     struct hmac_sha512_ctx hmac_ctx;
     hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, state->encryption_key);
 
-    for (int i = 0; i < state->total_shards; i++) {
+    for (int i = 0; i < state->total_data_shards; i++) {
 
         shard_tracker_t *shard = &state->shard[i];
 
@@ -1767,7 +1767,7 @@ static int check_in_progress(storj_upload_state_t *state, int status)
 
 static void queue_push_frame_and_shard(storj_upload_state_t *state)
 {
-    for (int index = 0; index < state->total_shards; index++) {
+    for (int index = 0; index < state->total_data_shards; index++) {
 
         if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
             state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED &&
@@ -1820,7 +1820,12 @@ static void queue_next_work(storj_upload_state_t *state)
         goto finish_up;
     }
 
-    for (int index = 0; index < state->total_shards; index++ ) {
+    // Reed solomon
+    // if (!state->parity_shards) {
+    //     queue_verify_bucket_id(state);
+    // }
+
+    for (int index = 0; index < state->total_data_shards; index++ ) {
         if (state->shard[index].progress == AWAITING_PREPARE_FRAME &&
             check_in_progress(state, PREPARING_FRAME) < state->prepare_frame_limit) { // TODO: make adjustable frame prepare limit
             queue_prepare_frame(state, index);
@@ -1828,7 +1833,7 @@ static void queue_next_work(storj_upload_state_t *state)
     }
 
     // report upload complete
-    if (state->completed_shards == state->total_shards &&
+    if (state->completed_shards == state->total_data_shards &&
         !state->creating_bucket_entry &&
         !state->completed_upload) {
         queue_create_bucket_entry(state);
@@ -1895,7 +1900,9 @@ static void prepare_upload_state(uv_work_t *work)
         return;
     }
 
-    state->total_shards = ceil((double)state->file_size / state->shard_size);
+    state->total_data_shards = ceil((double)state->file_size / state->shard_size);
+    state->total_parity_shards = (state->rs) ? state->total_data_shards * 2 / 3 : 0;
+    state->total_shards = state->total_data_shards + state->total_parity_shards;
 
     int tracker_calloc_amount = state->total_shards * sizeof(shard_tracker_t);
     state->shard = malloc(tracker_calloc_amount);
@@ -2047,6 +2054,8 @@ int storj_bridge_store_file(storj_env_t *env,
     state->bucket_key = NULL;
     state->completed_shards = 0;
     state->total_shards = 0;
+    state->total_data_shards = 0;
+    state->total_parity_shards = 0;
     state->shard_size = 0;
     state->total_bytes = 0;
     state->uploaded_bytes = 0;
@@ -2055,6 +2064,9 @@ int storj_bridge_store_file(storj_env_t *env,
     state->hmac_id = NULL;
     state->encryption_key = NULL;
     state->encryption_ctr = NULL;
+
+    // TODO: change this to env or opts
+    state->rs = true;
 
     state->requesting_frame = false;
     state->completed_upload = false;

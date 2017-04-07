@@ -441,6 +441,8 @@ typedef struct {
     char *bucket_key;
     uint32_t completed_shards;
     uint32_t total_shards;
+    uint32_t total_data_shards;
+    uint32_t total_parity_shards;
     uint64_t shard_size;
     uint64_t total_bytes;
     uint64_t uploaded_bytes;
@@ -449,6 +451,9 @@ typedef struct {
     char *hmac_id;
     uint8_t *encryption_key;
     uint8_t *encryption_ctr;
+
+    // TODO: change this to opts or env
+    bool rs;
 
     bool requesting_frame;
     bool completed_upload;
