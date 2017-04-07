@@ -168,7 +168,7 @@ uint8_t* test_create_random(reed_solomon *rs, int data_size, int block_size) {
 
     gettimeofday(&tv, 0);
     seed = tv.tv_sec ^ tv.tv_usec;
-    srandom(seed);
+    srand(seed);
 
     nr_blocks = (data_size+block_size-1)/block_size;
     nr_blocks = ((nr_blocks + rs->data_shards - 1)/ rs->data_shards) * rs->data_shards;
@@ -177,7 +177,7 @@ uint8_t* test_create_random(reed_solomon *rs, int data_size, int block_size) {
 
     data = malloc(nr_blocks * block_size);
     for(i = 0; i < data_size; i++) {
-        data[i] = (uint8_t)(random() % 255);
+        data[i] = (uint8_t)(rand() % 255);
     }
     memset(data + data_size, 0, nr_blocks*block_size - data_size);
 
@@ -757,7 +757,7 @@ void test_004(void) {
 
     gettimeofday(&tv, 0);
     seed = tv.tv_sec ^ tv.tv_usec;
-    srandom(seed);
+    srand(seed);
 
     fec_init();
 
@@ -766,7 +766,7 @@ void test_004(void) {
     origin = malloc(size);
     //memcpy(origin, text, size);
     for(i = 0; i < size; i++) {
-        origin[i] = (uint8_t)(random() % 255);
+        origin[i] = (uint8_t)(rand() % 255);
     }
 
     nrBlocks = (size+blockSize-1) / blockSize;
@@ -807,7 +807,7 @@ void test_004(void) {
     es[3] = 8; */
 
     for(i = 0; i < n-2; i++) {
-        j = random() % (nrBlocks-1);
+        j = rand() % (nrBlocks-1);
         //j = es[i];
         memset(data + j*blockSize, 137, blockSize);
         zilch[j] = 1; //erased!
@@ -815,7 +815,7 @@ void test_004(void) {
     }
     if(nrFecBlocks > 2) {
         for(i = 0; i < 2; i++) {
-            j = nrBlocks + (random() % nrFecBlocks);
+            j = nrBlocks + (rand() % nrFecBlocks);
             memset(data + j*blockSize, 139, blockSize);
             zilch[j] = 1;
             printf("erased %d\n", j);
