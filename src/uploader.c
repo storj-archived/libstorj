@@ -1492,6 +1492,122 @@ static void queue_request_frame_id(storj_upload_state_t *state)
     state->requesting_frame = true;
 }
 
+static void after_create_parity_shards(uv_work_t *work, int status)
+{
+    parity_shard_req_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+
+    state->pending_work_count -= 1;
+
+    if (req->error_status != 0) {
+        state->log->warn(state->env->log_options, state->handle,
+                       "Something went wrong!!");
+
+        state->awaiting_parity_shards = true;
+    } else {
+        state->log->info(state->env->log_options, state->handle,
+                       "Successfully created parity shards");
+    }
+
+clean_variables:
+    queue_next_work(state);
+    free(work);
+}
+
+static void create_parity_shards(uv_work_t *work)
+{
+    parity_shard_req_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+
+    state->log->info(state->env->log_options, state->handle,
+                   "Creating parity shards");
+
+    uint8_t *map = (uint8_t *)mmap(NULL,
+                                   state->file_size,
+                                   PROT_READ,
+                                   MAP_SHARED,
+                                   fileno(state->original_file),
+                                   0);
+    if (map == MAP_FAILED) {
+        req->error_status = 1;
+        goto clean_variables;
+    }
+
+    uint64_t block_size = (state->file_size + state->total_data_shards - 1) / state->total_data_shards;
+
+    // determine parity shard location
+    char *tmp_folder = NULL;
+    char *tmp_path = NULL;
+    if (state->env->tmp_path) {
+        char *tmp_folder = strdup(state->env->tmp_path);
+        int file_name_len = strlen(state->file_name);
+        int extension_len = strlen(".parity");
+        int tmp_folder_len = strlen(tmp_folder);
+        if (tmp_folder[tmp_folder_len - 1] == separator()) {
+            tmp_folder[tmp_folder_len - 1] = '\0';
+            tmp_folder_len -= 1;
+        }
+
+        tmp_path = calloc(
+            tmp_folder_len + 1 + file_name_len + extension_len + 1,
+            sizeof(char)
+        );
+        sprintf(tmp_path,
+                "%s%c%s%s%c",
+                tmp_folder,
+                separator(),
+                state->file_name,
+                ".parity",
+                '\0');
+    } else {
+        req->error_status = 1;
+        goto clean_variables;
+    }
+
+    int fd_parity = open(tmp_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    if (!fd_parity) {
+        req->error_status = 1;
+        goto clean_variables;
+    }
+
+
+clean_variables:
+    if (tmp_folder) {
+        free(tmp_folder);
+    }
+
+    if (tmp_path) {
+        free(tmp_path);
+    }
+}
+
+
+static void queue_create_parity_shards(storj_upload_state_t *state)
+{
+    uv_work_t *work = frame_work_new(NULL, state);
+    if (!work) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    state->pending_work_count += 1;
+
+    parity_shard_req_t *req = malloc(sizeof(parity_shard_req_t));
+
+    req->error_status = 0;
+    req->upload_state = state;
+    work->data = req;
+
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               create_parity_shards, after_create_parity_shards);
+
+    if (status) {
+        state->error_status = STORJ_QUEUE_ERROR;
+    }
+
+    state->awaiting_parity_shards = false;
+}
+
 /**
  * pre_pass - file_key
  * pre_salt - file_id
@@ -1820,12 +1936,13 @@ static void queue_next_work(storj_upload_state_t *state)
         goto finish_up;
     }
 
-    // Reed solomon
-    // if (!state->parity_shards) {
-    //     queue_verify_bucket_id(state);
-    // }
+    // Create parity shards using reed solomon
+    if (state->awaiting_parity_shards && state->rs) {
+        queue_create_parity_shards(state);
+        goto finish_up;
+    }
 
-    for (int index = 0; index < state->total_data_shards; index++ ) {
+    for (int index = 0; index < state->total_shards; index++ ) {
         if (state->shard[index].progress == AWAITING_PREPARE_FRAME &&
             check_in_progress(state, PREPARING_FRAME) < state->prepare_frame_limit) { // TODO: make adjustable frame prepare limit
             queue_prepare_frame(state, index);
@@ -2067,6 +2184,7 @@ int storj_bridge_store_file(storj_env_t *env,
 
     // TODO: change this to env or opts
     state->rs = true;
+    state->awaiting_parity_shards = true;
 
     state->requesting_frame = false;
     state->completed_upload = false;

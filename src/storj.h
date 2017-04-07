@@ -177,6 +177,7 @@ typedef struct storj_env {
     storj_encrypt_options_t *encrypt_options;
     storj_http_options_t *http_options;
     storj_log_options_t *log_options;
+    const char *tmp_path;
     uv_loop_t *loop;
     storj_log_levels_t *log;
 } storj_env_t;
@@ -454,6 +455,7 @@ typedef struct {
 
     // TODO: change this to opts or env
     bool rs;
+    bool awaiting_parity_shards;
 
     bool requesting_frame;
     bool completed_upload;
