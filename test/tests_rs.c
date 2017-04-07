@@ -21,14 +21,15 @@
  * SOFTWARE.
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <string.h>
 #include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
+#include <unistd.h>
 
 #define PROFILE
 #include "../src/rs.h"
@@ -160,9 +161,9 @@ void test_inverse(void) {
     }
 }
 
-unsigned char* test_create_random(reed_solomon *rs, int data_size, int block_size) {
+uint8_t* test_create_random(reed_solomon *rs, int data_size, int block_size) {
     struct timeval tv;
-    unsigned char* data;
+    uint8_t* data;
     int i, n, seed, nr_blocks;
 
     gettimeofday(&tv, 0);
@@ -176,7 +177,7 @@ unsigned char* test_create_random(reed_solomon *rs, int data_size, int block_siz
 
     data = malloc(nr_blocks * block_size);
     for(i = 0; i < data_size; i++) {
-        data[i] = (unsigned char)(random() % 255);
+        data[i] = (uint8_t)(random() % 255);
     }
     memset(data + data_size, 0, nr_blocks*block_size - data_size);
 
@@ -185,11 +186,11 @@ unsigned char* test_create_random(reed_solomon *rs, int data_size, int block_siz
 
 int test_create_encoding(
         reed_solomon *rs,
-        unsigned char *data,
+        uint8_t *data,
         int data_size,
         int block_size
         ) {
-    unsigned char **data_blocks;
+    uint8_t **data_blocks;
     int data_shards, parity_shards;
     int i, n, nr_shards, nr_blocks, nr_fec_blocks;
 
@@ -201,7 +202,7 @@ int test_create_encoding(
     nr_fec_blocks = n * parity_shards;
     nr_shards = nr_blocks + nr_fec_blocks;
 
-    data_blocks = (unsigned char**)malloc(nr_shards * sizeof(unsigned char*));
+    data_blocks = (uint8_t**)malloc(nr_shards * sizeof(uint8_t*));
     for(i = 0; i < nr_shards; i++) {
         data_blocks[i] = data + i*block_size;
     }
@@ -214,13 +215,13 @@ int test_create_encoding(
 
 int test_data_decode(
         reed_solomon *rs,
-        unsigned char *data,
+        uint8_t *data,
         int data_size,
         int block_size,
         int *erases,
         int erase_count) {
-    unsigned char **data_blocks;
-    unsigned char *zilch;
+    uint8_t **data_blocks;
+    uint8_t *zilch;
     int data_shards, parity_shards;
     int i, j, n, nr_shards, nr_blocks, nr_fec_blocks;
 
@@ -232,12 +233,12 @@ int test_data_decode(
     nr_fec_blocks = n * parity_shards;
     nr_shards = nr_blocks + nr_fec_blocks;
 
-    data_blocks = (unsigned char**)malloc(nr_shards * sizeof(unsigned char*));
+    data_blocks = (uint8_t**)malloc(nr_shards * sizeof(uint8_t*));
     for(i = 0; i < nr_shards; i++) {
         data_blocks[i] = data + i*block_size;
     }
 
-    zilch = (unsigned char*)calloc(1, nr_shards);
+    zilch = (uint8_t*)calloc(1, nr_shards);
     for(i = 0; i < erase_count; i++) {
         j = erases[i];
         memset(data + j*block_size, 137, block_size);
@@ -253,7 +254,7 @@ int test_data_decode(
 
 void test_one_encoding(void) {
     reed_solomon *rs;
-    unsigned char* data;
+    uint8_t* data;
     int block_size = 50000;
     int data_size = 10*block_size;
     int err;
@@ -272,7 +273,7 @@ void test_one_encoding(void) {
 
 int test_one_decoding_13(int *erases, int erase_count) {
     reed_solomon *rs;
-    unsigned char *data, *origin;
+    uint8_t *data, *origin;
     int block_size = 50000;
     int data_size = 10*block_size;
     int err, err2;
@@ -282,7 +283,7 @@ int test_one_decoding_13(int *erases, int erase_count) {
     err = test_create_encoding(rs, data, data_size, block_size);
     assert(0 == err);
 
-    origin = (unsigned char*)malloc(data_size);
+    origin = (uint8_t*)malloc(data_size);
     memcpy(origin, data, data_size);
 
     err = test_data_decode(rs, data, data_size, block_size, erases, erase_count);
@@ -421,7 +422,7 @@ void test_one_decoding(void) {
 
 int test_one_decoding_13_6(int *erases, int erase_count) {
     reed_solomon *rs;
-    unsigned char *data, *origin;
+    uint8_t *data, *origin;
     int block_size = 50000;
     int data_size = 10*block_size*6;
     int err, err2;
@@ -431,7 +432,7 @@ int test_one_decoding_13_6(int *erases, int erase_count) {
     err = test_create_encoding(rs, data, data_size, block_size);
     assert(0 == err);
 
-    origin = (unsigned char*)malloc(data_size);
+    origin = (uint8_t*)malloc(data_size);
     memcpy(origin, data, data_size);
 
     err = test_data_decode(rs, data, data_size, block_size, erases, erase_count);
@@ -453,7 +454,7 @@ int test_one_decoding_13_6(int *erases, int erase_count) {
 
 void test_encoding(void) {
     reed_solomon *rs;
-    unsigned char *data;
+    uint8_t *data;
     int block_size = 50000;
     //multi shards encoding
     int data_size = 13*block_size*6;
@@ -557,7 +558,7 @@ void test_reconstruct(void) {
 double benchmarkEncodeTest(int n, int dataShards, int parityShards, int shardSize) {
     clock_t start, end;
     double millis;
-    unsigned char* data;
+    uint8_t* data;
     int i;
     int dataSize = shardSize*dataShards;
     reed_solomon* rs = reed_solomon_new(dataShards, parityShards);
@@ -614,13 +615,13 @@ void test_002(void) {
     char text[] = "hello world", output[256];
     int block_size = 1;
     int nrDataBlocks = sizeof(text)/sizeof(char) - 1;
-    unsigned char* data_blocks[128];
-    unsigned char* fec_blocks[128];
+    uint8_t* data_blocks[128];
+    uint8_t* fec_blocks[128];
     int nrFecBlocks = 6;
 
     //decode
     unsigned int fec_block_nos[128], erased_blocks[128];
-    unsigned char* dec_fec_blocks[128];
+    uint8_t* dec_fec_blocks[128];
     int nr_fec_blocks;
 
     int i;
@@ -629,13 +630,13 @@ void test_002(void) {
     printf("%s:\n", __FUNCTION__);
 
     for(i = 0; i < nrDataBlocks; i++) {
-        data_blocks[i] = (unsigned char*)&text[i];
+        data_blocks[i] = (uint8_t*)&text[i];
     }
 
     memset(output, 0, sizeof(output));
     memcpy(output, text, nrDataBlocks);
     for(i = 0; i < nrFecBlocks; i++) {
-        fec_blocks[i] = (unsigned char*)&output[i + nrDataBlocks];
+        fec_blocks[i] = (uint8_t*)&output[i + nrDataBlocks];
     }
 
     reed_solomon_encode(rs, data_blocks, fec_blocks, block_size);
@@ -670,13 +671,13 @@ void test_003(void) {
     char text[] = "hello world hello world ", output[256];
     int block_size = 2;
     int nrDataBlocks = (sizeof(text)/sizeof(char) - 1) / block_size;
-    unsigned char* data_blocks[128];
-    unsigned char* fec_blocks[128];
+    uint8_t* data_blocks[128];
+    uint8_t* fec_blocks[128];
     int nrFecBlocks = 6;
 
     //decode
     unsigned int fec_block_nos[128], erased_blocks[128];
-    unsigned char* dec_fec_blocks[128];
+    uint8_t* dec_fec_blocks[128];
     int nr_fec_blocks;
 
     int i;
@@ -686,14 +687,14 @@ void test_003(void) {
     //printf("text size=%d\n", (int)(sizeof(text)/sizeof(char) - 1) );
 
     for(i = 0; i < nrDataBlocks; i++) {
-        data_blocks[i] = (unsigned char*)&text[i*block_size];
+        data_blocks[i] = (uint8_t*)&text[i*block_size];
     }
 
     memset(output, 0, sizeof(output));
     memcpy(output, text, nrDataBlocks*block_size);
     //print_matrix1((gf*)output, nrDataBlocks + nrFecBlocks, block_size);
     for(i = 0; i < nrFecBlocks; i++) {
-        fec_blocks[i] = (unsigned char*)&output[i*block_size + nrDataBlocks*block_size];
+        fec_blocks[i] = (uint8_t*)&output[i*block_size + nrDataBlocks*block_size];
     }
     reed_solomon_encode(rs, data_blocks, fec_blocks, block_size);
     printf("golang output(example/test_rs.go):\n [[104 101] [108 108] [111 32] [119 111] [114 108] [100 32] [104 101] [108 108] [111 32] [119 111] [114 108] [100 32] \n[157 178] [83 31] [48 240] [254 93] [31 89] [151 184]]\n");
@@ -734,9 +735,9 @@ void test_004(void) {
     int blockSize = 280;
     struct timeval tv;
     int i, j, n, seed, size, nrShards, nrBlocks, nrFecBlocks;
-    unsigned char *origin, *data;
-    unsigned char **data_blocks;
-    unsigned char *zilch;
+    uint8_t *origin, *data;
+    uint8_t **data_blocks;
+    uint8_t *zilch;
     reed_solomon *rs;
 
     gettimeofday(&tv, 0);
@@ -750,7 +751,7 @@ void test_004(void) {
     origin = malloc(size);
     //memcpy(origin, text, size);
     for(i = 0; i < size; i++) {
-        origin[i] = (unsigned char)(random() % 255);
+        origin[i] = (uint8_t)(random() % 255);
     }
 
     nrBlocks = (size+blockSize-1) / blockSize;
@@ -765,7 +766,7 @@ void test_004(void) {
     //print_buf(origin, "%d ", size);
     //print_buf(data, "%d ", nrShards*blockSize);
 
-    data_blocks = (unsigned char**)malloc( nrShards * sizeof(unsigned char**) );
+    data_blocks = (uint8_t**)malloc( nrShards * sizeof(uint8_t**) );
     for(i = 0; i < nrShards; i++) {
         data_blocks[i] = data + i*blockSize;
     }
@@ -776,7 +777,7 @@ void test_004(void) {
     assert(0 == i);
     //print_matrix2(data_blocks, nrShards, blockSize);
 
-    zilch = (unsigned char*)calloc(1, nrShards);
+    zilch = (uint8_t*)calloc(1, nrShards);
     n = parityShards;
 
     /* int es[100];

@@ -44,11 +44,12 @@
  */
 #define GF_BITS  8  /* code over GF(2**GF_BITS) - change to suit */
 
+#include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <assert.h>
 #include "rs.h"
 
 /*
@@ -90,7 +91,7 @@ u_long ticks[10];   /* vars for timekeeping */
  * gf is the type used to store an element of the Galois Field.
  * Must constain at least GF_BITS bits.
  *
- * Note: unsigned char will work up to GF(256) but int seems to run
+ * Note: uint8_t will work up to GF(256) but int seems to run
  * faster on the Pentium. We use int whenever have to deal with an
  * index, since they are generally faster.
  */
@@ -100,7 +101,7 @@ u_long ticks[10];   /* vars for timekeeping */
 #if (GF_BITS != 8)
 #error "GF_BITS must be 8"
 #endif
-typedef unsigned char gf;
+typedef uint8_t gf;
 
 #define GF_SIZE ((1 << GF_BITS) - 1)    /* powers of \alpha */
 
@@ -777,8 +778,8 @@ void reed_solomon_release(reed_solomon* rs) {
  * fec_blocks[rs->data_shards][block_size]
  * */
 int reed_solomon_encode(reed_solomon* rs,
-        unsigned char** data_blocks,
-        unsigned char** fec_blocks,
+        uint8_t** data_blocks,
+        uint8_t** fec_blocks,
         int block_size) {
     assert(NULL != rs && NULL != rs->parity);
 
@@ -797,16 +798,16 @@ int reed_solomon_encode(reed_solomon* rs,
  * nr_fec_blocks: the number of erased blocks
  * */
 int reed_solomon_decode(reed_solomon* rs,
-        unsigned char **data_blocks,
+        uint8_t **data_blocks,
         int block_size,
-        unsigned char **dec_fec_blocks,
+        uint8_t **dec_fec_blocks,
         unsigned int *fec_block_nos,
         unsigned int *erased_blocks,
         int nr_fec_blocks) {
     /* use stack instead of malloc, define a small number of DATA_SHARDS_MAX to save memory */
     gf dataDecodeMatrix[DATA_SHARDS_MAX*DATA_SHARDS_MAX];
-    unsigned char* subShards[DATA_SHARDS_MAX];
-    unsigned char* outputs[DATA_SHARDS_MAX];
+    uint8_t* subShards[DATA_SHARDS_MAX];
+    uint8_t* outputs[DATA_SHARDS_MAX];
     gf* m = rs->m;
     int i, j, c, swap, subMatrixRow, dataShards, nos, nshards;
 
@@ -895,9 +896,9 @@ int reed_solomon_decode(reed_solomon* rs,
  * nr_shards: assert(0 == nr_shards % rs->shards)
  * shards[nr_shards][block_size]
  * */
-int reed_solomon_encode2(reed_solomon* rs, unsigned char** shards, int nr_shards, int block_size) {
-    unsigned char** data_blocks;
-    unsigned char** fec_blocks;
+int reed_solomon_encode2(reed_solomon* rs, uint8_t** shards, int nr_shards, int block_size) {
+    uint8_t** data_blocks;
+    uint8_t** fec_blocks;
     int i, ds = rs->data_shards, ps = rs->parity_shards, ss = rs->shards;
     i = nr_shards / ss;
     data_blocks = shards;
@@ -920,15 +921,15 @@ int reed_solomon_encode2(reed_solomon* rs, unsigned char** shards, int nr_shards
  * marks[nr_shards] marks as errors
  * */
 int reed_solomon_reconstruct(reed_solomon* rs,
-        unsigned char** shards,
-        unsigned char* marks,
+        uint8_t** shards,
+        uint8_t* marks,
         int nr_shards,
         int block_size) {
-    unsigned char *dec_fec_blocks[DATA_SHARDS_MAX];
+    uint8_t *dec_fec_blocks[DATA_SHARDS_MAX];
     unsigned int fec_block_nos[DATA_SHARDS_MAX];
     unsigned int erased_blocks[DATA_SHARDS_MAX];
-    unsigned char* fec_marks;
-    unsigned char **data_blocks, **fec_blocks;
+    uint8_t* fec_marks;
+    uint8_t **data_blocks, **fec_blocks;
     int i, j, dn, pn, n;
     int ds = rs->data_shards;
     int ps = rs->parity_shards;
@@ -979,4 +980,3 @@ int reed_solomon_reconstruct(reed_solomon* rs,
 
     return err;
 }
-
