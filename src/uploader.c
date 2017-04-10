@@ -1532,6 +1532,9 @@ static void create_parity_shards(uv_work_t *work)
     state->log->info(state->env->log_options, state->handle,
                    "Creating parity shards");
 
+    // ???
+    fec_init();
+
     uint8_t *map = (uint8_t *)mmap(NULL,
                                    state->file_size,
                                    PROT_READ,
@@ -1601,6 +1604,35 @@ static void create_parity_shards(uv_work_t *work)
                        "Could not create mmap parity shard file");
         goto clean_variables;
     }
+
+    uint8_t **data_blocks = NULL;
+    data_blocks = (uint8_t**)malloc(state->total_data_shards * sizeof(uint8_t *));
+    if (!data_blocks) {
+        req->error_status = 1;
+        state->log->error(state->env->log_options, state->handle,
+                       "memory error: unable to malloc");
+        goto clean_variables;
+    }
+
+    for (int i = 0; i < state->total_data_shards; i++) {
+        data_blocks[i] = map + i * block_size;
+    }
+
+    uint8_t **fec_blocks = NULL;
+    fec_blocks = (uint8_t**)malloc(state->total_parity_shards * sizeof(uint8_t *));
+    if (!fec_blocks) {
+        req->error_status = 1;
+        state->log->error(state->env->log_options, state->handle,
+                       "memory error: unable to malloc");
+        goto clean_variables;
+    }
+
+    for (int i = 0; i < state->total_parity_shards; i++) {
+        fec_blocks[i] = map_parity + i * block_size;
+    }
+
+    reed_solomon *rs = reed_solomon_new(state->total_data_shards, state->total_parity_shards);
+    reed_solomon_encode2(rs, data_blocks, fec_blocks, state->total_shards, block_size);
 
 clean_variables:
     if (tmp_folder) {
