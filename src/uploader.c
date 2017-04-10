@@ -1503,12 +1503,17 @@ static void after_create_parity_shards(uv_work_t *work, int status)
     storj_upload_state_t *state = req->upload_state;
 
     state->pending_work_count -= 1;
+    state->create_parity_shard_count += 1;
 
     if (req->error_status != 0) {
         state->log->warn(state->env->log_options, state->handle,
                        "Something went wrong!!");
 
         state->awaiting_parity_shards = true;
+
+        if (state->create_parity_shard_count == 6) {
+            state->error_status = STORJ_FILE_SIZE_ERROR;
+        }
     } else {
         state->log->info(state->env->log_options, state->handle,
                        "Successfully created parity shards");
@@ -1584,7 +1589,7 @@ static void create_parity_shards(uv_work_t *work)
     int falloc_status = fallocate(parity_fd, FALLOC_FL_ZERO_RANGE, 0, parity_size);
 #endif
 
-    if (falloc_status == -1) {
+    if (falloc_status != 0) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
                        "Could not allocate space for mmap parity shard file: %d", errno);
@@ -2226,6 +2231,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->add_bucket_entry_count = 0;
     state->file_verify_count = 0;
     state->bucket_verify_count = 0;
+    state->create_parity_shard_count = 0;
 
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;

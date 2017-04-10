@@ -228,7 +228,7 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
 int fallocate(int fd, off_t offset, off_t aLength)
 {
     // int fd = PR_FileDesc2NativeHandle(aFD);
-    fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, offset, aLength};
+    fstore_t store = {F_ALLOCATEALL, F_VOLPOSMODE, offset, aLength};
     // Try to get a continous chunk of disk space
     int ret = fcntl(fd, F_PREALLOCATE, &store);
     if (-1 == ret) {
