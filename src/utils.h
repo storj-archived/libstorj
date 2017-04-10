@@ -6,6 +6,7 @@
  */
 #ifndef STORJ_UTILS_H
 #define STORJ_UTILS_H
+#define _GNU_SOURCE
 
 #include <assert.h>
 #include <stdint.h>
@@ -16,8 +17,6 @@
 #include <math.h>
 #include <stdbool.h>
 #include <nettle/base16.h>
-
-#define _GNU_SOURCE
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -33,16 +32,10 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 #include <sys/time.h>
 #endif
 
-#ifdef _unix__
-int fallocate(int fd, int mode, off_t offset, off_t length);
-#elif __linux__
-int fallocate(int fd, int mode, off_t offset, off_t length);
-#else
-int fallocate(int fd, off_t offset, off_t length);
-#endif
-
 #define MAX_SHARD_SIZE 4294967296 // 4Gb
 #define SHARD_MULTIPLES_BACK 4
+
+int allocatefile(int fd, off_t offset, off_t length);
 
 char *hex2str(size_t length, uint8_t *data);
 

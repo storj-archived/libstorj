@@ -1584,12 +1584,12 @@ static void create_parity_shards(uv_work_t *work)
         goto clean_variables;
     }
 
-    int falloc_status = fallocate(parity_fd, 0, parity_size);
+    int falloc_status = allocatefile(parity_fd, 0, parity_size);
 
-    if (falloc_status != 0) {
+    if (falloc_status) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "Could not allocate space for mmap parity shard file: %d", errno);
+                       "Could not allocate space for mmap parity shard file: %s", strerror(errno));
         goto clean_variables;
     }
 
@@ -2049,7 +2049,7 @@ static void prepare_upload_state(uv_work_t *work)
     }
 
     state->total_data_shards = ceil((double)state->file_size / state->shard_size);
-    state->total_parity_shards = (state->rs) ? state->total_data_shards * 2 / 3 : 0;
+    state->total_parity_shards = (state->rs) ? ceil((double)state->total_data_shards * 2.0 / 3.0) : 0;
     state->total_shards = state->total_data_shards + state->total_parity_shards;
 
     int tracker_calloc_amount = state->total_shards * sizeof(shard_tracker_t);

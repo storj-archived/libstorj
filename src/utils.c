@@ -223,20 +223,16 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
 }
 #endif
 
-#if defined(HAVE_POSIX_FALLOCATE)
-int fallocate(int fd, off_t offset, off_t length)
-{
-    return posix_fallocate(fd, offset, length);
-}
-#elif __unix__ || __linux__
-int fallocate(int fd, int mode, off_t offset, off_t length)
-{
-    return fallocate(fd, FALLOC_FL_ZERO_RANGE, offset, length);
-}
 
-#elif __APPLE__
-int fallocate(int fd, off_t offset, off_t length)
+int allocatefile(int fd, off_t offset, off_t length)
 {
+#ifdef HAVE_POSIX_FALLOCATE
+    return posix_fallocate(fd, offset, length);
+#elif __unix__
+    return fallocate(fd, FALLOC_FL_ZERO_RANGE, offset, length);
+#elif __linux__
+    return fallocate(fd, FALLOC_FL_ZERO_RANGE, offset, length);
+#elif __APPLE__
     fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, offset, length, 0};
     // Try to get a continous chunk of disk space
     int ret = fcntl(fd, F_PREALLOCATE, &store);
@@ -249,5 +245,5 @@ int fallocate(int fd, off_t offset, off_t length)
         }
     }
     return ftruncate(fd, offset+length);
-}
 #endif
+}

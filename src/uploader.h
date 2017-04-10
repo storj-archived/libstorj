@@ -6,14 +6,10 @@
  */
 #ifndef STORJ_UPLOADER_H
 #define STORJ_UPLOADER_H
-
 #include "storj.h"
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
-
-#define _GNU_SOURCE
-#include <fcntl.h>
 
 #define STORJ_NULL -1
 #define STORJ_MAX_REPORT_TRIES 2
