@@ -221,7 +221,7 @@ static void cleanup_state(storj_upload_state_t *state)
     }
 
     if (state->parity_file_path) {
-        unlink(state->parity_file_path);
+        // unlink(state->parity_file_path);
         free(state->parity_file_path);
     }
 
@@ -1579,20 +1579,26 @@ static void create_parity_shards(uv_work_t *work)
     int parity_fd = open(state->parity_file_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if (!parity_fd) {
         req->error_status = 1;
+        state->log->error(state->env->log_options, state->handle,
+                       "Could not open parity file [%s]", state->parity_file_path);
         goto clean_variables;
     }
 
-    // TODO Find alternative method for fallocate on mac
-#ifdef __APPLE__
     int falloc_status = fallocate(parity_fd, 0, parity_size);
-#else
-    int falloc_status = fallocate(parity_fd, FALLOC_FL_ZERO_RANGE, 0, parity_size);
-#endif
 
     if (falloc_status != 0) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
                        "Could not allocate space for mmap parity shard file: %d", errno);
+        goto clean_variables;
+    }
+
+    uint8_t *map_parity = (uint8_t *)mmap(NULL, parity_size, PROT_WRITE,
+                                          MAP_SHARED, parity_fd, 0);
+    if (map_parity == MAP_FAILED) {
+        req->error_status = 1;
+        state->log->error(state->env->log_options, state->handle,
+                       "Could not create mmap parity shard file");
         goto clean_variables;
     }
 

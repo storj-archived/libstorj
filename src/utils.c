@@ -223,12 +223,21 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
 }
 #endif
 
-#ifdef __APPLE__
-
-int fallocate(int fd, off_t offset, off_t aLength)
+#if defined(HAVE_POSIX_FALLOCATE)
+int fallocate(int fd, off_t offset, off_t length)
 {
-    // int fd = PR_FileDesc2NativeHandle(aFD);
-    fstore_t store = {F_ALLOCATEALL, F_VOLPOSMODE, offset, aLength};
+    return posix_fallocate(fd, offset, length);
+}
+#elif __unix__ || __linux__
+int fallocate(int fd, int mode, off_t offset, off_t length)
+{
+    return fallocate(fd, FALLOC_FL_ZERO_RANGE, offset, length);
+}
+
+#elif __APPLE__
+int fallocate(int fd, off_t offset, off_t length)
+{
+    fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, offset, length, 0};
     // Try to get a continous chunk of disk space
     int ret = fcntl(fd, F_PREALLOCATE, &store);
     if (-1 == ret) {
@@ -239,7 +248,6 @@ int fallocate(int fd, off_t offset, off_t aLength)
             return -1;
         }
     }
-    return ftruncate(fd, aLength);
+    return ftruncate(fd, offset+length);
 }
-
 #endif

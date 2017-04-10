@@ -33,8 +33,12 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 #include <sys/time.h>
 #endif
 
-#ifdef __APPLE__
-int fallocate(int aFD, off_t offset, off_t aLength);
+#ifdef _unix__
+int fallocate(int fd, int mode, off_t offset, off_t length);
+#elif __linux__
+int fallocate(int fd, int mode, off_t offset, off_t length);
+#else
+int fallocate(int fd, off_t offset, off_t length);
 #endif
 
 #define MAX_SHARD_SIZE 4294967296 // 4Gb
