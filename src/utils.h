@@ -17,6 +17,10 @@
 #include <stdbool.h>
 #include <nettle/base16.h>
 
+#define _GNU_SOURCE
+#include <fcntl.h>
+#include <unistd.h>
+
 #ifdef _WIN32
 #include <windows.h>
 #include <time.h>
@@ -27,6 +31,10 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 
 #else
 #include <sys/time.h>
+#endif
+
+#ifdef __APPLE__
+int fallocate(int aFD, off_t offset, off_t aLength);
 #endif
 
 #define MAX_SHARD_SIZE 4294967296 // 4Gb

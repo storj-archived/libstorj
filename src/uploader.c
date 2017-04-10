@@ -1578,11 +1578,16 @@ static void create_parity_shards(uv_work_t *work)
     }
 
     // TODO Find alternative method for fallocate on mac
+#ifdef __APPLE__
+    int falloc_status = fallocate(parity_fd, 0, parity_size);
+#else
     int falloc_status = fallocate(parity_fd, FALLOC_FL_ZERO_RANGE, 0, parity_size);
-    if (falloc_status) {
+#endif
+
+    if (falloc_status == -1) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "could not allocate space for mmap parity shard file");
+                       "Could not allocate space for mmap parity shard file: %d", errno);
         goto clean_variables;
     }
 

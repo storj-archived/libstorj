@@ -222,3 +222,24 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
     return written_bytes;
 }
 #endif
+
+#ifdef __APPLE__
+
+int fallocate(int fd, off_t offset, off_t aLength)
+{
+    // int fd = PR_FileDesc2NativeHandle(aFD);
+    fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, offset, aLength};
+    // Try to get a continous chunk of disk space
+    int ret = fcntl(fd, F_PREALLOCATE, &store);
+    if (-1 == ret) {
+        // OK, perhaps we are too fragmented, allocate non-continuous
+        store.fst_flags = F_ALLOCATEALL;
+        ret = fcntl(fd, F_PREALLOCATE, &store);
+        if ( -1 == ret) {
+            return -1;
+        }
+    }
+    return ftruncate(fd, aLength);
+}
+
+#endif

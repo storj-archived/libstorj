@@ -11,6 +11,8 @@
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
+
+#define _GNU_SOURCE
 #include <fcntl.h>
 
 #define STORJ_NULL -1
