@@ -315,7 +315,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
     struct json_object *parity_value;
     bool parity = false;
     if (json_object_object_get_ex(json, "parity", &parity_value)) {
-        parity = json_object_get_bool(parity_value);
+        parity = json_object_get_boolean(parity_value);
     }
 
     struct json_object *index_value;
