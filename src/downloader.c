@@ -287,16 +287,11 @@ static void set_pointer_from_json(storj_download_state_t *state,
         return;
     }
 
-    // TODO take into consideration that token and farmer may not
-    // always exist, and if they are not defined, then it should mark
-    // that this shard is unavailable and will need to be recovered
-
     struct json_object *token_value;
-    if (!json_object_object_get_ex(json, "token", &token_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
+    char *token = NULL;
+    if (json_object_object_get_ex(json, "token", &token_value)) {
+        token = (char *)json_object_get_string(token_value);
     }
-    char *token = (char *)json_object_get_string(token_value);
 
     struct json_object *hash_value;
     if (!json_object_object_get_ex(json, "hash", &hash_value)) {
@@ -326,37 +321,35 @@ static void set_pointer_from_json(storj_download_state_t *state,
     uint32_t index = json_object_get_int(index_value);
 
     struct json_object *farmer_value;
-    if (!json_object_object_get_ex(json, "farmer", &farmer_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
-    }
-    if (!json_object_is_type(farmer_value, json_type_object)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
-    }
+    char *address = NULL;
+    uint32_t port = 0;
+    char *farmer_id = NULL;
+    if (json_object_object_get_ex(json, "farmer", &farmer_value) &&
+        json_object_is_type(farmer_value, json_type_object)) {
 
-    struct json_object *address_value;
-    if (!json_object_object_get_ex(farmer_value, "address",
-                                   &address_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
-    }
-    char *address = (char *)json_object_get_string(address_value);
+        struct json_object *address_value;
+        if (!json_object_object_get_ex(farmer_value, "address",
+                                       &address_value)) {
+            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            return;
+        }
+        address = (char *)json_object_get_string(address_value);
 
-    struct json_object *port_value;
-    if (!json_object_object_get_ex(farmer_value, "port", &port_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
-    }
-    uint32_t port = json_object_get_int(port_value);
+        struct json_object *port_value;
+        if (!json_object_object_get_ex(farmer_value, "port", &port_value)) {
+            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            return;
+        }
+        port = json_object_get_int(port_value);
 
-    struct json_object *farmer_id_value;
-    if (!json_object_object_get_ex(farmer_value, "nodeID",
-                                   &farmer_id_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
+        struct json_object *farmer_id_value;
+        if (!json_object_object_get_ex(farmer_value, "nodeID",
+                                       &farmer_id_value)) {
+            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            return;
+        }
+        farmer_id = (char *)json_object_get_string(farmer_id_value);
     }
-    char *farmer_id = (char *)json_object_get_string(farmer_id_value);
 
     if (is_replaced) {
         p->replace_count += 1;
@@ -364,8 +357,15 @@ static void set_pointer_from_json(storj_download_state_t *state,
         p->replace_count = 0;
     }
 
-    // reset the status
-    p->status = POINTER_CREATED;
+    // Check to see if we have a token for this shard, otherwise
+    // we will immediatly move this shard to POINTER_MISSING
+    // so that it can be retried and possibly recovered.
+    if (address && token) {
+        // reset the status
+        p->status = POINTER_CREATED;
+    } else {
+        p->status = POINTER_MISSING;
+    }
 
     p->size = size;
     p->parity = parity;
