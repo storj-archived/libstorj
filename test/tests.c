@@ -1489,8 +1489,18 @@ int test_memory_mapping()
         return 1;
     }
 
+    fclose(fp);
+
+    FILE *fp2 = fopen(file, "r+");
+    int fd2 = fileno(fp2);
+
+    if (!fp2) {
+        printf("failed open.\n");
+        return 1;
+    }
+
     uint8_t *map2 = NULL;
-    error = map_file(fd, filesize, &map2);
+    error = map_file(fd2, filesize, &map2);
     if (error) {
         printf("failed to map file: %i\n", error);
         fail("test_memory_mapping(3)");
@@ -1507,6 +1517,8 @@ int test_memory_mapping()
         fail("test_memory_mapping(5)");
         return error;
     }
+
+    fclose(fp2);
 
     pass("test_memory_mapping");
 
