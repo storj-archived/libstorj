@@ -42,6 +42,14 @@ typedef struct {
 } frame_builder_t;
 
 typedef struct {
+    int error_status;
+    /* state should not be modified in worker threads */
+    storj_upload_state_t *upload_state;
+    char *file_id;
+    char *file_key;
+} calculate_file_id_req_t;
+
+typedef struct {
     storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     int status_code;

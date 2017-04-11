@@ -969,6 +969,8 @@ char *storj_strerror(int error_code)
             return "File read error";
         case STORJ_FILE_WRITE_ERROR:
             return "File write error";
+        case STORJ_FILE_ID_CALCULATION_ERROR:
+            return "Could not calculate file id";
         case STORJ_BRIDGE_FRAME_ERROR:
             return "Bridge frame request error";
         case STORJ_FILE_ENCRYPTION_ERROR:
