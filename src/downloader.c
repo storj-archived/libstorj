@@ -452,6 +452,14 @@ static void append_pointers_to_state(storj_download_state_t *state,
             struct json_object *json = json_object_array_get_idx(res, i);
 
             set_pointer_from_json(state, &state->pointers[j], json, false);
+
+            // Keep track of the number of data and parity pointers
+            storj_pointer_t *pointer = &state->pointers[i];
+            if (pointer->parity) {
+                state->total_parity_pointers += 1;
+            } else {
+                state->total_data_pointers += 1;
+            }
         }
     }
 
@@ -1615,6 +1623,8 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->completed_shards = 0;
     state->resolving_shards = 0;
     state->total_pointers = 0;
+    state->total_data_pointers = 0;
+    state->total_parity_pointers = 0;
     state->pointers = NULL;
     state->pointers_completed = false;
     state->pointer_fail_count = 0;
