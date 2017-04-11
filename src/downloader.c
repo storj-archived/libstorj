@@ -287,6 +287,10 @@ static void set_pointer_from_json(storj_download_state_t *state,
         return;
     }
 
+    // TODO take into consideration that token and farmer may not
+    // always exist, and if they are not defined, then it should mark
+    // that this shard is unavailable and will need to be recovered
+
     struct json_object *token_value;
     if (!json_object_object_get_ex(json, "token", &token_value)) {
         state->error_status = STORJ_BRIDGE_JSON_ERROR;
@@ -308,6 +312,11 @@ static void set_pointer_from_json(storj_download_state_t *state,
     }
     uint64_t size = json_object_get_int64(size_value);
 
+    struct json_object *parity_value;
+    bool parity = false;
+    if (json_object_object_get_ex(json, "parity", &parity_value)) {
+        parity = json_object_get_bool(parity_value);
+    }
 
     struct json_object *index_value;
     if (!json_object_object_get_ex(json, "index", &index_value)) {
@@ -359,6 +368,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
     p->status = POINTER_CREATED;
 
     p->size = size;
+    p->parity = parity;
     p->downloaded_size = 0;
     p->index = index;
     p->farmer_port = port;
@@ -476,6 +486,9 @@ static void after_request_pointers(uv_work_t *work, int status)
         append_pointers_to_state(req->state, req->response);
     }
 
+    // TODO allocate download file to have the correct amount of space
+    // based on the total size from the pointers
+
     queue_next_work(req->state);
 
     json_object_put(req->response);
@@ -554,6 +567,9 @@ static void queue_request_pointers(storj_download_state_t *state)
 
         if (pointer->replace_count >= STORJ_DEFAULT_MIRRORS) {
             state->error_status = STORJ_FARMER_EXHAUSTED_ERROR;
+
+            // TODO don't error here, instead set this shard is missing on the
+            // state so that it can be recovered w/ parity shards
             return;
         }
 
@@ -708,6 +724,13 @@ static void request_shard(uv_work_t *work)
     req->start = get_time_milliseconds();
 
     uint64_t file_position = req->pointer_index * req->state->shard_size;
+
+    // TODO change destination for parity shards to go into a temporary file
+    // that can be used later to recover the missing data shards
+
+    // TODO write to the memory mapped file instead, so that way the shard
+    // can be in memory already, in the case that we need to recover another
+    // shard that is missing.
 
     int error_status = fetch_shard(req->http_options,
                                    req->farmer_id,
@@ -1230,6 +1253,10 @@ static void after_request_info(uv_work_t *work, int status)
         req->state->error_status = STORJ_BRIDGE_FILEINFO_ERROR;
     } else if (req->status_code == 200 || req->status_code == 304) {
         req->state->info = req->info;
+
+        // TODO check that erasure encoding is what is expected
+        // and set the state to use rs if enabled.
+
     } else if (req->error_status) {
         switch(req->error_status) {
             case STORJ_BRIDGE_REQUEST_ERROR:
@@ -1342,6 +1369,9 @@ static void request_info(uv_work_t *work)
 
         // TODO set these values, however the are currently
         // not used within the downloader
+
+        // TODO include the type of erasure encoding here
+
         req->info->filename = NULL;
         req->info->mimetype = NULL;
         req->info->size = 0;
@@ -1518,6 +1548,15 @@ static void queue_next_work(storj_download_state_t *state)
 
     queue_send_exchange_reports(state);
 
+    // TODO queue work to repair missing shards if there is enough data
+    // available to recover, once the shards are recovered mark the shard
+    // as completed, so that the complete check will pickup when it's finished
+
+    // TODO if all pointers have been recovered, and the total number of
+    // shards that are missing and have errored completely exceeds the number of
+    // parity shards that could be available, excluding those that have failed
+    // to also download, give an error
+
 finish_up:
 
     state->log->debug(state->env->log_options, state->handle,
@@ -1569,6 +1608,8 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->file_id = file_id;
     state->bucket_id = bucket_id;
     state->destination = destination;
+    state->destination_map = NULL;
+    state->parity_map = NULL;
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
     state->finished = false;
