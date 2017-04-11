@@ -457,8 +457,6 @@ static void append_pointers_to_state(storj_download_state_t *state,
             storj_pointer_t *pointer = &state->pointers[i];
             if (pointer->parity) {
                 state->total_parity_pointers += 1;
-            } else {
-                state->total_data_pointers += 1;
             }
         }
     }
@@ -1482,6 +1480,40 @@ static int prepare_file_hmac(storj_download_state_t *state)
     return 0;
 }
 
+static bool can_recover_shards(storj_download_state_t *state)
+{
+    if (state->pointers_completed) {
+        uint32_t missing_pointers = 0;
+
+        for (int i = 0; i < state->total_pointers; i++) {
+            storj_pointer_t *pointer = &state->pointers[i];
+            if (pointer->status == POINTER_MISSING) {
+                missing_pointers += 1;
+            }
+        }
+
+        if (missing_pointers > state->total_parity_pointers) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static void queue_recover_shards(storj_download_state_t *state)
+{
+    // TODO check state that we're not already recovering shards
+
+    // TODO create memory mapped file to the section of the file
+    // that can be recovered
+
+    // TODO create memory mapped file to the sectiion of the parity
+    // shards that will be used for recovery
+
+    // TODO queue work to repair missing shards, and once complete
+    // update that status of the pointer to complete
+}
+
 static void queue_next_work(storj_download_state_t *state)
 {
     // report any errors
@@ -1549,18 +1581,17 @@ static void queue_next_work(storj_download_state_t *state)
 
     queue_send_exchange_reports(state);
 
-    // TODO queue work to repair missing shards if there is enough data
-    // available to recover, once the shards are recovered mark the shard
-    // as completed, so that the complete check will pickup when it's finished
+    if (can_recover_shards(state)) {
+        // Attempt to recover the missing shards with erasure encoding
+        queue_recover_shards(state);
+    } else {
+        // Exit with error because it won't be possible to recover
+        // the missing shards as too much data is missing.
+        state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
+        queue_next_work(state);
+    }
 
-    // TODO create the memory mapped file that will be used incovering the data
-    // as it will be able to recover sections of the file, and we may not need
-    // to map the entire file. This map will also be exclusing used for recovery
 
-    // TODO if all pointers have been recovered, and the total number of
-    // shards that are missing and have errored completely exceeds the number of
-    // parity shards that could be available, excluding those that have failed
-    // to also download, give an error
 
 finish_up:
 
@@ -1623,7 +1654,6 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->completed_shards = 0;
     state->resolving_shards = 0;
     state->total_pointers = 0;
-    state->total_data_pointers = 0;
     state->total_parity_pointers = 0;
     state->pointers = NULL;
     state->pointers_completed = false;

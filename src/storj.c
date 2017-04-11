@@ -1007,6 +1007,8 @@ char *storj_strerror(int error_code)
             return "File decryption error";
         case STORJ_FILE_GENERATE_HMAC_ERROR:
             return "File hmac generation error";
+        case STORJ_FILE_SHARD_MISSING_ERROR:
+            return "File missing shard error";
         case STORJ_META_ENCRYPTION_ERROR:
             return "Meta encryption error";
         case STORJ_META_DECRYPTION_ERROR:

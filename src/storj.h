@@ -69,6 +69,7 @@ extern "C" {
 #define STORJ_FILE_DECRYPTION_ERROR 3004
 #define STORJ_FILE_GENERATE_HMAC_ERROR 3005
 #define STORJ_FILE_READ_ERROR 3006
+#define STORJ_FILE_SHARD_MISSING_ERROR 3007
 
 // Memory related errors
 #define STORJ_MEMORY_ERROR 4000
@@ -383,7 +384,6 @@ typedef struct {
     storj_pointer_t *pointers;
     char *excluded_farmer_ids;
     uint32_t total_pointers;
-    uint32_t total_data_pointers;
     uint32_t total_parity_pointers;
     bool pointers_completed;
     uint32_t pointer_fail_count;
