@@ -486,9 +486,6 @@ static void after_request_pointers(uv_work_t *work, int status)
         append_pointers_to_state(req->state, req->response);
     }
 
-    // TODO allocate download file to have the correct amount of space
-    // based on the total size from the pointers
-
     queue_next_work(req->state);
 
     json_object_put(req->response);
@@ -727,10 +724,6 @@ static void request_shard(uv_work_t *work)
 
     // TODO change destination for parity shards to go into a temporary file
     // that can be used later to recover the missing data shards
-
-    // TODO write to the memory mapped file instead, so that way the shard
-    // can be in memory already, in the case that we need to recover another
-    // shard that is missing.
 
     int error_status = fetch_shard(req->http_options,
                                    req->farmer_id,
@@ -1551,6 +1544,10 @@ static void queue_next_work(storj_download_state_t *state)
     // TODO queue work to repair missing shards if there is enough data
     // available to recover, once the shards are recovered mark the shard
     // as completed, so that the complete check will pickup when it's finished
+
+    // TODO create the memory mapped file that will be used incovering the data
+    // as it will be able to recover sections of the file, and we may not need
+    // to map the entire file. This map will also be exclusing used for recovery
 
     // TODO if all pointers have been recovered, and the total number of
     // shards that are missing and have errored completely exceeds the number of
