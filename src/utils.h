@@ -8,14 +8,15 @@
 #define STORJ_UTILS_H
 
 #include <assert.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdarg.h>
+#include <errno.h>
 #include <math.h>
-#include <stdbool.h>
 #include <nettle/base16.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -27,6 +28,7 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 
 #else
 #include <sys/time.h>
+#include <sys/mman.h>
 #endif
 
 #define MAX_SHARD_SIZE 4294967296 // 4Gb
@@ -49,5 +51,9 @@ uint64_t get_time_milliseconds();
 void memset_zero(void *v, size_t n);
 
 uint64_t determine_shard_size(uint64_t file_size, int accumulator);
+
+int unmap_file(uint8_t *map, uint64_t filesize);
+
+int map_file(int fd, uint64_t filesize, uint8_t **map);
 
 #endif /* STORJ_UTILS_H */

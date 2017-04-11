@@ -1444,6 +1444,75 @@ int test_meta_encryption()
     return 0;
 }
 
+int test_memory_mapping()
+{
+
+    char *file_name = "storj-memory-map.data";
+    int len = strlen(folder) + strlen(file_name);
+    char *file = calloc(len + 1, sizeof(char));
+    strcpy(file, folder);
+    strcat(file, file_name);
+    file[len] = '\0';
+
+    create_test_upload_file(file);
+
+    FILE *fp = fopen(file, "r+");
+    int fd = fileno(fp);
+
+    if (!fp) {
+        printf("failed open.\n");
+        return 1;
+    }
+
+    fseek(fp, 0L, SEEK_END);
+    uint64_t filesize = ftell(fp);
+    rewind(fp);
+
+    uint8_t *map = NULL;
+    int error = map_file(fd, filesize, &map);
+    if (error) {
+        printf("failed to map file: %i\n", error);
+        fail("test_memory_mapping(0)");
+        return 1;
+    }
+
+    if (map[40001] != 97) {
+        fail("test_memory_mapping(1)");
+    }
+
+    map[40001] = 0;
+
+    error = unmap_file(map, filesize);
+    if (error) {
+        printf("failed to unmap file: %d", error);
+        fail("test_memory_mapping(2)");
+        return 1;
+    }
+
+    uint8_t *map2 = NULL;
+    error = map_file(fd, filesize, &map2);
+    if (error) {
+        printf("failed to map file: %i\n", error);
+        fail("test_memory_mapping(3)");
+        return 1;
+    }
+
+    if (map2[40001] != 0) {
+        fail("test_memory_mapping(4)");
+    }
+
+    error = unmap_file(map2, filesize);
+    if (error) {
+        printf("failed to unmap file: %d", error);
+        fail("test_memory_mapping(5)");
+        return error;
+    }
+
+    pass("test_memory_mapping");
+
+    return 0;
+}
+
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
 {
@@ -1516,6 +1585,7 @@ int main(void)
     test_hex2str();
     test_get_time_milliseconds();
     test_determine_shard_size();
+    test_memory_mapping();
 
     int num_failed = tests_ran - test_status;
     printf(KGRN "\nPASSED: %i" RESET, test_status);
