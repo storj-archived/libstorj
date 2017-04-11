@@ -569,10 +569,7 @@ static void queue_request_pointers(storj_download_state_t *state)
         storj_pointer_t *pointer = &state->pointers[i];
 
         if (pointer->replace_count >= STORJ_DEFAULT_MIRRORS) {
-            state->error_status = STORJ_FARMER_EXHAUSTED_ERROR;
-
-            // TODO don't error here, instead set this shard is missing on the
-            // state so that it can be recovered w/ parity shards
+            pointer->status = POINTER_MISSING;
             return;
         }
 
