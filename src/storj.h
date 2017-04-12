@@ -72,6 +72,7 @@ extern "C" {
 #define STORJ_FILE_SHARD_MISSING_ERROR 3007
 #define STORJ_FILE_RECOVER_ERROR 3008
 #define STORJ_FILE_RESIZE_ERROR 3009
+#define STORJ_FILE_UNSUPPORTED_ERASURE 3010
 
 // Memory related errors
 #define STORJ_MEMORY_ERROR 4000
@@ -250,6 +251,7 @@ typedef struct {
     const char *created;
     const char *filename;
     const char *mimetype;
+    const char *erasure;
     uint64_t size;
     const char *hmac;
     const char *id;
@@ -387,6 +389,7 @@ typedef struct {
     char *excluded_farmer_ids;
     uint32_t total_pointers;
     uint32_t total_parity_pointers;
+    bool rs;
     bool recovering_shards;
     bool pointers_completed;
     uint32_t pointer_fail_count;

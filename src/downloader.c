@@ -1261,10 +1261,13 @@ static void after_request_info(uv_work_t *work, int status)
         req->state->error_status = STORJ_BRIDGE_FILEINFO_ERROR;
     } else if (req->status_code == 200 || req->status_code == 304) {
         req->state->info = req->info;
-
-        // TODO check that erasure encoding is what is expected
-        // and set the state to use rs if enabled.
-
+        if (req->info->erasure) {
+            if (strcmp(req->info->erasure, "reedsolomon") == 0) {
+                req->state->rs = true;
+            } else {
+                req->state->error_status = STORJ_FILE_UNSUPPORTED_ERASURE;
+            }
+        }
     } else if (req->error_status) {
         switch(req->error_status) {
             case STORJ_BRIDGE_REQUEST_ERROR:
@@ -1328,6 +1331,19 @@ static void request_info(uv_work_t *work)
                          "Request file info error: %i", request_status);
 
     } else if (status_code == 200 || status_code == 304) {
+        struct json_object *erasure_obj;
+        struct json_object *erasure_value;
+        char *erasure = NULL;
+        if (json_object_object_get_ex(response, "erasure", &erasure_obj)) {
+            if (json_object_object_get_ex(erasure_obj, "type", &erasure_value)) {
+                erasure = (char *)json_object_get_string(erasure_value);
+            }   else {
+                state->log->warn(state->env->log_options, state->handle,
+                                 "value missing from erasure response");
+                goto clean_up;
+            }
+        }
+
         struct json_object *hmac_obj;
         if (!json_object_object_get_ex(response, "hmac", &hmac_obj)) {
             state->log->warn(state->env->log_options, state->handle,
@@ -1375,11 +1391,15 @@ static void request_info(uv_work_t *work)
         req->info = malloc(sizeof(storj_file_meta_t));
         req->info->hmac = strdup(hmac);
 
+        // set the erasure encoding type
+        if (erasure) {
+            req->info->erasure = strdup(erasure);
+        } else {
+            req->info->erasure = NULL;
+        }
+
         // TODO set these values, however the are currently
         // not used within the downloader
-
-        // TODO include the type of erasure encoding here
-
         req->info->filename = NULL;
         req->info->mimetype = NULL;
         req->info->size = 0;
@@ -1827,6 +1847,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->resolving_shards = 0;
     state->total_pointers = 0;
     state->total_parity_pointers = 0;
+    state->rs = false;
     state->recovering_shards = false;
     state->pointers = NULL;
     state->pointers_completed = false;
