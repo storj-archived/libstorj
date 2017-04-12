@@ -1595,10 +1595,8 @@ static void queue_recover_shards(storj_download_state_t *state)
         state->total_parity_pointers > 0) {
 
         bool has_missing = false;
+        bool is_ready = true;
         uint8_t *zilch = (uint8_t *)calloc(1, state->total_pointers);
-
-        // TODO check that all downloads are finished, and
-        // shards are not still being written
 
         for (int i = 0; i < state->total_pointers; i++) {
             storj_pointer_t *pointer = &state->pointers[i];
@@ -1606,6 +1604,15 @@ static void queue_recover_shards(storj_download_state_t *state)
                 has_missing = true;
                 zilch[i] = 1;
             }
+
+            if (pointer->status != POINTER_MISSING &&
+                pointer->status != POINTER_WRITTEN) {
+                is_ready = false;
+            }
+        }
+
+        if (!is_ready) {
+            return;
         }
 
         file_request_recover_t *req = malloc(sizeof(file_request_recover_t));

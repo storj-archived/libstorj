@@ -29,7 +29,6 @@
  * can continue until success.
  */
 typedef enum {
-    POINTER_MISSING_RECOVERY = -5,
     POINTER_MISSING = -4,
     POINTER_BEING_REPLACED = -3,
     POINTER_ERROR_REPORTED = -2,
