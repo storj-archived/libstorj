@@ -1509,6 +1509,18 @@ static int prepare_file_hmac(storj_download_state_t *state)
     return 0;
 }
 
+static bool has_missing_shard(storj_download_state_t *state)
+{
+    bool missing = false;
+    for (int i = 0; i < state->total_pointers; i++) {
+        storj_pointer_t *pointer = &state->pointers[i];
+        if (pointer->status == POINTER_MISSING) {
+            missing = true;
+        }
+    }
+    return missing;
+}
+
 static bool can_recover_shards(storj_download_state_t *state)
 {
     if (state->pointers_completed) {
@@ -1778,6 +1790,12 @@ static void queue_next_work(storj_download_state_t *state)
         if (can_recover_shards(state)) {
             queue_recover_shards(state);
         } else {
+            state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
+            queue_next_work(state);
+            return;
+        }
+    } else {
+        if (has_missing_shard(state)) {
             state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
             queue_next_work(state);
             return;
