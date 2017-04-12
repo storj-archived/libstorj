@@ -343,6 +343,7 @@ static void create_bucket_entry(uv_work_t *work)
 
     json_object_object_add(body, "hmac", hmac);
 
+    // TODO: Is it okay for type to be NULL?
     struct json_object *erasure = json_object_new_object();
     json_object *erasure_type = NULL;
     if (state->rs) {
@@ -498,7 +499,7 @@ static void after_push_shard(uv_work_t *work, int status)
     push_shard_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
     uv_handle_t *progress_handle = (uv_handle_t *) &req->progress_handle;
-    shard_tracker_t *shard = &state->shard[req->shard_index];
+    shard_tracker_t *shard = &state->shard[req->shard_meta_index];
 
     // free the upload progress
     free(progress_handle->data);
@@ -527,7 +528,7 @@ static void after_push_shard(uv_work_t *work, int status)
 
         req->log->info(state->env->log_options, state->handle,
                        "Successfully transfered shard index %d",
-                       req->shard_index);
+                       req->shard_meta_index);
 
         shard->progress = COMPLETED_PUSH_SHARD;
         state->completed_shards += 1;
@@ -551,13 +552,13 @@ static void after_push_shard(uv_work_t *work, int status)
         if (shard->push_shard_request_count == 6) {
 
             req->log->error(state->env->log_options, state->handle,
-                            "Failed to push shard %d\n", req->shard_index);
+                            "Failed to push shard %d\n", req->shard_meta_index);
 
             state->error_status = STORJ_FARMER_REQUEST_ERROR;
         } else {
             req->log->warn(state->env->log_options, state->handle,
                            "Failed to push shard %d... Retrying...",
-                           req->shard_index);
+                           req->shard_meta_index);
 
             // We go back to getting a new pointer instead of retrying push with same pointer
             shard->progress = AWAITING_PUSH_FRAME;
@@ -591,12 +592,12 @@ static void push_shard(uv_work_t *work)
 {
     push_shard_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
-    shard_tracker_t *shard = &state->shard[req->shard_index];
+    shard_tracker_t *shard = &state->shard[req->shard_meta_index];
 
     req->log->info(state->env->log_options, state->handle,
                    "Transfering Shard index %d... (retry: %d)",
-                   req->shard_index,
-                   state->shard[req->shard_index].push_shard_request_count);
+                   req->shard_meta_index,
+                   state->shard[req->shard_meta_index].push_shard_request_count);
 
     int status_code = 0;
     int read_code = 0;
@@ -622,7 +623,7 @@ static void push_shard(uv_work_t *work)
                                atoi(shard->pointer->farmer_port),
                                shard->meta->hash,
                                shard->meta->size,
-                               state->original_file,
+                               req->shard_file,
                                file_position,
                                encryption_ctx,
                                shard->pointer->token,
@@ -709,7 +710,14 @@ static void queue_push_shard(storj_upload_state_t *state, int index)
     req->upload_state = state;
     req->error_status = 0;
     req->log = state->log;
-    req->shard_index = index;
+
+    // Reset shard index when using parity shards
+    req->shard_index = (index + 1 > state->total_data_shards) ? index - state->total_data_shards: index;
+    // make sure we switch between parity and data shards files
+    req->shard_file = (index + 1 > state->total_data_shards) ? state->parity_file : state->original_file;
+    // Position on shard_meta array
+    req->shard_meta_index = index;
+
     req->status_code = 0;
 
     req->canceled = &state->canceled;
@@ -919,6 +927,7 @@ static void push_frame(uv_work_t *work)
     json_object *shard_index = json_object_new_int(shard_meta->index);
     json_object_object_add(body, "index", shard_index);
 
+    // TODO: Is it okay if there is no parity property???
     if (req->shard_index + 1 > state->total_data_shards) {
         json_object *parity_shard = json_object_new_boolean(true);
         json_object_object_add(body, "parity", parity_shard);
@@ -1592,7 +1601,7 @@ static void create_parity_shards(uv_work_t *work)
         }
 
         state->parity_file_path = calloc(
-            tmp_folder_len + 1 + file_name_len + extension_len + 1,
+            tmp_folder_len + 1 + file_name_len + extension_len + 2,
             sizeof(char)
         );
         sprintf(state->parity_file_path,

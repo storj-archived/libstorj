@@ -58,6 +58,8 @@ typedef struct {
     int error_status;
     storj_log_levels_t *log;
     int shard_index;
+    int shard_meta_index;
+    FILE *shard_file;
     uv_async_t progress_handle;
     uint64_t start;
     uint64_t end;

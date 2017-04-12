@@ -619,6 +619,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
 
     // Set tmp_path
     struct stat sb;
+    env->tmp_path = NULL;
     if (env->tmp_path &&
         stat(env->tmp_path, &sb) == 0 &&
         S_ISDIR(sb.st_mode)) {
