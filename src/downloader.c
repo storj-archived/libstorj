@@ -1774,18 +1774,15 @@ static void queue_next_work(storj_download_state_t *state)
 
     queue_send_exchange_reports(state);
 
-    if (can_recover_shards(state)) {
-        // Recover the missing shards with erasure encoding
-        queue_recover_shards(state);
-    } else {
-        // Exit with error because it won't be possible to recover
-        // the missing shards as too much data is missing.
-        state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
-        queue_next_work(state);
-        return;
+    if (state->rs) {
+        if (can_recover_shards(state)) {
+            queue_recover_shards(state);
+        } else {
+            state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
+            queue_next_work(state);
+            return;
+        }
     }
-
-
 
 finish_up:
 
