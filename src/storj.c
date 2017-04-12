@@ -1011,6 +1011,8 @@ char *storj_strerror(int error_code)
             return "File missing shard error";
         case STORJ_FILE_RECOVER_ERROR:
             return "File recover error";
+        case STORJ_FILE_RESIZE_ERROR:
+            return "File resize error";
         case STORJ_META_ENCRYPTION_ERROR:
             return "Meta encryption error";
         case STORJ_META_DECRYPTION_ERROR:

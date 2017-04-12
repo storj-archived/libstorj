@@ -55,13 +55,14 @@ typedef struct {
 
 /** @brief A structure for repairing shards from parity shards */
 typedef struct {
-    int data_fd;
+    int fd;
     uint64_t filesize;
     uint64_t data_filesize;
     uint32_t data_shards;
     uint32_t parity_shards;
     uint64_t shard_size;
     uint8_t *zilch;
+    bool has_missing;
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
     int error_status;

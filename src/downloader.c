@@ -1523,10 +1523,15 @@ static void recover_shards(uv_work_t *work)
 {
     file_request_recover_t *req = work->data;
     storj_download_state_t *state = req->state;
-
+    reed_solomon* rs = NULL;
+    uint8_t *data_map = NULL;
     int error = 0;
 
-    reed_solomon* rs = reed_solomon_new(req->data_shards, req->parity_shards);
+    if (!req->has_missing) {
+        goto finish;
+    }
+
+    rs = reed_solomon_new(req->data_shards, req->parity_shards);
     if (!rs) {
         req->error_status = STORJ_MEMORY_ERROR;
         goto finish;
@@ -1534,8 +1539,7 @@ static void recover_shards(uv_work_t *work)
 
     fec_init();
 
-    uint8_t *data_map = NULL;
-    error = map_file(req->data_fd, req->filesize, &data_map);
+    error = map_file(req->fd, req->filesize, &data_map);
     if (error) {
         req->error_status = STORJ_MAPPING_ERROR;
         goto finish;
@@ -1571,9 +1575,6 @@ static void recover_shards(uv_work_t *work)
         goto finish;
     }
 
-    // TODO truncate file to the req->data_filesize as the parity shards
-    // exist at the end of the file
-
 finish:
     if (data_map) {
         error = unmap_file(data_map, req->filesize);
@@ -1582,7 +1583,21 @@ finish:
         }
     }
 
-    reed_solomon_release(rs);
+    if (rs) {
+        reed_solomon_release(rs);
+    }
+
+#ifdef _WIN32
+    error = _chsize_s(req->fd, req->date_filesize);
+    if (error) {
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+    }
+#else
+    if (ftruncate(req->fd, req->data_filesize)) {
+        // errno for more details
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+    }
+#endif
 }
 
 static void queue_recover_shards(storj_download_state_t *state)
@@ -1627,13 +1642,14 @@ static void queue_recover_shards(storj_download_state_t *state)
             return;
         }
 
-        req->data_fd = fileno(state->destination);
+        req->fd = fileno(state->destination);
         req->filesize = state->shard_size * state->total_pointers;
         req->data_filesize = calculate_data_filesize(state);
         req->data_shards = state->total_pointers - state->total_parity_pointers;
         req->parity_shards = state->total_parity_pointers;
         req->shard_size = state->shard_size;
         req->zilch = zilch;
+        req->has_missing = has_missing;
 
         req->state = state;
         req->error_status = 0;
