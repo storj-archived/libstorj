@@ -785,6 +785,21 @@ static void free_request_shard_work(uv_handle_t *progress_handle)
     free(work);
 }
 
+static uint64_t calculate_data_filesize(storj_download_state_t *state)
+{
+    uint64_t total_bytes = 0;
+
+    for (int i = 0; i < state->total_pointers; i++) {
+        storj_pointer_t *pointer = &state->pointers[i];
+        if (pointer->parity) {
+            continue;
+        }
+        total_bytes += pointer->size;
+    }
+
+    return total_bytes;
+}
+
 static void report_progress(storj_download_state_t *state)
 {
     uint64_t downloaded_bytes = 0;
@@ -1605,14 +1620,12 @@ static void queue_recover_shards(storj_download_state_t *state)
             return;
         }
 
-        // TODO complete these with real values
-        req->data_fd = 0; //fileno();
-        req->parity_fd = 0; //fileno();
-        req->filesize = 0;
-        req->data_filesize = 0;
-        req->data_shards = 0;
-        req->parity_shards = 0;
-        req->shard_size = 0;
+        req->data_fd = fileno(state->destination);
+        req->filesize = state->shard_size * state->total_pointers;
+        req->data_filesize = calculate_data_filesize(state);
+        req->data_shards = state->total_pointers - state->total_parity_pointers;
+        req->parity_shards = state->total_parity_pointers;
+        req->shard_size = state->shard_size;
         req->zilch = zilch;
 
         req->state = state;

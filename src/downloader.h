@@ -57,7 +57,6 @@ typedef struct {
 /** @brief A structure for repairing shards from parity shards */
 typedef struct {
     int data_fd;
-    int parity_fd;
     uint64_t filesize;
     uint64_t data_filesize;
     uint32_t data_shards;
