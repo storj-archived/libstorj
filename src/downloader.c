@@ -725,9 +725,6 @@ static void request_shard(uv_work_t *work)
 
     uint64_t file_position = req->pointer_index * req->state->shard_size;
 
-    // TODO change destination for parity shards to go into a temporary file
-    // that can be used later to recover the missing data shards
-
     int error_status = fetch_shard(req->http_options,
                                    req->farmer_id,
                                    req->farmer_proto,
@@ -1514,15 +1511,16 @@ static void recover_shards(uv_work_t *work)
 
     int error = 0;
 
-    uint8_t *data_map = NULL;
-    error = map_file(req->data_fd, req->data_filesize, &data_map);
-    if (error) {
-        req->error_status = STORJ_MAPPING_ERROR;
+    reed_solomon* rs = reed_solomon_new(req->data_shards, req->parity_shards);
+    if (!rs) {
+        req->error_status = STORJ_MEMORY_ERROR;
         goto finish;
     }
 
-    uint8_t *parity_map = NULL;
-    error = map_file(req->parity_fd, req->parity_filesize, &parity_map);
+    fec_init();
+
+    uint8_t *data_map = NULL;
+    error = map_file(req->data_fd, req->filesize, &data_map);
     if (error) {
         req->error_status = STORJ_MAPPING_ERROR;
         goto finish;
@@ -1534,27 +1532,19 @@ static void recover_shards(uv_work_t *work)
         goto finish;
     }
 
-    for (int i = 0; i < req->data_shards; i++) {
-        data_blocks[i] = data_map + i * req->shard_size;
-    }
-
     uint8_t **fec_blocks = (uint8_t**)malloc(req->parity_shards * sizeof(uint8_t *));
     if (!fec_blocks) {
         req->error_status = STORJ_MEMORY_ERROR;
         goto finish;
     }
 
+    for (int i = 0; i < req->data_shards; i++) {
+        data_blocks[i] = data_map + i * req->shard_size;
+    }
+
     for (int i = 0; i < req->parity_shards; i++) {
-        fec_blocks[i] = parity_map + i * req->shard_size;
+        fec_blocks[i] = data_map + (req->data_shards + i) * req->shard_size;
     }
-
-    reed_solomon* rs = reed_solomon_new(req->data_shards, req->parity_shards);
-    if (!rs) {
-        req->error_status = STORJ_MEMORY_ERROR;
-        goto finish;
-    }
-
-    fec_init();
 
     uint32_t total_shards = req->data_shards + req->parity_shards;
 
@@ -1566,15 +1556,12 @@ static void recover_shards(uv_work_t *work)
         goto finish;
     }
 
+    // TODO truncate file to the req->data_filesize as the parity shards
+    // exist at the end of the file
+
 finish:
     if (data_map) {
-        error = unmap_file(data_map, req->data_filesize);
-        if (error) {
-            req->error_status = STORJ_UNMAPPING_ERROR;
-        }
-    }
-    if (parity_map) {
-        error = unmap_file(parity_map, req->parity_filesize);
+        error = unmap_file(data_map, req->filesize);
         if (error) {
             req->error_status = STORJ_UNMAPPING_ERROR;
         }
@@ -1621,8 +1608,8 @@ static void queue_recover_shards(storj_download_state_t *state)
         // TODO complete these with real values
         req->data_fd = 0; //fileno();
         req->parity_fd = 0; //fileno();
+        req->filesize = 0;
         req->data_filesize = 0;
-        req->parity_filesize = 0;
         req->data_shards = 0;
         req->parity_shards = 0;
         req->shard_size = 0;

@@ -58,8 +58,8 @@ typedef struct {
 typedef struct {
     int data_fd;
     int parity_fd;
+    uint64_t filesize;
     uint64_t data_filesize;
-    uint64_t parity_filesize;
     uint32_t data_shards;
     uint32_t parity_shards;
     uint64_t shard_size;
