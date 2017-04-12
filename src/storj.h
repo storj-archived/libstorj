@@ -457,6 +457,7 @@ typedef struct {
     bool rs;
     bool awaiting_parity_shards;
     char *parity_file_path;
+    FILE *parity_file;
 
     bool requesting_frame;
     bool completed_upload;

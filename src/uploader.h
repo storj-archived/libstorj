@@ -38,6 +38,10 @@ typedef struct {
     int status_code;
     int error_status;
     shard_meta_t *shard_meta;
+    // Position in shard meta array
+    int shard_meta_index;
+    // Either parity file pointer or original file
+    FILE *shard_file;
     storj_log_levels_t *log;
 } frame_builder_t;
 

@@ -52,7 +52,14 @@ static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state)
     req->upload_state = state;
     req->log = state->log;
 
-    req->shard_meta->index = index;
+    // make sure we switch between parity and data shards files
+    req->shard_file = (index > state->total_data_shards) ? state->parity_file : state->original_file;
+    // Reset shard index when using parity shards
+    req->shard_meta->index = (index > state->total_data_shards) ? index - state->total_data_shards - 1 : index;
+
+    // Position on shard_meta array
+    req->shard_meta_index = index;
+
     req->error_status = 0;
     req->status_code = 0;
 
@@ -220,8 +227,12 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->encryption_key);
     }
 
+    if (state->parity_file) {
+        fclose(state->parity_file);
+    }
+
     if (state->parity_file_path) {
-        // unlink(state->parity_file_path);
+        unlink(state->parity_file_path);
         free(state->parity_file_path);
     }
 
@@ -1148,65 +1159,65 @@ static void after_prepare_frame(uv_work_t *work, int status)
     /* set the shard_meta to a struct array in the state for later use. */
 
     // Add Hash
-    state->shard[shard_meta->index].meta->hash =
+    state->shard[req->shard_meta_index].meta->hash =
         calloc(RIPEMD160_DIGEST_SIZE * 2 + 1, sizeof(char));
 
-    if (!state->shard[shard_meta->index].meta->hash) {
+    if (!state->shard[req->shard_meta_index].meta->hash) {
         state->error_status = STORJ_MEMORY_ERROR;
         goto clean_variables;
     }
 
-    memcpy(state->shard[shard_meta->index].meta->hash,
+    memcpy(state->shard[req->shard_meta_index].meta->hash,
            shard_meta->hash,
            RIPEMD160_DIGEST_SIZE * 2);
 
     req->log->info(state->env->log_options, state->handle,
-                  "Shard (%d) hash: %s", shard_meta->index,
-                  state->shard[shard_meta->index].meta->hash);
+                  "Shard (%d) hash: %s", req->shard_meta_index,
+                  state->shard[req->shard_meta_index].meta->hash);
 
     // Add challenges_as_str
     state->log->debug(state->env->log_options, state->handle,
                       "Challenges for shard index %d",
-                      shard_meta->index);
+                      req->shard_meta_index);
 
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
-        memcpy(state->shard[shard_meta->index].meta->challenges_as_str[i],
+        memcpy(state->shard[req->shard_meta_index].meta->challenges_as_str[i],
                shard_meta->challenges_as_str[i],
                64);
 
         state->log->debug(state->env->log_options, state->handle,
                           "Shard %d Challenge [%d]: %s",
-                          shard_meta->index,
+                        req->shard_meta_index,
                           i,
-                          state->shard[shard_meta->index].meta->challenges_as_str[i]);
+                          state->shard[req->shard_meta_index].meta->challenges_as_str[i]);
     }
 
     // Add Merkle Tree leaves.
     state->log->debug(state->env->log_options, state->handle,
                       "Tree for shard index %d",
-                      shard_meta->index);
+                      req->shard_meta_index);
 
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
-        memcpy(state->shard[shard_meta->index].meta->tree[i],
+        memcpy(state->shard[req->shard_meta_index].meta->tree[i],
                shard_meta->tree[i],
                40);
 
         state->log->debug(state->env->log_options, state->handle,
-                          "Shard %d Leaf [%d]: %s", shard_meta->index, i,
-                          state->shard[shard_meta->index].meta->tree[i]);
+                          "Shard %d Leaf [%d]: %s", req->shard_meta_index, i,
+                          state->shard[req->shard_meta_index].meta->tree[i]);
     }
 
     // Add index
-    state->shard[shard_meta->index].meta->index = shard_meta->index;
+    state->shard[req->shard_meta_index].meta->index = shard_meta->index;
 
     // Add size
-    state->shard[shard_meta->index].meta->size = shard_meta->size;
+    state->shard[req->shard_meta_index].meta->size = shard_meta->size;
 
     state->log->info(state->env->log_options, state->handle,
                      "Successfully created frame for shard index %d",
-                     shard_meta->index);
+                     req->shard_meta_index);
 
-    state->shard[shard_meta->index].progress = AWAITING_PUSH_FRAME;
+    state->shard[req->shard_meta_index].progress = AWAITING_PUSH_FRAME;
 
 clean_variables:
     queue_next_work(state);
@@ -1251,7 +1262,7 @@ static void prepare_frame(uv_work_t *work)
 
     req->log->info(state->env->log_options, state->handle,
                    "Creating frame for shard index %d",
-                   shard_meta->index);
+                   req->shard_meta_index);
 
     // Sha256 of encrypted data for calculating shard has
     uint8_t prehash_sha256[SHA256_DIGEST_SIZE];
@@ -1289,7 +1300,7 @@ static void prepare_frame(uv_work_t *work)
             goto clean_variables;
         }
 
-        read_bytes = pread(fileno(state->original_file),
+        read_bytes = pread(fileno(req->shard_file),
                            read_data, AES_BLOCK_SIZE * 256,
                            shard_meta->index*state->shard_size + total_read);
 
@@ -1505,6 +1516,7 @@ static void after_create_parity_shards(uv_work_t *work, int status)
     state->pending_work_count -= 1;
     state->create_parity_shard_count += 1;
 
+    // TODO: Check if file was created
     if (req->error_status != 0) {
         state->log->warn(state->env->log_options, state->handle,
                        "Something went wrong!!");
@@ -1517,6 +1529,8 @@ static void after_create_parity_shards(uv_work_t *work, int status)
     } else {
         state->log->info(state->env->log_options, state->handle,
                        "Successfully created parity shards");
+
+        state->parity_file = fopen(state->parity_file_path, "r");
     }
 
 clean_variables:
@@ -2249,6 +2263,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->rs = true;
     state->awaiting_parity_shards = true;
     state->parity_file_path = NULL;
+    state->parity_file = NULL;
 
     state->requesting_frame = false;
     state->completed_upload = false;
