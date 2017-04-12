@@ -1514,9 +1514,27 @@ static void after_recover_shards(uv_work_t *work, int status)
     file_request_recover_t *req = work->data;
     storj_download_state_t *state = req->state;
 
-    // TODO update that status of the pointers to complete
     state->pending_work_count--;
     state->recovering_shards = false;
+
+    if (status != 0) {
+        req->state->error_status = STORJ_QUEUE_ERROR;
+    } else if (req->error_status) {
+        req->state->error_status = req->error_status;
+    } else {
+        // Recovery was successful and the pointers have been written
+        for (int i = 0; i < state->total_pointers; i++) {
+            if (req->zilch[i]) {
+                state->pointers[i].status = POINTER_WRITTEN;
+                state->completed_shards += 1;
+            }
+        }
+    }
+
+    queue_next_work(state);
+
+    free(req);
+    free(work);
 }
 
 static void recover_shards(uv_work_t *work)
