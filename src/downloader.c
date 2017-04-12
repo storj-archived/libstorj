@@ -1764,8 +1764,6 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->file_id = file_id;
     state->bucket_id = bucket_id;
     state->destination = destination;
-    state->destination_map = NULL;
-    state->parity_map = NULL;
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
     state->finished = false;

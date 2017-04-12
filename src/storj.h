@@ -373,8 +373,6 @@ typedef struct {
     const char *file_id;
     const char *bucket_id;
     FILE *destination;
-    uint8_t *destination_map;
-    uint8_t *parity_map;
     storj_progress_cb progress_cb;
     storj_finished_download_cb finished_cb;
     bool finished;
