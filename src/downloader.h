@@ -11,6 +11,7 @@
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
+#include "rs.h"
 
 #define STORJ_DOWNLOAD_CONCURRENCY 24
 #define STORJ_DOWNLOAD_WRITESYNC_CONCURRENCY 4
@@ -52,6 +53,21 @@ typedef struct {
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
 } shard_request_write_t;
+
+/** @brief A structure for repairing shards from parity shards */
+typedef struct {
+    int data_fd;
+    int parity_fd;
+    uint64_t data_filesize;
+    uint64_t parity_filesize;
+    uint32_t data_shards;
+    uint32_t parity_shards;
+    uint64_t shard_size;
+    uint8_t *zilch;
+    /* state should not be modified in worker threads */
+    storj_download_state_t *state;
+    int error_status;
+} file_request_recover_t;
 
 /** @brief A structure for sharing data with worker threads for downloading
  * shards from farmers.

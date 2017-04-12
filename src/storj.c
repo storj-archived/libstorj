@@ -1009,6 +1009,8 @@ char *storj_strerror(int error_code)
             return "File hmac generation error";
         case STORJ_FILE_SHARD_MISSING_ERROR:
             return "File missing shard error";
+        case STORJ_FILE_RECOVER_ERROR:
+            return "File recover error";
         case STORJ_META_ENCRYPTION_ERROR:
             return "Meta encryption error";
         case STORJ_META_DECRYPTION_ERROR:
@@ -1017,6 +1019,10 @@ char *storj_strerror(int error_code)
             return "File transfer canceled";
         case STORJ_MEMORY_ERROR:
             return "Memory error";
+        case STORJ_MAPPING_ERROR:
+            return "Memory mapped file error";
+        case STORJ_UNMAPPING_ERROR:
+            return "Memory mapped file unmap error";
         case STORJ_QUEUE_ERROR:
             return "Queue error";
         case STORJ_TRANSFER_OK:

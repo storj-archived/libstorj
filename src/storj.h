@@ -70,9 +70,12 @@ extern "C" {
 #define STORJ_FILE_GENERATE_HMAC_ERROR 3005
 #define STORJ_FILE_READ_ERROR 3006
 #define STORJ_FILE_SHARD_MISSING_ERROR 3007
+#define STORJ_FILE_RECOVER_ERROR 3008
 
 // Memory related errors
 #define STORJ_MEMORY_ERROR 4000
+#define STORJ_MAPPING_ERROR 4001
+#define STORJ_UNMAPPING_ERROR 4002
 
 // Queue related errors
 #define STORJ_QUEUE_ERROR 5000
@@ -385,6 +388,7 @@ typedef struct {
     char *excluded_farmer_ids;
     uint32_t total_pointers;
     uint32_t total_parity_pointers;
+    bool recovering_shards;
     bool pointers_completed;
     uint32_t pointer_fail_count;
     bool requesting_pointers;

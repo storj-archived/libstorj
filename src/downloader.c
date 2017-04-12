@@ -1497,18 +1497,153 @@ static bool can_recover_shards(storj_download_state_t *state)
     return true;
 }
 
+static void after_recover_shards(uv_work_t *work, int status)
+{
+    file_request_recover_t *req = work->data;
+    storj_download_state_t *state = req->state;
+
+    // TODO update that status of the pointers to complete
+    state->pending_work_count--;
+    state->recovering_shards = false;
+}
+
+static void recover_shards(uv_work_t *work)
+{
+    file_request_recover_t *req = work->data;
+    storj_download_state_t *state = req->state;
+
+    int error = 0;
+
+    uint8_t *data_map = NULL;
+    error = map_file(req->data_fd, req->data_filesize, &data_map);
+    if (error) {
+        req->error_status = STORJ_MAPPING_ERROR;
+        goto finish;
+    }
+
+    uint8_t *parity_map = NULL;
+    error = map_file(req->parity_fd, req->parity_filesize, &parity_map);
+    if (error) {
+        req->error_status = STORJ_MAPPING_ERROR;
+        goto finish;
+    }
+
+    uint8_t **data_blocks = (uint8_t**)malloc(req->data_shards * sizeof(uint8_t *));
+    if (!data_blocks) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        goto finish;
+    }
+
+    for (int i = 0; i < req->data_shards; i++) {
+        data_blocks[i] = data_map + i * req->shard_size;
+    }
+
+    uint8_t **fec_blocks = (uint8_t**)malloc(req->parity_shards * sizeof(uint8_t *));
+    if (!fec_blocks) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        goto finish;
+    }
+
+    for (int i = 0; i < req->parity_shards; i++) {
+        fec_blocks[i] = parity_map + i * req->shard_size;
+    }
+
+    reed_solomon* rs = reed_solomon_new(req->data_shards, req->parity_shards);
+    if (!rs) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        goto finish;
+    }
+
+    fec_init();
+
+    uint32_t total_shards = req->data_shards + req->parity_shards;
+
+    error = reed_solomon_reconstruct(rs, data_blocks, fec_blocks,
+                                     req->zilch, total_shards, req->shard_size);
+
+    if (error) {
+        req->error_status = STORJ_FILE_RECOVER_ERROR;
+        goto finish;
+    }
+
+finish:
+    if (data_map) {
+        error = unmap_file(data_map, req->data_filesize);
+        if (error) {
+            req->error_status = STORJ_UNMAPPING_ERROR;
+        }
+    }
+    if (parity_map) {
+        error = unmap_file(parity_map, req->parity_filesize);
+        if (error) {
+            req->error_status = STORJ_UNMAPPING_ERROR;
+        }
+    }
+
+    reed_solomon_release(rs);
+}
+
 static void queue_recover_shards(storj_download_state_t *state)
 {
-    // TODO check state that we're not already recovering shards
+    if (state->recovering_shards) {
+        return;
+    }
 
-    // TODO create memory mapped file to the section of the file
-    // that can be recovered
+    if (state->pointers_completed &&
+        state->total_parity_pointers > 0) {
 
-    // TODO create memory mapped file to the sectiion of the parity
-    // shards that will be used for recovery
+        bool has_missing = false;
+        uint8_t *zilch = (uint8_t *)calloc(1, state->total_pointers);
 
-    // TODO queue work to repair missing shards, and once complete
-    // update that status of the pointer to complete
+        // TODO check that all downloads are finished, and
+        // shards are not still being written
+
+        for (int i = 0; i < state->total_pointers; i++) {
+            storj_pointer_t *pointer = &state->pointers[i];
+            if (pointer->status == POINTER_MISSING) {
+                has_missing = true;
+                zilch[i] = 1;
+            }
+        }
+
+        file_request_recover_t *req = malloc(sizeof(file_request_recover_t));
+        if (!req) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            return;
+        }
+
+        uv_work_t *work = malloc(sizeof(uv_work_t));
+        if (!work) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            return;
+        }
+
+        // TODO complete these with real values
+        req->data_fd = 0; //fileno();
+        req->parity_fd = 0; //fileno();
+        req->data_filesize = 0;
+        req->parity_filesize = 0;
+        req->data_shards = 0;
+        req->parity_shards = 0;
+        req->shard_size = 0;
+        req->zilch = zilch;
+
+        req->state = state;
+        req->error_status = 0;
+
+        work->data = req;
+
+        state->pending_work_count++;
+        int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                                   recover_shards, after_recover_shards);
+
+        if (status) {
+            state->error_status = STORJ_QUEUE_ERROR;
+            return;
+        }
+
+        state->recovering_shards = true;
+    }
 }
 
 static void queue_next_work(storj_download_state_t *state)
@@ -1579,13 +1714,14 @@ static void queue_next_work(storj_download_state_t *state)
     queue_send_exchange_reports(state);
 
     if (can_recover_shards(state)) {
-        // Attempt to recover the missing shards with erasure encoding
+        // Recover the missing shards with erasure encoding
         queue_recover_shards(state);
     } else {
         // Exit with error because it won't be possible to recover
         // the missing shards as too much data is missing.
         state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
         queue_next_work(state);
+        return;
     }
 
 
@@ -1652,6 +1788,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->resolving_shards = 0;
     state->total_pointers = 0;
     state->total_parity_pointers = 0;
+    state->recovering_shards = false;
     state->pointers = NULL;
     state->pointers_completed = false;
     state->pointer_fail_count = 0;
