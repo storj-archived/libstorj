@@ -343,6 +343,14 @@ static void create_bucket_entry(uv_work_t *work)
 
     json_object_object_add(body, "hmac", hmac);
 
+    struct json_object *erasure = json_object_new_object();
+    json_object *erasure_type = NULL;
+    if (state->rs) {
+        erasure_type = json_object_new_string("reedsolomon");
+    }
+    json_object_object_add(erasure, "type", erasure_type);
+    json_object_object_add(body, "erasure", erasure);
+
     int path_len = strlen(state->bucket_id) + 16;
     char *path = calloc(path_len + 1, sizeof(char));
     if (!path) {
@@ -350,6 +358,9 @@ static void create_bucket_entry(uv_work_t *work)
         return;
     }
     sprintf(path, "%s%s%s%c", "/buckets/", state->bucket_id, "/files", '\0');
+
+    req->log->debug(state->env->log_options, state->handle,
+                    "fn[create_bucket_entry] - JSON body: %s", json_object_to_json_string(body));
 
     int status_code;
     struct json_object *response = NULL;
@@ -1656,6 +1667,14 @@ static void create_parity_shards(uv_work_t *work)
 clean_variables:
     if (tmp_folder) {
         free(tmp_folder);
+    }
+
+    if (map) {
+        munmap(map, state->file_size);
+    }
+
+    if (map_parity) {
+        munmap(map_parity, parity_size);
     }
 
     if (parity_fd) {
