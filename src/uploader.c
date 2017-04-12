@@ -910,7 +910,7 @@ static void push_frame(uv_work_t *work)
 
     if (req->shard_index + 1 > state->total_data_shards) {
         json_object *parity_shard = json_object_new_boolean(true);
-        json_object_object_add(body, "parity_shard", parity_shard);
+        json_object_object_add(body, "parity", parity_shard);
     }
 
     // Add challenges
