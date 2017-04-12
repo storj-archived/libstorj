@@ -53,9 +53,9 @@ static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state)
     req->log = state->log;
 
     // make sure we switch between parity and data shards files
-    req->shard_file = (index > state->total_data_shards) ? state->parity_file : state->original_file;
+    req->shard_file = (index + 1 > state->total_data_shards) ? state->parity_file : state->original_file;
     // Reset shard index when using parity shards
-    req->shard_meta->index = (index > state->total_data_shards) ? index - state->total_data_shards - 1 : index;
+    req->shard_meta->index = (index + 1 > state->total_data_shards) ? index - state->total_data_shards: index;
 
     // Position on shard_meta array
     req->shard_meta_index = index;
@@ -908,6 +908,11 @@ static void push_frame(uv_work_t *work)
     json_object *shard_index = json_object_new_int(shard_meta->index);
     json_object_object_add(body, "index", shard_index);
 
+    if (req->shard_index + 1 > state->total_data_shards) {
+        json_object *parity_shard = json_object_new_boolean(true);
+        json_object_object_add(body, "parity_shard", parity_shard);
+    }
+
     // Add challenges
     json_object *challenges = json_object_new_array();
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
@@ -1038,7 +1043,7 @@ static void push_frame(uv_work_t *work)
     memcpy(req->farmer_pointer->token, token, strlen(token));
 
     // Farmer pointer
-    req->shard_index = shard_meta->index;
+    // req->shard_index = shard_meta->index;
 
     // Farmer user agent
     char *farmer_user_agent =
@@ -1960,7 +1965,7 @@ static int check_in_progress(storj_upload_state_t *state, int status)
 
 static void queue_push_frame_and_shard(storj_upload_state_t *state)
 {
-    for (int index = 0; index < state->total_data_shards; index++) {
+    for (int index = 0; index < state->total_shards; index++) {
 
         if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
             state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED &&
@@ -2027,7 +2032,7 @@ static void queue_next_work(storj_upload_state_t *state)
     }
 
     // report upload complete
-    if (state->completed_shards == state->total_data_shards &&
+    if (state->completed_shards == state->total_shards &&
         !state->creating_bucket_entry &&
         !state->completed_upload) {
         queue_create_bucket_entry(state);
