@@ -1356,7 +1356,6 @@ static void request_info(uv_work_t *work)
             }   else {
                 state->log->warn(state->env->log_options, state->handle,
                                  "value missing from erasure response");
-                goto clean_up;
             }
         }
 
