@@ -405,6 +405,7 @@ typedef struct {
     // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
     char *tree[2 * STORJ_SHARD_CHALLENGES - 1][20 * 2 + 1];
     int index;
+    bool is_parity;
     uint64_t size;
 } shard_meta_t;
 

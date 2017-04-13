@@ -397,7 +397,7 @@ static int prepare_bucket_entry_hmac(storj_upload_state_t *state)
     struct hmac_sha512_ctx hmac_ctx;
     hmac_sha512_set_key(&hmac_ctx, SHA256_DIGEST_SIZE, state->encryption_key);
 
-    for (int i = 0; i < state->total_data_shards; i++) {
+    for (int i = 0; i < state->total_shards; i++) {
 
         shard_tracker_t *shard = &state->shard[i];
 
@@ -1995,13 +1995,13 @@ static void queue_push_frame_and_shard(storj_upload_state_t *state)
 
         if (state->shard[index].progress == AWAITING_PUSH_FRAME &&
             state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED &&
-            check_in_progress(state, PUSHING_FRAME) < state->push_frame_limit) { // TODO: make adjustable frame push limit
+            check_in_progress(state, PUSHING_FRAME) < state->push_frame_limit) {
             queue_push_frame(state, index);
         }
 
         if (state->shard[index].progress == AWAITING_PUSH_SHARD &&
             state->shard[index].report->send_status == STORJ_REPORT_NOT_PREPARED &&
-            check_in_progress(state, PUSHING_SHARD) < state->push_shard_limit) { // TODO: make adjustable shard push limit
+            check_in_progress(state, PUSHING_SHARD) < state->push_shard_limit) {
             queue_push_shard(state, index);
         }
     }
@@ -2151,6 +2151,7 @@ static void prepare_upload_state(uv_work_t *work)
             state->error_status = STORJ_MEMORY_ERROR;
             return;
         }
+        state->shard[i].meta->is_parity = (i + 1 > state->total_data_shards) ? true : false;
         state->shard[i].report = storj_exchange_report_new();
         if (!state->shard[i].report) {
             state->error_status = STORJ_MEMORY_ERROR;
