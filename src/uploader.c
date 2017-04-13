@@ -343,14 +343,12 @@ static void create_bucket_entry(uv_work_t *work)
 
     json_object_object_add(body, "hmac", hmac);
 
-    // TODO: Is it okay for type to be NULL?
-    struct json_object *erasure = json_object_new_object();
-    json_object *erasure_type = NULL;
     if (state->rs) {
-        erasure_type = json_object_new_string("reedsolomon");
+        struct json_object *erasure = json_object_new_object();
+        json_object *erasure_type = json_object_new_string("reedsolomon");
+        json_object_object_add(erasure, "type", erasure_type);
+        json_object_object_add(body, "erasure", erasure);
     }
-    json_object_object_add(erasure, "type", erasure_type);
-    json_object_object_add(body, "erasure", erasure);
 
     int path_len = strlen(state->bucket_id) + 16;
     char *path = calloc(path_len + 1, sizeof(char));
@@ -927,11 +925,13 @@ static void push_frame(uv_work_t *work)
     json_object *shard_index = json_object_new_int(shard_meta->index);
     json_object_object_add(body, "index", shard_index);
 
-    // TODO: Is it okay if there is no parity property???
+    json_object *parity_shard = NULL;
     if (req->shard_index + 1 > state->total_data_shards) {
-        json_object *parity_shard = json_object_new_boolean(true);
-        json_object_object_add(body, "parity", parity_shard);
+        parity_shard = json_object_new_boolean(true);
+    } else {
+        parity_shard = json_object_new_boolean(false);
     }
+    json_object_object_add(body, "parity", parity_shard);
 
     // Add challenges
     json_object *challenges = json_object_new_array();
@@ -1574,14 +1574,14 @@ static void create_parity_shards(uv_work_t *work)
     // ???
     fec_init();
 
-    uint8_t *map = (uint8_t *)mmap(NULL,
-                                   state->file_size,
-                                   PROT_READ,
-                                   MAP_SHARED,
-                                   fileno(state->original_file),
-                                   0);
-    if (map == MAP_FAILED) {
+    uint8_t *map = NULL;
+    int status = 0;
+    status = map_file(fileno(state->original_file), state->file_size, &map);
+
+    if (status == -1) {
         req->error_status = 1;
+        state->log->error(state->env->log_options, state->handle,
+                       "Could not create mmap original file: %d", errno);
         goto clean_variables;
     }
 
@@ -1635,12 +1635,13 @@ static void create_parity_shards(uv_work_t *work)
         goto clean_variables;
     }
 
-    uint8_t *map_parity = (uint8_t *)mmap(NULL, parity_size, PROT_WRITE,
-                                          MAP_SHARED, parity_fd, 0);
-    if (map_parity == MAP_FAILED) {
+    uint8_t *map_parity = NULL;
+    status = map_file(parity_fd, parity_size, &map_parity);
+
+    if (status == -1) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "Could not create mmap parity shard file");
+                       "Could not create mmap parity shard file: %d", errno);
         goto clean_variables;
     }
 
@@ -1679,11 +1680,11 @@ clean_variables:
     }
 
     if (map) {
-        munmap(map, state->file_size);
+        unmap_file(map, state->file_size);
     }
 
     if (map_parity) {
-        munmap(map_parity, parity_size);
+        unmap_file(map_parity, parity_size);
     }
 
     if (parity_fd) {
@@ -2054,7 +2055,7 @@ static void queue_next_work(storj_upload_state_t *state)
 
     for (int index = 0; index < state->total_shards; index++ ) {
         if (state->shard[index].progress == AWAITING_PREPARE_FRAME &&
-            check_in_progress(state, PREPARING_FRAME) < state->prepare_frame_limit) { // TODO: make adjustable frame prepare limit
+            check_in_progress(state, PREPARING_FRAME) < state->prepare_frame_limit) {
             queue_prepare_frame(state, index);
         }
     }

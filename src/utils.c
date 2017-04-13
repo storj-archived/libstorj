@@ -271,20 +271,25 @@ int map_file(int fd, uint64_t filesize, uint8_t **map)
 {
     int status = 0;
 #ifdef _WIN32
+    SetLastError(0);
+
     HANDLE fh = (HANDLE)_get_osfhandle(fd);
     if (fh == INVALID_HANDLE_VALUE) {
-        return EBADF;
+        errno = EBADF;
+        return -1;
     }
 
     HANDLE mh = CreateFileMapping(fh, NULL, PAGE_READWRITE, 0, 0, NULL);
     if (!mh) {
-        status = GetLastError();
+        errno = GetLastError();
+        status = -1;
         goto win_finished;
     }
 
     *map = MapViewOfFileEx(mh, FILE_MAP_WRITE, 0, 0, filesize, NULL);
     if (!*map) {
-        status = GetLastError();
+        errno = GetLastError();
+        status = -1;
         goto win_finished;
     }
 
@@ -292,9 +297,9 @@ win_finished:
     CloseHandle(mh);
     CloseHandle(fh);
 #else
-    *map = (uint8_t *)mmap(NULL, filesize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    *map = (uint8_t *)mmap(NULL, filesize, PROT_READ, MAP_SHARED, fd, 0);
     if (*map == MAP_FAILED) {
-        status = errno;
+        status = -1;
     }
 #endif
     return status;
