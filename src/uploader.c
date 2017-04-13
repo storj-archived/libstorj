@@ -1,5 +1,47 @@
 #include "uploader.h"
 
+static void print_shard_info(storj_upload_state_t *state, int index) {
+    shard_tracker_t *shard = &state->shard[index];
+    shard_meta_t *shard_meta = state->shard[index].meta;
+    farmer_pointer_t *p = state->shard[index].pointer;
+
+    printf("\n================\n");
+
+    printf("Shard index [%d]\n", index);
+
+    printf("=== Shard Tracker ===\n");
+    printf("progress: %d\n", shard->progress);
+    printf("push_frame_request_count: %d\n", shard->push_frame_request_count);
+    printf("push_shard_request_count: %d\n", shard->push_shard_request_count);
+    printf("index: %d\n", shard->index);
+    printf("uploaded_size: %lu\n", shard->uploaded_size);
+
+    printf("\n=== Shard Pointer ===\n");
+    printf("token: %s\n", p->token);
+    printf("farmer_user_agent: %s\n", p->farmer_user_agent);
+    printf("farmer_protocol: %s\n", p->farmer_protocol);
+    printf("farmer_address: %s\n", p->farmer_address);
+    printf("farmer_port: %s\n", p->farmer_port);
+    printf("farmer_node_id: %s\n", p->farmer_node_id);
+
+    printf("\n=== Shard Meta ===\n");
+    printf("hash: %s\n", shard_meta->hash);
+    printf("index: %d\n", shard_meta->index);
+    printf("size: %lu\n", shard_meta->size);
+    printf("is_parity: %d\n", shard_meta->is_parity);
+    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+        printf("Challenge [%d]: %s\n", i, (char *)shard_meta->challenges_as_str[i]);
+    }
+    for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
+        printf("Leaf [%d]: %s\n", i, (char *)shard_meta->tree[i]);
+    }
+
+    printf("================\n");
+
+    return;
+
+}
+
 static uv_work_t *uv_work_new()
 {
     uv_work_t *work = malloc(sizeof(uv_work_t));
