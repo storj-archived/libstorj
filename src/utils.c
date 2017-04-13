@@ -297,7 +297,7 @@ win_finished:
     CloseHandle(mh);
     CloseHandle(fh);
 #else
-    *map = (uint8_t *)mmap(NULL, filesize, PROT_READ, MAP_SHARED, fd, 0);
+    *map = (uint8_t *)mmap(NULL, filesize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
     if (*map == MAP_FAILED) {
         status = -1;
     }

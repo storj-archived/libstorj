@@ -343,7 +343,7 @@ void upload_signal_handler(uv_signal_t *req, int signum)
 
 static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
 {
-    FILE *fd = fopen(file_path, "r");
+    FILE *fd = fopen(file_path, "rw+");
 
     if (!fd) {
         printf("Invalid file path: %s\n", file_path);
