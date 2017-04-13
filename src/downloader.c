@@ -379,10 +379,22 @@ static void set_pointer_from_json(storj_download_state_t *state,
         free(p->farmer_address);
         free(p->farmer_id);
     }
-    p->token = strdup(token);
+    if (token) {
+        p->token = strdup(token);
+    } else {
+        p->token = NULL;
+    }
     p->shard_hash = strdup(hash);
-    p->farmer_address = strdup(address);
-    p->farmer_id = strdup(farmer_id);
+    if (address) {
+        p->farmer_address = strdup(address);
+    } else {
+        p->farmer_address = NULL;
+    }
+    if (farmer_id) {
+        p->farmer_id = strdup(farmer_id);
+    } else {
+        p->farmer_id = NULL;
+    }
 
     // setup exchange report values
     if (is_replaced) {
@@ -400,7 +412,11 @@ static void set_pointer_from_json(storj_download_state_t *state,
     p->report->reporter_id = strdup(client_id);
     p->report->client_id = strdup(client_id);
     p->report->data_hash = strdup(hash);
-    p->report->farmer_id = strdup(farmer_id);
+    if (farmer_id) {
+        p->report->farmer_id = strdup(farmer_id);
+    } else {
+        p->report->farmer_id = NULL;
+    }
     p->report->send_status = 0; // not sent
     p->report->send_count = 0;
 
@@ -454,7 +470,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
             set_pointer_from_json(state, &state->pointers[j], json, false);
 
             // Keep track of the number of data and parity pointers
-            storj_pointer_t *pointer = &state->pointers[i];
+            storj_pointer_t *pointer = &state->pointers[j];
             if (pointer->parity) {
                 state->total_parity_pointers += 1;
             }

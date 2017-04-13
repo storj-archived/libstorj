@@ -259,8 +259,11 @@
     "size": 3193765382,
     "id": "998960317b6725a3f8080c2b",
     "hmac": {
-      "value": "12780ab6f6bc26d04457f6e0c7afb006f2cfd983c7684a0c7bd7ff27bd0881deecc164d23984cea560f7b37a94a56d2bb95a35b794208844db24f076ec451ce7",
+      "value": "834f7968a9aacf3a277f2f38d5933980b0cd3fc561b9f360bcf59b8b62a01cb3779f6977d8ce73acebb0308e235f0e566df4028fdf8f081c88888cb6a8c3fb38",
       "type": "sha512"
+    },
+    "erasure": {
+      "type": "reedsolomon"
     }
   },
   "getfilepointers-0": [
@@ -477,6 +480,22 @@
       "operation": "PULL",
       "index": 13,
       "size": 16777216
+    },
+    {
+      "token": "4a207fadceca4a9622f0ef25b1220ef9b8cf4831",
+      "hash": "5b388088b0ef4b44594311794cc1390b85c2f6d3",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 14,
+      "parity": true,
+      "size": 16777216
     }
   ],
   "getfilepointers-r": [
@@ -493,6 +512,14 @@
       },
       "operation": "PULL",
       "index": 4,
+      "size": 16777216
+    }
+  ],
+  "getfilepointers-missing": [
+    {
+      "hash": "1ea408fad0213a16f53421e9b72aeb0e12b93a4a",
+      "parity": true,
+      "index": 14,
       "size": 16777216
     }
   ],
