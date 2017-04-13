@@ -283,17 +283,7 @@
       "size": 16777216
     },
     {
-      "token": "bc1b9cc047fc805fe756b08789f5db4ec37dc11e",
       "hash": "17416a592487d7b1b74c100448c8296122d8aff8",
-      "farmer": {
-        "userAgent": "6.0.1",
-        "protocol": "1.0.0",
-        "address": "localhost",
-        "port": 8092,
-        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
-        "lastSeen": 1480963976831
-      },
-      "operation": "PULL",
       "index": 1,
       "size": 16777216
     },
@@ -390,17 +380,7 @@
       "size": 16777216
     },
     {
-      "token": "f63d4f4d7ca0c3e4bca5c9dcd4a1c3be212f137e",
       "hash": "88c5e8885160c449b1dbb00ccf317067200b39a0",
-      "farmer": {
-        "userAgent": "6.0.1",
-        "protocol": "1.0.0",
-        "address": "localhost",
-        "port": 8092,
-        "nodeID": "fe1d29e063197502b070c70782242485b276cd5c",
-        "lastSeen": 1480963976882
-      },
-      "operation": "PULL",
       "index": 8,
       "size": 16777216
     },
