@@ -1674,7 +1674,7 @@ static void queue_recover_shards(storj_download_state_t *state)
     if (state->pointers_completed &&
         state->total_parity_pointers > 0) {
 
-        bool total_missing = 0;
+        int total_missing = 0;
         bool has_missing = false;
         bool is_ready = true;
         uint8_t *zilch = (uint8_t *)calloc(1, state->total_pointers);
@@ -1699,7 +1699,7 @@ static void queue_recover_shards(storj_download_state_t *state)
 
         state->log->info(state->env->log_options,
                          state->handle,
-                         "Queuing recovery of %i of % shards",
+                         "Queuing recovery of %i of %i shards",
                          total_missing, state->total_shards);
 
         file_request_recover_t *req = malloc(sizeof(file_request_recover_t));
