@@ -144,7 +144,7 @@ int mock_farmer_shard_server(void *cls,
         aes256_set_encrypt_key(ctx, encrypt_key);
 
         int total_data_shards = 14;
-        int total_parity_shards = 7;
+        int total_parity_shards = 4;
         int total_shards = total_data_shards + total_parity_shards;
 
         char *data = calloc(shard_bytes * total_shards, sizeof(char));
@@ -265,6 +265,16 @@ int mock_farmer_shard_server(void *cls,
             page = calloc(shard_bytes + 1, sizeof(char));
             memcpy(page, data + shard_bytes * 15, shard_bytes);
             increment_ctr_aes_iv(ctr, shard_bytes * 15);
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/e72494d229de1c561389ee44f51e200e5b19b28a")) {
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 16, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 16);
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/710de4f62dd6097c27b70b169a9c13dd6c5745c1")) {
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 17, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 17);
             status_code = MHD_HTTP_OK;
         } else {
             printf("url: %s\n", url);

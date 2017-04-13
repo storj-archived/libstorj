@@ -259,7 +259,7 @@
     "size": 3193765382,
     "id": "998960317b6725a3f8080c2b",
     "hmac": {
-      "value": "ed29877d6051c4b1b8903c8bad239bc6b31028364675a0c85e1e67db771aca09e2bfdfff1326624bf3deda3de2fdd75153b04b31fd2d7a11cd510c9115fa6534",
+      "value": "5e66cce0ecb48c7011579dce517fbca3f88935812e2ebdaa206b21d12da1f17b884ad22689ba65672b4e093002a65c70342ac6609a0960c7af4536ff5b8acbea",
       "type": "sha512"
     },
     "erasure": {
@@ -510,6 +510,38 @@
       },
       "operation": "PULL",
       "index": 15,
+      "parity": true,
+      "size": 16777216
+    },
+    {
+      "token": "44e1db2c17af152618dbe319f8f2bf1a6ef21b94",
+      "hash": "e72494d229de1c561389ee44f51e200e5b19b28a",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 16,
+      "parity": true,
+      "size": 16777216
+    },
+    {
+      "token": "9424f843e3a10a7f96dc79a301c6700385d1a74b",
+      "hash": "710de4f62dd6097c27b70b169a9c13dd6c5745c1",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 17,
       "parity": true,
       "size": 16777216
     }
