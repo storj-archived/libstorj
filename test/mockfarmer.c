@@ -3,6 +3,7 @@
 #include <nettle/ctr.h>
 
 #include "storjtests.h"
+#include "../src/rs.h"
 
 static int e_count = 0;
 static int i_count = 0;
@@ -152,6 +153,35 @@ int mock_farmer_shard_server(void *cls,
             memset(data + (i * shard_bytes), bytes[i], shard_bytes);
         }
 
+        reed_solomon* rs = NULL;
+        uint8_t **data_blocks = NULL;
+        uint8_t **fec_blocks = NULL;
+        fec_init();
+
+        data_blocks = (uint8_t**)malloc(total_data_shards * sizeof(uint8_t *));
+        if (!data_blocks) {
+            fprintf(stderr, "memory error: unable to malloc");
+            exit(1);
+        }
+
+        for (int i = 0; i < total_data_shards; i++) {
+            data_blocks[i] = data + i * shard_bytes;
+        }
+
+        fec_blocks = (uint8_t**)malloc(total_parity_shards * sizeof(uint8_t *));
+        if (!fec_blocks) {
+            fprintf(stderr, "memory error: unable to malloc");
+            exit(1);
+        }
+
+        for (int i = 0; i < total_parity_shards; i++) {
+            fec_blocks[i] = data + (total_data_shards + i) * shard_bytes;
+        }
+
+        rs = reed_solomon_new(total_data_shards, total_parity_shards);
+        reed_solomon_encode2(rs, data_blocks, fec_blocks, total_shards, shard_bytes);
+        reed_solomon_release(rs);
+
         if (0 == strcmp(url, "/shards/269e72f24703be80bbb10499c91dc9b2022c4dc3")) {
             page = calloc(shard_bytes + 1, sizeof(char));
             memcpy(page, data + shard_bytes * 0, shard_bytes);
@@ -249,6 +279,8 @@ int mock_farmer_shard_server(void *cls,
             strcat(crypt_page, "Not Found");
         }
 
+        free(data_blocks);
+        free(fec_blocks);
         free(data);
         free(page);
         free(ctx);
