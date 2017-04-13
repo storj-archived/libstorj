@@ -1596,13 +1596,13 @@ static void recover_shards(uv_work_t *work)
         goto finish;
     }
 
+    fec_init();
+
     rs = reed_solomon_new(req->data_shards, req->parity_shards);
     if (!rs) {
         req->error_status = STORJ_MEMORY_ERROR;
         goto finish;
     }
-
-    fec_init();
 
     error = map_file(req->fd, req->filesize, &data_map);
     if (error) {
