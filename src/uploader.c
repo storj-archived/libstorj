@@ -26,7 +26,7 @@ static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state)
     req->log = state->log;
 
     if (index != NULL) {
-        req->shard_index = *index;
+        req->shard_meta_index = *index;
         req->farmer_pointer = farmer_pointer_new();
     }
 
@@ -787,23 +787,23 @@ static void after_push_frame(uv_work_t *work, int status)
     state->pending_work_count -= 1;
 
     if (status == UV_ECANCELED) {
-        state->shard[req->shard_index].push_frame_request_count = 0;
-        state->shard[req->shard_index].progress = AWAITING_PUSH_FRAME;
+        state->shard[req->shard_meta_index].push_frame_request_count = 0;
+        state->shard[req->shard_meta_index].progress = AWAITING_PUSH_FRAME;
         goto clean_variables;
     }
 
     // Increment request count every request for retry counts
-    state->shard[req->shard_index].push_frame_request_count += 1;
+    state->shard[req->shard_meta_index].push_frame_request_count += 1;
 
     // Check if we got a 200 status and token
     if ((req->status_code == 200 || req->status_code == 201) &&
         pointer->token != NULL) {
 
         // Reset for if we need to get a new pointer later
-        state->shard[req->shard_index].push_frame_request_count = 0;
-        state->shard[req->shard_index].progress = AWAITING_PUSH_SHARD;
+        state->shard[req->shard_meta_index].push_frame_request_count = 0;
+        state->shard[req->shard_meta_index].progress = AWAITING_PUSH_SHARD;
 
-        farmer_pointer_t *p = state->shard[req->shard_index].pointer;
+        farmer_pointer_t *p = state->shard[req->shard_meta_index].pointer;
 
         // Add token to shard[].pointer
         p->token = calloc(strlen(pointer->token) + 1, sizeof(char));
@@ -878,10 +878,10 @@ static void after_push_frame(uv_work_t *work, int status)
             p->farmer_node_id
         );
 
-    } else if (state->shard[req->shard_index].push_frame_request_count == 6) {
+    } else if (state->shard[req->shard_meta_index].push_frame_request_count == 6) {
         state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
     } else {
-        state->shard[req->shard_index].progress = AWAITING_PUSH_FRAME;
+        state->shard[req->shard_meta_index].progress = AWAITING_PUSH_FRAME;
     }
 
 clean_variables:
@@ -898,12 +898,12 @@ static void push_frame(uv_work_t *work)
 {
     frame_request_t *req = work->data;
     storj_upload_state_t *state = req->upload_state;
-    shard_meta_t *shard_meta = state->shard[req->shard_index].meta;
+    shard_meta_t *shard_meta = state->shard[req->shard_meta_index].meta;
 
     req->log->info(state->env->log_options, state->handle,
                    "Pushing frame for shard index %d... (retry: %d)",
-                   req->shard_index,
-                   state->shard[req->shard_index].push_frame_request_count);
+                   req->shard_meta_index,
+                   state->shard[req->shard_meta_index].push_frame_request_count);
 
     char resource[strlen(state->frame_id) + 9];
     memset(resource, '\0', strlen(state->frame_id) + 9);
@@ -922,11 +922,11 @@ static void push_frame(uv_work_t *work)
     json_object_object_add(body, "size", shard_size);
 
     // Add shard index
-    json_object *shard_index = json_object_new_int(shard_meta->index);
+    json_object *shard_index = json_object_new_int(req->shard_meta_index);
     json_object_object_add(body, "index", shard_index);
 
     json_object *parity_shard = NULL;
-    if (req->shard_index + 1 > state->total_data_shards) {
+    if (req->shard_meta_index + 1 > state->total_data_shards) {
         parity_shard = json_object_new_boolean(true);
     } else {
         parity_shard = json_object_new_boolean(false);
@@ -1061,9 +1061,6 @@ static void push_frame(uv_work_t *work)
         goto clean_variables;
     }
     memcpy(req->farmer_pointer->token, token, strlen(token));
-
-    // Farmer pointer
-    // req->shard_index = shard_meta->index;
 
     // Farmer user agent
     char *farmer_user_agent =
@@ -1576,12 +1573,12 @@ static void create_parity_shards(uv_work_t *work)
 
     uint8_t *map = NULL;
     int status = 0;
-    status = map_file(fileno(state->original_file), state->file_size, &map);
+    status = map_file(fileno(state->original_file), state->file_size, &map, true);
 
-    if (status == -1) {
+    if (status) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "Could not create mmap original file: %d", errno);
+                       "Could not create mmap original file: %d", status);
         goto clean_variables;
     }
 
@@ -1636,12 +1633,12 @@ static void create_parity_shards(uv_work_t *work)
     }
 
     uint8_t *map_parity = NULL;
-    status = map_file(parity_fd, parity_size, &map_parity);
+    status = map_file(parity_fd, parity_size, &map_parity, false);
 
-    if (status == -1) {
+    if (status) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "Could not create mmap parity shard file: %d", errno);
+                       "Could not create mmap parity shard file: %d", status);
         goto clean_variables;
     }
 

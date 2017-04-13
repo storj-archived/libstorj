@@ -92,7 +92,7 @@ typedef struct {
     int error_status;
 
     // Add shard to frame
-    int shard_index;
+    int shard_meta_index;
     farmer_pointer_t *farmer_pointer;
 
     storj_log_levels_t *log;

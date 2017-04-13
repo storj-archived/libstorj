@@ -59,6 +59,6 @@ uint64_t determine_shard_size(uint64_t file_size, int accumulator);
 
 int unmap_file(uint8_t *map, uint64_t filesize);
 
-int map_file(int fd, uint64_t filesize, uint8_t **map);
+int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
 
 #endif /* STORJ_UTILS_H */

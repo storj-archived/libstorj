@@ -1469,7 +1469,7 @@ int test_memory_mapping()
     rewind(fp);
 
     uint8_t *map = NULL;
-    int error = map_file(fd, filesize, &map);
+    int error = map_file(fd, filesize, &map, false);
     if (error) {
         printf("failed to map file: %i\n", error);
         fail("test_memory_mapping(0)");
@@ -1500,7 +1500,7 @@ int test_memory_mapping()
     }
 
     uint8_t *map2 = NULL;
-    error = map_file(fd2, filesize, &map2);
+    error = map_file(fd2, filesize, &map2, false);
     if (error) {
         printf("failed to map file: %i\n", error);
         fail("test_memory_mapping(3)");

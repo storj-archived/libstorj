@@ -267,29 +267,28 @@ int unmap_file(uint8_t *map, uint64_t filesize)
     return 0;
 }
 
-int map_file(int fd, uint64_t filesize, uint8_t **map)
+int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only)
 {
     int status = 0;
 #ifdef _WIN32
-    SetLastError(0);
-
     HANDLE fh = (HANDLE)_get_osfhandle(fd);
     if (fh == INVALID_HANDLE_VALUE) {
-        errno = EBADF;
-        return -1;
+        return EBADF;
     }
 
-    HANDLE mh = CreateFileMapping(fh, NULL, PAGE_READWRITE, 0, 0, NULL);
+    int prot = read_only ? PAGE_READONLY : PAGE_READWRITE;
+
+    HANDLE mh = CreateFileMapping(fh, NULL, prot, 0, 0, NULL);
     if (!mh) {
-        errno = GetLastError();
-        status = -1;
+        status = GetLastError();
         goto win_finished;
     }
 
-    *map = MapViewOfFileEx(mh, FILE_MAP_WRITE, 0, 0, filesize, NULL);
+    prot = read_only ? FILE_MAP_READ : FILE_MAP_WRITE;
+
+    *map = MapViewOfFileEx(mh, prot, 0, 0, filesize, NULL);
     if (!*map) {
-        errno = GetLastError();
-        status = -1;
+        status = GetLastError();
         goto win_finished;
     }
 
@@ -297,9 +296,10 @@ win_finished:
     CloseHandle(mh);
     CloseHandle(fh);
 #else
-    *map = (uint8_t *)mmap(NULL, filesize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, 0);
+    int prot = read_only ? PROT_READ : PROT_READ | PROT_WRITE;
+    *map = (uint8_t *)mmap(NULL, filesize, prot, MAP_SHARED, fd, 0);
     if (*map == MAP_FAILED) {
-        status = -1;
+        status = errno;
     }
 #endif
     return status;
