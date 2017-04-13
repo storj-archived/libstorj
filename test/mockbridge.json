@@ -259,7 +259,7 @@
     "size": 3193765382,
     "id": "998960317b6725a3f8080c2b",
     "hmac": {
-      "value": "834f7968a9aacf3a277f2f38d5933980b0cd3fc561b9f360bcf59b8b62a01cb3779f6977d8ce73acebb0308e235f0e566df4028fdf8f081c88888cb6a8c3fb38",
+      "value": "ed29877d6051c4b1b8903c8bad239bc6b31028364675a0c85e1e67db771aca09e2bfdfff1326624bf3deda3de2fdd75153b04b31fd2d7a11cd510c9115fa6534",
       "type": "sha512"
     },
     "erasure": {
@@ -494,6 +494,22 @@
       },
       "operation": "PULL",
       "index": 14,
+      "parity": true,
+      "size": 16777216
+    },
+    {
+      "token": "3b3f8ccb23ec47cec1ad57f7f68cab285dde54d6",
+      "hash": "92bc6dffa6bd35b7ef3080faacdd4af99245d30b",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 15,
       "parity": true,
       "size": 16777216
     }

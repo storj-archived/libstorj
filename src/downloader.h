@@ -29,7 +29,6 @@
  * can continue until success.
  */
 typedef enum {
-    POINTER_MISSING = -4,
     POINTER_BEING_REPLACED = -3,
     POINTER_ERROR_REPORTED = -2,
     POINTER_ERROR = -1,
@@ -37,7 +36,8 @@ typedef enum {
     POINTER_BEING_DOWNLOADED = 1,
     POINTER_DOWNLOADED = 2,
     POINTER_BEING_WRITTEN = 3,
-    POINTER_WRITTEN = 4
+    POINTER_WRITTEN = 4,
+    POINTER_MISSING = 5
 } storj_pointer_status_t;
 
 /** @brief A structure for sharing data with worker threads for writing

@@ -260,6 +260,12 @@ int mock_farmer_shard_server(void *cls,
             memcpy(page, data + shard_bytes * 13, shard_bytes);
             increment_ctr_aes_iv(ctr, shard_bytes * 13);
             status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/92bc6dffa6bd35b7ef3080faacdd4af99245d30b")) {
+            // this is parity shard #2, parity shard #1 is missing
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 15, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 15);
+            status_code = MHD_HTTP_OK;
         } else {
             printf("url: %s\n", url);
         }
