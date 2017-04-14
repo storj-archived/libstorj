@@ -1624,8 +1624,7 @@ static void create_parity_shards(uv_work_t *work)
         goto clean_variables;
     }
 
-    uint64_t block_size = (state->file_size + state->total_data_shards - 1) / state->total_data_shards;
-    uint64_t parity_size = state->total_shards * block_size - state->file_size;
+    uint64_t parity_size = state->total_shards * state->shard_size - state->file_size;
 
     // determine parity shard location
     char *tmp_folder = NULL;
@@ -1694,7 +1693,7 @@ static void create_parity_shards(uv_work_t *work)
     }
 
     for (int i = 0; i < state->total_data_shards; i++) {
-        data_blocks[i] = map + i * block_size;
+        data_blocks[i] = map + i * state->shard_size;
     }
 
     uint8_t **fec_blocks = NULL;
@@ -1707,11 +1706,11 @@ static void create_parity_shards(uv_work_t *work)
     }
 
     for (int i = 0; i < state->total_parity_shards; i++) {
-        fec_blocks[i] = map_parity + i * block_size;
+        fec_blocks[i] = map_parity + i * state->shard_size;
     }
 
     reed_solomon *rs = reed_solomon_new(state->total_data_shards, state->total_parity_shards);
-    reed_solomon_encode2(rs, data_blocks, fec_blocks, state->total_shards, block_size);
+    reed_solomon_encode2(rs, data_blocks, fec_blocks, state->total_shards, state->shard_size);
 
 clean_variables:
     if (tmp_folder) {
