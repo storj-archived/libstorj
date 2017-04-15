@@ -32,7 +32,7 @@ sudo make install
 
 Development tools:
 ```bash
-apt-get install build-essential libtool autotools-dev automake libmicrohttpd-dev
+apt-get install build-essential libtool autotools-dev automake libmicrohttpd-dev bsdmainutils
 ```
 
 Dependencies:
