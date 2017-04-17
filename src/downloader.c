@@ -288,11 +288,10 @@ static void set_pointer_from_json(storj_download_state_t *state,
     }
 
     struct json_object *token_value;
-    if (!json_object_object_get_ex(json, "token", &token_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
+    char *token = NULL;
+    if (json_object_object_get_ex(json, "token", &token_value)) {
+        token = (char *)json_object_get_string(token_value);
     }
-    char *token = (char *)json_object_get_string(token_value);
 
     struct json_object *hash_value;
     if (!json_object_object_get_ex(json, "hash", &hash_value)) {
@@ -308,6 +307,11 @@ static void set_pointer_from_json(storj_download_state_t *state,
     }
     uint64_t size = json_object_get_int64(size_value);
 
+    struct json_object *parity_value;
+    bool parity = false;
+    if (json_object_object_get_ex(json, "parity", &parity_value)) {
+        parity = json_object_get_boolean(parity_value);
+    }
 
     struct json_object *index_value;
     if (!json_object_object_get_ex(json, "index", &index_value)) {
@@ -317,37 +321,35 @@ static void set_pointer_from_json(storj_download_state_t *state,
     uint32_t index = json_object_get_int(index_value);
 
     struct json_object *farmer_value;
-    if (!json_object_object_get_ex(json, "farmer", &farmer_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
-    }
-    if (!json_object_is_type(farmer_value, json_type_object)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
-    }
+    char *address = NULL;
+    uint32_t port = 0;
+    char *farmer_id = NULL;
+    if (json_object_object_get_ex(json, "farmer", &farmer_value) &&
+        json_object_is_type(farmer_value, json_type_object)) {
 
-    struct json_object *address_value;
-    if (!json_object_object_get_ex(farmer_value, "address",
-                                   &address_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
-    }
-    char *address = (char *)json_object_get_string(address_value);
+        struct json_object *address_value;
+        if (!json_object_object_get_ex(farmer_value, "address",
+                                       &address_value)) {
+            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            return;
+        }
+        address = (char *)json_object_get_string(address_value);
 
-    struct json_object *port_value;
-    if (!json_object_object_get_ex(farmer_value, "port", &port_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
-    }
-    uint32_t port = json_object_get_int(port_value);
+        struct json_object *port_value;
+        if (!json_object_object_get_ex(farmer_value, "port", &port_value)) {
+            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            return;
+        }
+        port = json_object_get_int(port_value);
 
-    struct json_object *farmer_id_value;
-    if (!json_object_object_get_ex(farmer_value, "nodeID",
-                                   &farmer_id_value)) {
-        state->error_status = STORJ_BRIDGE_JSON_ERROR;
-        return;
+        struct json_object *farmer_id_value;
+        if (!json_object_object_get_ex(farmer_value, "nodeID",
+                                       &farmer_id_value)) {
+            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            return;
+        }
+        farmer_id = (char *)json_object_get_string(farmer_id_value);
     }
-    char *farmer_id = (char *)json_object_get_string(farmer_id_value);
 
     if (is_replaced) {
         p->replace_count += 1;
@@ -355,10 +357,18 @@ static void set_pointer_from_json(storj_download_state_t *state,
         p->replace_count = 0;
     }
 
-    // reset the status
-    p->status = POINTER_CREATED;
+    // Check to see if we have a token for this shard, otherwise
+    // we will immediatly move this shard to POINTER_MISSING
+    // so that it can be retried and possibly recovered.
+    if (address && token) {
+        // reset the status
+        p->status = POINTER_CREATED;
+    } else {
+        p->status = POINTER_MISSING;
+    }
 
     p->size = size;
+    p->parity = parity;
     p->downloaded_size = 0;
     p->index = index;
     p->farmer_port = port;
@@ -369,10 +379,22 @@ static void set_pointer_from_json(storj_download_state_t *state,
         free(p->farmer_address);
         free(p->farmer_id);
     }
-    p->token = strdup(token);
+    if (token) {
+        p->token = strdup(token);
+    } else {
+        p->token = NULL;
+    }
     p->shard_hash = strdup(hash);
-    p->farmer_address = strdup(address);
-    p->farmer_id = strdup(farmer_id);
+    if (address) {
+        p->farmer_address = strdup(address);
+    } else {
+        p->farmer_address = NULL;
+    }
+    if (farmer_id) {
+        p->farmer_id = strdup(farmer_id);
+    } else {
+        p->farmer_id = NULL;
+    }
 
     // setup exchange report values
     if (is_replaced) {
@@ -390,7 +412,11 @@ static void set_pointer_from_json(storj_download_state_t *state,
     p->report->reporter_id = strdup(client_id);
     p->report->client_id = strdup(client_id);
     p->report->data_hash = strdup(hash);
-    p->report->farmer_id = strdup(farmer_id);
+    if (farmer_id) {
+        p->report->farmer_id = strdup(farmer_id);
+    } else {
+        p->report->farmer_id = NULL;
+    }
     p->report->send_status = 0; // not sent
     p->report->send_count = 0;
 
@@ -442,6 +468,12 @@ static void append_pointers_to_state(storj_download_state_t *state,
             struct json_object *json = json_object_array_get_idx(res, i);
 
             set_pointer_from_json(state, &state->pointers[j], json, false);
+
+            // Keep track of the number of data and parity pointers
+            storj_pointer_t *pointer = &state->pointers[j];
+            if (pointer->parity) {
+                state->total_parity_pointers += 1;
+            }
         }
     }
 
@@ -553,7 +585,7 @@ static void queue_request_pointers(storj_download_state_t *state)
         storj_pointer_t *pointer = &state->pointers[i];
 
         if (pointer->replace_count >= STORJ_DEFAULT_MIRRORS) {
-            state->error_status = STORJ_FARMER_EXHAUSTED_ERROR;
+            pointer->status = POINTER_MISSING;
             return;
         }
 
@@ -767,6 +799,21 @@ static void free_request_shard_work(uv_handle_t *progress_handle)
 
     free(req);
     free(work);
+}
+
+static uint64_t calculate_data_filesize(storj_download_state_t *state)
+{
+    uint64_t total_bytes = 0;
+
+    for (int i = 0; i < state->total_pointers; i++) {
+        storj_pointer_t *pointer = &state->pointers[i];
+        if (pointer->parity) {
+            continue;
+        }
+        total_bytes += pointer->size;
+    }
+
+    return total_bytes;
 }
 
 static void report_progress(storj_download_state_t *state)
@@ -1230,6 +1277,13 @@ static void after_request_info(uv_work_t *work, int status)
         req->state->error_status = STORJ_BRIDGE_FILEINFO_ERROR;
     } else if (req->status_code == 200 || req->status_code == 304) {
         req->state->info = req->info;
+        if (req->info->erasure) {
+            if (strcmp(req->info->erasure, "reedsolomon") == 0) {
+                req->state->rs = true;
+            } else {
+                req->state->error_status = STORJ_FILE_UNSUPPORTED_ERASURE;
+            }
+        }
     } else if (req->error_status) {
         switch(req->error_status) {
             case STORJ_BRIDGE_REQUEST_ERROR:
@@ -1293,6 +1347,18 @@ static void request_info(uv_work_t *work)
                          "Request file info error: %i", request_status);
 
     } else if (status_code == 200 || status_code == 304) {
+        struct json_object *erasure_obj;
+        struct json_object *erasure_value;
+        char *erasure = NULL;
+        if (json_object_object_get_ex(response, "erasure", &erasure_obj)) {
+            if (json_object_object_get_ex(erasure_obj, "type", &erasure_value)) {
+                erasure = (char *)json_object_get_string(erasure_value);
+            }   else {
+                state->log->warn(state->env->log_options, state->handle,
+                                 "value missing from erasure response");
+            }
+        }
+
         struct json_object *hmac_obj;
         if (!json_object_object_get_ex(response, "hmac", &hmac_obj)) {
             state->log->warn(state->env->log_options, state->handle,
@@ -1339,6 +1405,13 @@ static void request_info(uv_work_t *work)
         char *hmac = (char *)json_object_get_string(hmac_value);
         req->info = malloc(sizeof(storj_file_meta_t));
         req->info->hmac = strdup(hmac);
+
+        // set the erasure encoding type
+        if (erasure) {
+            req->info->erasure = strdup(erasure);
+        } else {
+            req->info->erasure = NULL;
+        }
 
         // TODO set these values, however the are currently
         // not used within the downloader
@@ -1451,6 +1524,224 @@ static int prepare_file_hmac(storj_download_state_t *state)
     return 0;
 }
 
+static bool has_missing_shard(storj_download_state_t *state)
+{
+    bool missing = false;
+    for (int i = 0; i < state->total_pointers; i++) {
+        storj_pointer_t *pointer = &state->pointers[i];
+        if (pointer->status == POINTER_MISSING) {
+            missing = true;
+        }
+    }
+    return missing;
+}
+
+static bool can_recover_shards(storj_download_state_t *state)
+{
+    if (state->pointers_completed) {
+        uint32_t missing_pointers = 0;
+
+        for (int i = 0; i < state->total_pointers; i++) {
+            storj_pointer_t *pointer = &state->pointers[i];
+            if (pointer->status == POINTER_MISSING) {
+                missing_pointers += 1;
+            }
+        }
+
+        if (missing_pointers > state->total_parity_pointers) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static void after_recover_shards(uv_work_t *work, int status)
+{
+    file_request_recover_t *req = work->data;
+    storj_download_state_t *state = req->state;
+
+    state->pending_work_count--;
+    state->recovering_shards = false;
+
+    if (status != 0) {
+        req->state->error_status = STORJ_QUEUE_ERROR;
+    } else if (req->error_status) {
+        req->state->error_status = req->error_status;
+    } else {
+        // Recovery was successful and the pointers have been written
+        for (int i = 0; i < state->total_pointers; i++) {
+            if (req->zilch[i]) {
+                state->pointers[i].status = POINTER_WRITTEN;
+                state->completed_shards += 1;
+            }
+        }
+    }
+
+    queue_next_work(state);
+
+    free(req);
+    free(work);
+}
+
+static void recover_shards(uv_work_t *work)
+{
+    file_request_recover_t *req = work->data;
+    storj_download_state_t *state = req->state;
+    reed_solomon* rs = NULL;
+    uint8_t *data_map = NULL;
+    int error = 0;
+
+    if (!req->has_missing) {
+        goto finish;
+    }
+
+    fec_init();
+
+    rs = reed_solomon_new(req->data_shards, req->parity_shards);
+    if (!rs) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        goto finish;
+    }
+
+    error = map_file(req->fd, req->filesize, &data_map, false);
+    if (error) {
+        req->error_status = STORJ_MAPPING_ERROR;
+        goto finish;
+    }
+
+    uint8_t **data_blocks = (uint8_t**)malloc(req->data_shards * sizeof(uint8_t *));
+    if (!data_blocks) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        goto finish;
+    }
+
+    uint8_t **fec_blocks = (uint8_t**)malloc(req->parity_shards * sizeof(uint8_t *));
+    if (!fec_blocks) {
+        req->error_status = STORJ_MEMORY_ERROR;
+        goto finish;
+    }
+
+    for (int i = 0; i < req->data_shards; i++) {
+        data_blocks[i] = data_map + i * req->shard_size;
+    }
+
+    for (int i = 0; i < req->parity_shards; i++) {
+        fec_blocks[i] = data_map + (req->data_shards + i) * req->shard_size;
+    }
+
+    uint32_t total_shards = req->data_shards + req->parity_shards;
+
+    error = reed_solomon_reconstruct(rs, data_blocks, fec_blocks,
+                                     req->zilch, total_shards,
+                                     req->shard_size, req->filesize);
+
+    if (error) {
+        req->error_status = STORJ_FILE_RECOVER_ERROR;
+        goto finish;
+    }
+
+finish:
+    if (data_map) {
+        error = unmap_file(data_map, req->filesize);
+        if (error) {
+            req->error_status = STORJ_UNMAPPING_ERROR;
+        }
+    }
+
+    if (rs) {
+        reed_solomon_release(rs);
+    }
+
+#ifdef _WIN32
+    error = _chsize_s(req->fd, req->date_filesize);
+    if (error) {
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+    }
+#else
+    if (ftruncate(req->fd, req->data_filesize)) {
+        // errno for more details
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+    }
+#endif
+}
+
+static void queue_recover_shards(storj_download_state_t *state)
+{
+    if (state->recovering_shards) {
+        return;
+    }
+
+    if (state->pointers_completed &&
+        state->total_parity_pointers > 0) {
+
+        int total_missing = 0;
+        bool has_missing = false;
+        bool is_ready = true;
+        uint8_t *zilch = (uint8_t *)calloc(1, state->total_pointers);
+
+        for (int i = 0; i < state->total_pointers; i++) {
+            storj_pointer_t *pointer = &state->pointers[i];
+            if (pointer->status == POINTER_MISSING) {
+                total_missing += 1;
+                has_missing = true;
+                zilch[i] = 1;
+            }
+
+            if (pointer->status != POINTER_MISSING &&
+                pointer->status != POINTER_WRITTEN) {
+                is_ready = false;
+            }
+        }
+
+        if (!is_ready) {
+            return;
+        }
+
+        state->log->info(state->env->log_options,
+                         state->handle,
+                         "Queuing recovery of %i of %i shards",
+                         total_missing, state->total_shards);
+
+        file_request_recover_t *req = malloc(sizeof(file_request_recover_t));
+        if (!req) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            return;
+        }
+
+        uv_work_t *work = malloc(sizeof(uv_work_t));
+        if (!work) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            return;
+        }
+
+        req->fd = fileno(state->destination);
+        req->filesize = state->shard_size * state->total_pointers;
+        req->data_filesize = calculate_data_filesize(state);
+        req->data_shards = state->total_pointers - state->total_parity_pointers;
+        req->parity_shards = state->total_parity_pointers;
+        req->shard_size = state->shard_size;
+        req->zilch = zilch;
+        req->has_missing = has_missing;
+
+        req->state = state;
+        req->error_status = 0;
+
+        work->data = req;
+
+        state->pending_work_count++;
+        int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                                   recover_shards, after_recover_shards);
+
+        if (status) {
+            state->error_status = STORJ_QUEUE_ERROR;
+            return;
+        }
+
+        state->recovering_shards = true;
+    }
+}
+
 static void queue_next_work(storj_download_state_t *state)
 {
     // report any errors
@@ -1518,6 +1809,22 @@ static void queue_next_work(storj_download_state_t *state)
 
     queue_send_exchange_reports(state);
 
+    if (state->rs) {
+        if (can_recover_shards(state)) {
+            queue_recover_shards(state);
+        } else {
+            state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
+            queue_next_work(state);
+            return;
+        }
+    } else {
+        if (has_missing_shard(state)) {
+            state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
+            queue_next_work(state);
+            return;
+        }
+    }
+
 finish_up:
 
     state->log->debug(state->env->log_options, state->handle,
@@ -1577,6 +1884,9 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->completed_shards = 0;
     state->resolving_shards = 0;
     state->total_pointers = 0;
+    state->total_parity_pointers = 0;
+    state->rs = false;
+    state->recovering_shards = false;
     state->pointers = NULL;
     state->pointers_completed = false;
     state->pointer_fail_count = 0;

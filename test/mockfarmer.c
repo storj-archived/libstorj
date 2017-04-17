@@ -3,6 +3,7 @@
 #include <nettle/ctr.h>
 
 #include "storjtests.h"
+#include "../src/rs.h"
 
 static int e_count = 0;
 static int i_count = 0;
@@ -127,8 +128,8 @@ int mock_farmer_shard_server(void *cls,
 
         int ret;
 
-        int total_bytes = 16777216;
-        int total_bytes_sent = 16777216;
+        int shard_bytes = 16777216;
+        int shard_bytes_sent = 16777216;
         char *page = NULL;
 
         struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
@@ -142,83 +143,139 @@ int mock_farmer_shard_server(void *cls,
         uint8_t ctr[16] = {70,219,247,135,162,7,93,193,44,123,188,234,203,115,129,82};
         aes256_set_encrypt_key(ctx, encrypt_key);
 
+        int total_data_shards = 14;
+        int total_parity_shards = 4;
+        int total_shards = total_data_shards + total_parity_shards;
+        int total_size = shard_bytes * total_shards;
+
+        char *data = calloc(total_size, sizeof(char));
+        char *bytes = "abcdefghijklmn";
+        for (int i = 0; i < strlen(bytes); i++) {
+            memset(data + (i * shard_bytes), bytes[i], shard_bytes);
+        }
+
+        reed_solomon* rs = NULL;
+        uint8_t **data_blocks = NULL;
+        uint8_t **fec_blocks = NULL;
+        fec_init();
+
+        data_blocks = (uint8_t**)malloc(total_data_shards * sizeof(uint8_t *));
+        if (!data_blocks) {
+            fprintf(stderr, "memory error: unable to malloc");
+            exit(1);
+        }
+
+        for (int i = 0; i < total_data_shards; i++) {
+            data_blocks[i] = data + i * shard_bytes;
+        }
+
+        fec_blocks = (uint8_t**)malloc(total_parity_shards * sizeof(uint8_t *));
+        if (!fec_blocks) {
+            fprintf(stderr, "memory error: unable to malloc");
+            exit(1);
+        }
+
+        for (int i = 0; i < total_parity_shards; i++) {
+            fec_blocks[i] = data + (total_data_shards + i) * shard_bytes;
+        }
+
+        rs = reed_solomon_new(total_data_shards, total_parity_shards);
+        reed_solomon_encode2(rs, data_blocks, fec_blocks, total_shards, shard_bytes, total_size);
+        reed_solomon_release(rs);
+
         if (0 == strcmp(url, "/shards/269e72f24703be80bbb10499c91dc9b2022c4dc3")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'a', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 0);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 0, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 0);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/17416a592487d7b1b74c100448c8296122d8aff8")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'b', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 1);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 1, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 1);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/83cf5eaf2311a1ae9699772d9bafbb3e369a41cc")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'c', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 2);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 2, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 2);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/214ed86cb1287fe0fd18c174eecbf84341bf2655")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'd', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 3);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 3, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 3);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/1ea408fad0213a16f53421e9b72aeb0e12b93a4a")) {
             if (e_count == 0) {
                 // mock a flaky farmer w/ truncated bytes
-                total_bytes_sent = total_bytes_sent / 2;
-                page = calloc(total_bytes_sent + 1, sizeof(char));
-                memset(page, 'e', total_bytes_sent);
+                shard_bytes_sent = shard_bytes_sent / 2;
+                page = calloc(shard_bytes_sent + 1, sizeof(char));
+                memset(page, 'e', shard_bytes_sent);
             } else {
-                page = calloc(total_bytes + 1, sizeof(char));
-                memset(page, 'e', total_bytes);
+                page = calloc(shard_bytes + 1, sizeof(char));
+                memcpy(page, data + shard_bytes * 4, shard_bytes);
             }
-            increment_ctr_aes_iv(ctr, total_bytes * 4);
+            increment_ctr_aes_iv(ctr, shard_bytes * 4);
             status_code = MHD_HTTP_OK;
             e_count += 1;
         } else if (0 == strcmp(url, "/shards/0219bb523832c09c77069c74804e5b0476cea7cf")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'f', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 5);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 5, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 5);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/ebcbe78dd209a03d3ce29f2e5460304de2060031")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'g', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 6);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 6, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 6);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/5ecd6cc2964a344b42406d3688e13927a51937aa")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'h', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 7);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 7, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 7);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/88c5e8885160c449b1dbb00ccf317067200b39a0")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'i', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 8);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 8, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 8);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/76b1a97498e026c47c924374b5b1148543d5c0ab")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'j', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 9);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 9, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 9);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/48e02627e37433c89fa034d3ee2df644ac7ac7a0")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'k', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 10);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 10, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 10);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/e4617532be728d48a8155ecfb200d50f00a01a23")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'l', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 11);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 11, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 11);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/973701b43290e3bef7007db0cb75744f9556ae3b")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'm', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 12);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 12, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 12);
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/a0ec63ad4069fa51a53871c7a282e184371b842b")) {
-            page = calloc(total_bytes + 1, sizeof(char));
-            memset(page, 'n', total_bytes);
-            increment_ctr_aes_iv(ctr, total_bytes * 13);
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 13, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 13);
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/92bc6dffa6bd35b7ef3080faacdd4af99245d30b")) {
+            // this is parity shard #2, parity shard #1 is missing
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 15, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 15);
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/e72494d229de1c561389ee44f51e200e5b19b28a")) {
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 16, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 16);
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/710de4f62dd6097c27b70b169a9c13dd6c5745c1")) {
+            page = calloc(shard_bytes + 1, sizeof(char));
+            memcpy(page, data + shard_bytes * 17, shard_bytes);
+            increment_ctr_aes_iv(ctr, shard_bytes * 17);
             status_code = MHD_HTTP_OK;
         } else {
             printf("url: %s\n", url);
@@ -228,21 +285,24 @@ int mock_farmer_shard_server(void *cls,
 
         if (page) {
 
-            crypt_page = malloc(total_bytes_sent + 1);
+            crypt_page = malloc(shard_bytes_sent + 1);
 
             ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
                       AES_BLOCK_SIZE, ctr,
-                      total_bytes_sent, (uint8_t *)crypt_page, (uint8_t *)page);
+                      shard_bytes_sent, (uint8_t *)crypt_page, (uint8_t *)page);
         } else {
-            total_bytes_sent = 9;
-            crypt_page = calloc(total_bytes_sent + 1, sizeof(char));
+            shard_bytes_sent = 9;
+            crypt_page = calloc(shard_bytes_sent + 1, sizeof(char));
             strcat(crypt_page, "Not Found");
         }
 
+        free(data_blocks);
+        free(fec_blocks);
+        free(data);
         free(page);
         free(ctx);
 
-        response = MHD_create_response_from_buffer(total_bytes_sent,
+        response = MHD_create_response_from_buffer(shard_bytes_sent,
                                                    (void *) crypt_page,
                                                    MHD_RESPMEM_MUST_FREE);
 

@@ -259,8 +259,11 @@
     "size": 3193765382,
     "id": "998960317b6725a3f8080c2b",
     "hmac": {
-      "value": "12780ab6f6bc26d04457f6e0c7afb006f2cfd983c7684a0c7bd7ff27bd0881deecc164d23984cea560f7b37a94a56d2bb95a35b794208844db24f076ec451ce7",
+      "value": "5e66cce0ecb48c7011579dce517fbca3f88935812e2ebdaa206b21d12da1f17b884ad22689ba65672b4e093002a65c70342ac6609a0960c7af4536ff5b8acbea",
       "type": "sha512"
+    },
+    "erasure": {
+      "type": "reedsolomon"
     }
   },
   "getfilepointers-0": [
@@ -280,17 +283,7 @@
       "size": 16777216
     },
     {
-      "token": "bc1b9cc047fc805fe756b08789f5db4ec37dc11e",
       "hash": "17416a592487d7b1b74c100448c8296122d8aff8",
-      "farmer": {
-        "userAgent": "6.0.1",
-        "protocol": "1.0.0",
-        "address": "localhost",
-        "port": 8092,
-        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
-        "lastSeen": 1480963976831
-      },
-      "operation": "PULL",
       "index": 1,
       "size": 16777216
     },
@@ -387,17 +380,7 @@
       "size": 16777216
     },
     {
-      "token": "f63d4f4d7ca0c3e4bca5c9dcd4a1c3be212f137e",
       "hash": "88c5e8885160c449b1dbb00ccf317067200b39a0",
-      "farmer": {
-        "userAgent": "6.0.1",
-        "protocol": "1.0.0",
-        "address": "localhost",
-        "port": 8092,
-        "nodeID": "fe1d29e063197502b070c70782242485b276cd5c",
-        "lastSeen": 1480963976882
-      },
-      "operation": "PULL",
       "index": 8,
       "size": 16777216
     },
@@ -477,6 +460,70 @@
       "operation": "PULL",
       "index": 13,
       "size": 16777216
+    },
+    {
+      "token": "4a207fadceca4a9622f0ef25b1220ef9b8cf4831",
+      "hash": "5b388088b0ef4b44594311794cc1390b85c2f6d3",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 14,
+      "parity": true,
+      "size": 16777216
+    },
+    {
+      "token": "3b3f8ccb23ec47cec1ad57f7f68cab285dde54d6",
+      "hash": "92bc6dffa6bd35b7ef3080faacdd4af99245d30b",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 15,
+      "parity": true,
+      "size": 16777216
+    },
+    {
+      "token": "44e1db2c17af152618dbe319f8f2bf1a6ef21b94",
+      "hash": "e72494d229de1c561389ee44f51e200e5b19b28a",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 16,
+      "parity": true,
+      "size": 16777216
+    },
+    {
+      "token": "9424f843e3a10a7f96dc79a301c6700385d1a74b",
+      "hash": "710de4f62dd6097c27b70b169a9c13dd6c5745c1",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 17,
+      "parity": true,
+      "size": 16777216
     }
   ],
   "getfilepointers-r": [
@@ -493,6 +540,14 @@
       },
       "operation": "PULL",
       "index": 4,
+      "size": 16777216
+    }
+  ],
+  "getfilepointers-missing": [
+    {
+      "hash": "1ea408fad0213a16f53421e9b72aeb0e12b93a4a",
+      "parity": true,
+      "index": 14,
       "size": 16777216
     }
   ],

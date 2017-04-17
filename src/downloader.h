@@ -11,6 +11,7 @@
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
+#include "rs.h"
 
 #define STORJ_DOWNLOAD_CONCURRENCY 24
 #define STORJ_DOWNLOAD_WRITESYNC_CONCURRENCY 4
@@ -35,7 +36,8 @@ typedef enum {
     POINTER_BEING_DOWNLOADED = 1,
     POINTER_DOWNLOADED = 2,
     POINTER_BEING_WRITTEN = 3,
-    POINTER_WRITTEN = 4
+    POINTER_WRITTEN = 4,
+    POINTER_MISSING = 5
 } storj_pointer_status_t;
 
 /** @brief A structure for sharing data with worker threads for writing
@@ -50,6 +52,21 @@ typedef struct {
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
 } shard_request_write_t;
+
+/** @brief A structure for repairing shards from parity shards */
+typedef struct {
+    int fd;
+    uint64_t filesize;
+    uint64_t data_filesize;
+    uint32_t data_shards;
+    uint32_t parity_shards;
+    uint64_t shard_size;
+    uint8_t *zilch;
+    bool has_missing;
+    /* state should not be modified in worker threads */
+    storj_download_state_t *state;
+    int error_status;
+} file_request_recover_t;
 
 /** @brief A structure for sharing data with worker threads for downloading
  * shards from farmers.

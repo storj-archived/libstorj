@@ -118,6 +118,10 @@ int mock_bridge_server(void *cls,
                 // TODO check exclude and limit query
                 page = get_response_string(responses, "getfilepointers-r");
                 status_code = MHD_HTTP_OK;
+            } else if (0 == strcmp(skip, "14")) {
+                // parity-shard
+                page = get_response_string(responses, "getfilepointers-missing");
+                status_code = MHD_HTTP_OK;
             } else {
                 page = "[]";
                 status_code = MHD_HTTP_OK;
