@@ -1633,7 +1633,8 @@ static void recover_shards(uv_work_t *work)
     uint32_t total_shards = req->data_shards + req->parity_shards;
 
     error = reed_solomon_reconstruct(rs, data_blocks, fec_blocks,
-                                     req->zilch, total_shards, req->shard_size);
+                                     req->zilch, total_shards,
+                                     req->shard_size, req->filesize);
 
     if (error) {
         req->error_status = STORJ_FILE_RECOVER_ERROR;

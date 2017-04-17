@@ -146,8 +146,9 @@ int mock_farmer_shard_server(void *cls,
         int total_data_shards = 14;
         int total_parity_shards = 4;
         int total_shards = total_data_shards + total_parity_shards;
+        int total_size = shard_bytes * total_shards;
 
-        char *data = calloc(shard_bytes * total_shards, sizeof(char));
+        char *data = calloc(total_size, sizeof(char));
         char *bytes = "abcdefghijklmn";
         for (int i = 0; i < strlen(bytes); i++) {
             memset(data + (i * shard_bytes), bytes[i], shard_bytes);
@@ -179,7 +180,7 @@ int mock_farmer_shard_server(void *cls,
         }
 
         rs = reed_solomon_new(total_data_shards, total_parity_shards);
-        reed_solomon_encode2(rs, data_blocks, fec_blocks, total_shards, shard_bytes);
+        reed_solomon_encode2(rs, data_blocks, fec_blocks, total_shards, shard_bytes, total_size);
         reed_solomon_release(rs);
 
         if (0 == strcmp(url, "/shards/269e72f24703be80bbb10499c91dc9b2022c4dc3")) {
