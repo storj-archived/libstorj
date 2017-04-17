@@ -1,13 +1,19 @@
-/*#define PROFILE*/
 /*
- * fec.c -- forward error correction based on Vandermonde matrices
+ * rs.c -- forward error correction based on Vandermonde matrices
  * 980624
  * (C) 1997-98 Luigi Rizzo (luigi@iet.unipi.it)
  * (C) 2001 Alain Knaff (alain@knaff.lu)
+ * (C) 2017 Storj Labs, Inc.
  *
  * Portions derived from code by Phil Karn (karn@ka9q.ampr.org),
  * Robert Morelos-Zaragoza (robert@spectra.eng.hawaii.edu) and Hari
  * Thirumoorthy (harit@spectra.eng.hawaii.edu), Aug 1995
+
+ * Reimplement by Jannson (20161018): compatible for golang version of
+ * https://github.com/klauspost/reedsolomon
+ *
+ * Modifications by Braydon Fuller (braydon@storj.io) to support memory
+ * mapped files.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,8 +38,6 @@
  * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
  * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
  * OF SUCH DAMAGE.
- *
- * Reimplement by Jannson (20161018): compatible for golang version of https://github.com/klauspost/reedsolomon
  */
 
 /*
