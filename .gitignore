@@ -39,3 +39,5 @@ depends/MacOSX10.11.sdk/
 !depends/Makefile
 src/storj.dSYM/
 test/tests.dSYM/
+test/tests_rs
+test/tests_rs.dSYM/

@@ -223,6 +223,59 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
 }
 #endif
 
+int allocatefile(int fd, off_t offset, off_t length)
+{
+#ifdef _WIN32
+    HANDLE file = (HANDLE)_get_osfhandle(fd);
+    if (file == INVALID_HANDLE_VALUE) {
+        return EBADF;
+    }
+
+    int status = 0;
+
+    LARGE_INTEGER size;
+    size.HighPart = (uint32_t)((length & 0xFFFFFFFF00000000LL) >> 32);
+    size.LowPart = (uint32_t)(length & 0xFFFFFFFFLL);
+
+    if (!SetFilePointerEx(file, size, 0, FILE_BEGIN)) {
+        status = GetLastError();
+        goto win_finished;
+    }
+
+    if (!SetEndOfFile(file)) {
+        status = GetLastError();
+        goto win_finished;
+    }
+
+win_finished:
+
+    CloseHandle(file);
+    return status;
+#elif HAVE_POSIX_FALLOCATE
+    return posix_fallocate(fd, offset, length);
+#elif __unix__
+    return fallocate(fd, FALLOC_FL_ZERO_RANGE, offset, length);
+#elif __linux__
+    return fallocate(fd, FALLOC_FL_ZERO_RANGE, offset, length);
+#elif __APPLE__
+    fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, offset, length, 0};
+    // Try to get a continous chunk of disk space
+    int ret = fcntl(fd, F_PREALLOCATE, &store);
+    if (-1 == ret) {
+        // OK, perhaps we are too fragmented, allocate non-continuous
+        store.fst_flags = F_ALLOCATEALL;
+        ret = fcntl(fd, F_PREALLOCATE, &store);
+        if ( -1 == ret) {
+            return -1;
+        }
+    }
+    return ftruncate(fd, offset+length);
+#else
+    return -1;
+#endif
+}
+
+
 int unmap_file(uint8_t *map, uint64_t filesize)
 {
 #ifdef _WIN32
@@ -240,7 +293,7 @@ int unmap_file(uint8_t *map, uint64_t filesize)
     return 0;
 }
 
-int map_file(int fd, uint64_t filesize, uint8_t **map)
+int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only)
 {
     int status = 0;
 #ifdef _WIN32
@@ -249,13 +302,17 @@ int map_file(int fd, uint64_t filesize, uint8_t **map)
         return EBADF;
     }
 
-    HANDLE mh = CreateFileMapping(fh, NULL, PAGE_READWRITE, 0, 0, NULL);
+    int prot = read_only ? PAGE_READONLY : PAGE_READWRITE;
+
+    HANDLE mh = CreateFileMapping(fh, NULL, prot, 0, 0, NULL);
     if (!mh) {
         status = GetLastError();
         goto win_finished;
     }
 
-    *map = MapViewOfFileEx(mh, FILE_MAP_WRITE, 0, 0, filesize, NULL);
+    prot = read_only ? FILE_MAP_READ : FILE_MAP_WRITE;
+
+    *map = MapViewOfFileEx(mh, prot, 0, 0, filesize, NULL);
     if (!*map) {
         status = GetLastError();
         goto win_finished;
@@ -265,7 +322,8 @@ win_finished:
     CloseHandle(mh);
     CloseHandle(fh);
 #else
-    *map = (uint8_t *)mmap(NULL, filesize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    int prot = read_only ? PROT_READ : PROT_READ | PROT_WRITE;
+    *map = (uint8_t *)mmap(NULL, filesize, prot, MAP_SHARED, fd, 0);
     if (*map == MAP_FAILED) {
         status = errno;
     }

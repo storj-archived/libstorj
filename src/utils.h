@@ -6,6 +6,7 @@
  */
 #ifndef STORJ_UTILS_H
 #define STORJ_UTILS_H
+#define _GNU_SOURCE
 
 #include <assert.h>
 #include <errno.h>
@@ -17,6 +18,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -33,6 +36,8 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 
 #define MAX_SHARD_SIZE 4294967296 // 4Gb
 #define SHARD_MULTIPLES_BACK 4
+
+int allocatefile(int fd, off_t offset, off_t length);
 
 char *hex2str(size_t length, uint8_t *data);
 
@@ -54,6 +59,6 @@ uint64_t determine_shard_size(uint64_t file_size, int accumulator);
 
 int unmap_file(uint8_t *map, uint64_t filesize);
 
-int map_file(int fd, uint64_t filesize, uint8_t **map);
+int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
 
 #endif /* STORJ_UTILS_H */

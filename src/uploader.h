@@ -6,11 +6,11 @@
  */
 #ifndef STORJ_UPLOADER_H
 #define STORJ_UPLOADER_H
-
 #include "storj.h"
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
+#include "rs.h"
 
 #define STORJ_NULL -1
 #define STORJ_MAX_REPORT_TRIES 2
@@ -38,8 +38,18 @@ typedef struct {
     int status_code;
     int error_status;
     shard_meta_t *shard_meta;
+    // Position in shard meta array
+    int shard_meta_index;
+    // Either parity file pointer or original file
+    FILE *shard_file;
     storj_log_levels_t *log;
 } frame_builder_t;
+
+typedef struct {
+    int error_status;
+    /* state should not be modified in worker threads */
+    storj_upload_state_t *upload_state;
+} parity_shard_req_t;
 
 typedef struct {
     storj_http_options_t *http_options;
@@ -48,6 +58,8 @@ typedef struct {
     int error_status;
     storj_log_levels_t *log;
     int shard_index;
+    int shard_meta_index;
+    FILE *shard_file;
     uv_async_t progress_handle;
     uint64_t start;
     uint64_t end;
@@ -80,7 +92,7 @@ typedef struct {
     int error_status;
 
     // Add shard to frame
-    int shard_index;
+    int shard_meta_index;
     farmer_pointer_t *farmer_pointer;
 
     storj_log_levels_t *log;

@@ -617,6 +617,30 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
 
     env->encrypt_options = eo;
 
+    // Set tmp_path
+    struct stat sb;
+    env->tmp_path = NULL;
+    if (env->tmp_path &&
+        stat(env->tmp_path, &sb) == 0 &&
+        S_ISDIR(sb.st_mode)) {
+        env->tmp_path = strdup(env->tmp_path);
+    } else if (getenv("STORJ_TEMP") &&
+               stat(getenv("STORJ_TEMP"), &sb) == 0 &&
+               S_ISDIR(sb.st_mode)) {
+        env->tmp_path = strdup(getenv("STORJ_TEMP"));
+#ifdef _WIN32
+    } else if (getenv("TEMP") &&
+               stat(getenv("TEMP"), &sb) == 0 &&
+               S_ISDIR(sb.st_mode)) {
+        env->tmp_path = strdup(getenv("TEMP"));
+#else
+    } else if ("/tmp" && stat("/tmp", &sb) == 0 && S_ISDIR(sb.st_mode)) {
+        env->tmp_path = strdup("/tmp");
+#endif
+    } else {
+        env->tmp_path = NULL;
+    }
+
     // deep copy the http options
     storj_http_options_t *ho = malloc(sizeof(storj_http_options_t));
     if (!ho) {
@@ -718,6 +742,10 @@ int storj_destroy_env(storj_env_t *env)
 #else
         free((char *)env->encrypt_options->mnemonic);
 #endif
+    }
+
+    if (env->tmp_path) {
+        free((char *)env->tmp_path);
     }
 
     free(env->encrypt_options);

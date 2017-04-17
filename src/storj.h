@@ -177,6 +177,7 @@ typedef struct storj_env {
     storj_encrypt_options_t *encrypt_options;
     storj_http_options_t *http_options;
     storj_log_options_t *log_options;
+    const char *tmp_path;
     uv_loop_t *loop;
     storj_log_levels_t *log;
 } storj_env_t;
@@ -404,6 +405,7 @@ typedef struct {
     // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
     char *tree[2 * STORJ_SHARD_CHALLENGES - 1][20 * 2 + 1];
     int index;
+    bool is_parity;
     uint64_t size;
 } shard_meta_t;
 
@@ -441,6 +443,8 @@ typedef struct {
     char *bucket_key;
     uint32_t completed_shards;
     uint32_t total_shards;
+    uint32_t total_data_shards;
+    uint32_t total_parity_shards;
     uint64_t shard_size;
     uint64_t total_bytes;
     uint64_t uploaded_bytes;
@@ -449,6 +453,12 @@ typedef struct {
     char *hmac_id;
     uint8_t *encryption_key;
     uint8_t *encryption_ctr;
+
+    // TODO: change this to opts or env
+    bool rs;
+    bool awaiting_parity_shards;
+    char *parity_file_path;
+    FILE *parity_file;
 
     bool requesting_frame;
     bool completed_upload;
@@ -469,6 +479,7 @@ typedef struct {
     int add_bucket_entry_count;
     int bucket_verify_count;
     int file_verify_count;
+    int create_parity_shard_count;
 
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;
