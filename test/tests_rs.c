@@ -64,12 +64,14 @@ void test_galois(void) {
         gf expect[] = {0x0, 0x19, 0x32, 0x2b, 0x64, 0x7d, 0x56, 0xfa, 0xb8, 0x6d, 0xc7, 0x85, 0xc3, 0x1f, 0x22, 0x7, 0x25, 0xfe};
         gf expect2[] = {0x0, 0xb1, 0x7f, 0xce, 0xfe, 0x4f, 0x81, 0x9e, 0x3, 0x6, 0xe8, 0x75, 0xbd, 0x40, 0x36, 0xa3, 0x95, 0xcb};
         int rlt;
-        addmul(out, in, 25, sizeof(int)/sizeof(gf));
+        int sz = sizeof(int)/sizeof(gf);
+        addmul(out, in, 25, sz, sz, sz);
         rlt = memcmp(out, expect, sizeof(int)/sizeof(gf));
         assert(0 == rlt);
 
         memset(out, 0, sizeof(in)/sizeof(gf));
-        addmul(out, in, 177, sizeof(in)/sizeof(gf));
+        sz = sizeof(in)/sizeof(gf);
+        addmul(out, in, 177, sz, sz, sz);
         rlt = memcmp(out, expect2, sizeof(int)/sizeof(gf));
         assert(0 == rlt);
     }
@@ -213,7 +215,8 @@ int test_create_encoding(
         fec_blocks[i] = data + (nr_blocks + i)*block_size;
     }
 
-    n = reed_solomon_encode2(rs, data_blocks, fec_blocks, nr_shards, block_size);
+    n = reed_solomon_encode2(rs, data_blocks, fec_blocks, nr_shards,
+                             block_size, data_size);
     free(data_blocks);
     free(fec_blocks);
 
@@ -259,7 +262,7 @@ int test_data_decode(
     }
 
     n = reed_solomon_reconstruct(rs, data_blocks, fec_blocks, zilch,
-                                 nr_shards, block_size);
+                                 nr_shards, block_size, data_size);
     free(data_blocks);
     free(zilch);
 
@@ -627,6 +630,7 @@ void test_001(void) {
 
 void test_002(void) {
     char text[] = "hello world", output[256];
+    int data_size = strlen(text);
     int block_size = 1;
     int nrDataBlocks = sizeof(text)/sizeof(char) - 1;
     uint8_t* data_blocks[128];
@@ -653,7 +657,7 @@ void test_002(void) {
         fec_blocks[i] = (uint8_t*)&output[i + nrDataBlocks];
     }
 
-    reed_solomon_encode(rs, data_blocks, fec_blocks, block_size);
+    reed_solomon_encode(rs, data_blocks, fec_blocks, block_size, data_size);
     print_buf((gf*)output, "%d ", nrFecBlocks+nrDataBlocks);
 
     text[1] = 'x';
@@ -674,7 +678,7 @@ void test_002(void) {
     printf("erased:%s\n", text);
 
     reed_solomon_decode(rs, data_blocks, block_size, dec_fec_blocks,
-            fec_block_nos, erased_blocks, nr_fec_blocks);
+                        fec_block_nos, erased_blocks, nr_fec_blocks, data_size);
 
     printf("fixed:%s\n", text);
 
@@ -683,6 +687,7 @@ void test_002(void) {
 
 void test_003(void) {
     char text[] = "hello world hello world ", output[256];
+    int data_size = strlen(text);
     int block_size = 2;
     int nrDataBlocks = (sizeof(text)/sizeof(char) - 1) / block_size;
     uint8_t* data_blocks[128];
@@ -710,7 +715,7 @@ void test_003(void) {
     for(i = 0; i < nrFecBlocks; i++) {
         fec_blocks[i] = (uint8_t*)&output[i*block_size + nrDataBlocks*block_size];
     }
-    reed_solomon_encode(rs, data_blocks, fec_blocks, block_size);
+    reed_solomon_encode(rs, data_blocks, fec_blocks, block_size, data_size);
     printf("golang output(example/test_rs.go):\n [[104 101] [108 108] [111 32] [119 111] [114 108] [100 32] [104 101] [108 108] [111 32] [119 111] [114 108] [100 32] \n[157 178] [83 31] [48 240] [254 93] [31 89] [151 184]]\n");
     printf("c verion output:\n");
     print_buf((gf*)output, "%d ", nrFecBlocks*block_size + nrDataBlocks*block_size);
@@ -735,7 +740,7 @@ void test_003(void) {
     printf("erased:%s\n", text);
 
     reed_solomon_decode(rs, data_blocks, block_size, dec_fec_blocks,
-            fec_block_nos, erased_blocks, nr_fec_blocks);
+                        fec_block_nos, erased_blocks, nr_fec_blocks, data_size);
 
     printf("fixed:%s\n", text);
 
@@ -774,7 +779,8 @@ void test_004(void) {
     n = nrBlocks / dataShards;
     nrFecBlocks = n*parityShards;
     nrShards = nrBlocks + nrFecBlocks;
-    data = malloc(nrShards * blockSize);
+    int data_size = nrShards * blockSize;
+    data = malloc(data_size);
     memcpy(data, origin, size);
     memset(data + size, 0, nrShards*blockSize - size);
     printf("nrBlocks=%d nrFecBlocks=%d nrShards=%d n=%d left=%d\n", nrBlocks, nrFecBlocks, nrShards, n, nrShards*blockSize - size);
@@ -792,7 +798,8 @@ void test_004(void) {
     }
 
     rs = reed_solomon_new(dataShards, parityShards);
-    reed_solomon_encode2(rs, data_blocks, fec_blocks, nrShards, blockSize);
+    reed_solomon_encode2(rs, data_blocks, fec_blocks, nrShards, blockSize,
+                         data_size);
     i = memcmp(origin, data, size);
     assert(0 == i);
     //print_matrix2(data_blocks, nrShards, blockSize);
@@ -823,7 +830,7 @@ void test_004(void) {
     }
 
     reed_solomon_reconstruct(rs, data_blocks, fec_blocks, zilch,
-                             nrShards, blockSize);
+                             nrShards, blockSize, data_size);
     i = memcmp(origin, data, size);
     //print_buf(origin, "%d ", nrBlocks);
     //print_buf(data, "%d ", nrBlocks);
