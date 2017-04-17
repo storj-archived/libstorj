@@ -1710,7 +1710,7 @@ static void create_parity_shards(uv_work_t *work)
     }
 
     reed_solomon *rs = reed_solomon_new(state->total_data_shards, state->total_parity_shards);
-    reed_solomon_encode2(rs, data_blocks, fec_blocks, state->total_shards, state->shard_size);
+    reed_solomon_encode2(rs, data_blocks, fec_blocks, state->total_shards, state->shard_size, state->file_size);
 
 clean_variables:
     if (tmp_folder) {
