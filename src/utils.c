@@ -225,7 +225,33 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
 
 int allocatefile(int fd, off_t offset, off_t length)
 {
-#ifdef HAVE_POSIX_FALLOCATE
+#ifdef _WIN32
+    HANDLE file = (HANDLE)_get_osfhandle(fd);
+    if (file == INVALID_HANDLE_VALUE) {
+        return EBADF;
+    }
+
+    int status = 0;
+
+    LARGE_INTEGER size;
+    size.HighPart = (uint32_t)((length & 0xFFFFFFFF00000000LL) >> 32);
+    size.LowPart = (uint32_t)(length & 0xFFFFFFFFLL);
+
+    if (!SetFilePointerEx(file, size, 0, FILE_BEGIN)) {
+        status = GetLastError();
+        goto win_finished;
+    }
+
+    if (!SetEndOfFile(file)) {
+        status = GetLastError();
+        goto win_finished;
+    }
+
+win_finished:
+
+    CloseHandle(file);
+    return status;
+#elif HAVE_POSIX_FALLOCATE
     return posix_fallocate(fd, offset, length);
 #elif __unix__
     return fallocate(fd, FALLOC_FL_ZERO_RANGE, offset, length);
