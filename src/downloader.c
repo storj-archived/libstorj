@@ -1604,7 +1604,7 @@ static void recover_shards(uv_work_t *work)
         goto finish;
     }
 
-    error = map_file(req->fd, req->filesize, &data_map);
+    error = map_file(req->fd, req->filesize, &data_map, false);
     if (error) {
         req->error_status = STORJ_MAPPING_ERROR;
         goto finish;
