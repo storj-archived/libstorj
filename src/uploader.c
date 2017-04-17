@@ -1750,6 +1750,106 @@ static void queue_verify_file_id(storj_upload_state_t *state)
                                verify_file_id_callback);
 }
 
+static void after_create_file_id_and_key(uv_work_t *work, int status)
+{
+    calculate_file_id_req_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+
+    state->pending_work_count -= 1;
+
+    if (req->error_status || !req->file_id || !req->file_key) {
+        state->log->warn(state->env->log_options, state->handle,
+                       "Error calculating file id");
+
+        state->error_status = STORJ_FILE_ID_CALCULATION_ERROR;
+    } else {
+        state->file_id = strdup(req->file_id);
+        state->file_key = strdup(req->file_key);
+
+        state->log->info(state->env->log_options, state->handle,
+                         "Successfully calculated file id: %s", state->file_id);
+
+        prepare_encryption_key(state, state->file_key, DETERMINISTIC_KEY_SIZE, state->file_id, FILE_ID_SIZE);
+    }
+
+    clean_variables:
+    queue_next_work(state);
+
+    if (req->file_id) {
+        free(req->file_id);
+    }
+
+    if (req->file_key) {
+        free(req->file_key);
+    }
+
+    free(work);
+}
+
+static void create_file_id_and_key(uv_work_t *work)
+{
+    calculate_file_id_req_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+
+    // Calculate deterministic file id from encrypted file name
+    char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
+    if (!file_id) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    calculate_file_id(state->frame_id, state->encrypted_file_name, file_id);
+    file_id[FILE_ID_SIZE] = '\0';
+
+    // Caculate the file encryption key based on file id
+    char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    if (!file_key) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    if (generate_file_key(state->env->encrypt_options->mnemonic,
+                          state->bucket_id,
+                          file_id,
+                          &file_key)) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+    file_key[DETERMINISTIC_KEY_SIZE] = '\0';
+
+    req->file_id = file_id;
+    req->file_key = file_key;
+}
+
+static void queue_create_file_id_and_key(storj_upload_state_t *state)
+{
+    uv_work_t *work = frame_work_new(NULL, state);
+    if (!work) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    state->pending_work_count += 1;
+
+    state->log->info(state->env->log_options, state->handle,
+                     "Calculating file id and file key...");
+
+    calculate_file_id_req_t *req = malloc(sizeof(calculate_file_id_req_t));
+
+    req->error_status = 0;
+    req->upload_state = state;
+    req->file_key = NULL;
+    req->file_id = NULL;
+    work->data = req;
+
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               create_file_id_and_key, after_create_file_id_and_key);
+
+    if (status) {
+        state->error_status = STORJ_QUEUE_ERROR;
+    }
+}
+
 // Check if a frame/shard is already being prepared/pushed.
 // We want to limit disk reads for dd and network activity
 static int check_in_progress(storj_upload_state_t *state, int status)
@@ -1810,13 +1910,18 @@ static void queue_next_work(storj_upload_state_t *state)
         goto finish_up;
     }
 
-    if (!state->file_verified) {
-        queue_verify_file_id(state);
+    if (!state->frame_id && !state->requesting_frame) {
+        queue_request_frame_id(state);
         goto finish_up;
     }
 
-    if (!state->frame_id && !state->requesting_frame) {
-        queue_request_frame_id(state);
+    if (!state->file_id || !state->file_key) {
+        queue_create_file_id_and_key(state);
+        goto finish_up;
+    }
+
+    if (!state->file_verified) {
+        queue_verify_file_id(state);
         goto finish_up;
     }
 
@@ -1965,39 +2070,6 @@ static void prepare_upload_state(uv_work_t *work)
     encrypt_meta(state->file_name, key, filename_iv, &encrypted_file_name);
 
     state->encrypted_file_name = encrypted_file_name;
-
-    // Calculate deterministic file id from encrypted file name
-    char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
-    if (!file_id) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    calculate_file_id(state->bucket_id, state->encrypted_file_name, file_id);
-
-    file_id[FILE_ID_SIZE] = '\0';
-    state->file_id = file_id;
-
-    // Caculate the file encryption key based on file id
-    char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    if (!file_key) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-    if (generate_file_key(state->env->encrypt_options->mnemonic,
-                          state->bucket_id,
-                          state->file_id,
-                          &file_key)) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    file_key[DETERMINISTIC_KEY_SIZE] = '\0';
-    state->file_key = file_key;
-
-    prepare_encryption_key(state, file_key, DETERMINISTIC_KEY_SIZE, file_id, FILE_ID_SIZE);
-
-
 }
 
 int storj_bridge_store_file_cancel(storj_upload_state_t *state)
