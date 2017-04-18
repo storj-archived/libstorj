@@ -1345,6 +1345,18 @@ static void request_info(uv_work_t *work)
                          "Request file info error: %i", request_status);
 
     } else if (status_code == 200 || status_code == 304) {
+
+        req->info = malloc(sizeof(storj_file_meta_t));
+        req->info->created = NULL;
+        req->info->filename = NULL;
+        req->info->mimetype = NULL;
+        req->info->erasure = NULL;
+        req->info->size = 0;
+        req->info->hmac = NULL;
+        req->info->id = NULL;
+        req->info->decrypted = false;
+        req->info->index = NULL;
+
         struct json_object *erasure_obj;
         struct json_object *erasure_value;
         char *erasure = NULL;
@@ -1355,6 +1367,20 @@ static void request_info(uv_work_t *work)
                 state->log->warn(state->env->log_options, state->handle,
                                  "value missing from erasure response");
             }
+        }
+
+        if (erasure) {
+            req->info->erasure = strdup(erasure);
+        }
+
+        struct json_object *index_value;
+        char *index = NULL;
+        if (json_object_object_get_ex(response, "index", &index_value)) {
+            index = (char *)json_object_get_string(index_value);
+        }
+
+        if (index) {
+            req->info->index = strdup(index);
         }
 
         struct json_object *hmac_obj;
@@ -1388,7 +1414,7 @@ static void request_info(uv_work_t *work)
             goto clean_up;
         }
 
-        // get the hmac vlaue
+        // get the hmac value
         struct json_object *hmac_value;
         if (!json_object_object_get_ex(hmac_obj, "value", &hmac_value)) {
             state->log->warn(state->env->log_options, state->handle,
@@ -1401,26 +1427,7 @@ static void request_info(uv_work_t *work)
             goto clean_up;
         }
         char *hmac = (char *)json_object_get_string(hmac_value);
-        req->info = malloc(sizeof(storj_file_meta_t));
         req->info->hmac = strdup(hmac);
-
-        // set the erasure encoding type
-        if (erasure) {
-            req->info->erasure = strdup(erasure);
-        } else {
-            req->info->erasure = NULL;
-        }
-
-        // TODO check if index has a value
-        req->info->index = NULL;
-
-        // TODO set these values, however the are currently
-        // not used within the downloader
-        req->info->filename = NULL;
-        req->info->mimetype = NULL;
-        req->info->size = 0;
-        req->info->id = NULL;
-        req->info->decrypted = false;
 
     } else if (status_code == 403 || status_code == 401) {
         req->error_status = STORJ_BRIDGE_AUTH_ERROR;
