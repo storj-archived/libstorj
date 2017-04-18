@@ -1,35 +1,5 @@
 #include "crypto.h"
 
-int calculate_file_id(const char *bucket, const char *file_name, char *buffer)
-{
-    // Combine bucket and file_name
-    int name_len = strlen(bucket) + strlen(file_name);
-    char name[name_len];
-    strcpy(name, bucket);
-    strcat(name, file_name);
-    name[name_len] = '\0';
-
-    // Get the sha256 of the file_name + bucket+id
-    uint8_t sha256_digest[SHA256_DIGEST_SIZE];
-    sha256_of_str((uint8_t *)name, name_len, sha256_digest);
-
-    // Get the ripemd160 of the sha256
-    uint8_t ripemd160_digest[RIPEMD160_DIGEST_SIZE];
-    ripemd160_of_str(sha256_digest, SHA256_DIGEST_SIZE, ripemd160_digest);
-
-    // Convert ripemd160 hex to character array
-    char *ripemd160_str = hex2str(RIPEMD160_DIGEST_SIZE, ripemd160_digest);
-    if (!ripemd160_str) {
-        return 1;
-    }
-
-    //Copy the result into buffer
-    memcpy(buffer, ripemd160_str, FILE_ID_SIZE);
-    free(ripemd160_str);
-
-    return 0;
-}
-
 int ripemd160sha256_as_string(uint8_t *data, uint64_t data_size, char *digest)
 {
     uint8_t *ripemd160_digest = calloc(RIPEMD160_DIGEST_SIZE, sizeof(char));
@@ -139,7 +109,7 @@ int generate_bucket_key(const char *mnemonic, const char *bucket_id,
 }
 
 int generate_file_key(const char *mnemonic, const char *bucket_id,
-                      const char *file_id, char **file_key)
+                      const char *index, char **file_key)
 {
     char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     if (!bucket_key) {
@@ -150,7 +120,7 @@ int generate_file_key(const char *mnemonic, const char *bucket_id,
     }
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
-    get_deterministic_key(bucket_key, 64, file_id, file_key);
+    get_deterministic_key(bucket_key, 64, index, file_key);
 
     memset_zero(bucket_key, DETERMINISTIC_KEY_SIZE + 1);
     free(bucket_key);

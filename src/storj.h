@@ -353,6 +353,7 @@ typedef struct {
     int push_frame_limit;
     int push_shard_limit;
     bool rs;
+    const char *index;
     const char *bucket_id;
     const char *file_name;
     FILE *fd;
@@ -445,11 +446,10 @@ typedef struct {
 typedef struct {
     storj_env_t *env;
     uint32_t shard_concurrency;
-    char *file_id;
+    const char *index;
     const char *file_name;
     const char *encrypted_file_name;
     FILE *original_file;
-    char *file_key;
     uint64_t file_size;
     const char *bucket_id;
     char *bucket_key;
@@ -482,7 +482,6 @@ typedef struct {
     bool final_callback_called;
     bool canceled;
     bool bucket_verified;
-    bool file_verified;
 
     bool progress_finished;
 
@@ -493,7 +492,6 @@ typedef struct {
     int frame_request_count;
     int add_bucket_entry_count;
     int bucket_verify_count;
-    int file_verify_count;
     int create_parity_shard_count;
     int create_encrypted_file_count;
 

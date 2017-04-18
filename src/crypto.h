@@ -19,8 +19,6 @@
 #include "bip39.h"
 #include "utils.h"
 
-#define FILE_ID_SIZE 24
-#define FILE_ID_HEX_SIZE 12
 #define DETERMINISTIC_KEY_SIZE 64
 #define DETERMINISTIC_KEY_HEX_SIZE 32
 #define BUCKET_NAME_MAGIC "398734aab3c4c30c9f22590e83a95f7e43556a45fc2b3060e0c39fde31f50272"
@@ -49,16 +47,6 @@ void pbkdf2_hmac_sha512(unsigned key_length,
                         unsigned length, uint8_t *dst);
 
 /**
- * @brief Calculate file id by sha256ripemd160
- *
- * @param[in] bucket Character array of bucket id
- * @param[in] file_name Character array of file name
- * @param[out] buffer 12 byte character array that is the file's id
- * @return A non-zero error value on failure and 0 on success.
- */
-int calculate_file_id(const char *bucket, const char *file_name, char *buffer);
-
-/**
  * @brief Generate a bucket's key
  *
  * @param[in] Character array of the mnemonic
@@ -74,13 +62,13 @@ int generate_bucket_key(const char *mnemonic, const char *bucket_id,
  *
  * @param[in] Character array of the mnemonic
  * @param[in] bucket_id Character array of bucket id
- * @param[in] file_id Character array of file id
+ * @param[in] index Character array of index
  * @param[out] file_key 64 byte character array that is the bucket's key
  * @return A non-zero error value on failure and 0 on success.
  */
 int generate_file_key(const char *mnemonic,
                       const char *bucket_id,
-                      const char *file_id,
+                      const char *index,
                       char **file_key);
 
 /**
