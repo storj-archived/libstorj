@@ -28,20 +28,26 @@ typedef struct _reed_solomon {
 } reed_solomon;
 
 /**
- * MUST initial one time
- * */
+ * @brief Initializes data structures used for computations in GF.
+ */
 void fec_init(void);
 
+/**
+ * @brief Will initialize new reed solomon
+ *
+ * @param[in] data_shards Total number of data shards
+ * @param[in] parity_shards The total number of parity shards
+ * @return A null value on error
+ */
 reed_solomon* reed_solomon_new(int data_shards, int parity_shards);
-void reed_solomon_release(reed_solomon* rs);
 
 /**
- * encode one shard
- * input:
- * rs
- * data_blocks[rs->data_shards][block_size]
- * fec_blocks[rs->data_shards][block_size]
- * */
+ * @brief Will free existing reed solomon
+ *
+ * @param[in] rs
+ */
+void reed_solomon_release(reed_solomon* rs);
+
 int reed_solomon_encode(reed_solomon* rs,
                         uint8_t** data_blocks,
                         uint8_t** fec_blocks,
@@ -49,16 +55,6 @@ int reed_solomon_encode(reed_solomon* rs,
                         uint64_t total_bytes);
 
 
-/**
- * decode one shard
- * input:
- * rs
- * original data_blocks[rs->data_shards][block_size]
- * dec_fec_blocks[nr_fec_blocks][block_size]
- * fec_block_nos: fec pos number in original fec_blocks
- * erased_blocks: erased blocks in original data_blocks
- * nr_fec_blocks: the number of erased blocks
- * */
 int reed_solomon_decode(reed_solomon* rs,
                         uint8_t **data_blocks,
                         int block_size,
@@ -68,25 +64,34 @@ int reed_solomon_decode(reed_solomon* rs,
                         int nr_fec_blocks,
                         uint64_t total_bytes);
 
+
 /**
- * encode a big size of buffer
- * input:
- * rs
- * nr_shards: assert(0 == nr_shards % rs->data_shards)
- * shards[nr_shards][block_size]
- * */
+ * @brief Will encode large buffer into parity shards
+ *
+ * @param[in] rs
+ * @param[in] data_blocks Data shards
+ * @param[in] fec_blocks Parity shards
+ * @param[in] nr_shards Total number of shards/blocks
+ * @param[in] block_size The size of each shard
+ * @param[in] total_bytes The total size used for zero padding the last shard
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int reed_solomon_encode2(reed_solomon* rs, uint8_t** data_blocks,
                          uint8_t** fec_blocks, int nr_shards, int block_size,
                          uint64_t total_bytes);
 
 /**
- * reconstruct a big size of buffer
- * input:
- * rs
- * nr_shards: assert(0 == nr_shards % rs->data_shards)
- * shards[nr_shards][block_size]
- * marks[nr_shards] marks as errors
- * */
+ * @brief Will repair missing data in blocks
+ *
+ * @param[in] rs
+ * @param[in] data_blocks Data shards
+ * @param[in] fec_blocks Parity shards
+ * @param[in] marks An array with 1 used to mark missing blocks
+ * @param[in] nr_shards Total number of shards/blocks
+ * @param[in] block_size The size of each shard
+ * @param[in] total_bytes The total size used for zero padding the last shard
+ * @return A non-zero error value on failure and 0 on success.
+ */
 int reed_solomon_reconstruct(reed_solomon* rs, uint8_t** data_blocks,
                              uint8_t** fec_blocks, uint8_t* marks,
                              int nr_shards, int block_size,

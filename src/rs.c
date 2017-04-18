@@ -210,8 +210,6 @@ static void init_mul_table(void)
  * multiplication of two numbers can be resolved without calling modnn
  */
 
-
-
 /*
  * initialize the data structures used for computations in GF.
  */
@@ -803,13 +801,6 @@ void reed_solomon_release(reed_solomon* rs)
     }
 }
 
-/**
- * encode one shard
- * input:
- * rs
- * data_blocks[rs->data_shards][block_size]
- * fec_blocks[rs->data_shards][block_size]
- * */
 int reed_solomon_encode(reed_solomon* rs,
                         uint8_t** data_blocks,
                         uint8_t** fec_blocks,
@@ -844,16 +835,6 @@ int reed_solomon_encode(reed_solomon* rs,
                             data_blocks_max, fec_blocks_max);
 }
 
-/**
- * decode one shard
- * input:
- * rs
- * original data_blocks[rs->data_shards][block_size]
- * dec_fec_blocks[nr_fec_blocks][block_size]
- * fec_block_nos: fec pos number in original fec_blocks
- * erased_blocks: erased blocks in original data_blocks
- * nr_fec_blocks: the number of erased blocks
- * */
 int reed_solomon_decode(reed_solomon* rs,
                         uint8_t **data_blocks,
                         int block_size,
@@ -960,13 +941,6 @@ int reed_solomon_decode(reed_solomon* rs,
                             subShardsMax, outputsMax);
 }
 
-/**
- * encode a big size of buffer
- * input:
- * rs
- * nr_shards: assert(0 == nr_shards % rs->shards)
- * shards[nr_shards][block_size]
- * */
 int reed_solomon_encode2(reed_solomon* rs, uint8_t** data_blocks,
                          uint8_t** fec_blocks, int nr_shards, int block_size,
                          uint64_t total_bytes)
@@ -982,14 +956,6 @@ int reed_solomon_encode2(reed_solomon* rs, uint8_t** data_blocks,
     return 0;
 }
 
-/**
- * reconstruct a big size of buffer
- * input:
- * rs
- * nr_shards: assert(0 == nr_shards % rs->data_shards)
- * shards[nr_shards][block_size]
- * marks[nr_shards] marks as errors
- * */
 int reed_solomon_reconstruct(reed_solomon* rs,
                              uint8_t** data_blocks,
                              uint8_t** fec_blocks,
