@@ -66,19 +66,19 @@
 #define DEBUG   0   /* minimal debugging */
 
 #include <sys/time.h>
-#define DIFF_T(a,b) \
+#define DIFF_T(a,b)                                                     \
     (1+ 1000000*(a.tv_sec - b.tv_sec) + (a.tv_usec - b.tv_usec) )
 
-#define TICK(t) \
-    {struct timeval x ; \
-    gettimeofday(&x, NULL) ; \
-    t = x.tv_usec + 1000000* (x.tv_sec & 0xff ) ; \
+#define TICK(t)                                         \
+    {struct timeval x;                                  \
+        gettimeofday(&x, NULL);                         \
+        t = x.tv_usec + 1000000* (x.tv_sec & 0xff );    \
     }
-#define TOCK(t) \
-    { u_long t1 ; TICK(t1) ; \
-      if (t1 < t) t = 256000000 + t1 - t ; \
-      else t = t1 - t ; \
-      if (t == 0) t = 1 ;}
+#define TOCK(t)                                 \
+    { u_long t1; TICK(t1);                      \
+        if (t1 < t) t = 256000000 + t1 - t;     \
+        else t = t1 - t;                        \
+        if (t == 0) t = 1;}
 
 u_long ticks[10];   /* vars for timekeeping */
 #else
@@ -219,7 +219,7 @@ static void generate_gf(void)
 {
     int i;
     gf mask;
-    char *Pp =  allPp[GF_BITS] ;
+    char *Pp =  allPp[GF_BITS];
 
     mask = 1;   /* x ** 0 = 1 */
     gf_exp[GF_BITS] = 0; /* will be updated at the end of the 1st loop */
@@ -250,7 +250,7 @@ static void generate_gf(void)
      * \alpha ** GF_BITS term that may occur when poly-repr of
      * \alpha ** i is shifted.
      */
-    mask = 1 << (GF_BITS - 1 ) ;
+    mask = 1 << (GF_BITS - 1 );
     for (i = GF_BITS + 1; i < GF_SIZE; i++) {
         if (gf_exp[i - 1] >= mask)
             gf_exp[i] = gf_exp[GF_BITS] ^ ((gf_exp[i - 1] ^ mask) << 1);
@@ -261,17 +261,17 @@ static void generate_gf(void)
     /*
      * log(0) is not defined, so use a special value
      */
-    gf_log[0] = GF_SIZE ;
+    gf_log[0] = GF_SIZE;
     /* set the extended gf_exp values for fast multiply */
-    for (i = 0 ; i < GF_SIZE ; i++)
-        gf_exp[i + GF_SIZE] = gf_exp[i] ;
+    for (i = 0; i < GF_SIZE; i++)
+        gf_exp[i + GF_SIZE] = gf_exp[i];
 
     /*
      * again special cases. 0 has no inverse. This used to
      * be initialized to GF_SIZE, but it should make no difference
      * since noone is supposed to read from here.
      */
-    inverse[0] = 0 ;
+    inverse[0] = 0;
     inverse[1] = 1;
     for (i=2; i<=GF_SIZE; i++)
         inverse[i] = gf_exp[GF_SIZE-gf_log[i]];
@@ -298,17 +298,17 @@ static void generate_gf(void)
 #define UNROLL 16 /* 1, 4, 8, 16 */
 static void slow_addmul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_max)
 {
-    USE_GF_MULC ;
-    register gf *dst = dst1, *src = src1 ;
+    USE_GF_MULC;
+    register gf *dst = dst1, *src = src1;
     int low_max = dst_max < src_max ? dst_max : src_max;
     int dif = sz - low_max;
     int pos = low_max - UNROLL + 1;
     gf *lim = &dst[pos];
 
-    GF_MULC0(c) ;
+    GF_MULC0(c);
 
 #if (UNROLL > 1) /* unrolling by 8/16 is quite effective on the pentium */
-    for (; dst < lim ; dst += UNROLL, src += UNROLL ) {
+    for (; dst < lim; dst += UNROLL, src += UNROLL ) {
         GF_ADDMULC( dst[0] , src[0] );
         GF_ADDMULC( dst[1] , src[1] );
         GF_ADDMULC( dst[2] , src[2] );
@@ -331,7 +331,7 @@ static void slow_addmul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_
 #endif
     }
 #endif
-    lim += dif + UNROLL - 1 ;
+    lim += dif + UNROLL - 1;
     /* final components */
     for (; dst < lim; dst++, src++ ) {
         if (pos < src_max && pos < dst_max) {
@@ -368,18 +368,18 @@ static void addmul(gf *dst, gf *src, gf c, int sz, int dst_max, int src_max)
 #define UNROLL 16 /* 1, 4, 8, 16 */
 static void slow_mul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_max)
 {
-    USE_GF_MULC ;
-    register gf *dst = dst1, *src = src1 ;
+    USE_GF_MULC;
+    register gf *dst = dst1, *src = src1;
 
     int low_max = dst_max < src_max ? dst_max : src_max;
     int dif = sz - low_max;
     int pos = low_max - UNROLL + 1;
     gf *lim = &dst[pos];
 
-    GF_MULC0(c) ;
+    GF_MULC0(c);
 
 #if (UNROLL > 1) /* unrolling by 8/16 is quite effective on the pentium */
-    for (; dst < lim ; dst += UNROLL, src += UNROLL ) {
+    for (; dst < lim; dst += UNROLL, src += UNROLL ) {
         GF_MULC( dst[0] , src[0] );
         GF_MULC( dst[1] , src[1] );
         GF_MULC( dst[2] , src[2] );
@@ -428,88 +428,88 @@ static inline void mul(gf *dst, gf *src, gf c, int sz, int dst_max, int src_max)
  * (Gauss-Jordan, adapted from Numerical Recipes in C)
  * Return non-zero if singular.
  */
-DEB( int pivloops=0; int pivswaps=0 ; /* diagnostic */)
+DEB( int pivloops=0; int pivswaps=0; /* diagnostic */)
 static int invert_mat(gf *src, int k)
 {
-    gf c, *p ;
-    int irow, icol, row, col, i, ix ;
+    gf c, *p;
+    int irow, icol, row, col, i, ix;
 
-    int error = 1 ;
+    int error = 1;
     int indxc[k];
     int indxr[k];
     int ipiv[k];
     gf id_row[k];
 
     memset(id_row, 0, k*sizeof(gf));
-    DEB( pivloops=0; pivswaps=0 ; /* diagnostic */ )
+    DEB( pivloops=0; pivswaps=0; /* diagnostic */ )
         /*
          * ipiv marks elements already used as pivots.
          */
-        for (i = 0; i < k ; i++)
-            ipiv[i] = 0 ;
+        for (i = 0; i < k; i++)
+            ipiv[i] = 0;
 
-    for (col = 0; col < k ; col++) {
-        gf *pivot_row ;
+    for (col = 0; col < k; col++) {
+        gf *pivot_row;
         /*
          * Zeroing column 'col', look for a non-zero element.
          * First try on the diagonal, if it fails, look elsewhere.
          */
-        irow = icol = -1 ;
+        irow = icol = -1;
         if (ipiv[col] != 1 && src[col*k + col] != 0) {
-            irow = col ;
-            icol = col ;
-            goto found_piv ;
+            irow = col;
+            icol = col;
+            goto found_piv;
         }
-        for (row = 0 ; row < k ; row++) {
+        for (row = 0; row < k; row++) {
             if (ipiv[row] != 1) {
-                for (ix = 0 ; ix < k ; ix++) {
-                    DEB( pivloops++ ; )
+                for (ix = 0; ix < k; ix++) {
+                    DEB( pivloops++; )
                         if (ipiv[ix] == 0) {
                             if (src[row*k + ix] != 0) {
-                                irow = row ;
-                                icol = ix ;
-                                goto found_piv ;
+                                irow = row;
+                                icol = ix;
+                                goto found_piv;
                             }
                         } else if (ipiv[ix] > 1) {
                             fprintf(stderr, "singular matrix\n");
-                            goto fail ;
+                            goto fail;
                         }
                 }
             }
         }
         if (icol == -1) {
             fprintf(stderr, "XXX pivot not found!\n");
-            goto fail ;
+            goto fail;
         }
  found_piv:
-        ++(ipiv[icol]) ;
+        ++(ipiv[icol]);
         /*
          * swap rows irow and icol, so afterwards the diagonal
          * element will be correct. Rarely done, not worth
          * optimizing.
          */
         if (irow != icol) {
-            for (ix = 0 ; ix < k ; ix++ ) {
-                SWAP( src[irow*k + ix], src[icol*k + ix], gf) ;
+            for (ix = 0; ix < k; ix++ ) {
+                SWAP( src[irow*k + ix], src[icol*k + ix], gf);
             }
         }
-        indxr[col] = irow ;
-        indxc[col] = icol ;
-        pivot_row = &src[icol*k] ;
-        c = pivot_row[icol] ;
+        indxr[col] = irow;
+        indxc[col] = icol;
+        pivot_row = &src[icol*k];
+        c = pivot_row[icol];
         if (c == 0) {
             fprintf(stderr, "singular matrix 2\n");
-            goto fail ;
+            goto fail;
         }
         if (c != 1 ) { /* otherwhise this is a NOP */
             /*
              * this is done often , but optimizing is not so
              * fruitful, at least in the obvious ways (unrolling)
              */
-            DEB( pivswaps++ ; )
-                c = inverse[ c ] ;
-            pivot_row[icol] = 1 ;
-            for (ix = 0 ; ix < k ; ix++ )
+            DEB( pivswaps++; )
+                c = inverse[ c ];
+            pivot_row[icol] = 1;
+            for (ix = 0; ix < k; ix++ )
                 pivot_row[ix] = gf_mul(c, pivot_row[ix] );
         }
         /*
@@ -521,34 +521,34 @@ static int invert_mat(gf *src, int k)
          */
         id_row[icol] = 1;
         if (memcmp(pivot_row, id_row, k*sizeof(gf)) != 0) {
-            for (p = src, ix = 0 ; ix < k ; ix++, p += k ) {
+            for (p = src, ix = 0; ix < k; ix++, p += k ) {
                 if (ix != icol) {
-                    c = p[icol] ;
-                    p[icol] = 0 ;
+                    c = p[icol];
+                    p[icol] = 0;
                     addmul(p, pivot_row, c, k, k, k);
                 }
             }
         }
         id_row[icol] = 0;
     } /* done all columns */
-    for (col = k-1 ; col >= 0 ; col-- ) {
+    for (col = k-1; col >= 0; col-- ) {
         if (indxr[col] <0 || indxr[col] >= k)
             fprintf(stderr, "AARGH, indxr[col] %d\n", indxr[col]);
         else if (indxc[col] <0 || indxc[col] >= k)
             fprintf(stderr, "AARGH, indxc[col] %d\n", indxc[col]);
         else
             if (indxr[col] != indxc[col] ) {
-                for (row = 0 ; row < k ; row++ ) {
-                    SWAP( src[row*k + indxr[col]], src[row*k + indxc[col]], gf) ;
+                for (row = 0; row < k; row++ ) {
+                    SWAP( src[row*k + indxr[col]], src[row*k + indxc[col]], gf);
                 }
             }
     }
-    error = 0 ;
+    error = 0;
 fail:
-    return error ;
+    return error;
 }
 
-static int fec_initialized = 0 ;
+static int fec_initialized = 0;
 
 void fec_init(void)
 {
@@ -560,7 +560,7 @@ void fec_init(void)
     init_mul_table();
     TOCK(ticks[0]);
     DDB(fprintf(stderr, "init_mul_table took %ldus\n", ticks[0]);)
-    fec_initialized = 1 ;
+    fec_initialized = 1;
 }
 
 
