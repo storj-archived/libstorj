@@ -1142,7 +1142,53 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
 
 static void determine_decryption_key_v1(storj_download_state_t *state)
 {
-    // TODO
+    uint8_t *index = NULL;
+    char *file_key_as_str = NULL;
+
+    file_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    if (!file_key_as_str) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    if (generate_file_key(state->env->encrypt_options->mnemonic,
+                          state->bucket_id,
+                          state->info->index, &file_key_as_str)) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+    file_key_as_str[DETERMINISTIC_KEY_SIZE] = '\0';
+
+    uint8_t *decrypt_key = str2hex(strlen(file_key_as_str), file_key_as_str);
+    if (!decrypt_key) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    state->decrypt_key = decrypt_key;
+
+    index = str2hex(strlen(state->info->index), (char *)state->info->index);
+    if (!index) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+    if (!decrypt_ctr) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    memcpy(decrypt_ctr, index, AES_BLOCK_SIZE);
+    state->decrypt_ctr = decrypt_ctr;
+
+cleanup:
+    if (file_key_as_str) {
+        free(file_key_as_str);
+    }
+    if (index) {
+        free(index);
+    }
 }
 
 static void determine_decryption_key_v0(storj_download_state_t *state)
@@ -1929,6 +1975,8 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->canceled = false;
     state->log = env->log;
     state->handle = handle;
+    state->decrypt_key = NULL;
+    state->decrypt_ctr = NULL;
 
     // start download
     queue_next_work(state);
