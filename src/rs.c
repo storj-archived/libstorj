@@ -192,11 +192,11 @@ static void init_mul_table(void)
 {
     int i, j;
     for (i=0; i< GF_SIZE+1; i++)
-    for (j=0; j< GF_SIZE+1; j++)
-        gf_mul_table[(i<<8)+j] = gf_exp[modnn(gf_log[i] + gf_log[j]) ] ;
+        for (j=0; j< GF_SIZE+1; j++)
+            gf_mul_table[(i<<8)+j] = gf_exp[modnn(gf_log[i] + gf_log[j]) ];
 
     for (j=0; j< GF_SIZE+1; j++)
-    gf_mul_table[j] = gf_mul_table[j<<8] = 0;
+        gf_mul_table[j] = gf_mul_table[j<<8] = 0;
 }
 
 /*
@@ -230,14 +230,14 @@ static void generate_gf(void)
      * The first GF_BITS powers are simply bits shifted to the left.
      */
     for (i = 0; i < GF_BITS; i++, mask <<= 1 ) {
-    gf_exp[i] = mask;
-    gf_log[gf_exp[i]] = i;
-    /*
-     * If Pp[i] == 1 then \alpha ** i occurs in poly-repr
-     * gf_exp[GF_BITS] = \alpha ** GF_BITS
-     */
-    if ( Pp[i] == '1' )
-        gf_exp[GF_BITS] ^= mask;
+        gf_exp[i] = mask;
+        gf_log[gf_exp[i]] = i;
+        /*
+         * If Pp[i] == 1 then \alpha ** i occurs in poly-repr
+         * gf_exp[GF_BITS] = \alpha ** GF_BITS
+         */
+        if ( Pp[i] == '1' )
+            gf_exp[GF_BITS] ^= mask;
     }
     /*
      * now gf_exp[GF_BITS] = \alpha ** GF_BITS is complete, so can als
@@ -252,11 +252,11 @@ static void generate_gf(void)
      */
     mask = 1 << (GF_BITS - 1 ) ;
     for (i = GF_BITS + 1; i < GF_SIZE; i++) {
-    if (gf_exp[i - 1] >= mask)
-        gf_exp[i] = gf_exp[GF_BITS] ^ ((gf_exp[i - 1] ^ mask) << 1);
-    else
-        gf_exp[i] = gf_exp[i - 1] << 1;
-    gf_log[gf_exp[i]] = i;
+        if (gf_exp[i - 1] >= mask)
+            gf_exp[i] = gf_exp[GF_BITS] ^ ((gf_exp[i - 1] ^ mask) << 1);
+        else
+            gf_exp[i] = gf_exp[i - 1] << 1;
+        gf_log[gf_exp[i]] = i;
     }
     /*
      * log(0) is not defined, so use a special value
@@ -264,7 +264,7 @@ static void generate_gf(void)
     gf_log[0] = GF_SIZE ;
     /* set the extended gf_exp values for fast multiply */
     for (i = 0 ; i < GF_SIZE ; i++)
-    gf_exp[i + GF_SIZE] = gf_exp[i] ;
+        gf_exp[i + GF_SIZE] = gf_exp[i] ;
 
     /*
      * again special cases. 0 has no inverse. This used to
@@ -274,7 +274,7 @@ static void generate_gf(void)
     inverse[0] = 0 ;
     inverse[1] = 1;
     for (i=2; i<=GF_SIZE; i++)
-    inverse[i] = gf_exp[GF_SIZE-gf_log[i]];
+        inverse[i] = gf_exp[GF_SIZE-gf_log[i]];
 }
 
 /*
@@ -295,8 +295,6 @@ static void generate_gf(void)
     if (c != 0) addmul1(dst, src, c, sz, dst_max, src_max)
 #endif
 
-
-
 #define UNROLL 16 /* 1, 4, 8, 16 */
 static void slow_addmul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_max)
 {
@@ -311,25 +309,25 @@ static void slow_addmul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_
 
 #if (UNROLL > 1) /* unrolling by 8/16 is quite effective on the pentium */
     for (; dst < lim ; dst += UNROLL, src += UNROLL ) {
-    GF_ADDMULC( dst[0] , src[0] );
-    GF_ADDMULC( dst[1] , src[1] );
-    GF_ADDMULC( dst[2] , src[2] );
-    GF_ADDMULC( dst[3] , src[3] );
+        GF_ADDMULC( dst[0] , src[0] );
+        GF_ADDMULC( dst[1] , src[1] );
+        GF_ADDMULC( dst[2] , src[2] );
+        GF_ADDMULC( dst[3] , src[3] );
 #if (UNROLL > 4)
-    GF_ADDMULC( dst[4] , src[4] );
-    GF_ADDMULC( dst[5] , src[5] );
-    GF_ADDMULC( dst[6] , src[6] );
-    GF_ADDMULC( dst[7] , src[7] );
+        GF_ADDMULC( dst[4] , src[4] );
+        GF_ADDMULC( dst[5] , src[5] );
+        GF_ADDMULC( dst[6] , src[6] );
+        GF_ADDMULC( dst[7] , src[7] );
 #endif
 #if (UNROLL > 8)
-    GF_ADDMULC( dst[8] , src[8] );
-    GF_ADDMULC( dst[9] , src[9] );
-    GF_ADDMULC( dst[10] , src[10] );
-    GF_ADDMULC( dst[11] , src[11] );
-    GF_ADDMULC( dst[12] , src[12] );
-    GF_ADDMULC( dst[13] , src[13] );
-    GF_ADDMULC( dst[14] , src[14] );
-    GF_ADDMULC( dst[15] , src[15] );
+        GF_ADDMULC( dst[8] , src[8] );
+        GF_ADDMULC( dst[9] , src[9] );
+        GF_ADDMULC( dst[10] , src[10] );
+        GF_ADDMULC( dst[11] , src[11] );
+        GF_ADDMULC( dst[12] , src[12] );
+        GF_ADDMULC( dst[13] , src[13] );
+        GF_ADDMULC( dst[14] , src[14] );
+        GF_ADDMULC( dst[15] , src[15] );
 #endif
     }
 #endif
@@ -383,25 +381,25 @@ static void slow_mul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_max
 
 #if (UNROLL > 1) /* unrolling by 8/16 is quite effective on the pentium */
     for (; dst < lim ; dst += UNROLL, src += UNROLL ) {
-    GF_MULC( dst[0] , src[0] );
-    GF_MULC( dst[1] , src[1] );
-    GF_MULC( dst[2] , src[2] );
-    GF_MULC( dst[3] , src[3] );
+        GF_MULC( dst[0] , src[0] );
+        GF_MULC( dst[1] , src[1] );
+        GF_MULC( dst[2] , src[2] );
+        GF_MULC( dst[3] , src[3] );
 #if (UNROLL > 4)
-    GF_MULC( dst[4] , src[4] );
-    GF_MULC( dst[5] , src[5] );
-    GF_MULC( dst[6] , src[6] );
-    GF_MULC( dst[7] , src[7] );
+        GF_MULC( dst[4] , src[4] );
+        GF_MULC( dst[5] , src[5] );
+        GF_MULC( dst[6] , src[6] );
+        GF_MULC( dst[7] , src[7] );
 #endif
 #if (UNROLL > 8)
-    GF_MULC( dst[8] , src[8] );
-    GF_MULC( dst[9] , src[9] );
-    GF_MULC( dst[10] , src[10] );
-    GF_MULC( dst[11] , src[11] );
-    GF_MULC( dst[12] , src[12] );
-    GF_MULC( dst[13] , src[13] );
-    GF_MULC( dst[14] , src[14] );
-    GF_MULC( dst[15] , src[15] );
+        GF_MULC( dst[8] , src[8] );
+        GF_MULC( dst[9] , src[9] );
+        GF_MULC( dst[10] , src[10] );
+        GF_MULC( dst[11] , src[11] );
+        GF_MULC( dst[12] , src[12] );
+        GF_MULC( dst[13] , src[13] );
+        GF_MULC( dst[14] , src[14] );
+        GF_MULC( dst[15] , src[15] );
 #endif
     }
 #endif
@@ -446,109 +444,109 @@ static int invert_mat(gf *src, int k)
 
     memset(id_row, 0, k*sizeof(gf));
     DEB( pivloops=0; pivswaps=0 ; /* diagnostic */ )
-    /*
-     * ipiv marks elements already used as pivots.
-     */
-    for (i = 0; i < k ; i++)
-        ipiv[i] = 0 ;
+        /*
+         * ipiv marks elements already used as pivots.
+         */
+        for (i = 0; i < k ; i++)
+            ipiv[i] = 0 ;
 
     for (col = 0; col < k ; col++) {
-    gf *pivot_row ;
-    /*
-     * Zeroing column 'col', look for a non-zero element.
-     * First try on the diagonal, if it fails, look elsewhere.
-     */
-    irow = icol = -1 ;
-    if (ipiv[col] != 1 && src[col*k + col] != 0) {
-        irow = col ;
-        icol = col ;
-        goto found_piv ;
-    }
-    for (row = 0 ; row < k ; row++) {
-        if (ipiv[row] != 1) {
-        for (ix = 0 ; ix < k ; ix++) {
-            DEB( pivloops++ ; )
-            if (ipiv[ix] == 0) {
-                if (src[row*k + ix] != 0) {
-                irow = row ;
-                icol = ix ;
-                goto found_piv ;
+        gf *pivot_row ;
+        /*
+         * Zeroing column 'col', look for a non-zero element.
+         * First try on the diagonal, if it fails, look elsewhere.
+         */
+        irow = icol = -1 ;
+        if (ipiv[col] != 1 && src[col*k + col] != 0) {
+            irow = col ;
+            icol = col ;
+            goto found_piv ;
+        }
+        for (row = 0 ; row < k ; row++) {
+            if (ipiv[row] != 1) {
+                for (ix = 0 ; ix < k ; ix++) {
+                    DEB( pivloops++ ; )
+                        if (ipiv[ix] == 0) {
+                            if (src[row*k + ix] != 0) {
+                                irow = row ;
+                                icol = ix ;
+                                goto found_piv ;
+                            }
+                        } else if (ipiv[ix] > 1) {
+                            fprintf(stderr, "singular matrix\n");
+                            goto fail ;
+                        }
                 }
-            } else if (ipiv[ix] > 1) {
-                fprintf(stderr, "singular matrix\n");
-                goto fail ;
             }
         }
+        if (icol == -1) {
+            fprintf(stderr, "XXX pivot not found!\n");
+            goto fail ;
         }
-    }
-    if (icol == -1) {
-        fprintf(stderr, "XXX pivot not found!\n");
-        goto fail ;
-    }
  found_piv:
-    ++(ipiv[icol]) ;
-    /*
-     * swap rows irow and icol, so afterwards the diagonal
-     * element will be correct. Rarely done, not worth
-     * optimizing.
-     */
-    if (irow != icol) {
-        for (ix = 0 ; ix < k ; ix++ ) {
-        SWAP( src[irow*k + ix], src[icol*k + ix], gf) ;
-        }
-    }
-    indxr[col] = irow ;
-    indxc[col] = icol ;
-    pivot_row = &src[icol*k] ;
-    c = pivot_row[icol] ;
-    if (c == 0) {
-        fprintf(stderr, "singular matrix 2\n");
-        goto fail ;
-    }
-    if (c != 1 ) { /* otherwhise this is a NOP */
+        ++(ipiv[icol]) ;
         /*
-         * this is done often , but optimizing is not so
-         * fruitful, at least in the obvious ways (unrolling)
+         * swap rows irow and icol, so afterwards the diagonal
+         * element will be correct. Rarely done, not worth
+         * optimizing.
          */
-        DEB( pivswaps++ ; )
-        c = inverse[ c ] ;
-        pivot_row[icol] = 1 ;
-        for (ix = 0 ; ix < k ; ix++ )
-        pivot_row[ix] = gf_mul(c, pivot_row[ix] );
-    }
-    /*
-     * from all rows, remove multiples of the selected row
-     * to zero the relevant entry (in fact, the entry is not zero
-     * because we know it must be zero).
-     * (Here, if we know that the pivot_row is the identity,
-     * we can optimize the addmul).
-     */
-    id_row[icol] = 1;
-    if (memcmp(pivot_row, id_row, k*sizeof(gf)) != 0) {
-        for (p = src, ix = 0 ; ix < k ; ix++, p += k ) {
-        if (ix != icol) {
-            c = p[icol] ;
-            p[icol] = 0 ;
-            addmul(p, pivot_row, c, k, k, k);
+        if (irow != icol) {
+            for (ix = 0 ; ix < k ; ix++ ) {
+                SWAP( src[irow*k + ix], src[icol*k + ix], gf) ;
+            }
         }
+        indxr[col] = irow ;
+        indxc[col] = icol ;
+        pivot_row = &src[icol*k] ;
+        c = pivot_row[icol] ;
+        if (c == 0) {
+            fprintf(stderr, "singular matrix 2\n");
+            goto fail ;
         }
-    }
-    id_row[icol] = 0;
+        if (c != 1 ) { /* otherwhise this is a NOP */
+            /*
+             * this is done often , but optimizing is not so
+             * fruitful, at least in the obvious ways (unrolling)
+             */
+            DEB( pivswaps++ ; )
+                c = inverse[ c ] ;
+            pivot_row[icol] = 1 ;
+            for (ix = 0 ; ix < k ; ix++ )
+                pivot_row[ix] = gf_mul(c, pivot_row[ix] );
+        }
+        /*
+         * from all rows, remove multiples of the selected row
+         * to zero the relevant entry (in fact, the entry is not zero
+         * because we know it must be zero).
+         * (Here, if we know that the pivot_row is the identity,
+         * we can optimize the addmul).
+         */
+        id_row[icol] = 1;
+        if (memcmp(pivot_row, id_row, k*sizeof(gf)) != 0) {
+            for (p = src, ix = 0 ; ix < k ; ix++, p += k ) {
+                if (ix != icol) {
+                    c = p[icol] ;
+                    p[icol] = 0 ;
+                    addmul(p, pivot_row, c, k, k, k);
+                }
+            }
+        }
+        id_row[icol] = 0;
     } /* done all columns */
     for (col = k-1 ; col >= 0 ; col-- ) {
-    if (indxr[col] <0 || indxr[col] >= k)
-        fprintf(stderr, "AARGH, indxr[col] %d\n", indxr[col]);
-    else if (indxc[col] <0 || indxc[col] >= k)
-        fprintf(stderr, "AARGH, indxc[col] %d\n", indxc[col]);
-    else
-        if (indxr[col] != indxc[col] ) {
-        for (row = 0 ; row < k ; row++ ) {
-            SWAP( src[row*k + indxr[col]], src[row*k + indxc[col]], gf) ;
-        }
-        }
+        if (indxr[col] <0 || indxr[col] >= k)
+            fprintf(stderr, "AARGH, indxr[col] %d\n", indxr[col]);
+        else if (indxc[col] <0 || indxc[col] >= k)
+            fprintf(stderr, "AARGH, indxc[col] %d\n", indxc[col]);
+        else
+            if (indxr[col] != indxc[col] ) {
+                for (row = 0 ; row < k ; row++ ) {
+                    SWAP( src[row*k + indxr[col]], src[row*k + indxc[col]], gf) ;
+                }
+            }
     }
     error = 0 ;
- fail:
+fail:
     return error ;
 }
 
