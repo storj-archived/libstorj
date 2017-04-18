@@ -256,6 +256,7 @@ typedef struct {
     const char *hmac;
     const char *id;
     bool decrypted;
+    const char *index;
 } storj_file_meta_t;
 
 /** @brief A structure for queueing list files request work
