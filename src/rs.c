@@ -348,7 +348,6 @@ static void slow_addmul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_
 
 static void addmul(gf *dst, gf *src, gf c, int sz, int dst_max, int src_max)
 {
-    // fprintf(stderr, "Dst=%p Src=%p, gf=%02x sz=%d\n", dst, src, c, sz);
     if (c != 0) addmul1(dst, src, c, sz, dst_max, src_max);
 }
 
@@ -420,7 +419,6 @@ static void slow_mul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_max
 
 static inline void mul(gf *dst, gf *src, gf c, int sz, int dst_max, int src_max)
 {
-    /*fprintf(stderr, "%p = %02x * %p\n", dst, c, src);*/
     if (c != 0) mul1(dst, src, c, sz, dst_max, src_max); else memset(dst, 0, c);
 }
 
@@ -890,7 +888,6 @@ int reed_solomon_decode(reed_solomon* rs,
                 swap = 1;
             }
         }
-        //printf("swap:%d\n", swap);
         if(!swap) {
             //already sorted or sorted ok
             break;
@@ -942,10 +939,6 @@ int reed_solomon_decode(reed_solomon* rs,
     }
 
     invert_mat(dataDecodeMatrix, dataShards);
-    //printf("invert:\n");
-    //print_matrix1(dataDecodeMatrix, dataShards, dataShards);
-    //printf("nShards:\n");
-    //print_matrix2(subShards, dataShards, block_size);
 
     for(i = 0; i < nr_fec_blocks; i++) {
         j = erased_blocks[i];
@@ -959,14 +952,8 @@ int reed_solomon_decode(reed_solomon* rs,
 
         outputs[i] = data_blocks[j];
         outputsMax[i] = max;
-        //data_blocks[j][0] = 0;
         memmove(dataDecodeMatrix+i*dataShards, dataDecodeMatrix+j*dataShards, dataShards);
     }
-    //printf("subMatrixRow:\n");
-    //print_matrix1(dataDecodeMatrix, nr_fec_blocks, dataShards);
-
-    //printf("outputs:\n");
-    //print_matrix2(outputs, nr_fec_blocks, block_size);
 
     return code_some_shards(dataDecodeMatrix, subShards, outputs,
                             dataShards, nr_fec_blocks, block_size,
