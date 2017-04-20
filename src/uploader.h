@@ -32,6 +32,12 @@ typedef enum {
     PUSH_SHARD_LIMIT = 32
 } storj_state_progress_limits_t;
 
+typedef enum {
+    NONE = 0,
+    RS_BEFORE_ENCRYPTION = 1,
+    RS_AFTER_ENCRYPTION = 2
+} storj_erasure_t;
+
 typedef struct {
     /* state should not be modified in worker threads */
     storj_upload_state_t *upload_state;
@@ -50,6 +56,12 @@ typedef struct {
     /* state should not be modified in worker threads */
     storj_upload_state_t *upload_state;
 } parity_shard_req_t;
+
+typedef struct {
+    int error_status;
+    /* state should not be modified in worker threads */
+    storj_upload_state_t *upload_state;
+} encrypt_file_req_t;
 
 typedef struct {
     storj_http_options_t *http_options;
@@ -130,6 +142,7 @@ static int prepare_encryption_key(storj_upload_state_t *state,
                                int pre_salt_size);
 
 static int check_in_progress(storj_upload_state_t *state, int status);
+char *create_tmp_name(storj_upload_state_t *state, char *extension);
 
 static void shard_meta_cleanup(shard_meta_t *shard_meta);
 static void pointer_cleanup(farmer_pointer_t *farmer_pointer);
@@ -144,6 +157,7 @@ static void queue_push_frame(storj_upload_state_t *state, int index);
 static void queue_push_shard(storj_upload_state_t *state, int index);
 static void queue_create_bucket_entry(storj_upload_state_t *state);
 static void queue_send_exchange_report(storj_upload_state_t *state, int index);
+static void queue_create_encrypted_file(storj_upload_state_t *state);
 
 static void request_token(uv_work_t *work);
 static void request_frame_id(uv_work_t *work);
@@ -152,6 +166,7 @@ static void push_frame(uv_work_t *work);
 static void push_shard(uv_work_t *work);
 static void create_bucket_entry(uv_work_t *work);
 static void send_exchange_report(uv_work_t *work);
+static void create_encrypted_file(uv_work_t *work);
 
 static void after_request_token(uv_work_t *work, int status);
 static void after_request_frame_id(uv_work_t *work, int status);
@@ -160,6 +175,7 @@ static void after_push_frame(uv_work_t *work, int status);
 static void after_push_shard(uv_work_t *work, int status);
 static void after_create_bucket_entry(uv_work_t *work, int status);
 static void after_send_exchange_report(uv_work_t *work, int status);
+static void after_create_encrypted_file(uv_work_t *work, int status);
 
 static void queue_verify_bucket_id(storj_upload_state_t *state);
 static void queue_verify_file_id(storj_upload_state_t *state);

@@ -467,10 +467,13 @@ typedef struct {
     uint8_t *encryption_ctr;
 
     // TODO: change this to opts or env
-    bool rs;
+    int rs;
     bool awaiting_parity_shards;
     char *parity_file_path;
     FILE *parity_file;
+    char *encrypted_file_path;
+    FILE *encrypted_file;
+    bool creating_encrypted_file;
 
     bool requesting_frame;
     bool completed_upload;
@@ -492,6 +495,7 @@ typedef struct {
     int bucket_verify_count;
     int file_verify_count;
     int create_parity_shard_count;
+    int create_encrypted_file_count;
 
     storj_progress_cb progress_cb;
     storj_finished_upload_cb finished_cb;
