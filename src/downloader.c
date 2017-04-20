@@ -1473,6 +1473,12 @@ static void recover_shards(uv_work_t *work)
     uint64_t bytes_decrypted = 0;
     size_t len = AES_BLOCK_SIZE * 8;
 
+    error = map_file(req->fd, req->filesize, &data_map, false);
+    if (error) {
+        req->error_status = STORJ_MAPPING_ERROR;
+        goto finish;
+    }
+
     if (!req->has_missing) {
         goto decrypt;
     }
@@ -1482,12 +1488,6 @@ static void recover_shards(uv_work_t *work)
     rs = reed_solomon_new(req->data_shards, req->parity_shards);
     if (!rs) {
         req->error_status = STORJ_MEMORY_ERROR;
-        goto finish;
-    }
-
-    error = map_file(req->fd, req->filesize, &data_map, false);
-    if (error) {
-        req->error_status = STORJ_MAPPING_ERROR;
         goto finish;
     }
 
@@ -1599,7 +1599,7 @@ static void queue_recover_shards(storj_download_state_t *state)
             }
 
             if (pointer->status != POINTER_MISSING &&
-                pointer->status != POINTER_FINISHED) {
+                pointer->status != POINTER_DOWNLOADED) {
                 is_ready = false;
             }
         }

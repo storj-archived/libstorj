@@ -35,8 +35,8 @@ typedef enum {
     POINTER_CREATED = 0,
     POINTER_BEING_DOWNLOADED = 1,
     POINTER_DOWNLOADED = 2,
-    POINTER_FINISHED = 3,
-    POINTER_MISSING = 4
+    POINTER_MISSING = 3,
+    POINTER_FINISHED = 4
 } storj_pointer_status_t;
 
 /** @brief A structure for sharing data with worker threads for writing
