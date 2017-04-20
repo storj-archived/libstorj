@@ -104,6 +104,28 @@ int mock_farmer_shard_server(void *cls,
             status_code = MHD_HTTP_OK;
         } else if (0 == strcmp(url, "/shards/bf1e4713257129d525f1381d4104c217c13cb42f")) {
             status_code = MHD_HTTP_OK;
+
+        // PARITY SHARDS
+        } else if (0 == strcmp(url, "/shards/6828f2fd1e902071d0f658e2e43cf741cd94cfc8")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/64c8fbfb07b962515993d6ad63a7ab829d283d76")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/fa417f2211e47336dfef0c51edf6e4824c1703ba")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/47b853389c1a9e7e323d20c325c3dae1a84304ba")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/acc6f8131343be6198896cda4ad046e2975390ed")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/148d79e0158dc2cf44d434db1f33c3d35cde3997")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/8460c63068b78ac94babdbeec4bf6439f93079ab")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/413d72de547fc4fe942e75570749e61105aadece")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/7f395507e58e6251f724e166ce6b18ad297a1052")) {
+            status_code = MHD_HTTP_OK;
+        } else if (0 == strcmp(url, "/shards/3b2432f6078b181b64a5d3f7ae21e3bcaca746c1")) {
+            status_code = MHD_HTTP_OK;
         } else {
             printf("url: %s\n", url);
         }

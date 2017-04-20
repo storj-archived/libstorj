@@ -94,8 +94,16 @@ static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state)
     req->upload_state = state;
     req->log = state->log;
 
-    // make sure we switch between parity and data shards files
-    req->shard_file = (index + 1 > state->total_data_shards) ? state->parity_file : state->original_file;
+    // make sure we switch between parity and data shards files.
+    // When using Reed solomon must also read from encrypted file
+    // rather than the original file for the data
+    if (index + 1 > state->total_data_shards) {
+        req->shard_file = state->parity_file;
+    } else if (state->rs) {
+        req->shard_file = state->encrypted_file;
+    } else {
+        req->shard_file = state->original_file;
+    }
     // Reset shard index when using parity shards
     req->shard_meta->index = (index + 1 > state->total_data_shards) ? index - state->total_data_shards: index;
 
@@ -655,15 +663,18 @@ static void push_shard(uv_work_t *work)
 
     uint64_t file_position = req->shard_index * state->shard_size;
 
-    // Initialize the encryption context
-    storj_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
-                                                                    state->encryption_key);
-    if (!encryption_ctx) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        goto clean_variables;
+    storj_encryption_ctx_t *encryption_ctx = NULL;
+    if (!state->rs) {
+        // Initialize the encryption context
+        encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
+                                                                        state->encryption_key);
+        if (!encryption_ctx) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            goto clean_variables;
+        }
+        // Increment the iv to proper placement because we may be reading from the middle of the file
+        increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_meta_index * state->shard_size);
     }
-    // Increment the iv to proper placement because we may be reading from the middle of the file
-    increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_meta_index * state->shard_size);
 
     int req_status = put_shard(req->http_options,
                                shard->pointer->farmer_node_id,
@@ -762,8 +773,18 @@ static void queue_push_shard(storj_upload_state_t *state, int index)
 
     // Reset shard index when using parity shards
     req->shard_index = (index + 1 > state->total_data_shards) ? index - state->total_data_shards: index;
-    // make sure we switch between parity and data shards files
-    req->shard_file = (index + 1 > state->total_data_shards) ? state->parity_file : state->original_file;
+
+    // make sure we switch between parity and data shards files.
+    // When using Reed solomon must also read from encrypted file
+    // rather than the original file for the data
+    if (index + 1 > state->total_data_shards) {
+        req->shard_file = state->parity_file;
+    } else if (state->rs) {
+        req->shard_file = state->encrypted_file;
+    } else {
+        req->shard_file = state->original_file;
+    }
+
     // Position on shard_meta array
     req->shard_meta_index = index;
 
@@ -1351,15 +1372,17 @@ static void prepare_frame(uv_work_t *work)
         sha256_update(&first_sha256_for_leaf[i], 32, (uint8_t *)&shard_meta->challenges[i]);
     }
 
-    // Initialize the encryption context
-    storj_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
-                                                                    state->encryption_key);
-    if (!encryption_ctx) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        goto clean_variables;
+    storj_encryption_ctx_t *encryption_ctx = NULL;
+    if (!state->rs) {
+        // Initialize the encryption context
+        encryption_ctx = prepare_encryption_ctx(state->encryption_ctr, state->encryption_key);
+        if (!encryption_ctx) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            goto clean_variables;
+        }
+        // Increment the iv to proper placement because we may be reading from the middle of the file
+        increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_meta_index * state->shard_size);
     }
-    // Increment the iv to proper placement because we may be reading from the middle of the file
-    increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_meta_index * state->shard_size);
 
     uint8_t cphr_txt[AES_BLOCK_SIZE * 256];
     memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
@@ -1387,10 +1410,15 @@ static void prepare_frame(uv_work_t *work)
 
         total_read += read_bytes;
 
-        // Encrypt data
-        ctr_crypt(encryption_ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
-                  AES_BLOCK_SIZE, encryption_ctx->encryption_ctr, read_bytes,
-                  (uint8_t *)cphr_txt, (uint8_t *)read_data);
+        if (!state->rs) {
+            // Encrypt data
+            ctr_crypt(encryption_ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
+                      AES_BLOCK_SIZE, encryption_ctx->encryption_ctr, read_bytes,
+                      (uint8_t *)cphr_txt, (uint8_t *)read_data);
+        } else {
+            // Just use the already encrypted data
+            memcpy(cphr_txt, read_data, AES_BLOCK_SIZE*256);
+        }
 
         sha256_update(&shard_hash_ctx, read_bytes, cphr_txt);
 
