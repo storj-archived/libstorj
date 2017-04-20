@@ -1610,5 +1610,9 @@ int main(void)
     MHD_stop_daemon(d);
     MHD_stop_daemon(f);
 
+    if (num_failed > 0) {
+        return 1;
+    }
+
     return 0;
 }
