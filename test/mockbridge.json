@@ -259,7 +259,7 @@
     "size": 3193765382,
     "id": "998960317b6725a3f8080c2b",
     "hmac": {
-      "value": "5e66cce0ecb48c7011579dce517fbca3f88935812e2ebdaa206b21d12da1f17b884ad22689ba65672b4e093002a65c70342ac6609a0960c7af4536ff5b8acbea",
+      "value": "78462f9056d9e997e3a74b778014b9e20b6404e19dbea3516991c3a6dc105384463df4123246634de5aaa2304da54f03c09d92d73c3febe1da56ca0478d85cc4",
       "type": "sha512"
     },
     "erasure": {
@@ -479,7 +479,7 @@
     },
     {
       "token": "3b3f8ccb23ec47cec1ad57f7f68cab285dde54d6",
-      "hash": "92bc6dffa6bd35b7ef3080faacdd4af99245d30b",
+      "hash": "424cdf090604317570da38ef7d5b41abea0952df",
       "farmer": {
         "userAgent": "6.0.1",
         "protocol": "1.0.0",
@@ -495,7 +495,7 @@
     },
     {
       "token": "44e1db2c17af152618dbe319f8f2bf1a6ef21b94",
-      "hash": "e72494d229de1c561389ee44f51e200e5b19b28a",
+      "hash": "a292c0de26b2a9086473905abb938c7a1c45a9e9",
       "farmer": {
         "userAgent": "6.0.1",
         "protocol": "1.0.0",
@@ -511,7 +511,7 @@
     },
     {
       "token": "9424f843e3a10a7f96dc79a301c6700385d1a74b",
-      "hash": "710de4f62dd6097c27b70b169a9c13dd6c5745c1",
+      "hash": "aca155b4deeac64f2be748e3c434e1f5e9719ef3",
       "farmer": {
         "userAgent": "6.0.1",
         "protocol": "1.0.0",

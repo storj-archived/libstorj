@@ -35,9 +35,8 @@ typedef enum {
     POINTER_CREATED = 0,
     POINTER_BEING_DOWNLOADED = 1,
     POINTER_DOWNLOADED = 2,
-    POINTER_BEING_WRITTEN = 3,
-    POINTER_WRITTEN = 4,
-    POINTER_MISSING = 5
+    POINTER_MISSING = 3,
+    POINTER_FINISHED = 4
 } storj_pointer_status_t;
 
 /** @brief A structure for sharing data with worker threads for writing
@@ -61,6 +60,8 @@ typedef struct {
     uint32_t data_shards;
     uint32_t parity_shards;
     uint64_t shard_size;
+    uint8_t *decrypt_key;
+    uint8_t *decrypt_ctr;
     uint8_t *zilch;
     bool has_missing;
     /* state should not be modified in worker threads */
@@ -85,10 +86,6 @@ typedef struct {
     uint64_t shard_total_bytes;
     uv_async_t progress_handle;
     uint64_t byte_position;
-    uint8_t *decrypt_key;
-    uint8_t *decrypt_ctr;
-    bool write_async;
-    char *shard_data;
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
     int error_status;
