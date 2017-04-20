@@ -230,13 +230,6 @@ static size_t body_shard_receive(void *buffer, size_t size, size_t nmemb,
     // Update the hash
     sha256_update(body->sha256_ctx, writelen, (uint8_t *)body->tail);
 
-    // Decrypt the shard
-    ctr_crypt(body->aes256_ctx, (nettle_cipher_func *)aes256_encrypt,
-              AES_BLOCK_SIZE, body->decrypt_ctr,
-              writelen,
-              (uint8_t *)body->tail,
-              (uint8_t *)body->tail);
-
     if (body->write_async) {
         // Write directly to the file at the correct position
         if (writelen == pwrite(fileno(body->destination),
@@ -295,8 +288,6 @@ int fetch_shard(storj_http_options_t *http_options,
                 uint64_t shard_total_bytes,
                 char *shard_data,
                 char *token,
-                uint8_t *decrypt_key,
-                uint8_t *decrypt_ctr,
                 FILE *destination,
                 uint64_t file_position,
                 bool write_async,
@@ -368,14 +359,7 @@ int fetch_shard(storj_http_options_t *http_options,
     }
     sha256_init(body->sha256_ctx);
 
-    body->aes256_ctx = malloc(sizeof(struct aes256_ctx));
-    if (!body->aes256_ctx) {
-        return 1;
-    }
-    aes256_set_encrypt_key(body->aes256_ctx, decrypt_key);
-
     body->destination = destination;
-    body->decrypt_ctr = decrypt_ctr;
     body->write_async = write_async;
     body->file_position = file_position;
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)body);
@@ -384,7 +368,6 @@ int fetch_shard(storj_http_options_t *http_options,
 
     curl_slist_free_all(node_chunk);
     free(body->tail);
-    free(body->aes256_ctx);
 
     // set the status code
     if (body) {

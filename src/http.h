@@ -72,8 +72,6 @@ typedef struct {
     bool *canceled;
     struct sha256_ctx *sha256_ctx;
     bool write_async;
-    struct aes256_ctx *aes256_ctx;
-    uint8_t *decrypt_ctr;
     FILE *destination;
     uint64_t file_position;
     int error_code;
@@ -148,8 +146,6 @@ int fetch_shard(storj_http_options_t *http_options,
                 uint64_t shard_total_bytes,
                 char *shard_data,
                 char *token,
-                uint8_t *decrypt_key,
-                uint8_t *decrypt_ctr,
                 FILE *destination,
                 uint64_t file_position,
                 bool write_async,

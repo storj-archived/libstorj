@@ -61,6 +61,8 @@ typedef struct {
     uint32_t data_shards;
     uint32_t parity_shards;
     uint64_t shard_size;
+    uint8_t *decrypt_key;
+    uint8_t *decrypt_ctr;
     uint8_t *zilch;
     bool has_missing;
     /* state should not be modified in worker threads */
@@ -85,8 +87,6 @@ typedef struct {
     uint64_t shard_total_bytes;
     uv_async_t progress_handle;
     uint64_t byte_position;
-    uint8_t *decrypt_key;
-    uint8_t *decrypt_ctr;
     bool write_async;
     char *shard_data;
     /* state should not be modified in worker threads */
