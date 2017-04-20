@@ -654,7 +654,7 @@ static void push_shard(uv_work_t *work)
         goto clean_variables;
     }
     // Increment the iv to proper placement because we may be reading from the middle of the file
-    increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_index*state->shard_size);
+    increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_meta_index * state->shard_size);
 
     int req_status = put_shard(req->http_options,
                                shard->pointer->farmer_node_id,
@@ -1350,7 +1350,7 @@ static void prepare_frame(uv_work_t *work)
         goto clean_variables;
     }
     // Increment the iv to proper placement because we may be reading from the middle of the file
-    increment_ctr_aes_iv(encryption_ctx->encryption_ctr, shard_meta->index*state->shard_size);
+    increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_meta_index * state->shard_size);
 
     uint8_t cphr_txt[AES_BLOCK_SIZE * 256];
     memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
