@@ -333,7 +333,6 @@ typedef struct {
     unsigned int replace_count;
     char *token;
     char *shard_hash;
-    char *shard_data;
     uint32_t index;
     int status;
     uint64_t size;
@@ -396,7 +395,6 @@ typedef struct {
     uint32_t pointer_fail_count;
     bool requesting_pointers;
     int error_status;
-    bool write_async;
     bool writing;
     char *token;
     bool requesting_token;

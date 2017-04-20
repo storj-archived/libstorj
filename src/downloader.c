@@ -762,11 +762,9 @@ static void request_shard(uv_work_t *work)
                                    req->farmer_port,
                                    req->shard_hash,
                                    req->shard_total_bytes,
-                                   req->shard_data,
                                    req->token,
                                    req->state->destination,
                                    file_position,
-                                   req->write_async,
                                    &status_code,
                                    &write_code,
                                    &req->progress_handle,
@@ -883,10 +881,6 @@ static void after_request_shard(uv_work_t *work, int status)
                 pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
         }
 
-        if (req->shard_data) {
-            free(req->shard_data);
-        }
-
     } else {
 
         req->state->log->info(req->state->env->log_options,
@@ -897,7 +891,6 @@ static void after_request_shard(uv_work_t *work, int status)
         pointer->report->code = STORJ_REPORT_SUCCESS;
         pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
         pointer->status = POINTER_DOWNLOADED;
-        pointer->shard_data = req->shard_data;
 
         // Make sure the downloaded size is updated
         pointer->downloaded_size = pointer->size;
@@ -952,19 +945,7 @@ static void queue_request_shards(storj_download_state_t *state)
             req->shard_total_bytes = pointer->size;
             req->byte_position = state->shard_size * i;
             req->token = pointer->token;
-            req->write_async = state->write_async;
             req->error_status = 0;
-
-            // TODO assert max bytes for shard
-            if (state->write_async) {
-                req->shard_data = NULL;
-            } else {
-                req->shard_data = calloc(pointer->size, sizeof(char));
-                if (!req->shard_data) {
-                    state->error_status = STORJ_MEMORY_ERROR;
-                    return;
-                }
-            }
 
             req->pointer_index = pointer->index;
 
@@ -1016,102 +997,6 @@ static void queue_request_shards(storj_download_state_t *state)
         }
 
         i++;
-    }
-}
-
-static void write_shard(uv_work_t *work)
-{
-    shard_request_write_t *req = work->data;
-    req->error_status = 0;
-
-    if (!req->state->write_async) {
-        if (req->shard_total_bytes != fwrite(req->shard_data,
-                                             sizeof(char),
-                                             req->shard_total_bytes,
-                                             req->destination)) {
-
-            //ferror(req->destination);
-            req->error_status = STORJ_FILE_WRITE_ERROR;
-        }
-    }
-}
-
-static void after_write_shard(uv_work_t *work, int status)
-{
-    shard_request_write_t *req = work->data;
-
-    req->state->pending_work_count--;
-    req->state->writing = false;
-
-    if (status != 0) {
-        req->state->error_status = STORJ_FILE_WRITE_ERROR;
-    } else if (req->error_status) {
-        req->state->error_status = STORJ_FILE_WRITE_ERROR;
-    } else {
-        req->state->pointers[req->pointer_index].status = POINTER_WRITTEN;
-        req->state->completed_shards += 1;
-    }
-
-    if (req->shard_data) {
-        free(req->shard_data);
-    }
-
-    queue_next_work(req->state);
-
-    free(work->data);
-    free(work);
-}
-
-static void queue_write_next_shard(storj_download_state_t *state)
-{
-    if (state->canceled) {
-        return;
-    }
-
-    int i = 0;
-
-    while (!state->writing && i < state->total_pointers) {
-        storj_pointer_t *pointer = &state->pointers[i];
-
-        if (pointer->status < POINTER_DOWNLOADED) {
-            break;
-        }
-
-        if (pointer->status == POINTER_DOWNLOADED) {
-            uv_work_t *work = malloc(sizeof(uv_work_t));
-            if (!work) {
-                state->error_status = STORJ_MEMORY_ERROR;
-                return;
-            }
-
-            shard_request_write_t *req = malloc(sizeof(shard_request_write_t));
-            if (!req) {
-                state->error_status = STORJ_MEMORY_ERROR;
-                return;
-            }
-
-            req->shard_data = pointer->shard_data;
-            req->shard_total_bytes = pointer->size;
-            req->destination = state->destination;
-            req->pointer_index = pointer->index;
-            req->state = state;
-
-            work->data = req;
-
-            state->writing = true;
-            pointer->status = POINTER_BEING_WRITTEN;
-
-            state->pending_work_count++;
-            int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
-                                       write_shard, after_write_shard);
-            if (status) {
-                state->error_status = STORJ_QUEUE_ERROR;
-            }
-            break;
-        }
-
-        i++;
-
     }
 }
 
@@ -1557,12 +1442,10 @@ static void after_recover_shards(uv_work_t *work, int status)
     } else if (req->error_status) {
         req->state->error_status = req->error_status;
     } else {
-        // Recovery was successful and the pointers have been written
+        // Recovery was successful and the pointers have been finished
         for (int i = 0; i < state->total_pointers; i++) {
-            if (req->zilch[i]) {
-                state->pointers[i].status = POINTER_WRITTEN;
-                state->completed_shards += 1;
-            }
+            state->pointers[i].status = POINTER_FINISHED;
+            state->completed_shards += 1;
         }
     }
 
@@ -1716,7 +1599,7 @@ static void queue_recover_shards(storj_download_state_t *state)
             }
 
             if (pointer->status != POINTER_MISSING &&
-                pointer->status != POINTER_WRITTEN) {
+                pointer->status != POINTER_FINISHED) {
                 is_ready = false;
             }
         }
@@ -1806,8 +1689,6 @@ static void queue_next_work(storj_download_state_t *state)
         return;
     }
 
-    queue_write_next_shard(state);
-
     // report download complete
     if (state->pointers_completed &&
         state->completed_shards == state->total_shards &&
@@ -1896,10 +1777,6 @@ int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
         storj_pointer_t *pointer = &state->pointers[i];
         if (pointer->status == POINTER_BEING_DOWNLOADED) {
             uv_cancel((uv_req_t *)pointer->work);
-        } else if (pointer->status == POINTER_DOWNLOADED) {
-            if (pointer->shard_data) {
-                free(pointer->shard_data);
-            }
         }
     }
 
@@ -1952,14 +1829,6 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->canceled = false;
     state->log = env->log;
     state->handle = handle;
-
-    // write to destination synchronously if stdout
-    if (fileno(destination) == 1) {
-        state->write_async = false;
-        state->download_max_concurrency = STORJ_DOWNLOAD_WRITESYNC_CONCURRENCY;
-    } else {
-        state->write_async = true;
-    }
 
     // determine the decryption key
     if (!env->encrypt_options || !env->encrypt_options->mnemonic) {
