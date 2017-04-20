@@ -1744,7 +1744,7 @@ clean_variables:
 
 static void queue_create_parity_shards(storj_upload_state_t *state)
 {
-    uv_work_t *work = frame_work_new(NULL, state);
+    uv_work_t *work = uv_work_new();
     if (!work) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
