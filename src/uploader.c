@@ -94,8 +94,16 @@ static uv_work_t *shard_meta_work_new(int index, storj_upload_state_t *state)
     req->upload_state = state;
     req->log = state->log;
 
-    // make sure we switch between parity and data shards files
-    req->shard_file = (index + 1 > state->total_data_shards) ? state->parity_file : state->original_file;
+    // make sure we switch between parity and data shards files.
+    // When using Reed solomon must also read from encrypted file
+    // rather than the original file for the data
+    if (index + 1 > state->total_data_shards) {
+        req->shard_file = state->parity_file;
+    } else if (state->rs) {
+        req->shard_file = state->encrypted_file;
+    } else {
+        req->shard_file = state->original_file;
+    }
     // Reset shard index when using parity shards
     req->shard_meta->index = (index + 1 > state->total_data_shards) ? index - state->total_data_shards: index;
 
@@ -276,6 +284,15 @@ static void cleanup_state(storj_upload_state_t *state)
     if (state->parity_file_path) {
         unlink(state->parity_file_path);
         free(state->parity_file_path);
+    }
+
+    if (state->encrypted_file) {
+        fclose(state->encrypted_file);
+    }
+
+    if (state->encrypted_file_path) {
+        unlink(state->encrypted_file_path);
+        free(state->encrypted_file_path);
     }
 
     if (state->shard) {
@@ -646,15 +663,18 @@ static void push_shard(uv_work_t *work)
 
     uint64_t file_position = req->shard_index * state->shard_size;
 
-    // Initialize the encryption context
-    storj_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
-                                                                    state->encryption_key);
-    if (!encryption_ctx) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        goto clean_variables;
+    storj_encryption_ctx_t *encryption_ctx = NULL;
+    if (!state->rs) {
+        // Initialize the encryption context
+        encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
+                                                                        state->encryption_key);
+        if (!encryption_ctx) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            goto clean_variables;
+        }
+        // Increment the iv to proper placement because we may be reading from the middle of the file
+        increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_meta_index * state->shard_size);
     }
-    // Increment the iv to proper placement because we may be reading from the middle of the file
-    increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_meta_index * state->shard_size);
 
     int req_status = put_shard(req->http_options,
                                shard->pointer->farmer_node_id,
@@ -753,8 +773,18 @@ static void queue_push_shard(storj_upload_state_t *state, int index)
 
     // Reset shard index when using parity shards
     req->shard_index = (index + 1 > state->total_data_shards) ? index - state->total_data_shards: index;
-    // make sure we switch between parity and data shards files
-    req->shard_file = (index + 1 > state->total_data_shards) ? state->parity_file : state->original_file;
+
+    // make sure we switch between parity and data shards files.
+    // When using Reed solomon must also read from encrypted file
+    // rather than the original file for the data
+    if (index + 1 > state->total_data_shards) {
+        req->shard_file = state->parity_file;
+    } else if (state->rs) {
+        req->shard_file = state->encrypted_file;
+    } else {
+        req->shard_file = state->original_file;
+    }
+
     // Position on shard_meta array
     req->shard_meta_index = index;
 
@@ -1342,15 +1372,17 @@ static void prepare_frame(uv_work_t *work)
         sha256_update(&first_sha256_for_leaf[i], 32, (uint8_t *)&shard_meta->challenges[i]);
     }
 
-    // Initialize the encryption context
-    storj_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
-                                                                    state->encryption_key);
-    if (!encryption_ctx) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        goto clean_variables;
+    storj_encryption_ctx_t *encryption_ctx = NULL;
+    if (!state->rs) {
+        // Initialize the encryption context
+        encryption_ctx = prepare_encryption_ctx(state->encryption_ctr, state->encryption_key);
+        if (!encryption_ctx) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            goto clean_variables;
+        }
+        // Increment the iv to proper placement because we may be reading from the middle of the file
+        increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_meta_index * state->shard_size);
     }
-    // Increment the iv to proper placement because we may be reading from the middle of the file
-    increment_ctr_aes_iv(encryption_ctx->encryption_ctr, req->shard_meta_index * state->shard_size);
 
     uint8_t cphr_txt[AES_BLOCK_SIZE * 256];
     memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
@@ -1378,10 +1410,15 @@ static void prepare_frame(uv_work_t *work)
 
         total_read += read_bytes;
 
-        // Encrypt data
-        ctr_crypt(encryption_ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
-                  AES_BLOCK_SIZE, encryption_ctx->encryption_ctr, read_bytes,
-                  (uint8_t *)cphr_txt, (uint8_t *)read_data);
+        if (!state->rs) {
+            // Encrypt data
+            ctr_crypt(encryption_ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
+                      AES_BLOCK_SIZE, encryption_ctx->encryption_ctr, read_bytes,
+                      (uint8_t *)cphr_txt, (uint8_t *)read_data);
+        } else {
+            // Just use the already encrypted data
+            memcpy(cphr_txt, read_data, AES_BLOCK_SIZE*256);
+        }
 
         sha256_update(&shard_hash_ctx, read_bytes, cphr_txt);
 
@@ -1454,6 +1491,148 @@ static void queue_prepare_frame(storj_upload_state_t *state, int index)
     }
 
     state->shard[index].progress = PREPARING_FRAME;
+}
+
+static void after_create_encrypted_file(uv_work_t *work, int status)
+{
+    encrypt_file_req_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+
+    state->pending_work_count -= 1;
+    state->create_encrypted_file_count += 1;
+
+    uint64_t encrypted_file_size = 0;
+    #ifdef _WIN32
+        struct _stati64 st;
+        _stati64(state->encrypted_file_path, &st);
+        encrypted_file_size = st.st_size;
+    #else
+        struct stat st;
+        stat(state->encrypted_file_path, &st);
+        encrypted_file_size = st.st_size;
+    #endif
+
+    if (req->error_status != 0 || state->file_size != encrypted_file_size) {
+        state->log->warn(state->env->log_options, state->handle,
+                       "Failed to encrypt data.");
+
+        if (state->create_encrypted_file_count == 6) {
+            state->error_status = STORJ_FILE_ENCRYPTION_ERROR;
+        }
+    } else {
+        state->log->info(state->env->log_options, state->handle,
+                       "Successfully encrypted file");
+
+        state->encrypted_file = fopen(state->encrypted_file_path, "r");
+    }
+
+    state->creating_encrypted_file = false;
+
+clean_variables:
+    queue_next_work(state);
+    free(work);
+}
+
+static void create_encrypted_file(uv_work_t *work)
+{
+    encrypt_file_req_t *req = work->data;
+    storj_upload_state_t *state = req->upload_state;
+
+    state->log->info(state->env->log_options, state->handle, "Encrypting file...");
+
+    // Initialize the encryption context
+    storj_encryption_ctx_t *encryption_ctx = prepare_encryption_ctx(state->encryption_ctr,
+                                                                    state->encryption_key);
+    if (!encryption_ctx) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto clean_variables;
+    }
+
+    uint8_t cphr_txt[AES_BLOCK_SIZE * 256];
+    memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
+    char read_data[AES_BLOCK_SIZE * 256];
+    memset_zero(read_data, AES_BLOCK_SIZE * 256);
+    unsigned long int read_bytes = 0;
+    unsigned long int written_bytes = 0;
+    uint64_t total_read = 0;
+
+    FILE *encrypted_file = fopen(state->encrypted_file_path, "w+");
+
+    if (encrypted_file == NULL) {
+      state->log->error(state->env->log_options, state->handle,
+                     "Can't create file for encrypted data [%s]",
+                     state->encrypted_file_path);
+        goto clean_variables;
+    }
+
+    do {
+        if (state->canceled) {
+            goto clean_variables;
+        }
+
+        read_bytes = pread(fileno(state->original_file),
+                           read_data, AES_BLOCK_SIZE * 256,
+                           total_read);
+
+        if (read_bytes == -1) {
+            state->log->warn(state->env->log_options, state->handle,
+                           "Error reading file: %d",
+                           errno);
+            req->error_status = STORJ_FILE_READ_ERROR;
+            goto clean_variables;
+        }
+
+        // Encrypt data
+        ctr_crypt(encryption_ctx->ctx, (nettle_cipher_func *)aes256_encrypt,
+                  AES_BLOCK_SIZE, encryption_ctx->encryption_ctr, read_bytes,
+                  (uint8_t *)cphr_txt, (uint8_t *)read_data);
+
+        written_bytes = pwrite(fileno(encrypted_file), cphr_txt, read_bytes, total_read);
+
+        memset_zero(read_data, AES_BLOCK_SIZE * 256);
+        memset_zero(cphr_txt, AES_BLOCK_SIZE * 256);
+
+        total_read += read_bytes;
+
+        if (written_bytes != read_bytes) {
+            goto clean_variables;
+        }
+
+    } while(total_read < state->file_size && read_bytes > 0);
+
+clean_variables:
+    if (encrypted_file) {
+        fclose(encrypted_file);
+    }
+    if (encryption_ctx) {
+        free_encryption_ctx(encryption_ctx);
+    }
+}
+
+static void queue_create_encrypted_file(storj_upload_state_t *state)
+{
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    state->pending_work_count += 1;
+
+    encrypt_file_req_t *req = malloc(sizeof(encrypt_file_req_t));
+
+    req->error_status = 0;
+    req->upload_state = state;
+    work->data = req;
+
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               create_encrypted_file, after_create_encrypted_file);
+
+    if (status) {
+        state->error_status = STORJ_QUEUE_ERROR;
+    }
+
+    state->creating_encrypted_file = true;
 }
 
 static void after_request_frame_id(uv_work_t *work, int status)
@@ -1583,7 +1762,7 @@ static void after_create_parity_shards(uv_work_t *work, int status)
     // TODO: Check if file was created
     if (req->error_status != 0) {
         state->log->warn(state->env->log_options, state->handle,
-                       "Something went wrong!!");
+                       "Failed to create parity shards");
 
         state->awaiting_parity_shards = true;
 
@@ -1615,7 +1794,7 @@ static void create_parity_shards(uv_work_t *work)
 
     uint8_t *map = NULL;
     int status = 0;
-    status = map_file(fileno(state->original_file), state->file_size, &map, true);
+    status = map_file(fileno(state->encrypted_file), state->file_size, &map, true);
 
     if (status) {
         req->error_status = 1;
@@ -1628,31 +1807,10 @@ static void create_parity_shards(uv_work_t *work)
 
     // determine parity shard location
     char *tmp_folder = NULL;
-    if (state->env->tmp_path) {
-        char *tmp_folder = strdup(state->env->tmp_path);
-        int file_name_len = strlen(state->file_name);
-        int extension_len = strlen(".parity");
-        int tmp_folder_len = strlen(tmp_folder);
-        if (tmp_folder[tmp_folder_len - 1] == separator()) {
-            tmp_folder[tmp_folder_len - 1] = '\0';
-            tmp_folder_len -= 1;
-        }
-
-        state->parity_file_path = calloc(
-            tmp_folder_len + 1 + file_name_len + extension_len + 2,
-            sizeof(char)
-        );
-        sprintf(state->parity_file_path,
-                "%s%c%s%s%c",
-                tmp_folder,
-                separator(),
-                state->file_name,
-                ".parity",
-                '\0');
-    } else {
+    if (!state->parity_file_path) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "No temp folder set");
+                       "No temp folder set for parity shards");
         goto clean_variables;
     }
 
@@ -2096,10 +2254,17 @@ static void queue_next_work(storj_upload_state_t *state)
         goto finish_up;
     }
 
-    // Create parity shards using reed solomon
-    if (state->awaiting_parity_shards && state->rs) {
-        queue_create_parity_shards(state);
-        goto finish_up;
+    if (state->rs) {
+        if (!state->encrypted_file) {
+            queue_create_encrypted_file(state);
+            goto finish_up;
+        }
+
+        // Create parity shards using reed solomon
+        if (state->awaiting_parity_shards) {
+            queue_create_parity_shards(state);
+            goto finish_up;
+        }
     }
 
     for (int index = 0; index < state->total_shards; index++ ) {
@@ -2282,7 +2447,37 @@ static void prepare_upload_state(uv_work_t *work)
 
     prepare_encryption_key(state, file_key, DETERMINISTIC_KEY_SIZE, file_id, FILE_ID_SIZE);
 
+    if (state->rs) {
+        state->parity_file_path = create_tmp_name(state, ".parity");
+        state->encrypted_file_path = create_tmp_name(state, ".crypt");
+    }
+}
 
+char *create_tmp_name(storj_upload_state_t *state, char *extension)
+{
+    char *tmp_folder = strdup(state->env->tmp_path);
+    int file_name_len = strlen(state->file_name);
+    int extension_len = strlen(extension);
+    int tmp_folder_len = strlen(tmp_folder);
+    if (tmp_folder[tmp_folder_len - 1] == separator()) {
+        tmp_folder[tmp_folder_len - 1] = '\0';
+        tmp_folder_len -= 1;
+    }
+
+    char *path = calloc(
+        tmp_folder_len + 1 + file_name_len + extension_len + 2,
+        sizeof(char)
+    );
+
+    sprintf(path,
+            "%s%c%s%s%c",
+            tmp_folder,
+            separator(),
+            state->file_name,
+            extension,
+            '\0');
+
+    return path;
 }
 
 int storj_bridge_store_file_cancel(storj_upload_state_t *state)
@@ -2349,6 +2544,11 @@ int storj_bridge_store_file(storj_env_t *env,
     state->parity_file_path = NULL;
     state->parity_file = NULL;
 
+    // Only use this if rs after encryption
+    state->encrypted_file = NULL;
+    state->encrypted_file_path = NULL;
+    state->creating_encrypted_file = false;
+
     state->requesting_frame = false;
     state->completed_upload = false;
     state->creating_bucket_entry = false;
@@ -2369,6 +2569,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->file_verify_count = 0;
     state->bucket_verify_count = 0;
     state->create_parity_shard_count = 0;
+    state->create_encrypted_file_count = 0;
 
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
