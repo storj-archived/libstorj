@@ -1294,6 +1294,7 @@ static void after_request_info(uv_work_t *work, int status)
         if (req->info->erasure) {
             if (strcmp(req->info->erasure, "reedsolomon") == 0) {
                 req->state->rs = true;
+                req->state->truncated = false;
             } else {
                 req->state->error_status = STORJ_FILE_UNSUPPORTED_ERASURE;
             }
@@ -1577,6 +1578,7 @@ static void after_recover_shards(uv_work_t *work, int status)
 
     state->pending_work_count--;
     state->recovering_shards = false;
+    state->truncated = true;
 
     if (status != 0) {
         req->state->error_status = STORJ_QUEUE_ERROR;
@@ -1786,7 +1788,8 @@ static void queue_next_work(storj_download_state_t *state)
 
     // report download complete
     if (state->pointers_completed &&
-        state->completed_shards == state->total_shards) {
+        state->completed_shards == state->total_shards &&
+        state->truncated) {
 
         if (!state->finished && state->pending_work_count == 0) {
 
@@ -1910,6 +1913,7 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->total_parity_pointers = 0;
     state->rs = false;
     state->recovering_shards = false;
+    state->truncated = true;
     state->pointers = NULL;
     state->pointers_completed = false;
     state->pointer_fail_count = 0;

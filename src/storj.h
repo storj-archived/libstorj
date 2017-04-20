@@ -391,6 +391,7 @@ typedef struct {
     uint32_t total_parity_pointers;
     bool rs;
     bool recovering_shards;
+    bool truncated;
     bool pointers_completed;
     uint32_t pointer_fail_count;
     bool requesting_pointers;
