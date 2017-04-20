@@ -364,6 +364,11 @@ static void set_pointer_from_json(storj_download_state_t *state,
         // reset the status
         p->status = POINTER_CREATED;
     } else {
+        state->log->warn(state->env->log_options,
+                         state->handle,
+                         "Missing shard %s at index %i",
+                         hash,
+                         index);
         p->status = POINTER_MISSING;
     }
 
@@ -431,6 +436,10 @@ static void set_pointer_from_json(storj_download_state_t *state,
     if (!state->shard_size) {
         // TODO make sure all except last shard is the same size
         state->shard_size = size;
+        state->log->debug(state->env->log_options,
+                          state->handle,
+                          "Shard size set to %" PRIu64,
+                          state->shard_size);
     };
 }
 
@@ -585,6 +594,11 @@ static void queue_request_pointers(storj_download_state_t *state)
         storj_pointer_t *pointer = &state->pointers[i];
 
         if (pointer->replace_count >= STORJ_DEFAULT_MIRRORS) {
+            state->log->warn(state->env->log_options,
+                             state->handle,
+                             "Unable to download shard %s at index %i",
+                             pointer->shard_hash,
+                             pointer->index);
             pointer->status = POINTER_MISSING;
             return;
         }
@@ -1634,7 +1648,7 @@ static void recover_shards(uv_work_t *work)
 
     error = reed_solomon_reconstruct(rs, data_blocks, fec_blocks,
                                      req->zilch, total_shards,
-                                     req->shard_size, req->filesize);
+                                     req->shard_size, req->data_filesize);
 
     if (error) {
         req->error_status = STORJ_FILE_RECOVER_ERROR;
