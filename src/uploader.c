@@ -1766,11 +1766,7 @@ static void create_parity_shards(uv_work_t *work)
 
     uint8_t *map = NULL;
     int status = 0;
-    if (state->rs == RS_BEFORE_ENCRYPTION) {
-        status = map_file(fileno(state->original_file), state->file_size, &map, true);
-    } else {
-        status = map_file(fileno(state->encrypted_file), state->file_size, &map, true);
-    }
+    status = map_file(fileno(state->encrypted_file), state->file_size, &map, true);
 
     if (status) {
         req->error_status = 1;
@@ -2230,15 +2226,17 @@ static void queue_next_work(storj_upload_state_t *state)
         goto finish_up;
     }
 
-    if (!state->encrypted_file && state->rs == RS_AFTER_ENCRYPTION) {
-        queue_create_encrypted_file(state);
-        goto finish_up;
-    }
+    if (state->rs) {
+        if (!state->encrypted_file) {
+            queue_create_encrypted_file(state);
+            goto finish_up;
+        }
 
-    // Create parity shards using reed solomon
-    if (state->awaiting_parity_shards && state->rs) {
-        queue_create_parity_shards(state);
-        goto finish_up;
+        // Create parity shards using reed solomon
+        if (state->awaiting_parity_shards) {
+            queue_create_parity_shards(state);
+            goto finish_up;
+        }
     }
 
     for (int index = 0; index < state->total_shards; index++ ) {
@@ -2513,8 +2511,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->encryption_ctr = NULL;
 
     // TODO: change this to env or opts
-    //0 = off, 1 = rs before encryption, 2 = rs after encryption
-    state->rs = RS_BEFORE_ENCRYPTION;
+    state->rs = true;
     state->awaiting_parity_shards = true;
     state->parity_file_path = NULL;
     state->parity_file = NULL;

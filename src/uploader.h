@@ -32,12 +32,6 @@ typedef enum {
     PUSH_SHARD_LIMIT = 32
 } storj_state_progress_limits_t;
 
-typedef enum {
-    NONE = 0,
-    RS_BEFORE_ENCRYPTION = 1,
-    RS_AFTER_ENCRYPTION = 2
-} storj_erasure_t;
-
 typedef struct {
     /* state should not be modified in worker threads */
     storj_upload_state_t *upload_state;
