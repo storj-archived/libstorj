@@ -21,6 +21,9 @@ var ReedSolomon = function ReedSolomon(dataShards, parityShards) {
 }
 
 ReedSolomon.prototype.encode = function encode(data) {
+  if(!(data instanceof Uint8Array)) {
+    throw new Error('Expected a Uint8Array or Buffer object for data')
+  }
   var bs = data.length / this._ds
   var result = new Uint8Array(this._ps * bs)
   var err = rs.ccall('reed_solomon_encode',
