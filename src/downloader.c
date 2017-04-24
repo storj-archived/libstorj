@@ -540,17 +540,16 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
     } else if (req->error_status) {
         state->error_status = req->error_status;
     } else if (req->status_code != 200) {
-        state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
 
         if (req->status_code > 0 && req->status_code < 500) {
-            state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+            state->pointers[req->pointer_index].status = POINTER_MISSING;
         } else {
             state->pointer_fail_count += 1;
         }
 
         if (state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
             state->pointer_fail_count = 0;
-            state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+            state->pointers[req->pointer_index].status = POINTER_MISSING;
         }
 
     } else if (!json_object_is_type(req->response, json_type_array)) {
