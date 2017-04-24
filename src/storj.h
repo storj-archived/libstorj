@@ -351,6 +351,7 @@ typedef struct {
     int prepare_frame_limit;
     int push_frame_limit;
     int push_shard_limit;
+    bool rs;
     const char *bucket_id;
     const char *file_name;
     FILE *fd;

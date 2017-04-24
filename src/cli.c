@@ -354,10 +354,17 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
         file_name = file_path;
     }
 
+    // Upload opts env variables:
+    int prepare_frame_limit = atoi(getenv("PREPARE_FRAME_LIMIT"));
+    int push_frame_limit = atoi(getenv("PUSH_FRAME_LIMIT"));
+    int push_shard_limit = atoi(getenv("PUSH_SHARD_LIMIT"));
+    bool rs = (strcmp(getenv("STORJ_REED_SOLOMON"), "false") == 0) ? false : true;
+
     storj_upload_opts_t upload_opts = {
-        .prepare_frame_limit = 1,
-        .push_frame_limit = 64,
-        .push_shard_limit = 64,
+        .prepare_frame_limit = (prepare_frame_limit) ? prepare_frame_limit : 1,
+        .push_frame_limit = (push_frame_limit) ? push_frame_limit : 64,
+        .push_shard_limit = (push_shard_limit) ? push_shard_limit : 64,
+        .rs = rs,
         .bucket_id = bucket_id,
         .file_name = file_name,
         .fd = fd
