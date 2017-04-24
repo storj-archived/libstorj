@@ -12,20 +12,18 @@ RUN apt-get update \
       libjson-c-dev \
       libuv1-dev \
       bsdmainutils \
- && rm -rf /var/lib/apt/lists/*;
-
-RUN apt-get update \
- && apt-get install -y --force-yes --no-install-recommends \
+      openjdk-8-jre \
+      openjdk-8-jdk \
+      gnupg \
       curl \
       ca-certificates \
       python-all \
- && rm -rf /var/lib/apt/lists/*;
-
-RUN apt-get update \
- && apt-get install -y --force-yes --no-install-recommends \
       cmake \
+ && curl -sL https://deb.nodesource.com/setup_6.x \
+  | bash - \
+ && apt-get install -y --force-yes --no-install-recommends \
+      nodejs \
  && rm -rf /var/lib/apt/lists/*;
-
 
 WORKDIR /usr/src/emscripten
 RUN curl https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz \
@@ -34,17 +32,6 @@ RUN curl https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portab
 RUN ./emsdk update
 RUN ./emsdk install latest
 RUN ./emsdk activate latest
-
-RUN apt-get update \
- && apt-get install -y --force-yes --no-install-recommends \
-      gnupg \
- && curl -sL https://deb.nodesource.com/setup_6.x \
-  | bash - \
- && apt-get install -y --force-yes --no-install-recommends \
-      nodejs \
-      openjdk-8-jre \
-      openjdk-8-jdk \
- && rm -rf /var/lib/apt/lists/*;
 
 RUN bash -c 'source ./emsdk_env.sh && emcc -v && emcc emscripten/tag-*/tests/hello_123.c -o h.js && rm h.js'
 
