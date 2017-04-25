@@ -1530,6 +1530,7 @@ static void after_create_encrypted_file(uv_work_t *work, int status)
 
 clean_variables:
     queue_next_work(state);
+    free(work->data);
     free(work);
 }
 
@@ -1778,6 +1779,7 @@ static void after_create_parity_shards(uv_work_t *work, int status)
 
 clean_variables:
     queue_next_work(state);
+    free(work->data);
     free(work);
 }
 
@@ -1791,6 +1793,9 @@ static void create_parity_shards(uv_work_t *work)
 
     // ???
     fec_init();
+
+    uint8_t **data_blocks = NULL;
+    uint8_t **fec_blocks = NULL;
 
     uint8_t *map = NULL;
     int status = 0;
@@ -1841,7 +1846,6 @@ static void create_parity_shards(uv_work_t *work)
         goto clean_variables;
     }
 
-    uint8_t **data_blocks = NULL;
     data_blocks = (uint8_t**)malloc(state->total_data_shards * sizeof(uint8_t *));
     if (!data_blocks) {
         req->error_status = 1;
@@ -1854,7 +1858,6 @@ static void create_parity_shards(uv_work_t *work)
         data_blocks[i] = map + i * state->shard_size;
     }
 
-    uint8_t **fec_blocks = NULL;
     fec_blocks = (uint8_t**)malloc(state->total_parity_shards * sizeof(uint8_t *));
     if (!fec_blocks) {
         req->error_status = 1;
@@ -1880,8 +1883,17 @@ static void create_parity_shards(uv_work_t *work)
                                         state->total_parity_shards);
     reed_solomon_encode2(rs, data_blocks, fec_blocks, state->total_shards,
                          state->shard_size, state->file_size);
+    reed_solomon_release(rs);
 
 clean_variables:
+    if (data_blocks) {
+        free(data_blocks);
+    }
+
+    if (fec_blocks) {
+        free(fec_blocks);
+    }
+
     if (tmp_folder) {
         free(tmp_folder);
     }
@@ -2477,6 +2489,7 @@ char *create_tmp_name(storj_upload_state_t *state, char *extension)
             extension,
             '\0');
 
+    free(tmp_folder);
     return path;
 }
 
