@@ -931,6 +931,8 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
 
 clean_variables:
     json_object_put(req->response);
+    free(req->encrypted_bucket_name);
+    free(req->bucket);
     free(req);
     free(work_req);
 }
