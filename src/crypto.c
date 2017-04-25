@@ -293,12 +293,14 @@ int decrypt_data(const char *passphrase, const char *salt, const char *data,
     // Convert from hex string
     int len = strlen(data);
     if (len / 2 < GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + 1) {
+        free(key);
         return 1;
     }
     int enc_len = len / 2;
     int data_size = enc_len - GCM_DIGEST_SIZE - SHA256_DIGEST_SIZE;
     uint8_t *enc = str2hex(len, (char *)data);
     if (!enc) {
+        free(key);
         return 1;
     }
 
