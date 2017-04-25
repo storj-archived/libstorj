@@ -1819,25 +1819,25 @@ static void create_parity_shards(uv_work_t *work)
         goto clean_variables;
     }
 
-    int parity_fd = open(state->parity_file_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    if (!parity_fd) {
+    FILE *parity_file = fopen(state->parity_file_path, "w+");
+    if (!parity_file) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "Could not open parity file [%s]", state->parity_file_path);
+                          "Could not open parity file [%s]", state->parity_file_path);
         goto clean_variables;
     }
 
-    int falloc_status = allocatefile(parity_fd, 0, parity_size);
+    int falloc_status = allocatefile(fileno(parity_file), 0, parity_size);
 
     if (falloc_status) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "Could not allocate space for mmap parity shard file: %s", strerror(errno));
+                          "Could not allocate space for mmap parity shard file: %s", strerror(errno));
         goto clean_variables;
     }
 
     uint8_t *map_parity = NULL;
-    status = map_file(parity_fd, parity_size, &map_parity, false);
+    status = map_file(fileno(parity_file), parity_size, &map_parity, false);
 
     if (status) {
         req->error_status = 1;
@@ -1879,6 +1879,7 @@ static void create_parity_shards(uv_work_t *work)
                       state->shard_size,
                       state->file_size);
 
+
     reed_solomon *rs = reed_solomon_new(state->total_data_shards,
                                         state->total_parity_shards);
     reed_solomon_encode2(rs, data_blocks, fec_blocks, state->total_shards,
@@ -1906,8 +1907,8 @@ clean_variables:
         unmap_file(map_parity, parity_size);
     }
 
-    if (parity_fd) {
-        close(parity_fd);
+    if (parity_file) {
+        fclose(parity_file);
     }
 }
 

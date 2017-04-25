@@ -249,7 +249,6 @@ int allocatefile(int fd, off_t offset, off_t length)
 
 win_finished:
 
-    CloseHandle(file);
     return status;
 #elif HAVE_POSIX_FALLOCATE
     return posix_fallocate(fd, offset, length);
