@@ -1563,7 +1563,7 @@ finish:
     }
 
 #ifdef _WIN32
-    error = _chsize_s(req->fd, req->date_filesize);
+    error = _chsize_s(req->fd, req->data_filesize);
     if (error) {
         req->error_status = STORJ_FILE_RESIZE_ERROR;
     }
