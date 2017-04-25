@@ -832,11 +832,13 @@ static void list_files_callback(uv_work_t *work_req, int status)
                file->mimetype,
                file->created,
                file->filename);
+       free(file->filename);
     }
 
 cleanup:
     json_object_put(req->response);
     free(req->path);
+    free(req->files);
     free(req);
     free(work_req);
     exit(ret_status);
@@ -894,9 +896,11 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
         printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
                bucket->id, bucket->decrypted ? "true" : "false",
                bucket->created, bucket->name);
+        free(bucket->name);
     }
 
     json_object_put(req->response);
+    free(req->buckets);
     free(req);
     free(work_req);
 }
