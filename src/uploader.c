@@ -2575,7 +2575,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->encryption_ctr = NULL;
 
     // TODO: change this to env or opts
-    state->rs = true;
+    state->rs = (opts->rs == false) ? false : true;
     state->awaiting_parity_shards = true;
     state->parity_file_path = NULL;
     state->parity_file = NULL;
@@ -2621,6 +2621,4 @@ int storj_bridge_store_file(storj_env_t *env,
     state->pending_work_count += 1;
     return uv_queue_work(env->loop, (uv_work_t*) work,
                          prepare_upload_state, begin_work_queue);
-
-
 }
