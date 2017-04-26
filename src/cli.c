@@ -836,8 +836,7 @@ static void list_files_callback(uv_work_t *work_req, int status)
 
 cleanup:
     json_object_put(req->response);
-    free(req->path);
-    free(req);
+    storj_free_list_files_request(req);
     free(work_req);
     exit(ret_status);
 }
@@ -897,7 +896,7 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
     }
 
     json_object_put(req->response);
-    free(req);
+    storj_free_get_buckets_request(req);
     free(work_req);
 }
 
@@ -927,6 +926,8 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
 
 clean_variables:
     json_object_put(req->response);
+    free((char *)req->encrypted_bucket_name);
+    free(req->bucket);
     free(req);
     free(work_req);
 }
