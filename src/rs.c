@@ -804,7 +804,7 @@ void reed_solomon_release(reed_solomon* rs)
 int reed_solomon_encode(reed_solomon* rs,
                         uint8_t** data_blocks,
                         uint8_t** fec_blocks,
-                        int block_size,
+                        uint64_t block_size,
                         uint64_t total_bytes)
 {
     assert(NULL != rs && NULL != rs->parity);
@@ -837,7 +837,7 @@ int reed_solomon_encode(reed_solomon* rs,
 
 int reed_solomon_decode(reed_solomon* rs,
                         uint8_t **data_blocks,
-                        int block_size,
+                        uint64_t block_size,
                         uint8_t **dec_fec_blocks,
                         unsigned int *fec_block_nos,
                         unsigned int *erased_blocks,
@@ -942,7 +942,7 @@ int reed_solomon_decode(reed_solomon* rs,
 }
 
 int reed_solomon_encode2(reed_solomon* rs, uint8_t** data_blocks,
-                         uint8_t** fec_blocks, int nr_shards, int block_size,
+                         uint8_t** fec_blocks, int nr_shards, uint64_t block_size,
                          uint64_t total_bytes)
 {
     int i, ds = rs->data_shards, ps = rs->parity_shards, ss = rs->shards;
@@ -961,7 +961,7 @@ int reed_solomon_reconstruct(reed_solomon* rs,
                              uint8_t** fec_blocks,
                              uint8_t* marks,
                              int nr_shards,
-                             int block_size,
+                             uint64_t block_size,
                              uint64_t total_bytes)
 {
     uint8_t *dec_fec_blocks[DATA_SHARDS_MAX];
