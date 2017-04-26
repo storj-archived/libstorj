@@ -1524,6 +1524,9 @@ static void after_create_encrypted_file(uv_work_t *work, int status)
                        "Successfully encrypted file");
 
         state->encrypted_file = fopen(state->encrypted_file_path, "r");
+        if (!state->encrypted_file) {
+            state->error_status = STORJ_FILE_READ_ERROR;
+        }
     }
 
     state->creating_encrypted_file = false;
@@ -1775,6 +1778,11 @@ static void after_create_parity_shards(uv_work_t *work, int status)
                        "Successfully created parity shards");
 
         state->parity_file = fopen(state->parity_file_path, "r");
+
+        if (!state->parity_file) {
+            state->error_status = STORJ_FILE_READ_ERROR;
+        }
+
     }
 
 clean_variables:
@@ -1802,12 +1810,19 @@ static void create_parity_shards(uv_work_t *work)
 
     FILE *encrypted_file = fopen(state->encrypted_file_path, "r");
 
+    if (!encrypted_file) {
+        req->error_status = 1;
+        state->log->error(state->env->log_options, state->handle,
+                          "Unable to open encrypted file");
+        goto clean_variables;
+    }
+
     status = map_file(fileno(encrypted_file), state->file_size, &map, true);
 
     if (status) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "Could not create mmap original file: %d", status);
+                          "Could not create mmap original file: %d", status);
         goto clean_variables;
     }
 
@@ -1818,7 +1833,7 @@ static void create_parity_shards(uv_work_t *work)
     if (!state->parity_file_path) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "No temp folder set for parity shards");
+                          "No temp folder set for parity shards");
         goto clean_variables;
     }
 
