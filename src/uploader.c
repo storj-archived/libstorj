@@ -2575,7 +2575,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->encryption_ctr = NULL;
 
     // TODO: change this to env or opts
-    state->rs = (!opts->rs == false) ? false : true;
+    state->rs = (opts->rs == false) ? false : true;
     state->awaiting_parity_shards = true;
     state->parity_file_path = NULL;
     state->parity_file = NULL;
