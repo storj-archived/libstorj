@@ -249,7 +249,6 @@ int allocatefile(int fd, off_t offset, off_t length)
 
 win_finished:
 
-    CloseHandle(file);
     return status;
 #elif HAVE_POSIX_FALLOCATE
     return posix_fallocate(fd, offset, length);
@@ -320,7 +319,6 @@ int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only)
 
 win_finished:
     CloseHandle(mh);
-    CloseHandle(fh);
 #else
     int prot = read_only ? PROT_READ : PROT_READ | PROT_WRITE;
     *map = (uint8_t *)mmap(NULL, filesize, prot, MAP_SHARED, fd, 0);

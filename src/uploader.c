@@ -1524,12 +1524,16 @@ static void after_create_encrypted_file(uv_work_t *work, int status)
                        "Successfully encrypted file");
 
         state->encrypted_file = fopen(state->encrypted_file_path, "r");
+        if (!state->encrypted_file) {
+            state->error_status = STORJ_FILE_READ_ERROR;
+        }
     }
 
     state->creating_encrypted_file = false;
 
 clean_variables:
     queue_next_work(state);
+    free(work->data);
     free(work);
 }
 
@@ -1774,10 +1778,16 @@ static void after_create_parity_shards(uv_work_t *work, int status)
                        "Successfully created parity shards");
 
         state->parity_file = fopen(state->parity_file_path, "r");
+
+        if (!state->parity_file) {
+            state->error_status = STORJ_FILE_READ_ERROR;
+        }
+
     }
 
 clean_variables:
     queue_next_work(state);
+    free(work->data);
     free(work);
 }
 
@@ -1792,14 +1802,27 @@ static void create_parity_shards(uv_work_t *work)
     // ???
     fec_init();
 
+    uint8_t **data_blocks = NULL;
+    uint8_t **fec_blocks = NULL;
+
     uint8_t *map = NULL;
     int status = 0;
-    status = map_file(fileno(state->encrypted_file), state->file_size, &map, true);
+
+    FILE *encrypted_file = fopen(state->encrypted_file_path, "r");
+
+    if (!encrypted_file) {
+        req->error_status = 1;
+        state->log->error(state->env->log_options, state->handle,
+                          "Unable to open encrypted file");
+        goto clean_variables;
+    }
+
+    status = map_file(fileno(encrypted_file), state->file_size, &map, true);
 
     if (status) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "Could not create mmap original file: %d", status);
+                          "Could not create mmap original file: %d", status);
         goto clean_variables;
     }
 
@@ -1810,29 +1833,29 @@ static void create_parity_shards(uv_work_t *work)
     if (!state->parity_file_path) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "No temp folder set for parity shards");
+                          "No temp folder set for parity shards");
         goto clean_variables;
     }
 
-    int parity_fd = open(state->parity_file_path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    if (!parity_fd) {
+    FILE *parity_file = fopen(state->parity_file_path, "w+");
+    if (!parity_file) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "Could not open parity file [%s]", state->parity_file_path);
+                          "Could not open parity file [%s]", state->parity_file_path);
         goto clean_variables;
     }
 
-    int falloc_status = allocatefile(parity_fd, 0, parity_size);
+    int falloc_status = allocatefile(fileno(parity_file), 0, parity_size);
 
     if (falloc_status) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                       "Could not allocate space for mmap parity shard file: %s", strerror(errno));
+                          "Could not allocate space for mmap parity shard file: %s", strerror(errno));
         goto clean_variables;
     }
 
     uint8_t *map_parity = NULL;
-    status = map_file(parity_fd, parity_size, &map_parity, false);
+    status = map_file(fileno(parity_file), parity_size, &map_parity, false);
 
     if (status) {
         req->error_status = 1;
@@ -1841,7 +1864,6 @@ static void create_parity_shards(uv_work_t *work)
         goto clean_variables;
     }
 
-    uint8_t **data_blocks = NULL;
     data_blocks = (uint8_t**)malloc(state->total_data_shards * sizeof(uint8_t *));
     if (!data_blocks) {
         req->error_status = 1;
@@ -1854,7 +1876,6 @@ static void create_parity_shards(uv_work_t *work)
         data_blocks[i] = map + i * state->shard_size;
     }
 
-    uint8_t **fec_blocks = NULL;
     fec_blocks = (uint8_t**)malloc(state->total_parity_shards * sizeof(uint8_t *));
     if (!fec_blocks) {
         req->error_status = 1;
@@ -1876,12 +1897,22 @@ static void create_parity_shards(uv_work_t *work)
                       state->shard_size,
                       state->file_size);
 
+
     reed_solomon *rs = reed_solomon_new(state->total_data_shards,
                                         state->total_parity_shards);
     reed_solomon_encode2(rs, data_blocks, fec_blocks, state->total_shards,
                          state->shard_size, state->file_size);
+    reed_solomon_release(rs);
 
 clean_variables:
+    if (data_blocks) {
+        free(data_blocks);
+    }
+
+    if (fec_blocks) {
+        free(fec_blocks);
+    }
+
     if (tmp_folder) {
         free(tmp_folder);
     }
@@ -1894,8 +1925,12 @@ clean_variables:
         unmap_file(map_parity, parity_size);
     }
 
-    if (parity_fd) {
-        close(parity_fd);
+    if (parity_file) {
+        fclose(parity_file);
+    }
+
+    if (encrypted_file) {
+        fclose(encrypted_file);
     }
 }
 
@@ -2477,6 +2512,7 @@ char *create_tmp_name(storj_upload_state_t *state, char *extension)
             extension,
             '\0');
 
+    free(tmp_folder);
     return path;
 }
 

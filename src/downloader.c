@@ -540,17 +540,16 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
     } else if (req->error_status) {
         state->error_status = req->error_status;
     } else if (req->status_code != 200) {
-        state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
 
         if (req->status_code > 0 && req->status_code < 500) {
-            state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+            state->pointers[req->pointer_index].status = POINTER_MISSING;
         } else {
             state->pointer_fail_count += 1;
         }
 
         if (state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
             state->pointer_fail_count = 0;
-            state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+            state->pointers[req->pointer_index].status = POINTER_MISSING;
         }
 
     } else if (!json_object_is_type(req->response, json_type_array)) {
@@ -1457,6 +1456,7 @@ static void after_recover_shards(uv_work_t *work, int status)
     memset_zero(req->decrypt_ctr, AES_BLOCK_SIZE);
     free(req->decrypt_ctr);
 
+    free(req->zilch);
     free(req);
     free(work);
 }
@@ -1564,10 +1564,27 @@ finish:
     }
 
 #ifdef _WIN32
-    error = _chsize_s(req->fd, req->date_filesize);
-    if (error) {
+
+    HANDLE file = (HANDLE)_get_osfhandle(req->fd);
+    if (file == INVALID_HANDLE_VALUE) {
         req->error_status = STORJ_FILE_RESIZE_ERROR;
+        return;
     }
+
+    LARGE_INTEGER size;
+    size.HighPart = (uint32_t)((req->data_filesize & 0xFFFFFFFF00000000LL) >> 32);
+    size.LowPart = (uint32_t)(req->data_filesize & 0xFFFFFFFFLL);
+
+    if (!SetFilePointerEx(file, size, 0, FILE_BEGIN)) {
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        return;
+    }
+
+    if (!SetEndOfFile(file)) {
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        return;
+    }
+
 #else
     if (ftruncate(req->fd, req->data_filesize)) {
         // errno for more details
