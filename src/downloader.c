@@ -1564,10 +1564,27 @@ finish:
     }
 
 #ifdef _WIN32
-    error = _chsize_s(req->fd, req->data_filesize);
-    if (error) {
+
+    HANDLE file = (HANDLE)_get_osfhandle(req->fd);
+    if (file == INVALID_HANDLE_VALUE) {
         req->error_status = STORJ_FILE_RESIZE_ERROR;
+        return;
     }
+
+    LARGE_INTEGER size;
+    size.HighPart = (uint32_t)((req->data_filesize & 0xFFFFFFFF00000000LL) >> 32);
+    size.LowPart = (uint32_t)(req->data_filesize & 0xFFFFFFFFLL);
+
+    if (!SetFilePointerEx(file, size, 0, FILE_BEGIN)) {
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        return;
+    }
+
+    if (!SetEndOfFile(file)) {
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        return;
+    }
+
 #else
     if (ftruncate(req->fd, req->data_filesize)) {
         // errno for more details
