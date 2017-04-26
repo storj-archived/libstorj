@@ -172,26 +172,3 @@ Configure command for libstorj-c:
 ```
 export PATH="$(pwd)/depends/toolchain/build/bin:${PATH}" && PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-apple-darwin11/lib/pkgconfig" CC=clang CXX=clang++ CFLAGS="-target x86_64-apple-darwin11 -isysroot $(pwd)/depends/MacOSX10.11.sdk -mmacosx-version-min=10.8 -mlinker-version=253.9 -pipe -I$(pwd)/depends/build/x86_64-apple-darwin11/include" LDFLAGS="-L$(pwd)/depends/toolchain/build/lib -L$(pwd)/depends/MacOSX10.11.sdk/usr/lib -L$(pwd)/depends/build/x86_64-apple-darwin11/lib -Wl,-syslibroot $(pwd)/depends/MacOSX10.11.sdk" ./configure --host="x86_64-apple-darwin11" --enable-static --disable-shared --prefix=$(pwd)/depends/build/x86_64-apple-darwin11
 ```
-
-### Environment variables
-
-```bash
-# Set temp directory for parity shard data and encrypted data before upload (default: system temp folder)
-export STORJ_TEMP=/tmp/
-# Bridge URL (default: https://api.storj.io)
-export STORJ_BRIDGE="https://api.storj.io"
-# Bridge username
-export STORJ_BRIDGE_USER="storjuser@example.com"
-# Bridge password
-export STORJ_KEYPASS="password"
-# Key used for encrypting/decrypting files for upload/download
-export STORJ_ENCRYPTION_KEY=""
-# Limit to how many concurrent hashes can be calculated when preparing the upload (default: 1)
-export PREPARE_FRAME_LIMIT=1
-# Limit to how many frames can be pushed at once before upload (default: 64)
-export PUSH_FRAME_LIMIT=64
-# Limit to how many shards can be uploaded at once during upload (default: 64)
-export PUSH_SHARD_LIMIT=64
-# Turn off erasure encoding. This must explicitly be set to "false" to turn off (default: true)
-export STORJ_REED_SOLOMON=true
-```
