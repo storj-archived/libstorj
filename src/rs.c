@@ -294,13 +294,13 @@ static void generate_gf(void)
 #endif
 
 #define UNROLL 16 /* 1, 4, 8, 16 */
-static void slow_addmul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_max)
+static void slow_addmul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
 {
     USE_GF_MULC;
     register gf *dst = dst1, *src = src1;
-    int low_max = dst_max < src_max ? dst_max : src_max;
-    int dif = sz - low_max;
-    int pos = low_max - UNROLL + 1;
+    int64_t low_max = dst_max < src_max ? dst_max : src_max;
+    int64_t dif = sz - low_max;
+    int64_t pos = low_max - UNROLL + 1;
     gf *lim = &dst[pos];
 
     GF_MULC0(c);
@@ -344,7 +344,7 @@ static void slow_addmul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_
 
 # define addmul1 slow_addmul1
 
-static void addmul(gf *dst, gf *src, gf c, int sz, int dst_max, int src_max)
+static void addmul(gf *dst, gf *src, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
 {
     if (c != 0) addmul1(dst, src, c, sz, dst_max, src_max);
 }
@@ -364,14 +364,14 @@ static void addmul(gf *dst, gf *src, gf c, int sz, int dst_max, int src_max)
 #endif
 
 #define UNROLL 16 /* 1, 4, 8, 16 */
-static void slow_mul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_max)
+static void slow_mul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
 {
     USE_GF_MULC;
     register gf *dst = dst1, *src = src1;
 
-    int low_max = dst_max < src_max ? dst_max : src_max;
-    int dif = sz - low_max;
-    int pos = low_max - UNROLL + 1;
+    int64_t low_max = dst_max < src_max ? dst_max : src_max;
+    int64_t dif = sz - low_max;
+    int64_t pos = low_max - UNROLL + 1;
     gf *lim = &dst[pos];
 
     GF_MULC0(c);
@@ -415,7 +415,7 @@ static void slow_mul1(gf *dst1, gf *src1, gf c, int sz, int dst_max, int src_max
 
 # define mul1 slow_mul1
 
-static inline void mul(gf *dst, gf *src, gf c, int sz, int dst_max, int src_max)
+static inline void mul(gf *dst, gf *src, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
 {
     if (c != 0) mul1(dst, src, c, sz, dst_max, src_max); else memset(dst, 0, c);
 }
