@@ -355,16 +355,16 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
     }
 
     // Upload opts env variables:
-    int prepare_frame_limit = atoi(getenv("STORJ_PREPARE_FRAME_LIMIT"));
-    int push_frame_limit = atoi(getenv("STORJ_PUSH_FRAME_LIMIT"));
-    int push_shard_limit = atoi(getenv("STORJ_PUSH_SHARD_LIMIT"));
-    bool rs = (strcmp(getenv("STORJ_REED_SOLOMON"), "false") == 0) ? false : true;
+    char *prepare_frame_limit = getenv("STORJ_PREPARE_FRAME_LIMIT");
+    char *push_frame_limit = getenv("STORJ_PUSH_FRAME_LIMIT");
+    char *push_shard_limit = getenv("STORJ_PUSH_SHARD_LIMIT");
+    char *rs = getenv("STORJ_REED_SOLOMON");
 
     storj_upload_opts_t upload_opts = {
-        .prepare_frame_limit = (prepare_frame_limit) ? prepare_frame_limit : 1,
-        .push_frame_limit = (push_frame_limit) ? push_frame_limit : 64,
-        .push_shard_limit = (push_shard_limit) ? push_shard_limit : 64,
-        .rs = rs,
+        .prepare_frame_limit = (prepare_frame_limit) ? atoi(prepare_frame_limit) : 1,
+        .push_frame_limit = (push_frame_limit) ? atoi(push_frame_limit) : 64,
+        .push_shard_limit = (push_shard_limit) ? atoi(push_shard_limit) : 64,
+        .rs = (!rs) ? true : (strcmp(rs, "false") == 0) ? false : true,
         .bucket_id = bucket_id,
         .file_name = file_name,
         .fd = fd
