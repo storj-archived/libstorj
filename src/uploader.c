@@ -1799,7 +1799,10 @@ static void create_parity_shards(uv_work_t *work)
 
     uint8_t *map = NULL;
     int status = 0;
-    status = map_file(fileno(state->encrypted_file), state->file_size, &map, true);
+
+    FILE *encrypted_file = fopen(state->encrypted_file_path, "r");
+
+    status = map_file(fileno(encrypted_file), state->file_size, &map, true);
 
     if (status) {
         req->error_status = 1;
@@ -1909,6 +1912,10 @@ clean_variables:
 
     if (parity_file) {
         fclose(parity_file);
+    }
+
+    if (encrypted_file) {
+        fclose(encrypted_file);
     }
 }
 
