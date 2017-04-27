@@ -51,13 +51,13 @@ void reed_solomon_release(reed_solomon* rs);
 int reed_solomon_encode(reed_solomon* rs,
                         uint8_t** data_blocks,
                         uint8_t** fec_blocks,
-                        int block_size,
+                        uint64_t block_size,
                         uint64_t total_bytes);
 
 
 int reed_solomon_decode(reed_solomon* rs,
                         uint8_t **data_blocks,
-                        int block_size,
+                        uint64_t  block_size,
                         uint8_t **dec_fec_blocks,
                         unsigned int *fec_block_nos,
                         unsigned int *erased_blocks,
@@ -77,7 +77,7 @@ int reed_solomon_decode(reed_solomon* rs,
  * @return A non-zero error value on failure and 0 on success.
  */
 int reed_solomon_encode2(reed_solomon* rs, uint8_t** data_blocks,
-                         uint8_t** fec_blocks, int nr_shards, int block_size,
+                         uint8_t** fec_blocks, int nr_shards, uint64_t block_size,
                          uint64_t total_bytes);
 
 /**
@@ -94,6 +94,6 @@ int reed_solomon_encode2(reed_solomon* rs, uint8_t** data_blocks,
  */
 int reed_solomon_reconstruct(reed_solomon* rs, uint8_t** data_blocks,
                              uint8_t** fec_blocks, uint8_t* marks,
-                             int nr_shards, int block_size,
+                             int nr_shards, uint64_t block_size,
                              uint64_t total_bytes);
 #endif
