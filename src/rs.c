@@ -293,7 +293,7 @@ static void generate_gf(void)
     if (c != 0) addmul1(dst, src, c, sz, dst_max, src_max)
 #endif
 
-#define UNROLL 16 /* 1, 4, 8, 16 */
+#define UNROLL 0 /* 1, 4, 8, 16 */
 static void slow_addmul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
 {
     USE_GF_MULC;
@@ -363,7 +363,7 @@ static void addmul(gf *dst, gf *src, gf c, int64_t sz, int64_t dst_max, int64_t 
     do { if (c != 0) mul1(dst, src, c, sz, dst_max, src_max); else memset(dst, 0, c); } while(0)
 #endif
 
-#define UNROLL 16 /* 1, 4, 8, 16 */
+#define UNROLL 0 /* 1, 4, 8, 16 */
 static void slow_mul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
 {
     USE_GF_MULC;
