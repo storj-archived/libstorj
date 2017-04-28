@@ -223,7 +223,7 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset)
 }
 #endif
 
-int allocatefile(int fd, off_t offset, off_t length)
+int allocatefile(int fd, uint64_t length)
 {
 #ifdef _WIN32
     HANDLE file = (HANDLE)_get_osfhandle(fd);
@@ -251,13 +251,13 @@ win_finished:
 
     return status;
 #elif HAVE_POSIX_FALLOCATE
-    return posix_fallocate(fd, offset, length);
+    return posix_fallocate(fd, 0, length);
 #elif __unix__
-    return fallocate(fd, FALLOC_FL_ZERO_RANGE, offset, length);
+    return fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, length);
 #elif __linux__
-    return fallocate(fd, FALLOC_FL_ZERO_RANGE, offset, length);
+    return fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, length);
 #elif __APPLE__
-    fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, offset, length, 0};
+    fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, 0, length, 0};
     // Try to get a continous chunk of disk space
     int ret = fcntl(fd, F_PREALLOCATE, &store);
     if (-1 == ret) {
@@ -268,7 +268,7 @@ win_finished:
             return -1;
         }
     }
-    return ftruncate(fd, offset+length);
+    return ftruncate(fd, length);
 #else
     return -1;
 #endif

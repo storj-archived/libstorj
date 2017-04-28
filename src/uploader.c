@@ -1845,12 +1845,13 @@ static void create_parity_shards(uv_work_t *work)
         goto clean_variables;
     }
 
-    int falloc_status = allocatefile(fileno(parity_file), 0, parity_size);
+    int falloc_status = allocatefile(fileno(parity_file), parity_size);
 
     if (falloc_status) {
         req->error_status = 1;
         state->log->error(state->env->log_options, state->handle,
-                          "Could not allocate space for mmap parity shard file: %s", strerror(errno));
+                          "Could not allocate space for mmap parity " \
+                          "shard file: %i", falloc_status);
         goto clean_variables;
     }
 
