@@ -600,6 +600,7 @@ static void queue_request_pointers(storj_download_state_t *state)
                              "Unable to download shard %s at index %i",
                              pointer->shard_hash,
                              pointer->index);
+            pointer->replace_count = 0;
             pointer->status = POINTER_MISSING;
             return;
         }
