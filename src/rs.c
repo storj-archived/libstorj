@@ -293,12 +293,12 @@ static void generate_gf(void)
     if (c != 0) addmul1(dst, src, c, sz, dst_max, src_max)
 #endif
 
-static void slow_addmul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
+static void slow_addmul1(gf *dst1, gf *src1, gf c, uint64_t sz, uint64_t dst_max, uint64_t src_max)
 {
     USE_GF_MULC;
     register gf *dst = dst1, *src = src1;
-    int64_t low_max = dst_max < src_max ? dst_max : src_max;
-    int64_t pos = 0;
+    uint64_t low_max = dst_max < src_max ? dst_max : src_max;
+    uint64_t pos = 0;
     gf *lim = &dst[low_max];
 
     GF_MULC0(c);
@@ -316,7 +316,7 @@ static void slow_addmul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, 
 
 # define addmul1 slow_addmul1
 
-static void addmul(gf *dst, gf *src, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
+static void addmul(gf *dst, gf *src, gf c, uint64_t sz, uint64_t dst_max, uint64_t src_max)
 {
     if (c != 0) addmul1(dst, src, c, sz, dst_max, src_max);
 }
@@ -335,12 +335,12 @@ static void addmul(gf *dst, gf *src, gf c, int64_t sz, int64_t dst_max, int64_t 
     do { if (c != 0) mul1(dst, src, c, sz, dst_max, src_max); else memset(dst, 0, c); } while(0)
 #endif
 
-static void slow_mul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
+static void slow_mul1(gf *dst1, gf *src1, gf c, uint64_t sz, uint64_t dst_max, uint64_t src_max)
 {
     USE_GF_MULC;
     register gf *dst = dst1, *src = src1;
-    int64_t low_max = dst_max < src_max ? dst_max : src_max;
-    int64_t pos = 0;
+    uint64_t low_max = dst_max < src_max ? dst_max : src_max;
+    uint64_t pos = 0;
     gf *lim = &dst[low_max];
 
     GF_MULC0(c);
@@ -358,7 +358,7 @@ static void slow_mul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, int
 
 # define mul1 slow_mul1
 
-static inline void mul(gf *dst, gf *src, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
+static inline void mul(gf *dst, gf *src, gf c, uint64_t sz, uint64_t dst_max, uint64_t src_max)
 {
     if (c != 0) mul1(dst, src, c, sz, dst_max, src_max); else memset(dst, 0, c);
 }
