@@ -273,6 +273,7 @@ static json_request_t *json_request_new(
     bool auth,
     void *handle)
 {
+
     json_request_t *req = malloc(sizeof(json_request_t));
     if (!req) {
         return NULL;

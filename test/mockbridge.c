@@ -99,6 +99,10 @@ int mock_bridge_server(void *cls,
                 page = get_response_string(responses, "getfileinfo");
                 status_code = MHD_HTTP_OK;
             }
+        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/file-ids/hTY5wsqYyLJQppCMiFQI7v2n/IZZiKb0ES1RCrUqK7Fe5m0/+fYwh+E/vp8M3FCEECle63BhlWlHi/Hj/Yg5y/bIjy8SxQ==")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                status_code = MHD_HTTP_NOT_FOUND;
+            }
         } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/files/998960317b6725a3f8080c2b")) {
             // TODO check token auth
 
@@ -142,6 +146,8 @@ int mock_bridge_server(void *cls,
                 page = get_response_string(responses, "listmirrors");
                 status_code = MHD_HTTP_OK;
             }
+        } else {
+            printf("url: %s\n", url);
         }
 
     } else if (0 == strcmp(method, "POST")) {

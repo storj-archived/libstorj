@@ -2126,6 +2126,106 @@ static void queue_verify_bucket_id(storj_upload_state_t *state)
     storj_bridge_get_bucket(state->env, state->bucket_id, state, verify_bucket_id_callback);
 }
 
+
+static void verify_file_name_callback(uv_work_t *work_req, int status)
+{
+    json_request_t *req = work_req->data;
+    storj_upload_state_t *state = req->handle;
+
+    state->log->info(state->env->log_options, state->handle,
+                     "Checking if file name [%s] already exists...", state->file_name);
+
+    state->pending_work_count -= 1;
+    state->file_verify_count += 1;
+
+    if (req->status_code == 404) {
+        state->file_verified = true;
+        goto clean_variables;
+    } else if (req->status_code == 200) {
+        state->log->error(state->env->log_options, state->handle,
+                          "File [%s] already exists", state->file_name);
+        state->error_status = STORJ_BRIDGE_BUCKET_FILE_EXISTS;
+    } else {
+        state->log->error(state->env->log_options, state->handle,
+                          "Request failed with status code: %i", req->status_code);
+
+        if (state->file_verify_count == 6) {
+            state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+            state->file_verify_count = 0;
+        }
+
+        goto clean_variables;
+    }
+
+    state->file_verified = true;
+
+clean_variables:
+    queue_next_work(state);
+
+    json_object_put(req->response);
+    free(req->path);
+    free(req);
+    free(work_req);
+}
+
+static void verify_file_name(uv_work_t *work)
+{
+    json_request_t *req = work->data;
+    int status_code = 0;
+
+    req->error_code = fetch_json(req->http_options,
+                                 req->options, req->method, req->path, req->body,
+                                 req->auth, NULL, &req->response, &status_code);
+
+    req->status_code = status_code;
+}
+
+static void queue_verify_file_name(storj_upload_state_t *state)
+{
+    state->pending_work_count += 1;
+
+    // TODO url escape base 64 encrypted filename?
+    char *path = str_concat_many(4, "/buckets/", state->bucket_id, "/file-ids/",
+                                 state->encrypted_file_name);
+    if (!path) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    json_request_t *req = malloc(sizeof(json_request_t));
+    if (!req) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    req->http_options = state->env->http_options;
+    req->options = state->env->bridge_options;
+    req->method = "GET";
+    req->path = path;
+    req->auth = true;
+    req->body = NULL;
+    req->response = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = state;
+
+    work->data = req;
+
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               verify_file_name, verify_file_name_callback);
+
+    if (status) {
+        state->error_status = STORJ_QUEUE_ERROR;
+        return;
+    }
+}
+
 // Check if a frame/shard is already being prepared/pushed.
 // We want to limit disk reads for dd and network activity
 static int check_in_progress(storj_upload_state_t *state, int status)
@@ -2183,6 +2283,12 @@ static void queue_next_work(storj_upload_state_t *state)
     // Verify bucket_id is exists
     if (!state->bucket_verified) {
         queue_verify_bucket_id(state);
+        goto finish_up;
+    }
+
+    // Verify that the file name doesn't exist
+    if (!state->file_verified) {
+        queue_verify_file_name(state);
         goto finish_up;
     }
 
@@ -2510,6 +2616,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->final_callback_called = false;
     state->canceled = false;
     state->bucket_verified = false;
+    state->file_verified = false;
 
     state->progress_finished = false;
 
@@ -2520,6 +2627,7 @@ int storj_bridge_store_file(storj_env_t *env,
     state->frame_request_count = 0;
     state->add_bucket_entry_count = 0;
     state->bucket_verify_count = 0;
+    state->file_verify_count = 0;
     state->create_parity_shard_count = 0;
     state->create_encrypted_file_count = 0;
 
