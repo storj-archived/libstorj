@@ -2192,7 +2192,9 @@ static void queue_verify_file_name(storj_upload_state_t *state)
 
     char *escaped = curl_easy_escape(curl, state->encrypted_file_name,
                                      strlen(state->encrypted_file_name));
+
     if (!escaped) {
+        curl_easy_cleanup(curl);
         state->error_status = STORJ_MEMORY_ERROR;
         return;
     }
