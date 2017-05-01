@@ -357,7 +357,7 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
         state->add_bucket_entry_count = 0;
         state->completed_upload = true;
     } else if (state->add_bucket_entry_count == 6) {
-        state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
+        state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
     }
 
 clean_variables:
@@ -2184,9 +2184,24 @@ static void queue_verify_file_name(storj_upload_state_t *state)
 {
     state->pending_work_count += 1;
 
-    // TODO url escape base 64 encrypted filename?
-    char *path = str_concat_many(4, "/buckets/", state->bucket_id, "/file-ids/",
-                                 state->encrypted_file_name);
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    char *escaped = curl_easy_escape(curl, state->encrypted_file_name,
+                                     strlen(state->encrypted_file_name));
+    if (!escaped) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    char *path = str_concat_many(4, "/buckets/", state->bucket_id,
+                                 "/file-ids/", escaped);
+    curl_free(escaped);
+    curl_easy_cleanup(curl);
+
     if (!path) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
