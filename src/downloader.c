@@ -1452,6 +1452,8 @@ static void after_recover_shards(uv_work_t *work, int status)
         }
     }
 
+    free(req->zilch);
+
     queue_next_work(state);
 
     memset_zero(req->decrypt_key, SHA256_DIGEST_SIZE);
@@ -1460,7 +1462,7 @@ static void after_recover_shards(uv_work_t *work, int status)
     memset_zero(req->decrypt_ctr, AES_BLOCK_SIZE);
     free(req->decrypt_ctr);
 
-    free(req->zilch);
+
     free(req);
     free(work);
 }
@@ -1601,11 +1603,11 @@ finish:
 static void queue_recover_shards(storj_download_state_t *state)
 {
     if (!state->recovering_shards && state->pointers_completed) {
-        state->recovering_shards = true;
 
         int total_missing = 0;
         bool has_missing = false;
         bool is_ready = true;
+
         uint8_t *zilch = (uint8_t *)calloc(1, state->total_pointers);
 
         for (int i = 0; i < state->total_pointers; i++) {
@@ -1634,14 +1636,12 @@ static void queue_recover_shards(storj_download_state_t *state)
         file_request_recover_t *req = malloc(sizeof(file_request_recover_t));
         if (!req) {
             state->error_status = STORJ_MEMORY_ERROR;
-            state->recovering_shards = false;
             return;
         }
 
         uv_work_t *work = malloc(sizeof(uv_work_t));
         if (!work) {
             state->error_status = STORJ_MEMORY_ERROR;
-            state->recovering_shards = false;
             return;
         }
 
@@ -1658,13 +1658,11 @@ static void queue_recover_shards(storj_download_state_t *state)
             req->decrypt_key = calloc(SHA256_DIGEST_SIZE, sizeof(uint8_t));
             if (!req->decrypt_key) {
                 state->error_status = STORJ_MEMORY_ERROR;
-                state->recovering_shards = false;
                 return;
             }
             req->decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
             if (!req->decrypt_ctr) {
                 state->error_status = STORJ_MEMORY_ERROR;
-                state->recovering_shards = false;
                 return;
             }
             memcpy(req->decrypt_key, state->decrypt_key, SHA256_DIGEST_SIZE);
@@ -1687,9 +1685,10 @@ static void queue_recover_shards(storj_download_state_t *state)
 
         if (status) {
             state->error_status = STORJ_QUEUE_ERROR;
-            state->recovering_shards = false;
             return;
         }
+
+        state->recovering_shards = true;
     }
 }
 
