@@ -293,49 +293,21 @@ static void generate_gf(void)
     if (c != 0) addmul1(dst, src, c, sz, dst_max, src_max)
 #endif
 
-#define UNROLL 16 /* 1, 4, 8, 16 */
-static void slow_addmul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
+static void slow_addmul1(gf *dst1, gf *src1, gf c, uint64_t sz, uint64_t dst_max, uint64_t src_max)
 {
     USE_GF_MULC;
     register gf *dst = dst1, *src = src1;
-    int64_t low_max = dst_max < src_max ? dst_max : src_max;
-    int64_t dif = sz - low_max;
-    int64_t pos = low_max - UNROLL + 1;
-    gf *lim = &dst[pos];
+    uint64_t low_max = dst_max < src_max ? dst_max : src_max;
+    uint64_t pos = 0;
+    gf *lim = &dst[low_max];
 
     GF_MULC0(c);
 
-#if (UNROLL > 1) /* unrolling by 8/16 is quite effective on the pentium */
-    for (; dst < lim; dst += UNROLL, src += UNROLL ) {
-        GF_ADDMULC( dst[0] , src[0] );
-        GF_ADDMULC( dst[1] , src[1] );
-        GF_ADDMULC( dst[2] , src[2] );
-        GF_ADDMULC( dst[3] , src[3] );
-#if (UNROLL > 4)
-        GF_ADDMULC( dst[4] , src[4] );
-        GF_ADDMULC( dst[5] , src[5] );
-        GF_ADDMULC( dst[6] , src[6] );
-        GF_ADDMULC( dst[7] , src[7] );
-#endif
-#if (UNROLL > 8)
-        GF_ADDMULC( dst[8] , src[8] );
-        GF_ADDMULC( dst[9] , src[9] );
-        GF_ADDMULC( dst[10] , src[10] );
-        GF_ADDMULC( dst[11] , src[11] );
-        GF_ADDMULC( dst[12] , src[12] );
-        GF_ADDMULC( dst[13] , src[13] );
-        GF_ADDMULC( dst[14] , src[14] );
-        GF_ADDMULC( dst[15] , src[15] );
-#endif
-    }
-#endif
-    lim += dif + UNROLL - 1;
-    /* final components */
     for (; dst < lim; dst++, src++ ) {
         if (pos < src_max && pos < dst_max) {
             GF_ADDMULC( *dst , *src );
         } else if (pos < dst_max) {
-            /* assume zero when post the max */
+            /* assume zero when past the max */
             GF_ADDMULC( *dst , 0 );
         }
         pos += 1;
@@ -344,7 +316,7 @@ static void slow_addmul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, 
 
 # define addmul1 slow_addmul1
 
-static void addmul(gf *dst, gf *src, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
+static void addmul(gf *dst, gf *src, gf c, uint64_t sz, uint64_t dst_max, uint64_t src_max)
 {
     if (c != 0) addmul1(dst, src, c, sz, dst_max, src_max);
 }
@@ -363,50 +335,21 @@ static void addmul(gf *dst, gf *src, gf c, int64_t sz, int64_t dst_max, int64_t 
     do { if (c != 0) mul1(dst, src, c, sz, dst_max, src_max); else memset(dst, 0, c); } while(0)
 #endif
 
-#define UNROLL 16 /* 1, 4, 8, 16 */
-static void slow_mul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
+static void slow_mul1(gf *dst1, gf *src1, gf c, uint64_t sz, uint64_t dst_max, uint64_t src_max)
 {
     USE_GF_MULC;
     register gf *dst = dst1, *src = src1;
-
-    int64_t low_max = dst_max < src_max ? dst_max : src_max;
-    int64_t dif = sz - low_max;
-    int64_t pos = low_max - UNROLL + 1;
-    gf *lim = &dst[pos];
+    uint64_t low_max = dst_max < src_max ? dst_max : src_max;
+    uint64_t pos = 0;
+    gf *lim = &dst[low_max];
 
     GF_MULC0(c);
 
-#if (UNROLL > 1) /* unrolling by 8/16 is quite effective on the pentium */
-    for (; dst < lim; dst += UNROLL, src += UNROLL ) {
-        GF_MULC( dst[0] , src[0] );
-        GF_MULC( dst[1] , src[1] );
-        GF_MULC( dst[2] , src[2] );
-        GF_MULC( dst[3] , src[3] );
-#if (UNROLL > 4)
-        GF_MULC( dst[4] , src[4] );
-        GF_MULC( dst[5] , src[5] );
-        GF_MULC( dst[6] , src[6] );
-        GF_MULC( dst[7] , src[7] );
-#endif
-#if (UNROLL > 8)
-        GF_MULC( dst[8] , src[8] );
-        GF_MULC( dst[9] , src[9] );
-        GF_MULC( dst[10] , src[10] );
-        GF_MULC( dst[11] , src[11] );
-        GF_MULC( dst[12] , src[12] );
-        GF_MULC( dst[13] , src[13] );
-        GF_MULC( dst[14] , src[14] );
-        GF_MULC( dst[15] , src[15] );
-#endif
-    }
-#endif
-    lim += dif + UNROLL - 1;
-    /* final components */
     for (; dst < lim; dst++, src++ ) {
         if (pos < src_max && pos < dst_max) {
             GF_MULC( *dst , *src );
         } else if (pos < dst_max) {
-            /* assume zero when post the max */
+            /* assume zero when past the max */
             GF_MULC( *dst , 0 );
         }
         pos += 1;
@@ -415,7 +358,7 @@ static void slow_mul1(gf *dst1, gf *src1, gf c, int64_t sz, int64_t dst_max, int
 
 # define mul1 slow_mul1
 
-static inline void mul(gf *dst, gf *src, gf c, int64_t sz, int64_t dst_max, int64_t src_max)
+static inline void mul(gf *dst, gf *src, gf c, uint64_t sz, uint64_t dst_max, uint64_t src_max)
 {
     if (c != 0) mul1(dst, src, c, sz, dst_max, src_max); else memset(dst, 0, c);
 }

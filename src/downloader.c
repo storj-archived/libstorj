@@ -1452,8 +1452,6 @@ static void after_recover_shards(uv_work_t *work, int status)
         }
     }
 
-    free(req->zilch);
-
     queue_next_work(state);
 
     memset_zero(req->decrypt_key, SHA256_DIGEST_SIZE);
@@ -1462,7 +1460,7 @@ static void after_recover_shards(uv_work_t *work, int status)
     memset_zero(req->decrypt_ctr, AES_BLOCK_SIZE);
     free(req->decrypt_ctr);
 
-
+    free(req->zilch);
     free(req);
     free(work);
 }
