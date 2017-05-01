@@ -237,8 +237,10 @@ static void request_replace_pointer(uv_work_t *work)
 
     int status_code = 0;
 
-    char query_args[32 + strlen(req->excluded_farmer_ids)];
-    snprintf(query_args, 25 + strlen(req->excluded_farmer_ids),
+    int excluded_farmer_ids_len = (req->excluded_farmer_ids) ? strlen(req->excluded_farmer_ids) : 0;
+    char query_args[BUFSIZ];
+    memset(query_args, '\0', BUFSIZ);
+    snprintf(query_args, BUFSIZ,
              "?limit=1&skip=%i&exclude=%s",
              req->pointer_index,
              req->excluded_farmer_ids);
@@ -612,7 +614,7 @@ static void queue_request_pointers(storj_download_state_t *state)
                               pointer->report->farmer_id);
 
             if (!state->excluded_farmer_ids) {
-                state->excluded_farmer_ids = calloc(41, sizeof(char));
+                state->excluded_farmer_ids = calloc(42, sizeof(char));
                 if (!state->excluded_farmer_ids) {
                     state->error_status = STORJ_MEMORY_ERROR;
                     return;
@@ -621,7 +623,7 @@ static void queue_request_pointers(storj_download_state_t *state)
             } else {
                 state->excluded_farmer_ids =
                     realloc(state->excluded_farmer_ids,
-                            strlen(state->excluded_farmer_ids) + 41);
+                            strlen(state->excluded_farmer_ids) + 42);
                 if (!state->excluded_farmer_ids) {
                     state->error_status = STORJ_MEMORY_ERROR;
                     return;
@@ -693,8 +695,9 @@ static void queue_request_pointers(storj_download_state_t *state)
         return;
     }
 
-    char query_args[32];
-    snprintf(query_args, 20, "?limit=6&skip=%i", state->total_pointers);
+    char query_args[BUFSIZ];
+    memset(query_args, '\0', BUFSIZ);
+    snprintf(query_args, BUFSIZ, "?limit=6&skip=%d", state->total_pointers);
 
     int path_len = 9 + strlen(state->bucket_id) + 7 +
         strlen(state->file_id) + strlen(query_args);
@@ -1597,15 +1600,12 @@ finish:
 
 static void queue_recover_shards(storj_download_state_t *state)
 {
-    if (state->recovering_shards) {
-        return;
-    }
-
-    if (state->pointers_completed) {
+    if (!state->recovering_shards && state->pointers_completed) {
 
         int total_missing = 0;
         bool has_missing = false;
         bool is_ready = true;
+
         uint8_t *zilch = (uint8_t *)calloc(1, state->total_pointers);
 
         for (int i = 0; i < state->total_pointers; i++) {
