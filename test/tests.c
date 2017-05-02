@@ -496,6 +496,7 @@ int test_upload()
 
     // upload file
     storj_upload_opts_t upload_opts = {
+        .index = "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692",
         .bucket_id = "368be0816766b28fd5f43af5",
         .file_name = file_name,
         .fd = fopen(file, "r")
@@ -544,6 +545,7 @@ int test_upload_cancel()
 
     // upload file
     storj_upload_opts_t upload_opts = {
+        .index = "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692",
         .bucket_id = "368be0816766b28fd5f43af5",
         .file_name = file_name,
         .fd = fopen(file, "r")
@@ -1108,14 +1110,11 @@ int test_generate_file_key()
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     char *bucket_id = "0123456789ab0123456789ab";
     char *file_name = "samplefile.txt";
-    char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
+    char *index = "150589c9593bbebc0e795d8c4fa97304b42c110d9f0095abfac644763beca66e";
     char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    char *expected_file_key = "fe5fe4dcc5cb094666957d135341283d1af766cfe3174b75e15935ef5387c533";
+    char *expected_file_key = "bb3552fc2e16d24a147af4b2d163e3164e6dbd04bbc45fc1c3eab69f384337e9";
 
-    calculate_file_id(bucket_id, file_name, file_id);
-    file_id[FILE_ID_SIZE] = '\0';
-    generate_file_key(mnemonic, bucket_id, file_id, &file_key);
-    file_key[DETERMINISTIC_KEY_SIZE] = '\0';
+    generate_file_key(mnemonic, bucket_id, index, &file_key);
 
     int check = strcmp(expected_file_key, file_key);
     if (check != 0) {
@@ -1124,39 +1123,11 @@ int test_generate_file_key()
         printf("\t\tactual file_key:   %s\n", file_key);
 
         free(file_key);
-        free(file_id);
         return 1;
     }
 
     free(file_key);
-    free(file_id);
     pass("test_generate_file_key");
-
-    return 0;
-}
-
-int test_calculate_file_id()
-{
-    char *bucket_id = "0123456789ab0123456789ab";
-    char *file_name = "samplefile.txt";
-    char *file_id = calloc(24 + 1, sizeof(char));
-    char *expected_file_id = "852b6c9a0ba914a31e301a4b";
-
-    calculate_file_id(bucket_id, file_name, file_id);
-
-    int check = memcmp(file_id, expected_file_id, 24);
-    if (check != 0) {
-        fail("test_calculate_file_id");
-        printf("\t\texpected file_id: %s\n", expected_file_id);
-        printf("\t\tactual file_id:   %s\n", file_id);
-
-        free(file_id);
-        return 1;
-    }
-
-    pass("test_calculate_file_id");
-
-    free(file_id);
 
     return 0;
 }
@@ -1584,7 +1555,6 @@ int main(void)
     printf("\n");
 
     printf("Test Suite: Crypto\n");
-    test_calculate_file_id();
     test_generate_bucket_key();
     test_generate_file_key();
     test_increment_ctr_aes_iv();

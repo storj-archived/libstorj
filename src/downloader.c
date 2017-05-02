@@ -1140,6 +1140,126 @@ static void queue_send_exchange_reports(storj_download_state_t *state)
     }
 }
 
+static void determine_decryption_key_v1(storj_download_state_t *state)
+{
+    uint8_t *index = NULL;
+    char *file_key_as_str = NULL;
+
+    file_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    if (!file_key_as_str) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    if (generate_file_key(state->env->encrypt_options->mnemonic,
+                          state->bucket_id,
+                          state->info->index, &file_key_as_str)) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+    file_key_as_str[DETERMINISTIC_KEY_SIZE] = '\0';
+
+    uint8_t *decrypt_key = str2hex(strlen(file_key_as_str), file_key_as_str);
+    if (!decrypt_key) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    state->decrypt_key = decrypt_key;
+
+    index = str2hex(strlen(state->info->index), (char *)state->info->index);
+    if (!index) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+    if (!decrypt_ctr) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    memcpy(decrypt_ctr, index, AES_BLOCK_SIZE);
+    state->decrypt_ctr = decrypt_ctr;
+
+cleanup:
+    if (file_key_as_str) {
+        free(file_key_as_str);
+    }
+    if (index) {
+        free(index);
+    }
+}
+
+static void determine_decryption_key_v0(storj_download_state_t *state)
+{
+    char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    if (!file_key) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    if (generate_file_key(state->env->encrypt_options->mnemonic,
+                          state->bucket_id,
+                          state->file_id, &file_key)) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+    file_key[DETERMINISTIC_KEY_SIZE] = '\0';
+
+    uint8_t *decrypt_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+    if (!decrypt_key) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    sha256_of_str((uint8_t *)file_key, DETERMINISTIC_KEY_SIZE, decrypt_key);
+    decrypt_key[SHA256_DIGEST_SIZE] = '\0';
+
+    memset_zero(file_key, DETERMINISTIC_KEY_SIZE + 1);
+    free(file_key);
+
+    state->decrypt_key = decrypt_key;
+
+    uint8_t *file_id_hash = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
+    if (!file_id_hash) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+    ripemd160_of_str((uint8_t *)state->file_id,
+                     strlen(state->file_id), file_id_hash);
+    file_id_hash[RIPEMD160_DIGEST_SIZE] = '\0';
+
+    uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+    if (!decrypt_ctr) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+    memcpy(decrypt_ctr, file_id_hash, AES_BLOCK_SIZE);
+
+    free(file_id_hash);
+
+    state->decrypt_ctr = decrypt_ctr;
+}
+
+static void determine_decryption_key(storj_download_state_t *state)
+{
+    if (!state->env->encrypt_options ||
+        !state->env->encrypt_options->mnemonic) {
+
+        state->decrypt_key = NULL;
+        state->decrypt_ctr = NULL;
+    } else {
+        if (state->info->index) {
+            // calculate decryption key based on the index
+            determine_decryption_key_v1(state);
+        } else {
+            // calculate decryption key based on the file_id
+            determine_decryption_key_v0(state);
+        }
+    };
+}
+
 static void after_request_info(uv_work_t *work, int status)
 {
     file_info_request_t *req = work->data;
@@ -1176,6 +1296,9 @@ static void after_request_info(uv_work_t *work, int status)
     } else {
         req->state->error_status = STORJ_BRIDGE_FILEINFO_ERROR;
     }
+
+    // Now that we have info we can calculate the decryption key
+    determine_decryption_key(req->state);
 
     queue_next_work(req->state);
 
@@ -1222,6 +1345,18 @@ static void request_info(uv_work_t *work)
                          "Request file info error: %i", request_status);
 
     } else if (status_code == 200 || status_code == 304) {
+
+        req->info = malloc(sizeof(storj_file_meta_t));
+        req->info->created = NULL;
+        req->info->filename = NULL;
+        req->info->mimetype = NULL;
+        req->info->erasure = NULL;
+        req->info->size = 0;
+        req->info->hmac = NULL;
+        req->info->id = NULL;
+        req->info->decrypted = false;
+        req->info->index = NULL;
+
         struct json_object *erasure_obj;
         struct json_object *erasure_value;
         char *erasure = NULL;
@@ -1232,6 +1367,20 @@ static void request_info(uv_work_t *work)
                 state->log->warn(state->env->log_options, state->handle,
                                  "value missing from erasure response");
             }
+        }
+
+        if (erasure) {
+            req->info->erasure = strdup(erasure);
+        }
+
+        struct json_object *index_value;
+        char *index = NULL;
+        if (json_object_object_get_ex(response, "index", &index_value)) {
+            index = (char *)json_object_get_string(index_value);
+        }
+
+        if (index) {
+            req->info->index = strdup(index);
         }
 
         struct json_object *hmac_obj;
@@ -1265,7 +1414,7 @@ static void request_info(uv_work_t *work)
             goto clean_up;
         }
 
-        // get the hmac vlaue
+        // get the hmac value
         struct json_object *hmac_value;
         if (!json_object_object_get_ex(hmac_obj, "value", &hmac_value)) {
             state->log->warn(state->env->log_options, state->handle,
@@ -1278,23 +1427,7 @@ static void request_info(uv_work_t *work)
             goto clean_up;
         }
         char *hmac = (char *)json_object_get_string(hmac_value);
-        req->info = malloc(sizeof(storj_file_meta_t));
         req->info->hmac = strdup(hmac);
-
-        // set the erasure encoding type
-        if (erasure) {
-            req->info->erasure = strdup(erasure);
-        } else {
-            req->info->erasure = NULL;
-        }
-
-        // TODO set these values, however the are currently
-        // not used within the downloader
-        req->info->filename = NULL;
-        req->info->mimetype = NULL;
-        req->info->size = 0;
-        req->info->id = NULL;
-        req->info->decrypted = false;
 
     } else if (status_code == 403 || status_code == 401) {
         req->error_status = STORJ_BRIDGE_AUTH_ERROR;
@@ -1752,7 +1885,9 @@ static void queue_next_work(storj_download_state_t *state)
         queue_request_info(state);
     }
 
-    queue_request_shards(state);
+    if (state->info) {
+        queue_request_shards(state);
+    }
 
     queue_send_exchange_reports(state);
 
@@ -1847,53 +1982,8 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->canceled = false;
     state->log = env->log;
     state->handle = handle;
-
-    // determine the decryption key
-    if (!env->encrypt_options || !env->encrypt_options->mnemonic) {
-        state->decrypt_key = NULL;
-        state->decrypt_ctr = NULL;
-    } else {
-        char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-        if (!file_key) {
-            return STORJ_MEMORY_ERROR;
-        }
-
-        if (generate_file_key(env->encrypt_options->mnemonic, bucket_id,
-                              file_id, &file_key)) {
-            return STORJ_MEMORY_ERROR;
-        }
-        file_key[DETERMINISTIC_KEY_SIZE] = '\0';
-
-        uint8_t *decrypt_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
-        if (!decrypt_key) {
-            return STORJ_MEMORY_ERROR;
-        }
-
-        sha256_of_str((uint8_t *)file_key, DETERMINISTIC_KEY_SIZE, decrypt_key);
-        decrypt_key[SHA256_DIGEST_SIZE] = '\0';
-
-        memset_zero(file_key, DETERMINISTIC_KEY_SIZE + 1);
-        free(file_key);
-
-        state->decrypt_key = decrypt_key;
-
-        uint8_t *file_id_hash = calloc(RIPEMD160_DIGEST_SIZE + 1, sizeof(uint8_t));
-        if (!file_id_hash) {
-            return STORJ_MEMORY_ERROR;
-        }
-        ripemd160_of_str((uint8_t *)file_id, strlen(file_id), file_id_hash);
-        file_id_hash[RIPEMD160_DIGEST_SIZE] = '\0';
-
-        uint8_t *decrypt_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
-        if (!decrypt_ctr) {
-            return STORJ_MEMORY_ERROR;
-        }
-        memcpy(decrypt_ctr, file_id_hash, AES_BLOCK_SIZE);
-
-        free(file_id_hash);
-
-        state->decrypt_ctr = decrypt_ctr;
-    };
+    state->decrypt_key = NULL;
+    state->decrypt_ctr = NULL;
 
     // start download
     queue_next_work(state);

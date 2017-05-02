@@ -244,15 +244,6 @@ static void cleanup_state(storj_upload_state_t *state)
 
     state->final_callback_called = true;
 
-    if (state->file_id) {
-        free(state->file_id);
-    }
-
-    if (state->file_key) {
-        memset_zero(state->file_key, SHA256_DIGEST_SIZE + 1);
-        free(state->file_key);
-    }
-
     if (state->frame_id) {
         free(state->frame_id);
     }
@@ -366,7 +357,7 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
         state->add_bucket_entry_count = 0;
         state->completed_upload = true;
     } else if (state->add_bucket_entry_count == 6) {
-        state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
+        state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
     }
 
 clean_variables:
@@ -391,6 +382,9 @@ static void create_bucket_entry(uv_work_t *work)
 
     json_object *file_name = json_object_new_string(state->encrypted_file_name);
     json_object_object_add(body, "filename", file_name);
+
+    json_object *index = json_object_new_string(state->index);
+    json_object_object_add(body, "index", index);
 
     struct json_object *hmac = json_object_new_object();
 
@@ -1962,43 +1956,6 @@ static void queue_create_parity_shards(storj_upload_state_t *state)
     state->awaiting_parity_shards = false;
 }
 
-/**
- * pre_pass - file_key
- * pre_salt - file_id
- */
-static int prepare_encryption_key(storj_upload_state_t *state,
-                               char *pre_pass,
-                               int pre_pass_size,
-                               char *pre_salt,
-                               int pre_salt_size)
-{
-    // Convert file key to password
-    state->encryption_key = calloc(SHA256_DIGEST_SIZE + 1, sizeof(char));
-    if (!state->encryption_key) {
-        return 1;
-    }
-
-    sha256_of_str((uint8_t *)pre_pass, pre_pass_size, state->encryption_key);
-    state->encryption_key[SHA256_DIGEST_SIZE] = '\0';
-
-    // Convert file id to salt
-    char salt[RIPEMD160_DIGEST_SIZE + 1];
-    memset_zero(salt, RIPEMD160_DIGEST_SIZE + 1);
-    ripemd160_of_str((uint8_t *)pre_salt, pre_salt_size, (uint8_t *)salt);
-    salt[RIPEMD160_DIGEST_SIZE] = '\0';
-
-    // We only need the first 16 bytes of the salt because it's CTR mode
-    state->encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(char));
-    if (!state->encryption_ctr) {
-        return 1;
-    }
-
-    memcpy(state->encryption_ctr, salt, AES_BLOCK_SIZE);
-
-    return 0;
-
-}
-
 static void after_send_exchange_report(uv_work_t *work, int status)
 {
     shard_send_report_t *req = work->data;
@@ -2169,13 +2126,11 @@ static void queue_verify_bucket_id(storj_upload_state_t *state)
     storj_bridge_get_bucket(state->env, state->bucket_id, state, verify_bucket_id_callback);
 }
 
-static void verify_file_id_callback(uv_work_t *work_req, int status)
+
+static void verify_file_name_callback(uv_work_t *work_req, int status)
 {
     json_request_t *req = work_req->data;
     storj_upload_state_t *state = req->handle;
-
-    state->log->info(state->env->log_options, state->handle,
-                     "Checking if file id [%s] already exists...", state->file_id);
 
     state->pending_work_count -= 1;
     state->file_verify_count += 1;
@@ -2185,11 +2140,11 @@ static void verify_file_id_callback(uv_work_t *work_req, int status)
         goto clean_variables;
     } else if (req->status_code == 200) {
         state->log->error(state->env->log_options, state->handle,
-                         "File [%s] already exists", state->file_id);
+                          "File [%s] already exists", state->file_name);
         state->error_status = STORJ_BRIDGE_BUCKET_FILE_EXISTS;
     } else {
         state->log->error(state->env->log_options, state->handle,
-                         "Request failed with status code: %i", req->status_code);
+                          "Request failed with status code: %i", req->status_code);
 
         if (state->file_verify_count == 6) {
             state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
@@ -2210,14 +2165,83 @@ clean_variables:
     free(work_req);
 }
 
-static void queue_verify_file_id(storj_upload_state_t *state)
+static void verify_file_name(uv_work_t *work)
+{
+    json_request_t *req = work->data;
+    storj_upload_state_t *state = req->handle;
+    int status_code = 0;
+
+    state->log->info(state->env->log_options, state->handle,
+                     "Checking if file name [%s] already exists...", state->file_name);
+
+    req->error_code = fetch_json(req->http_options,
+                                 req->options, req->method, req->path, req->body,
+                                 req->auth, NULL, &req->response, &status_code);
+
+    req->status_code = status_code;
+}
+
+static void queue_verify_file_name(storj_upload_state_t *state)
 {
     state->pending_work_count += 1;
-    storj_bridge_get_file_info(state->env,
-                               state->bucket_id,
-                               state->file_id,
-                               state,
-                               verify_file_id_callback);
+
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    char *escaped = curl_easy_escape(curl, state->encrypted_file_name,
+                                     strlen(state->encrypted_file_name));
+
+    if (!escaped) {
+        curl_easy_cleanup(curl);
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    char *path = str_concat_many(4, "/buckets/", state->bucket_id,
+                                 "/file-ids/", escaped);
+    curl_free(escaped);
+    curl_easy_cleanup(curl);
+
+    if (!path) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    json_request_t *req = malloc(sizeof(json_request_t));
+    if (!req) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    req->http_options = state->env->http_options;
+    req->options = state->env->bridge_options;
+    req->method = "GET";
+    req->path = path;
+    req->auth = true;
+    req->body = NULL;
+    req->response = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = state;
+
+    work->data = req;
+
+    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               verify_file_name, verify_file_name_callback);
+
+    if (status) {
+        state->error_status = STORJ_QUEUE_ERROR;
+        return;
+    }
 }
 
 // Check if a frame/shard is already being prepared/pushed.
@@ -2280,8 +2304,9 @@ static void queue_next_work(storj_upload_state_t *state)
         goto finish_up;
     }
 
+    // Verify that the file name doesn't exist
     if (!state->file_verified) {
-        queue_verify_file_id(state);
+        queue_verify_file_name(state);
         goto finish_up;
     }
 
@@ -2452,41 +2477,78 @@ static void prepare_upload_state(uv_work_t *work)
 
     state->encrypted_file_name = encrypted_file_name;
 
-    // Calculate deterministic file id from encrypted file name
-    char *file_id = calloc(FILE_ID_SIZE + 1, sizeof(char));
-    if (!file_id) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        return;
+    uint8_t *index = NULL;
+    char *key_as_str = NULL;
+
+    if (state->index) {
+        index = str2hex(strlen(state->index), (char *)state->index);
+        if (!index) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            goto cleanup;
+        }
+    } else {
+        // Get random index used for encryption
+        index = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+        if (!index) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            goto cleanup;
+        }
+        random_buffer(index, SHA256_DIGEST_SIZE);
     }
 
-    calculate_file_id(state->bucket_id, state->encrypted_file_name, file_id);
-
-    file_id[FILE_ID_SIZE] = '\0';
-    state->file_id = file_id;
-
-    // Caculate the file encryption key based on file id
-    char *file_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    if (!file_key) {
+    char *index_as_str = hex2str(SHA256_DIGEST_SIZE, index);
+    if (!index_as_str) {
         state->error_status = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
+
+    state->index = index_as_str;
+
+    // Caculate the file encryption key based on the index
+    key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    if (!key_as_str) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
     if (generate_file_key(state->env->encrypt_options->mnemonic,
                           state->bucket_id,
-                          state->file_id,
-                          &file_key)) {
+                          index_as_str,
+                          &key_as_str)) {
         state->error_status = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
 
-    file_key[DETERMINISTIC_KEY_SIZE] = '\0';
-    state->file_key = file_key;
+    uint8_t *encryption_key = str2hex(strlen(key_as_str), key_as_str);
+    if (!encryption_key) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+    state->encryption_key = encryption_key;
 
-    prepare_encryption_key(state, file_key, DETERMINISTIC_KEY_SIZE, file_id, FILE_ID_SIZE);
+    uint8_t *encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
+    if (!encryption_ctr) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+    memcpy(encryption_ctr, index, AES_BLOCK_SIZE);
+    state->encryption_ctr = encryption_ctr;
 
     if (state->rs) {
         state->parity_file_path = create_tmp_name(state, ".parity");
         state->encrypted_file_path = create_tmp_name(state, ".crypt");
     }
+
+
+cleanup:
+    if (key_as_str) {
+        free(key_as_str);
+    }
+
+    if (index) {
+        free(index);
+    }
+
 }
 
 char *create_tmp_name(storj_upload_state_t *state, char *extension)
@@ -2554,11 +2616,14 @@ int storj_bridge_store_file(storj_env_t *env,
 
     // setup upload state
     state->env = env;
-    state->file_id = NULL;
+    if (opts->index) {
+        state->index = opts->index;
+    } else {
+        state->index = NULL;
+    }
     state->file_name = opts->file_name;
     state->encrypted_file_name = NULL;
     state->original_file = opts->fd;
-    state->file_key = NULL;
     state->file_size = 0;
     state->bucket_id = opts->bucket_id;
     state->bucket_key = NULL;
@@ -2602,8 +2667,8 @@ int storj_bridge_store_file(storj_env_t *env,
 
     state->frame_request_count = 0;
     state->add_bucket_entry_count = 0;
-    state->file_verify_count = 0;
     state->bucket_verify_count = 0;
+    state->file_verify_count = 0;
     state->create_parity_shard_count = 0;
     state->create_encrypted_file_count = 0;
 

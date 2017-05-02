@@ -256,6 +256,7 @@ typedef struct {
     const char *hmac;
     const char *id;
     bool decrypted;
+    const char *index;
 } storj_file_meta_t;
 
 /** @brief A structure for queueing list files request work
@@ -352,6 +353,7 @@ typedef struct {
     int push_frame_limit;
     int push_shard_limit;
     bool rs;
+    const char *index;
     const char *bucket_id;
     const char *file_name;
     FILE *fd;
@@ -444,11 +446,10 @@ typedef struct {
 typedef struct {
     storj_env_t *env;
     uint32_t shard_concurrency;
-    char *file_id;
+    const char *index;
     const char *file_name;
     const char *encrypted_file_name;
     FILE *original_file;
-    char *file_key;
     uint64_t file_size;
     const char *bucket_id;
     char *bucket_key;
