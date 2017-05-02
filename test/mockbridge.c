@@ -99,7 +99,7 @@ int mock_bridge_server(void *cls,
                 page = get_response_string(responses, "getfileinfo");
                 status_code = MHD_HTTP_OK;
             }
-        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/file-ids/hTY5wsqYyLJQppCMiFQI7v2n%2FIZZiKb0ES1RCrUqK7Fe5m0%2F%2BfYwh%2BE%2Fvp8M3FCEECle63BhlWlHi%2FHj%2FYg5y%2FbIjy8SxQ%3D%3D")) {
+        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/file-ids/hTY5wsqYyLJQppCMiFQI7v2n/IZZiKb0ES1RCrUqK7Fe5m0/+fYwh+E/vp8M3FCEECle63BhlWlHi/Hj/Yg5y/bIjy8SxQ==")) {
             if (check_auth(user, pass, &status_code, page)) {
                 status_code = MHD_HTTP_NOT_FOUND;
             }
