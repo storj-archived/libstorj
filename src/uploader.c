@@ -2476,47 +2476,59 @@ static void prepare_upload_state(uv_work_t *work)
 
     state->encrypted_file_name = encrypted_file_name;
 
-    // Get random index used for encryption
-    uint8_t *index = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+    uint8_t *index = NULL;
+    char *key_as_str = NULL;
+
     if (state->index) {
         index = str2hex(strlen(state->index), (char *)state->index);
+        if (!index) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            goto cleanup;
+        }
     } else {
+        // Get random index used for encryption
+        index = calloc(SHA256_DIGEST_SIZE + 1, sizeof(uint8_t));
+        if (!index) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            goto cleanup;
+        }
         random_buffer(index, SHA256_DIGEST_SIZE);
     }
 
     char *index_as_str = hex2str(SHA256_DIGEST_SIZE, index);
     if (!index_as_str) {
         state->error_status = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
 
     state->index = index_as_str;
 
     // Caculate the file encryption key based on the index
-    char *key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     if (!key_as_str) {
         state->error_status = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
+
     if (generate_file_key(state->env->encrypt_options->mnemonic,
                           state->bucket_id,
                           index_as_str,
                           &key_as_str)) {
         state->error_status = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
 
     uint8_t *encryption_key = str2hex(strlen(key_as_str), key_as_str);
     if (!encryption_key) {
         state->error_status = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
     state->encryption_key = encryption_key;
 
     uint8_t *encryption_ctr = calloc(AES_BLOCK_SIZE, sizeof(uint8_t));
     if (!encryption_ctr) {
         state->error_status = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
     memcpy(encryption_ctr, index, AES_BLOCK_SIZE);
     state->encryption_ctr = encryption_ctr;
@@ -2525,6 +2537,17 @@ static void prepare_upload_state(uv_work_t *work)
         state->parity_file_path = create_tmp_name(state, ".parity");
         state->encrypted_file_path = create_tmp_name(state, ".crypt");
     }
+
+
+cleanup:
+    if (key_as_str) {
+        free(key_as_str);
+    }
+
+    if (index) {
+        free(index);
+    }
+
 }
 
 char *create_tmp_name(storj_upload_state_t *state, char *extension)
