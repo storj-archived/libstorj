@@ -2132,9 +2132,6 @@ static void verify_file_name_callback(uv_work_t *work_req, int status)
     json_request_t *req = work_req->data;
     storj_upload_state_t *state = req->handle;
 
-    state->log->info(state->env->log_options, state->handle,
-                     "Checking if file name [%s] already exists...", state->file_name);
-
     state->pending_work_count -= 1;
     state->file_verify_count += 1;
 
@@ -2171,7 +2168,11 @@ clean_variables:
 static void verify_file_name(uv_work_t *work)
 {
     json_request_t *req = work->data;
+    storj_upload_state_t *state = req->handle;
     int status_code = 0;
+
+    state->log->info(state->env->log_options, state->handle,
+                     "Checking if file name [%s] already exists...", state->file_name);
 
     req->error_code = fetch_json(req->http_options,
                                  req->options, req->method, req->path, req->body,
