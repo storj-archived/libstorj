@@ -297,7 +297,7 @@ static void file_progress(double progress,
     int bar_width = 70;
 
     if (progress == 0 && downloaded_bytes == 0) {
-        printf("Hashing File...");
+        printf("Preparing File...");
         fflush(stdout);
         return;
     }
