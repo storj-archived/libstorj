@@ -582,7 +582,7 @@ static void after_push_shard(uv_work_t *work, int status)
          req->status_code == 304)) {
 
         req->log->info(state->env->log_options, state->handle,
-                       "Successfully transfered shard index %d",
+                       "Successfully transferred shard index %d",
                        req->shard_meta_index);
 
         shard->progress = COMPLETED_PUSH_SHARD;

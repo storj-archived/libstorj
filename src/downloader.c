@@ -1342,6 +1342,11 @@ static void request_info(uv_work_t *work)
 
     req->status_code = status_code;
 
+    state->log->debug(state->env->log_options,
+                      state->handle,
+                      "fn[request_info] - JSON Response: %s",
+                      json_object_to_json_string(response));
+
     if (request_status) {
         req->error_status = STORJ_BRIDGE_REQUEST_ERROR;
         state->log->warn(state->env->log_options, state->handle,
