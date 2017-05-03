@@ -7,6 +7,74 @@
 
 static int e_count = 0;
 static int i_count = 0;
+static char* data = NULL;
+
+static void setup_test_farmer_data(int shard_bytes, int shard_bytes_sent)
+{
+    // check if data already setu
+    if (data) {
+        return;
+    }
+
+    struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
+
+    // mnemonic: abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about
+    // bucket_id: 368be0816766b28fd5f43af5
+    // file_id: 998960317b6725a3f8080c2b
+    uint8_t encrypt_key[32] = {215,99,0,133,172,219,64,35,54,53,171,23,146,160,
+                               81,126,137,21,253,171,48,217,184,188,8,137,3,
+                               4,83,50,30,251};
+    uint8_t ctr[16] = {70,219,247,135,162,7,93,193,44,123,188,234,203,115,129,82};
+    aes256_set_encrypt_key(ctx, encrypt_key);
+
+    int total_data_shards = 14;
+    int total_parity_shards = 4;
+    int total_shards = total_data_shards + total_parity_shards;
+    int total_size = shard_bytes * total_shards;
+
+    data = calloc(total_size, sizeof(char));
+    char *bytes = "abcdefghijklmn";
+    for (int i = 0; i < strlen(bytes); i++) {
+        memset(data + (i * shard_bytes), bytes[i], shard_bytes);
+    }
+
+    ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
+              AES_BLOCK_SIZE, ctr,
+              total_size, (uint8_t *)data, (uint8_t *)data);
+
+    reed_solomon* rs = NULL;
+    uint8_t **data_blocks = NULL;
+    uint8_t **fec_blocks = NULL;
+    fec_init();
+
+    data_blocks = (uint8_t**)malloc(total_data_shards * sizeof(uint8_t *));
+    if (!data_blocks) {
+        fprintf(stderr, "memory error: unable to malloc");
+        exit(1);
+    }
+
+    for (int i = 0; i < total_data_shards; i++) {
+        data_blocks[i] = data + i * shard_bytes;
+    }
+
+    fec_blocks = (uint8_t**)malloc(total_parity_shards * sizeof(uint8_t *));
+    if (!fec_blocks) {
+        fprintf(stderr, "memory error: unable to malloc");
+        exit(1);
+    }
+
+    for (int i = 0; i < total_parity_shards; i++) {
+        fec_blocks[i] = data + (total_data_shards + i) * shard_bytes;
+    }
+
+    rs = reed_solomon_new(total_data_shards, total_parity_shards);
+    reed_solomon_encode2(rs, data_blocks, fec_blocks, total_shards, shard_bytes, total_size);
+    reed_solomon_release(rs);
+
+    free(data_blocks);
+    free(fec_blocks);
+    free(ctx);
+}
 
 static void farmer_request_completed(void *cls,
                                      struct MHD_Connection *connection,
@@ -146,70 +214,16 @@ int mock_farmer_shard_server(void *cls,
 
     if (0 == strcmp(method, "GET")) {
 
+        int shard_bytes = 16777216;
+        int shard_bytes_sent = 16777216;
+        setup_test_farmer_data(shard_bytes, shard_bytes_sent);
+
         struct MHD_Response *response;
 
         int status_code = MHD_HTTP_NOT_FOUND;
-
-        int ret;
-
-        int shard_bytes = 16777216;
-        int shard_bytes_sent = 16777216;
         char *page = NULL;
 
-        struct aes256_ctx *ctx = malloc(sizeof(struct aes256_ctx));
-
-        // mnemonic: abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about
-        // bucket_id: 368be0816766b28fd5f43af5
-        // file_id: 998960317b6725a3f8080c2b
-        uint8_t encrypt_key[32] = {215,99,0,133,172,219,64,35,54,53,171,23,146,160,
-                                   81,126,137,21,253,171,48,217,184,188,8,137,3,
-                                   4,83,50,30,251};
-        uint8_t ctr[16] = {70,219,247,135,162,7,93,193,44,123,188,234,203,115,129,82};
-        aes256_set_encrypt_key(ctx, encrypt_key);
-
-        int total_data_shards = 14;
-        int total_parity_shards = 4;
-        int total_shards = total_data_shards + total_parity_shards;
-        int total_size = shard_bytes * total_shards;
-
-        char *data = calloc(total_size, sizeof(char));
-        char *bytes = "abcdefghijklmn";
-        for (int i = 0; i < strlen(bytes); i++) {
-            memset(data + (i * shard_bytes), bytes[i], shard_bytes);
-        }
-
-        ctr_crypt(ctx, (nettle_cipher_func *)aes256_encrypt,
-                  AES_BLOCK_SIZE, ctr,
-                  total_size, (uint8_t *)data, (uint8_t *)data);
-
-        reed_solomon* rs = NULL;
-        uint8_t **data_blocks = NULL;
-        uint8_t **fec_blocks = NULL;
-        fec_init();
-
-        data_blocks = (uint8_t**)malloc(total_data_shards * sizeof(uint8_t *));
-        if (!data_blocks) {
-            fprintf(stderr, "memory error: unable to malloc");
-            exit(1);
-        }
-
-        for (int i = 0; i < total_data_shards; i++) {
-            data_blocks[i] = data + i * shard_bytes;
-        }
-
-        fec_blocks = (uint8_t**)malloc(total_parity_shards * sizeof(uint8_t *));
-        if (!fec_blocks) {
-            fprintf(stderr, "memory error: unable to malloc");
-            exit(1);
-        }
-
-        for (int i = 0; i < total_parity_shards; i++) {
-            fec_blocks[i] = data + (total_data_shards + i) * shard_bytes;
-        }
-
-        rs = reed_solomon_new(total_data_shards, total_parity_shards);
-        reed_solomon_encode2(rs, data_blocks, fec_blocks, total_shards, shard_bytes, total_size);
-        reed_solomon_release(rs);
+        int ret;
 
         if (0 == strcmp(url, "/shards/269e72f24703be80bbb10499c91dc9b2022c4dc3")) {
             page = calloc(shard_bytes + 1, sizeof(char));
@@ -303,11 +317,7 @@ int mock_farmer_shard_server(void *cls,
             strcat(sent_page, "Not Found");
         }
 
-        free(data_blocks);
-        free(fec_blocks);
-        free(data);
         free(page);
-        free(ctx);
 
         response = MHD_create_response_from_buffer(shard_bytes_sent,
                                                    (void *) sent_page,
@@ -340,4 +350,9 @@ struct MHD_Daemon *start_farmer_server()
                             &farmer_request_completed,
                             NULL,
                             MHD_OPTION_END);
+}
+
+void free_farmer_data()
+{
+    free(data);
 }

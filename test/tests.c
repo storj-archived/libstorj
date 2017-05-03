@@ -1579,6 +1579,7 @@ int main(void)
     // Shutdown test servers
     MHD_stop_daemon(d);
     MHD_stop_daemon(f);
+    free_farmer_data();
 
     if (num_failed > 0) {
         return 1;

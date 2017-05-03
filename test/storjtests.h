@@ -36,5 +36,6 @@ int mock_farmer_shard_server(void *cls,
                              void **ptr);
 
 struct MHD_Daemon *start_farmer_server();
+void free_farmer_data();
 
 int create_test_file(char *file);
