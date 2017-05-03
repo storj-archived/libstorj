@@ -2614,9 +2614,8 @@ int storj_bridge_store_file(storj_env_t *env,
         return 1;
     }
 
-    // setup upload state
     state->env = env;
-    if (opts->index) {
+    if (opts->index && strlen(opts->index) == 64) {
         state->index = opts->index;
     } else {
         state->index = NULL;
