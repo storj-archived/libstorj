@@ -527,7 +527,6 @@ int fetch_json(storj_http_options_t *http_options,
     snprintf(url, url_len, "%s://%s:%i%s", options->proto, options->host,
              options->port, path);
     curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
 
     // Set the user agent
     if (http_options->user_agent) {
