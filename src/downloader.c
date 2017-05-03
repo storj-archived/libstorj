@@ -1920,7 +1920,9 @@ static void queue_next_work(storj_download_state_t *state)
             return;
         }
     } else {
-        if (has_missing_shard(state)) {
+        if (!has_missing_shard(state)) {
+            queue_recover_shards(state);
+        } else {
             state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
             queue_next_work(state);
             return;
