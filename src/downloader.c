@@ -1607,6 +1607,9 @@ static void recover_shards(uv_work_t *work)
     storj_download_state_t *state = req->state;
     reed_solomon* rs = NULL;
     uint8_t *data_map = NULL;
+    uint8_t **data_blocks = NULL;
+    uint8_t **fec_blocks = NULL;
+
     int error = 0;
 
     struct aes256_ctx ctx;
@@ -1631,13 +1634,13 @@ static void recover_shards(uv_work_t *work)
         goto finish;
     }
 
-    uint8_t **data_blocks = (uint8_t**)malloc(req->data_shards * sizeof(uint8_t *));
+    data_blocks = (uint8_t**)malloc(req->data_shards * sizeof(uint8_t *));
     if (!data_blocks) {
         req->error_status = STORJ_MEMORY_ERROR;
         goto finish;
     }
 
-    uint8_t **fec_blocks = (uint8_t**)malloc(req->parity_shards * sizeof(uint8_t *));
+    fec_blocks = (uint8_t**)malloc(req->parity_shards * sizeof(uint8_t *));
     if (!fec_blocks) {
         req->error_status = STORJ_MEMORY_ERROR;
         goto finish;
