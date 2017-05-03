@@ -286,6 +286,10 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->encrypted_file_path);
     }
 
+    if (state->index) {
+        free((char *)state->index);
+    }
+
     if (state->shard) {
         for (int i = 0; i < state->total_shards; i++ ) {
 

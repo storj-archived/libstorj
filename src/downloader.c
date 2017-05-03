@@ -48,6 +48,9 @@ static void free_download_state(storj_download_state_t *state)
     }
 
     if (state->info) {
+        if (state->info->erasure) {
+            free((char *)state->info->erasure);
+        }
         free((char *)state->info->hmac);
         free(state->info);
     }
@@ -1696,6 +1699,14 @@ finish:
         }
     }
 
+    if (data_blocks) {
+        free(data_blocks);
+    }
+
+    if (fec_blocks) {
+        free(fec_blocks);
+    }
+
     if (rs) {
         reed_solomon_release(rs);
     }
@@ -1756,6 +1767,7 @@ static void queue_recover_shards(storj_download_state_t *state)
         }
 
         if (!is_ready) {
+            free(zilch);
             return;
         }
 

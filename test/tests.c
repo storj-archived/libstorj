@@ -1490,6 +1490,7 @@ int test_memory_mapping()
     }
 
     fclose(fp2);
+    free(file);
 
     pass("test_memory_mapping");
 
