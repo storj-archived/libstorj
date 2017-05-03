@@ -653,8 +653,6 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     } else {
         ho->proxy_url = NULL;
     }
-    ho->low_speed_limit = http_options->low_speed_limit;
-    ho->low_speed_time = http_options->low_speed_time;
     env->http_options = ho;
 
     // setup the log options
