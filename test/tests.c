@@ -28,8 +28,8 @@ storj_encrypt_options_t encrypt_options = {
 
 storj_http_options_t http_options = {
     .user_agent = "storj-test",
-    .low_speed_limit = STORJ_LOW_SPEED_LIMIT,
-    .low_speed_time = STORJ_LOW_SPEED_TIME
+    .low_speed_limit = 0,
+    .low_speed_time = 0
 };
 
 storj_log_options_t log_options = {
