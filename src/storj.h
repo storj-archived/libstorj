@@ -98,6 +98,8 @@ extern "C" {
 #define STORJ_REPORT_UPLOAD_ERROR "TRANSFER_FAILED"
 
 #define STORJ_SHARD_CHALLENGES 4
+#define STORJ_LOW_SPEED_LIMIT 30720L
+#define STORJ_LOW_SPEED_TIME 20L
 
 typedef struct {
   uint8_t *encryption_ctr;
@@ -143,6 +145,8 @@ typedef struct storj_encrypt_options {
 typedef struct storj_http_options {
     const char *user_agent;
     const char *proxy_url;
+    uint64_t low_speed_limit;
+    uint64_t low_speed_time;
 } storj_http_options_t;
 
 /** @brief A function signature for logging

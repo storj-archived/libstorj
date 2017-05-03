@@ -1132,7 +1132,9 @@ int main(int argc, char **argv)
     storj_env_t *env = NULL;
 
     storj_http_options_t http_options = {
-        .user_agent = CLI_VERSION
+        .user_agent = CLI_VERSION,
+        .low_speed_limit = STORJ_LOW_SPEED_LIMIT,
+        .low_speed_time = STORJ_LOW_SPEED_TIME
     };
 
     storj_log_options_t log_options = {

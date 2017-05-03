@@ -106,6 +106,12 @@ int put_shard(storj_http_options_t *http_options,
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
 
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT,
+                     http_options->low_speed_limit);
+
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME,
+                     http_options->low_speed_time);
+
     if (http_options->user_agent) {
         curl_easy_setopt(curl, CURLOPT_USERAGENT, http_options->user_agent);
     }
@@ -318,8 +324,13 @@ int fetch_shard(storj_http_options_t *http_options,
              shard_hash, query_args);
 
     curl_easy_setopt(curl, CURLOPT_URL, url);
-
     curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
+
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT,
+                     http_options->low_speed_limit);
+
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME,
+                     http_options->low_speed_time);
 
     // Set the node id header
     struct curl_slist *node_chunk = NULL;
@@ -516,6 +527,7 @@ int fetch_json(storj_http_options_t *http_options,
     snprintf(url, url_len, "%s://%s:%i%s", options->proto, options->host,
              options->port, path);
     curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20L);
 
     // Set the user agent
     if (http_options->user_agent) {
