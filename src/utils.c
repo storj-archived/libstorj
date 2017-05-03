@@ -253,9 +253,9 @@ win_finished:
 #elif HAVE_POSIX_FALLOCATE
     return posix_fallocate(fd, 0, length);
 #elif __unix__
-    return fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, length);
+    return fallocate(fd, 0, 0, length);
 #elif __linux__
-    return fallocate(fd, FALLOC_FL_ZERO_RANGE, 0, length);
+    return fallocate(fd, 0, 0, length);
 #elif __APPLE__
     fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, 0, length, 0};
     // Try to get a continous chunk of disk space
