@@ -98,8 +98,8 @@ extern "C" {
 #define STORJ_REPORT_UPLOAD_ERROR "TRANSFER_FAILED"
 
 #define STORJ_SHARD_CHALLENGES 4
-#define STORJ_LOW_SPEED_LIMIT 30720
-#define STORJ_LOW_SPEED_TIME 20
+#define STORJ_LOW_SPEED_LIMIT 30720L
+#define STORJ_LOW_SPEED_TIME 20L
 
 typedef struct {
   uint8_t *encryption_ctr;
