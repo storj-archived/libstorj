@@ -53,6 +53,7 @@ extern "C" {
 #define STORJ_BRIDGE_REPOINTER_ERROR 1011
 #define STORJ_BRIDGE_FILEINFO_ERROR 1012
 #define STORJ_BRIDGE_BUCKET_FILE_EXISTS 1013
+#define STORJ_BRIDGE_OFFER_ERROR 1014
 
 // Farmer related errors 2000 to 2999
 #define STORJ_FARMER_REQUEST_ERROR 2000
@@ -73,6 +74,7 @@ extern "C" {
 #define STORJ_FILE_RECOVER_ERROR 3008
 #define STORJ_FILE_RESIZE_ERROR 3009
 #define STORJ_FILE_UNSUPPORTED_ERASURE 3010
+#define STORJ_FILE_PARITY_ERROR 3011
 
 // Memory related errors
 #define STORJ_MEMORY_ERROR 4000
@@ -498,7 +500,6 @@ typedef struct {
     int add_bucket_entry_count;
     int bucket_verify_count;
     int file_verify_count;
-    int create_parity_shard_count;
     int create_encrypted_file_count;
 
     storj_progress_cb progress_cb;

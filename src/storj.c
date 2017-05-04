@@ -980,6 +980,8 @@ char *storj_strerror(int error_code)
             return "File is not found";
         case STORJ_BRIDGE_BUCKET_FILE_EXISTS:
             return "File already exists";
+        case STORJ_BRIDGE_OFFER_ERROR:
+            return "Unable to receive storage offer";
         case STORJ_BRIDGE_JSON_ERROR:
             return "Unexpected JSON response";
         case STORJ_BRIDGE_FILEINFO_ERROR:
@@ -1018,6 +1020,8 @@ char *storj_strerror(int error_code)
             return "File resize error";
         case STORJ_FILE_UNSUPPORTED_ERASURE:
             return "File unsupported erasure code error";
+        case STORJ_FILE_PARITY_ERROR:
+            return "File create parity error";
         case STORJ_META_ENCRYPTION_ERROR:
             return "Meta encryption error";
         case STORJ_META_DECRYPTION_ERROR:
