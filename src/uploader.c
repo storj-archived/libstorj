@@ -949,7 +949,7 @@ static void after_push_frame(uv_work_t *work, int status)
         );
 
     } else if (state->shard[req->shard_meta_index].push_frame_request_count == 6) {
-        state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
+        state->error_status = STORJ_BRIDGE_OFFER_ERROR;
     } else {
         state->shard[req->shard_meta_index].progress = AWAITING_PUSH_FRAME;
     }

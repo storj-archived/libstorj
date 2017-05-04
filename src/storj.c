@@ -980,6 +980,8 @@ char *storj_strerror(int error_code)
             return "File is not found";
         case STORJ_BRIDGE_BUCKET_FILE_EXISTS:
             return "File already exists";
+        case STORJ_BRIDGE_OFFER_ERROR:
+            return "Unable to receive storage offer";
         case STORJ_BRIDGE_JSON_ERROR:
             return "Unexpected JSON response";
         case STORJ_BRIDGE_FILEINFO_ERROR:
