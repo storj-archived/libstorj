@@ -1018,6 +1018,8 @@ char *storj_strerror(int error_code)
             return "File resize error";
         case STORJ_FILE_UNSUPPORTED_ERASURE:
             return "File unsupported erasure code error";
+        case STORJ_FILE_PARITY_ERROR:
+            return "File create parity error";
         case STORJ_META_ENCRYPTION_ERROR:
             return "Meta encryption error";
         case STORJ_META_DECRYPTION_ERROR:

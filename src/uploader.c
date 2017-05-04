@@ -1759,7 +1759,6 @@ static void after_create_parity_shards(uv_work_t *work, int status)
     storj_upload_state_t *state = req->upload_state;
 
     state->pending_work_count -= 1;
-    state->create_parity_shard_count += 1;
 
     // TODO: Check if file was created
     if (req->error_status != 0) {
@@ -1768,9 +1767,7 @@ static void after_create_parity_shards(uv_work_t *work, int status)
 
         state->awaiting_parity_shards = true;
 
-        if (state->create_parity_shard_count == 6) {
-            state->error_status = STORJ_FILE_SIZE_ERROR;
-        }
+        state->error_status = STORJ_FILE_PARITY_ERROR;
     } else {
         state->log->info(state->env->log_options, state->handle,
                        "Successfully created parity shards");
@@ -2672,7 +2669,6 @@ int storj_bridge_store_file(storj_env_t *env,
     state->add_bucket_entry_count = 0;
     state->bucket_verify_count = 0;
     state->file_verify_count = 0;
-    state->create_parity_shard_count = 0;
     state->create_encrypted_file_count = 0;
 
     state->progress_cb = progress_cb;
