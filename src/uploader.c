@@ -1656,7 +1656,7 @@ static void after_request_frame_id(uv_work_t *work, int status)
     if (req->error_status == 0 && req->status_code == 200 && req->frame_id) {
 
         state->log->info(state->env->log_options, state->handle,
-                         "Successfully retrieved frame id");
+                         "Successfully retrieved frame id: %s", req->frame_id);
 
         state->frame_id = req->frame_id;
 
