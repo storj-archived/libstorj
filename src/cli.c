@@ -45,7 +45,7 @@ static inline void noop() {};
     "  remove-file <bucket-id> <file-id>\n"                             \
     "  add-bucket <name> \n"                                            \
     "  remove-bucket <bucket-id>\n"                                     \
-    "  list-mirrors <bucket-id> file-id>\n\n"                           \
+    "  list-mirrors <bucket-id> <file-id>\n\n"                          \
     "downloading and uploading files\n"                                 \
     "  upload-file <bucket-id> <path>\n"                                \
     "  download-file <bucket-id> <file-id> <path>\n"                    \
