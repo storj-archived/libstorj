@@ -46,7 +46,7 @@ AS_IF([test "x$microhttpd_found_headers" != "xyes"],
 AC_CONFIG_FILES([Makefile src/Makefile test/Makefile])
 AC_CONFIG_FILES([libstorj.pc:libstorj.pc.in])
 
-AC_CHECK_FUNCS([aligned_alloc posix_memalign])
+AC_CHECK_FUNCS([aligned_alloc posix_memalign posix_fallocate])
 
 AC_ARG_ENABLE([debug],
         [AS_HELP_STRING([--enable-debug],

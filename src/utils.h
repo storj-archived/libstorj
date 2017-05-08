@@ -35,6 +35,7 @@ ssize_t pwrite(int fd, const void *buf, size_t count, uint64_t offset);
 #endif
 
 #define MAX_SHARD_SIZE 4294967296 // 4Gb
+#define MIN_SHARD_SIZE 2097152 // 2Mb
 #define SHARD_MULTIPLES_BACK 4
 
 int allocatefile(int fd, uint64_t length);

@@ -1214,7 +1214,7 @@ int test_determine_shard_size()
 
     // 1000 bytes should be 8Mb
     file_size = 1000;
-    expected_shard_size = 8388608;
+    expected_shard_size = 2097152;
     shard_size = determine_shard_size(file_size, 0);
 
     if (shard_size != expected_shard_size) {

@@ -102,7 +102,7 @@ void random_buffer(uint8_t *buf, size_t len)
 
 uint64_t shard_size(int hops)
 {
-    return (8  * (1024 * 1024)) * pow(2, hops);
+    return MIN_SHARD_SIZE * pow(2, hops);
 };
 
 uint64_t get_time_milliseconds() {
@@ -253,9 +253,15 @@ win_finished:
 #elif HAVE_POSIX_FALLOCATE
     return posix_fallocate(fd, 0, length);
 #elif __unix__
-    return fallocate(fd, 0, 0, length);
+    if (fallocate(fd, 0, 0, length)) {
+        return errno;
+    }
+    return 0;
 #elif __linux__
-    return fallocate(fd, 0, 0, length);
+    if (fallocate(fd, 0, 0, length)) {
+        return errno;
+    }
+    return 0;
 #elif __APPLE__
     fstore_t store = {F_ALLOCATECONTIG, F_PEOFPOSMODE, 0, length, 0};
     // Try to get a continous chunk of disk space
