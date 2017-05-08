@@ -102,7 +102,7 @@ void random_buffer(uint8_t *buf, size_t len)
 
 uint64_t shard_size(int hops)
 {
-    return (8  * (1024 * 1024)) * pow(2, hops);
+    return MIN_SHARD_SIZE * pow(2, hops);
 };
 
 uint64_t get_time_milliseconds() {

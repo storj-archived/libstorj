@@ -2396,6 +2396,9 @@ static void prepare_upload_state(uv_work_t *work)
 #endif
 
     state->file_size = st.st_size;
+    if (state->file_size < MIN_SHARD_SIZE) {
+        state->rs = false;
+    }
 
     // Set Shard calculations
     state->shard_size = determine_shard_size(state->file_size, 0);
