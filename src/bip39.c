@@ -140,7 +140,7 @@ bool mnemonic_check(const char *mnemonic)
     }
     n++;
     // check number of words
-    if (n != 12 && n != 18 && n != 24) {
+    if (n != 12 && n != 15 && n != 18 && n != 21 && n != 24) {
         return 0;
     }
 
@@ -183,17 +183,8 @@ bool mnemonic_check(const char *mnemonic)
     }
     bits[32] = bits[n * 4 / 3];
     sha256_of_str(bits, n * 4 / 3, bits);
-    if (n == 12) {
-        return (bits[0] & 0xF0) == (bits[32] & 0xF0); // compare first 4 bits
-    } else
-        if (n == 18) {
-            // compare first 6 bits
-            return (bits[0] & 0xFC) == (bits[32] & 0xFC);
-        } else
-            if (n == 24) {
-                return bits[0] == bits[32]; // compare 8 bits
-            }
-    return 0;
+    return bits[0] >> (8 - n/3) == bits[32] >> (8 - n/3); // compare CS number bits
+
 }
 
 int mnemonic_to_seed(const char *mnemonic, const char *passphrase,
