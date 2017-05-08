@@ -820,6 +820,9 @@ static void list_files_callback(uv_work_t *work_req, int status)
     } else if (req->status_code == 400) {
         printf("Bucket id [%s] is invalid\n", req->bucket_id);
         goto cleanup;
+    } else if (req->status_code == 401) {
+        printf("Invalid user credentials.\n");
+        goto cleanup;
     } else if (req->status_code != 200) {
         printf("Request failed with status code: %i\n", req->status_code);
     }
@@ -855,6 +858,8 @@ static void delete_file_callback(uv_work_t *work_req, int status)
 
     if (req->status_code == 200 || req->status_code == 204) {
         printf("File was successfully removed from bucket.\n");
+    } else if (req->status_code == 401) {
+        printf("Invalid user credentials.\n");
     } else {
         printf("Failed to remove file from bucket. (%i)\n", req->status_code);
     }
@@ -872,6 +877,8 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
 
     if (req->status_code == 200 || req->status_code == 204) {
         printf("Bucket was successfully removed.\n");
+    } else if (req->status_code == 401) {
+        printf("Invalid user credentials.\n");
     } else {
         printf("Failed to destroy bucket. (%i)\n", req->status_code);
     }
@@ -887,11 +894,11 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     get_buckets_request_t *req = work_req->data;
 
-    if (req->status_code != 200 && req->status_code != 304) {
+    if (req->status_code == 401) {
+       printf("Invalid user credentials.\n");
+    } else if (req->status_code != 200 && req->status_code != 304) {
         printf("Request failed with status code: %i\n", req->status_code);
-    }
-
-    if (req->total_buckets == 0) {
+    } else if (req->total_buckets == 0) {
         printf("No buckets.\n");
     }
 
@@ -914,6 +921,9 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
 
     if (req->status_code == 404) {
         printf("Cannot create bucket [%s]. Name already exists \n", req->bucket->name);
+        goto clean_variables;
+    } else if (req->status_code == 401) {
+        printf("Invalid user credentials.\n");
         goto clean_variables;
     }
 
