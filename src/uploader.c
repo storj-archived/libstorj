@@ -309,7 +309,7 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->shard);
     }
 
-    state->finished_cb(state->error_status, state->handle);
+    state->finished_cb(state->error_status, state->file_id, state->handle);
 
     free(state);
 }

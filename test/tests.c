@@ -268,7 +268,7 @@ void check_store_file_progress(double progress,
     }
 }
 
-void check_store_file(int error_code, void *handle)
+void check_store_file(int error_code, char *file_id, void *handle)
 {
     assert(handle == NULL);
     if (error_code == 0) {
@@ -279,7 +279,7 @@ void check_store_file(int error_code, void *handle)
     }
 }
 
-void check_store_file_cancel(int error_code, void *handle)
+void check_store_file_cancel(int error_code, char *file_id, void *handle)
 {
     assert(handle == NULL);
     if (error_code == STORJ_TRANSFER_CANCELED) {
