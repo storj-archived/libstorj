@@ -551,6 +551,9 @@ int fetch_json(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_PROXY, http_options->proxy_url);
     }
 
+    // Set the timeoeut
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, http_options->timeout);
+
     // Setup the body handler
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, body_json_receive);
     http_body_receive_t *body = malloc(sizeof(http_body_receive_t));

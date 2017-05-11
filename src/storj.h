@@ -102,6 +102,7 @@ extern "C" {
 #define STORJ_SHARD_CHALLENGES 4
 #define STORJ_LOW_SPEED_LIMIT 30720L
 #define STORJ_LOW_SPEED_TIME 20L
+#define STORJ_HTTP_TIMEOUT 20L
 
 typedef struct {
   uint8_t *encryption_ctr;
@@ -149,6 +150,7 @@ typedef struct storj_http_options {
     const char *proxy_url;
     uint64_t low_speed_limit;
     uint64_t low_speed_time;
+    uint64_t timeout;
 } storj_http_options_t;
 
 /** @brief A function signature for logging
