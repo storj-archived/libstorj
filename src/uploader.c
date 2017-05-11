@@ -362,15 +362,14 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
         req->log->info(state->env->log_options, state->handle,
                        "Successfully Added bucket entry");
 
-         state->add_bucket_entry_count = 0;
-         state->completed_upload = true;
+        state->add_bucket_entry_count = 0;
+        state->completed_upload = true;
 
-         struct json_object *file_id_value = NULL;
-         char *file_id = NULL;
-         if (json_object_object_get_ex(req->response, "id", &file_id_value)) {
-             file_id = (char *)json_object_get_string(file_id_value);
-         }
-
+        struct json_object *file_id_value = NULL;
+        char *file_id = NULL;
+        if (json_object_object_get_ex(req->response, "id", &file_id_value)) {
+            file_id = (char *)json_object_get_string(file_id_value);
+        }
 
         if (file_id) {
           state->file_id = strdup(file_id);
