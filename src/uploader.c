@@ -383,6 +383,9 @@ clean_variables:
     queue_next_work(state);
     free(req);
     free(work);
+    if (req->response) {
+      free(req->response);
+    }
 }
 
 static void create_bucket_entry(uv_work_t *work)
@@ -531,6 +534,7 @@ static void queue_create_bucket_entry(storj_upload_state_t *state)
     req->http_options = state->env->http_options;
     req->options = state->env->bridge_options;
     req->upload_state = state;
+    req->response = NULL;
     req->error_status = 0;
     req->status_code = 0;
     req->log = state->log;
