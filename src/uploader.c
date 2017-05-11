@@ -368,7 +368,7 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
         }
 
         if (file_id) {
-          state->file_id = strdup(file_id);
+            state->file_id = strdup(file_id);
         }
 
     } else if (state->add_bucket_entry_count == 6) {
@@ -380,7 +380,7 @@ clean_variables:
     free(req);
     free(work);
     if (req->response) {
-      free(req->response);
+        free(req->response);
     }
 }
 
