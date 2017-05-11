@@ -272,11 +272,11 @@ void check_store_file(int error_code, char *file_id, void *handle)
 {
     assert(handle == NULL);
     if (error_code == 0) {
-      if (strcmp(file_id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
-        pass("storj_bridge_store_file");
-      } else {
-        fail("storj_bridge_store_file(0)");
-      }
+        if (strcmp(file_id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
+            pass("storj_bridge_store_file");
+        } else {
+            fail("storj_bridge_store_file(0)");
+        }
     } else {
         fail("storj_bridge_store_file(1)");
         printf("\t\tERROR:   %s\n", storj_strerror(error_code));
