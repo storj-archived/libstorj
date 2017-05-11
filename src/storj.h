@@ -456,6 +456,7 @@ typedef struct {
     uint32_t shard_concurrency;
     const char *index;
     const char *file_name;
+    char *file_id;
     const char *encrypted_file_name;
     FILE *original_file;
     uint64_t file_size;
