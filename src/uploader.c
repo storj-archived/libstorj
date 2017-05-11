@@ -256,10 +256,6 @@ static void cleanup_state(storj_upload_state_t *state)
         free((char *)state->encrypted_file_name);
     }
 
-    if (state->file_id) {
-      free(state->file_id);
-    }
-
     if (state->exclude) {
         free(state->exclude);
     }
