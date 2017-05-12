@@ -325,7 +325,7 @@ typedef void (*storj_finished_download_cb)(int status, FILE *fd, void *handle);
 
 /** @brief A function signature for an upload complete callback
  */
-typedef void (*storj_finished_upload_cb)(int error_status, void *handle);
+typedef void (*storj_finished_upload_cb)(int error_status, char *file_id, void *handle);
 
 /** @brief A structure that represents a pointer to a shard
  *
@@ -456,6 +456,7 @@ typedef struct {
     uint32_t shard_concurrency;
     const char *index;
     const char *file_name;
+    char *file_id;
     const char *encrypted_file_name;
     FILE *original_file;
     uint64_t file_size;

@@ -111,6 +111,7 @@ typedef struct {
   storj_upload_state_t *upload_state;
   int status_code;
   int error_status;
+  struct json_object *response;
   storj_log_levels_t *log;
 } post_to_bucket_request_t;
 

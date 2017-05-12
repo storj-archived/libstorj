@@ -309,7 +309,7 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->shard);
     }
 
-    state->finished_cb(state->error_status, state->handle);
+    state->finished_cb(state->error_status, state->file_id, state->handle);
 
     free(state);
 }
@@ -360,12 +360,26 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
 
         state->add_bucket_entry_count = 0;
         state->completed_upload = true;
+
+        struct json_object *file_id_value = NULL;
+        char *file_id = NULL;
+        if (json_object_object_get_ex(req->response, "id", &file_id_value)) {
+            file_id = (char *)json_object_get_string(file_id_value);
+        }
+
+        if (file_id) {
+            state->file_id = strdup(file_id);
+        }
+
     } else if (state->add_bucket_entry_count == 6) {
         state->error_status = STORJ_BRIDGE_REQUEST_ERROR;
     }
 
 clean_variables:
     queue_next_work(state);
+    if (req->response) {
+        json_object_put(req->response);
+    }
     free(req);
     free(work);
 }
@@ -419,7 +433,6 @@ static void create_bucket_entry(uv_work_t *work)
                     "fn[create_bucket_entry] - JSON body: %s", json_object_to_json_string(body));
 
     int status_code;
-    struct json_object *response = NULL;
     int request_status = fetch_json(req->http_options,
                                     req->options,
                                     "POST",
@@ -427,13 +440,13 @@ static void create_bucket_entry(uv_work_t *work)
                                     body,
                                     true,
                                     NULL,
-                                    &response,
+                                    &req->response,
                                     &status_code);
 
     req->log->debug(state->env->log_options,
                     state->handle,
                     "fn[create_bucket_entry] - JSON Response: %s",
-                    json_object_to_json_string(response));
+                    json_object_to_json_string(req->response));
 
 
     if (request_status) {
@@ -444,7 +457,6 @@ static void create_bucket_entry(uv_work_t *work)
 
     req->status_code = status_code;
 
-    json_object_put(response);
     json_object_put(body);
     free(path);
 }
@@ -518,6 +530,7 @@ static void queue_create_bucket_entry(storj_upload_state_t *state)
     req->http_options = state->env->http_options;
     req->options = state->env->bridge_options;
     req->upload_state = state;
+    req->response = NULL;
     req->error_status = 0;
     req->status_code = 0;
     req->log = state->log;
@@ -2624,6 +2637,7 @@ int storj_bridge_store_file(storj_env_t *env,
     } else {
         state->index = NULL;
     }
+    state->file_id = NULL;
     state->file_name = opts->file_name;
     state->encrypted_file_name = NULL;
     state->original_file = opts->fd;

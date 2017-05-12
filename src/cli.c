@@ -318,7 +318,7 @@ static void file_progress(double progress,
     fflush(stdout);
 }
 
-static void upload_file_complete(int status, void *handle)
+static void upload_file_complete(int status, char *file_id, void *handle)
 {
     printf("\n");
     if (status != 0) {
@@ -326,7 +326,10 @@ static void upload_file_complete(int status, void *handle)
         exit(status);
     }
 
-    printf("Upload Success!\n");
+    printf("Upload Success! File ID: %s\n", file_id);
+
+    free(file_id);
+
     exit(0);
 }
 
