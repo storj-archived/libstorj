@@ -377,11 +377,11 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
 
 clean_variables:
     queue_next_work(state);
+    if (req->response) {
+        json_object_put(req->response);
+    }
     free(req);
     free(work);
-    if (req->response) {
-        free(req->response);
-    }
 }
 
 static void create_bucket_entry(uv_work_t *work)

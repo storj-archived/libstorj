@@ -281,6 +281,8 @@ void check_store_file(int error_code, char *file_id, void *handle)
         fail("storj_bridge_store_file(1)");
         printf("\t\tERROR:   %s\n", storj_strerror(error_code));
     }
+
+    free(file_id);
 }
 
 void check_store_file_cancel(int error_code, char *file_id, void *handle)
@@ -292,6 +294,8 @@ void check_store_file_cancel(int error_code, char *file_id, void *handle)
         fail("storj_bridge_store_file_cancel");
         printf("\t\tERROR:   %s\n", storj_strerror(error_code));
     }
+
+    free(file_id);
 }
 
 void check_delete_file(uv_work_t *work_req, int status)
