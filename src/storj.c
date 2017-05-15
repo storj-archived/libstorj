@@ -655,6 +655,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     }
     ho->low_speed_limit = http_options->low_speed_limit;
     ho->low_speed_time = http_options->low_speed_time;
+    ho->timeout = http_options->timeout;
     env->http_options = ho;
 
     // setup the log options
