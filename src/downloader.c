@@ -454,6 +454,9 @@ static void append_pointers_to_state(storj_download_state_t *state,
     int length = json_object_array_length(res);
 
     if (length == 0) {
+        state->log->debug(state->env->log_options,
+                          state->handle,
+                          "Finished requesting pointers");
         state->pointers_completed = true;
     } else if (length > 0) {
 
@@ -496,33 +499,42 @@ static void append_pointers_to_state(storj_download_state_t *state,
 static void after_request_pointers(uv_work_t *work, int status)
 {
     json_request_download_t *req = work->data;
+    storj_download_state_t *state = req->state;
 
-    req->state->pending_work_count--;
-    req->state->requesting_pointers = false;
+    state->pending_work_count--;
+    state->requesting_pointers = false;
+
+    state->log->debug(state->env->log_options, state->handle,
+                      "Finished request pointers: %s",
+                      json_object_to_json_string(req->response));
 
     free_bucket_token(req->state);
 
     if (status != 0)  {
-        req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+        state->error_status = STORJ_BRIDGE_POINTER_ERROR;
     } else if (req->status_code != 200) {
         if (req->status_code > 0 && req->status_code < 500) {
-            req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+            state->error_status = STORJ_BRIDGE_POINTER_ERROR;
         } else {
-            req->state->pointer_fail_count += 1;
+            state->pointer_fail_count += 1;
         }
 
-        if (req->state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
-            req->state->pointer_fail_count = 0;
-            req->state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+        state->log->debug(state->env->log_options, state->handle,
+                          "Request pointers fail count: %i",
+                          state->pointer_fail_count);
+
+        if (state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
+            state->pointer_fail_count = 0;
+            state->error_status = STORJ_BRIDGE_POINTER_ERROR;
         }
 
     } else if (!json_object_is_type(req->response, json_type_array)) {
-        req->state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
     } else {
-        append_pointers_to_state(req->state, req->response);
+        append_pointers_to_state(state, req->response);
     }
 
-    queue_next_work(req->state);
+    queue_next_work(state);
 
     json_object_put(req->response);
     free(req->path);
@@ -1776,6 +1788,9 @@ static void queue_recover_shards(storj_download_state_t *state)
         }
 
         if (!is_ready) {
+            state->log->debug(state->env->log_options,
+                              state->handle,
+                              "Not ready to recover shards");
             free(zilch);
             return;
         }
