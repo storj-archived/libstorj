@@ -1037,6 +1037,8 @@ char *storj_strerror(int error_code)
             return "Memory mapped file unmap error";
         case STORJ_QUEUE_ERROR:
             return "Queue error";
+        case STORJ_HEX_DECODE_ERROR:
+            return "Unable to decode hex string";
         case STORJ_TRANSFER_OK:
             return "No errors";
         default:

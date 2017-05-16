@@ -2108,7 +2108,7 @@ static void verify_bucket_id_callback(uv_work_t *work_req, int status)
     if (req->status_code == 200) {
         state->bucket_verified = true;
         goto clean_variables;
-    } else if (req->status_code == 404) {
+    } else if (req->status_code == 404 || req->status_code == 400) {
         state->log->error(state->env->log_options, state->handle,
                          "Bucket [%s] doesn't exist", state->bucket_id);
         state->error_status = STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR;
@@ -2528,11 +2528,18 @@ static void prepare_upload_state(uv_work_t *work)
         goto cleanup;
     }
 
-    if (generate_file_key(state->env->encrypt_options->mnemonic,
-                          state->bucket_id,
-                          index_as_str,
-                          &key_as_str)) {
-        state->error_status = STORJ_MEMORY_ERROR;
+    int key_status = generate_file_key(state->env->encrypt_options->mnemonic,
+                                       state->bucket_id,
+                                       index_as_str,
+                                       &key_as_str);
+    if (key_status) {
+        switch (key_status) {
+            case 2:
+                state->error_status = STORJ_HEX_DECODE_ERROR;
+                break;
+            default:
+                state->error_status = STORJ_MEMORY_ERROR;
+        }
         goto cleanup;
     }
 

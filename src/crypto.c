@@ -92,40 +92,53 @@ int double_ripemd160sha256_as_string(uint8_t *data, uint64_t data_size,
 int generate_bucket_key(const char *mnemonic, const char *bucket_id,
                         char **bucket_key)
 {
+    int status = 0;
     char *seed = calloc(128 + 1, sizeof(char));
     if (!seed) {
-        return 1;
+        status = 1;
+        goto cleanup;
     }
     mnemonic_to_seed(mnemonic, "", &seed);
     seed[128] = '\0';
-    if (get_deterministic_key(seed, 128, bucket_id, bucket_key)) {
-        return 1;
+
+    status = get_deterministic_key(seed, 128, bucket_id, bucket_key);
+
+cleanup:
+
+    if (seed) {
+        memset_zero(seed, 128 + 1);
+        free(seed);
     }
 
-    memset_zero(seed, 128 + 1);
-    free(seed);
-
-    return 0;
+    return status;
 }
 
 int generate_file_key(const char *mnemonic, const char *bucket_id,
                       const char *index, char **file_key)
 {
+    int status = 0;
     char *bucket_key = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     if (!bucket_key) {
-        return 1;
+        status = 1;
+        goto cleanup;
     }
-    if (generate_bucket_key(mnemonic, bucket_id, &bucket_key)) {
-        return 1;
+
+    status = generate_bucket_key(mnemonic, bucket_id, &bucket_key);
+    if (status) {
+        goto cleanup;
     }
     bucket_key[DETERMINISTIC_KEY_SIZE] = '\0';
 
     get_deterministic_key(bucket_key, 64, index, file_key);
 
-    memset_zero(bucket_key, DETERMINISTIC_KEY_SIZE + 1);
-    free(bucket_key);
+cleanup:
 
-    return 0;
+    if (bucket_key) {
+        memset_zero(bucket_key, DETERMINISTIC_KEY_SIZE + 1);
+        free(bucket_key);
+    }
+
+    return status;
 }
 
 int get_deterministic_key(const char *key, int key_len,
@@ -145,7 +158,7 @@ int get_deterministic_key(const char *key, int key_len,
     // Convert input to hexdata
     uint8_t *sha512input_as_hex = str2hex(input_len, sha512input);
     if (!sha512input_as_hex) {
-        return 1;
+        return 2;
     }
 
     // Sha512 of hexdata
@@ -155,7 +168,7 @@ int get_deterministic_key(const char *key, int key_len,
     // Convert Sha512 hex to character array
     char *sha512_str = hex2str(SHA512_DIGEST_SIZE, sha512_digest);
     if (!sha512_str) {
-        return 1;
+        return 2;
     }
 
     //First 64 bytes of sha512

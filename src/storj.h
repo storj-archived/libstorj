@@ -88,6 +88,9 @@ extern "C" {
 #define STORJ_META_ENCRYPTION_ERROR 6000
 #define STORJ_META_DECRYPTION_ERROR 6001
 
+// Miscellaneous errors
+#define STORJ_HEX_DECODE_ERROR 7000
+
 // Exchange report codes
 #define STORJ_REPORT_SUCCESS 1000
 #define STORJ_REPORT_FAILURE 1100
