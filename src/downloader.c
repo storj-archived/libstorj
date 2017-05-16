@@ -565,6 +565,8 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
         if (req->status_code > 0 && req->status_code < 500) {
             state->pointers[req->pointer_index].status = POINTER_MISSING;
         } else {
+            // Update status so that it will be retried
+            state->pointers[req->pointer_index].status = POINTER_ERROR_REPORTED;
             state->pointer_fail_count += 1;
         }
 
@@ -573,6 +575,7 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
                           state->pointer_fail_count);
 
         if (state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
+            // Skip retrying mark as missing
             state->pointer_fail_count = 0;
             state->pointers[req->pointer_index].status = POINTER_MISSING;
         }
