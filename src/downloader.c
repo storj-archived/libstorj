@@ -550,6 +550,10 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
     state->pending_work_count--;
     state->requesting_pointers = false;
 
+    state->log->debug(state->env->log_options, state->handle,
+                      "Finished request replace pointer: %s",
+                      json_object_to_json_string(req->response));
+
     free_bucket_token(req->state);
 
     if (status != 0) {
@@ -563,6 +567,10 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
         } else {
             state->pointer_fail_count += 1;
         }
+
+        state->log->debug(state->env->log_options, state->handle,
+                          "Request replace pointer fail count: %i",
+                          state->pointer_fail_count);
 
         if (state->pointer_fail_count >= STORJ_MAX_POINTER_TRIES) {
             state->pointer_fail_count = 0;
@@ -1784,6 +1792,11 @@ static void queue_recover_shards(storj_download_state_t *state)
             if (pointer->status != POINTER_MISSING &&
                 pointer->status != POINTER_DOWNLOADED) {
                 is_ready = false;
+                state->log->debug(state->env->log_options,
+                                  state->handle,
+                                  "Pointer %i not ready with status: %i\n",
+                                  i, pointer->status);
+
             }
         }
 
