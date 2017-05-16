@@ -1282,6 +1282,10 @@ static void after_request_info(uv_work_t *work, int status)
                 req->state->error_status = STORJ_FILE_UNSUPPORTED_ERASURE;
             }
         }
+
+        // Now that we have info we can calculate the decryption key
+        determine_decryption_key(req->state);
+
     } else if (req->error_status) {
         switch(req->error_status) {
             case STORJ_BRIDGE_REQUEST_ERROR:
@@ -1299,9 +1303,6 @@ static void after_request_info(uv_work_t *work, int status)
     } else {
         req->state->error_status = STORJ_BRIDGE_FILEINFO_ERROR;
     }
-
-    // Now that we have info we can calculate the decryption key
-    determine_decryption_key(req->state);
 
     queue_next_work(req->state);
 

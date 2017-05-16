@@ -102,7 +102,7 @@ extern "C" {
 #define STORJ_SHARD_CHALLENGES 4
 #define STORJ_LOW_SPEED_LIMIT 30720L
 #define STORJ_LOW_SPEED_TIME 20L
-#define STORJ_HTTP_TIMEOUT 20L
+#define STORJ_HTTP_TIMEOUT 60L
 
 typedef struct {
   uint8_t *encryption_ctr;
