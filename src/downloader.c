@@ -271,7 +271,6 @@ static void request_replace_pointer(uv_work_t *work)
                          "Request replace pointer error: %i", request_status);
     }
 
-
     req->status_code = status_code;
 
     if (!req->response) {
@@ -505,7 +504,7 @@ static void after_request_pointers(uv_work_t *work, int status)
     state->requesting_pointers = false;
 
     state->log->debug(state->env->log_options, state->handle,
-                      "Finished request pointers: %s",
+                      "Finished request pointers - JSON Response %s",
                       json_object_to_json_string(req->response));
 
     free_bucket_token(req->state);
@@ -551,7 +550,8 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
     state->requesting_pointers = false;
 
     state->log->debug(state->env->log_options, state->handle,
-                      "Finished request replace pointer: %s",
+                      "Finished request replace pointer %i - JSON Response: %s",
+                      req->pointer_index,
                       json_object_to_json_string(req->response));
 
     free_bucket_token(req->state);
