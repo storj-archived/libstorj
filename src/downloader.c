@@ -1804,9 +1804,6 @@ static void queue_recover_shards(storj_download_state_t *state)
         }
 
         if (!is_ready) {
-            state->log->debug(state->env->log_options,
-                              state->handle,
-                              "Not ready to recover shards");
             free(zilch);
             return;
         }
