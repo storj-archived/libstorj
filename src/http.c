@@ -657,9 +657,10 @@ int fetch_json(storj_http_options_t *http_options,
         free(user_pass);
     }
 
+    *response = NULL;
+
     if (req != CURLE_OK) {
-        curl_easy_cleanup(curl);
-        return req;
+        goto cleanup;
     }
 
     // set the status code
@@ -667,15 +668,18 @@ int fetch_json(storj_http_options_t *http_options,
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &_status_code);
     *status_code = (int)_status_code;
 
-    *response = NULL;
-
-    if (body->data) {
+    if (body->data && body->length > 0) {
         *response = json_tokener_parse((char *)body->data);
     }
 
+cleanup:
     curl_easy_cleanup(curl);
-    free(body->data);
-    free(body);
+    if (body->data) {
+        free(body->data);
+    }
+    if (body) {
+        free(body);
+    }
 
     return 0;
 }

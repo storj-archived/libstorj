@@ -230,6 +230,7 @@ static void request_pointers(uv_work_t *work)
     if (!req->response) {
         req->status_code = -1;
     }
+
 }
 
 static void request_replace_pointer(uv_work_t *work)
@@ -502,9 +503,11 @@ static void after_request_pointers(uv_work_t *work, int status)
     state->pending_work_count--;
     state->requesting_pointers = false;
 
-    state->log->debug(state->env->log_options, state->handle,
-                      "Finished request pointers - JSON Response %s",
-                      json_object_to_json_string(req->response));
+    if (req->response) {
+        state->log->debug(state->env->log_options, state->handle,
+                          "Finished request pointers - JSON Response %s",
+                          json_object_to_json_string(req->response));
+    }
 
     free_bucket_token(req->state);
 
@@ -534,7 +537,9 @@ static void after_request_pointers(uv_work_t *work, int status)
 
     queue_next_work(state);
 
-    json_object_put(req->response);
+    if (req->response) {
+        json_object_put(req->response);
+    }
     free(req->path);
     free(req);
     free(work);

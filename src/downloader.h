@@ -18,7 +18,7 @@
 #define STORJ_DEFAULT_MIRRORS 5
 #define STORJ_MAX_REPORT_TRIES 2
 #define STORJ_MAX_TOKEN_TRIES 6
-#define STORJ_MAX_POINTER_TRIES 2
+#define STORJ_MAX_POINTER_TRIES 6
 #define STORJ_MAX_INFO_TRIES 6
 
 /** @brief Enumerable that defines that status of a pointer
