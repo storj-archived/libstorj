@@ -641,6 +641,7 @@ int fetch_json(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
     }
 
+    int ret = 0;
     int req = curl_easy_perform(curl);
 
     free(url);
@@ -660,6 +661,7 @@ int fetch_json(storj_http_options_t *http_options,
     *response = NULL;
 
     if (req != CURLE_OK) {
+        ret = req;
         goto cleanup;
     }
 
@@ -681,5 +683,5 @@ cleanup:
         free(body);
     }
 
-    return 0;
+    return ret;
 }
