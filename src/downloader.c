@@ -1796,7 +1796,7 @@ static void queue_recover_shards(storj_download_state_t *state)
                 is_ready = false;
                 state->log->debug(state->env->log_options,
                                   state->handle,
-                                  "Pointer %i not ready with status: %i\n",
+                                  "Pointer %i not ready with status: %i",
                                   i, pointer->status);
 
             }
