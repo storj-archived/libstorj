@@ -17,6 +17,7 @@ Asynchronous multi-platform C library and CLI for encrypted file transfer on the
 - Asynchronous progress updates in bytes per file
 - Transfers can be cleanly canceled per file
 - Seed based file encryption key for portability between devices
+- Reference implementation for [SIP5](https://github.com/Storj/sips/blob/master/sip-0005.md) file standard
 
 ## Build
 
