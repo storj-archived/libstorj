@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "prebuild": "cd ../ && docker build -f js/Dockerfile -t rsjs . && docker run -it rsjs > js/rs.ec",
+    "build": "npm run bundle",
+    "postbuild": "echo CREATED bundle.js",
+    "bundle": "browserify browser.js > bundle.js"
+  },
+  "devDependencies": {
+    "browserify": "^14.3.0"
+  }
+}
