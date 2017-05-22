@@ -30,7 +30,6 @@ static void free_download_state(storj_download_state_t *state)
         free_exchange_report(pointer->report);
     }
 
-
     free_bucket_token(state);
 
     if (state->excluded_farmer_ids) {
@@ -1463,7 +1462,7 @@ static void request_info(uv_work_t *work)
 
     } else if (status_code == 403 || status_code == 401) {
         req->error_status = STORJ_BRIDGE_AUTH_ERROR;
-    } else if (status_code == 404) {
+    } else if (status_code == 404 || status_code == 400) {
         req->error_status = STORJ_BRIDGE_FILE_NOTFOUND_ERROR;
     } else if (status_code == 500) {
         req->error_status = STORJ_BRIDGE_INTERNAL_ERROR;
