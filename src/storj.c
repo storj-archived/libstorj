@@ -974,7 +974,7 @@ char *storj_strerror(int error_code)
         case STORJ_BRIDGE_INTERNAL_ERROR:
             return "Bridge request internal error";
         case STORJ_BRIDGE_RATE_ERROR:
-            return "Bridge transfer rate limit error";
+            return "Bridge rate limit error";
         case STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR:
             return "Bucket is not found";
         case STORJ_BRIDGE_FILE_NOTFOUND_ERROR:

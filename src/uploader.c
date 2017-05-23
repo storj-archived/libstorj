@@ -878,9 +878,13 @@ static void after_push_frame(uv_work_t *work, int status)
     // Increment request count every request for retry counts
     state->shard[req->shard_meta_index].push_frame_request_count += 1;
 
-    // Check if we got a 200 status and token
-    if ((req->status_code == 200 || req->status_code == 201) &&
+    if (req->status_code == 429 || req->status_code == 420) {
+
+        state->error_status = STORJ_BRIDGE_RATE_ERROR;
+
+    } else if ((req->status_code == 200 || req->status_code == 201) &&
         pointer->token != NULL) {
+        // Check if we got a 200 status and token
 
         // Reset for if we need to get a new pointer later
         state->shard[req->shard_meta_index].push_frame_request_count = 0;
@@ -1665,8 +1669,11 @@ static void after_request_frame_id(uv_work_t *work, int status)
 
     state->frame_request_count += 1;
 
-    // Check if we got a 201 status and token
-    if (req->error_status == 0 && req->status_code == 200 && req->frame_id) {
+    if (req->status_code == 429 || req->status_code == 420) {
+
+        state->error_status = STORJ_BRIDGE_RATE_ERROR;
+
+    } else if (req->error_status == 0 && req->status_code == 200 && req->frame_id) {
 
         state->log->info(state->env->log_options, state->handle,
                          "Successfully retrieved frame id: %s", req->frame_id);

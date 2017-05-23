@@ -512,7 +512,13 @@ static void after_request_pointers(uv_work_t *work, int status)
     free_bucket_token(req->state);
 
     if (status != 0)  {
+
         state->error_status = STORJ_BRIDGE_POINTER_ERROR;
+
+    } else if (req->status_code == 429 || req->status_code == 420) {
+
+        state->error_status = STORJ_BRIDGE_RATE_ERROR;
+
     } else if (req->status_code != 200) {
         if (req->status_code > 0 && req->status_code < 500) {
             state->error_status = STORJ_BRIDGE_POINTER_ERROR;
@@ -561,9 +567,17 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
     free_bucket_token(req->state);
 
     if (status != 0) {
+
         state->error_status = STORJ_BRIDGE_REPOINTER_ERROR;
+
     } else if (req->error_status) {
+
         state->error_status = req->error_status;
+
+    } else if (req->status_code == 429 || req->status_code == 420) {
+
+        state->error_status = STORJ_BRIDGE_RATE_ERROR;
+
     } else if (req->status_code != 200) {
 
         if (req->status_code > 0 && req->status_code < 500) {
