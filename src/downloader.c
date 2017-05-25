@@ -579,7 +579,7 @@ static void queue_request_pointers(storj_download_state_t *state)
 
     char query_args[BUFSIZ];
     memset(query_args, '\0', BUFSIZ);
-    snprintf(query_args, BUFSIZ, "?limit=6&skip=%d", state->total_pointers);
+    snprintf(query_args, BUFSIZ, "?limit=3&skip=%d", state->total_pointers);
 
     int path_len = 9 + strlen(state->bucket_id) + 7 +
         strlen(state->file_id) + strlen(query_args);

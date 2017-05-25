@@ -305,7 +305,9 @@
       "operation": "PULL",
       "index": 2,
       "size": 16777216
-    },
+    }
+  ],
+  "getfilepointers-1": [
     {
       "token": "cc02fb5c9687c397fd1ead5a2e71239dcffb0f4c",
       "hash": "214ed86cb1287fe0fd18c174eecbf84341bf2655",
@@ -352,7 +354,7 @@
       "size": 16777216
     }
   ],
-  "getfilepointers-1": [
+  "getfilepointers-2": [
     {
       "token": "de8e83dcf41789d66f2855259f35b729c9834eeb",
       "hash": "ebcbe78dd209a03d3ce29f2e5460304de2060031",
@@ -387,7 +389,9 @@
       "hash": "88c5e8885160c449b1dbb00ccf317067200b39a0",
       "index": 8,
       "size": 16777216
-    },
+    }
+  ],
+  "getfilepointers-3": [
     {
       "token": "cc02fb5c9687c397fd1ead5a2e71239dcffb0f4c",
       "hash": "76b1a97498e026c47c924374b5b1148543d5c0ab",
@@ -434,7 +438,7 @@
       "size": 16777216
     }
   ],
-  "getfilepointers-2": [
+  "getfilepointers-4": [
     {
       "token": "de8e83dcf41789d66f2855259f35b729c9834eeb",
       "hash": "973701b43290e3bef7007db0cb75744f9556ae3b",
@@ -480,7 +484,9 @@
       "index": 14,
       "parity": true,
       "size": 16777216
-    },
+    }
+  ],
+  "getfilepointers-5": [
     {
       "token": "3b3f8ccb23ec47cec1ad57f7f68cab285dde54d6",
       "hash": "424cdf090604317570da38ef7d5b41abea0952df",

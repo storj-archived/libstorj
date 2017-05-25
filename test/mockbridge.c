@@ -112,11 +112,20 @@ int mock_bridge_server(void *cls,
             if (!skip || 0 == strcmp(skip, "0")) {
                 page = get_response_string(responses, "getfilepointers-0");
                 status_code = MHD_HTTP_OK;
-            } else if (0 == strcmp(skip, "6")) {
+            } else if (0 == strcmp(skip, "3")) {
                 page = get_response_string(responses, "getfilepointers-1");
                 status_code = MHD_HTTP_OK;
-            } else if (0 == strcmp(skip, "12")) {
+            } else if (0 == strcmp(skip, "6")) {
                 page = get_response_string(responses, "getfilepointers-2");
+                status_code = MHD_HTTP_OK;
+            } else if (0 == strcmp(skip, "9")) {
+                page = get_response_string(responses, "getfilepointers-3");
+                status_code = MHD_HTTP_OK;
+            } else if (0 == strcmp(skip, "12")) {
+                page = get_response_string(responses, "getfilepointers-4");
+                status_code = MHD_HTTP_OK;
+            } else if (0 == strcmp(skip, "15")) {
+                page = get_response_string(responses, "getfilepointers-5");
                 status_code = MHD_HTTP_OK;
             } else if (0 == strcmp(skip, "4")) {
                 // TODO check exclude and limit query
