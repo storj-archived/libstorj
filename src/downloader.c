@@ -106,7 +106,7 @@ static void request_replace_pointer(uv_work_t *work)
     strcat(path, query_args);
 
     int request_status = fetch_json(req->http_options, req->options, "GET",
-                                    path, NULL, NULL,
+                                    path, NULL, true,
                                     &req->response, &status_code);
 
     if (request_status) {
