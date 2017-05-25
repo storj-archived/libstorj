@@ -410,9 +410,6 @@ typedef struct {
     bool requesting_pointers;
     int error_status;
     bool writing;
-    char *token;
-    bool requesting_token;
-    uint32_t token_fail_count;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
     const char *hmac;

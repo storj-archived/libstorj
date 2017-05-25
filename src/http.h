@@ -168,7 +168,6 @@ int fetch_json(storj_http_options_t *http_options,
                char *path,
                struct json_object *request_body,
                bool auth,
-               char *token,
                struct json_object **response,
                int *status_code);
 

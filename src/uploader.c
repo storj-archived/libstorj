@@ -439,7 +439,6 @@ static void create_bucket_entry(uv_work_t *work)
                                     path,
                                     body,
                                     true,
-                                    NULL,
                                     &req->response,
                                     &status_code);
 
@@ -1069,7 +1068,6 @@ static void push_frame(uv_work_t *work)
                                     resource,
                                     body,
                                     true,
-                                    NULL,
                                     &response,
                                     &status_code);
 
@@ -1712,7 +1710,6 @@ static void request_frame_id(uv_work_t *work)
                                     "/frames",
                                     body,
                                     true,
-                                    NULL,
                                     &response,
                                     &status_code);
 
@@ -2050,7 +2047,7 @@ static void send_exchange_report(uv_work_t *work)
     int request_status = fetch_json(req->http_options,
                                     req->options, "POST",
                                     "/reports/exchanges", body,
-                                    NULL, NULL, &response, &status_code);
+                                    true, &response, &status_code);
 
 
     if (request_status) {
@@ -2197,7 +2194,7 @@ static void verify_file_name(uv_work_t *work)
 
     req->error_code = fetch_json(req->http_options,
                                  req->options, req->method, req->path, req->body,
-                                 req->auth, NULL, &req->response, &status_code);
+                                 req->auth, &req->response, &status_code);
 
     req->status_code = status_code;
 }

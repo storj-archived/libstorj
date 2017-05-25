@@ -124,7 +124,6 @@ typedef struct {
     storj_http_options_t *http_options;
     storj_bridge_options_t *options;
     uint32_t pointer_index;
-    char *token;
     const char *bucket_id;
     const char *file_id;
     char *excluded_farmer_ids;
@@ -144,28 +143,12 @@ typedef struct {
     char *method;
     char *path;
     bool auth;
-    char *token;
     struct json_object *body;
     struct json_object *response;
     /* state should not be modified in worker threads */
     storj_download_state_t *state;
     int status_code;
 } json_request_download_t;
-
-/** @brief A structure for sharing data with worker threads for requesting
- * a bucket operation token from the bridge.
- */
-typedef struct {
-    storj_http_options_t *http_options;
-    storj_bridge_options_t *options;
-    char *token;
-    const char *bucket_id;
-    char *bucket_op;
-    /* state should not be modified in worker threads */
-    storj_download_state_t *state;
-    int status_code;
-    int error_status;
-} token_request_download_t;
 
 /** @brief A method that determines the next work necessary to download a file
  *

@@ -503,7 +503,6 @@ int fetch_json(storj_http_options_t *http_options,
                char *path,
                struct json_object *request_body,
                bool auth,
-               char *token,
                struct json_object **response,
                int *status_code)
 {
@@ -602,17 +601,6 @@ int fetch_json(storj_http_options_t *http_options,
     }
 
     struct curl_slist *header_list = NULL;
-    if (token) {
-        char *token_header = calloc(9 + strlen(token) + 1, sizeof(char));
-        if (!token_header) {
-            return 1;
-        }
-        strcat(token_header, "X-Token: ");
-        strcat(token_header, token);
-        header_list = curl_slist_append(header_list, token_header);
-        free(token_header);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
-    }
 
     // Include body if request body json is provided
     http_body_send_t *post_body = NULL;

@@ -1,13 +1,5 @@
 #include "downloader.h"
 
-static void free_bucket_token(storj_download_state_t *state)
-{
-    if (state->token) {
-        free(state->token);
-        state->token = NULL;
-    }
-}
-
 static void free_exchange_report(storj_exchange_report_t *report)
 {
     free(report->data_hash);
@@ -29,8 +21,6 @@ static void free_download_state(storj_download_state_t *state)
 
         free_exchange_report(pointer->report);
     }
-
-    free_bucket_token(state);
 
     if (state->excluded_farmer_ids) {
         free(state->excluded_farmer_ids);
@@ -62,153 +52,6 @@ static void free_download_state(storj_download_state_t *state)
     free(state);
 }
 
-static void request_token(uv_work_t *work)
-{
-    token_request_download_t *req = work->data;
-    storj_download_state_t *state = req->state;
-
-    int path_len = 9 + strlen(req->bucket_id) + 7;
-    char *path = calloc(path_len + 1, sizeof(char));
-    if (!path) {
-        req->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    strcat(path, "/buckets/");
-    strcat(path, req->bucket_id);
-    strcat(path, "/tokens");
-
-    struct json_object *body = json_object_new_object();
-    json_object *op_string = json_object_new_string(req->bucket_op);
-    json_object_object_add(body, "operation", op_string);
-
-    int status_code = 0;
-    struct json_object *response = NULL;
-    int request_status = fetch_json(req->http_options,
-                                    req->options,
-                                    "POST",
-                                    path,
-                                    body,
-                                    true,
-                                    NULL,
-                                    &response,
-                                    &status_code);
-
-    if (request_status) {
-        req->error_status = STORJ_BRIDGE_REQUEST_ERROR;
-
-        state->log->warn(state->env->log_options, state->handle,
-                         "Request token error: %i", request_status);
-
-    } else if (status_code == 201) {
-        struct json_object *token_value;
-        if (!json_object_object_get_ex(response, "token", &token_value)) {
-            req->error_status = STORJ_BRIDGE_JSON_ERROR;
-        }
-
-        if (!json_object_is_type(token_value, json_type_string)) {
-            req->error_status = STORJ_BRIDGE_JSON_ERROR;
-        }
-
-        char *token = (char *)json_object_get_string(token_value);
-        req->token = strdup(token);
-
-    } else if (status_code == 403 || status_code == 401) {
-        req->error_status = STORJ_BRIDGE_AUTH_ERROR;
-    } else if (status_code == 404) {
-        req->error_status = STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR;
-    } else if (status_code == 500) {
-        req->error_status = STORJ_BRIDGE_INTERNAL_ERROR;
-    } else {
-        req->error_status = STORJ_BRIDGE_REQUEST_ERROR;
-    }
-
-    req->status_code = status_code;
-
-    if (response) {
-        json_object_put(response);
-    }
-    json_object_put(body);
-    free(path);
-}
-
-static void after_request_token(uv_work_t *work, int status)
-{
-    token_request_download_t *req = work->data;
-
-    req->state->pending_work_count--;
-    req->state->requesting_token = false;
-
-    if (status != 0) {
-        req->state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
-    } else if (req->status_code == 201) {
-        req->state->token = req->token;
-    } else if (req->error_status){
-        switch (req->error_status) {
-            case STORJ_BRIDGE_REQUEST_ERROR:
-            case STORJ_BRIDGE_INTERNAL_ERROR:
-                req->state->token_fail_count += 1;
-                break;
-            default:
-                req->state->error_status = req->error_status;
-                break;
-        }
-        if (req->state->token_fail_count >= STORJ_MAX_TOKEN_TRIES) {
-            req->state->token_fail_count = 0;
-            req->state->error_status = req->error_status;
-        }
-
-    } else {
-        req->state->error_status = STORJ_BRIDGE_TOKEN_ERROR;
-    }
-
-    queue_next_work(req->state);
-
-    free(req);
-    free(work);
-}
-
-static void queue_request_bucket_token(storj_download_state_t *state)
-{
-    if (state->requesting_token || state->canceled) {
-        return;
-    }
-
-    uv_work_t *work = malloc(sizeof(uv_work_t));
-    if (!work) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    token_request_download_t *req = malloc(sizeof(token_request_download_t));
-    if (!req) {
-        state->error_status = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    req->http_options = state->env->http_options;
-    req->options = state->env->bridge_options;
-    req->bucket_id = state->bucket_id;
-    req->bucket_op = (char *)BUCKET_OP[BUCKET_PULL];
-    req->state = state;
-    req->status_code = 0;
-    req->error_status = 0;
-
-    work->data = req;
-
-    state->pending_work_count++;
-    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
-                               request_token, after_request_token);
-
-    if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
-        return;
-    }
-
-    state->requesting_token = true;
-
-}
-
 static void request_pointers(uv_work_t *work)
 {
     json_request_download_t *req = work->data;
@@ -216,7 +59,7 @@ static void request_pointers(uv_work_t *work)
 
     int status_code = 0;
     int request_status = fetch_json(req->http_options, req->options, req->method,
-                                    req->path, req->body, req->auth, req->token,
+                                    req->path, req->body, req->auth,
                                     &req->response, &status_code);
 
 
@@ -263,7 +106,7 @@ static void request_replace_pointer(uv_work_t *work)
     strcat(path, query_args);
 
     int request_status = fetch_json(req->http_options, req->options, "GET",
-                                    path, NULL, NULL, req->token,
+                                    path, NULL, NULL,
                                     &req->response, &status_code);
 
     if (request_status) {
@@ -509,8 +352,6 @@ static void after_request_pointers(uv_work_t *work, int status)
                           json_object_to_json_string(req->response));
     }
 
-    free_bucket_token(req->state);
-
     if (status != 0)  {
 
         state->error_status = STORJ_BRIDGE_POINTER_ERROR;
@@ -563,8 +404,6 @@ static void after_request_replace_pointer(uv_work_t *work, int status)
                       "Finished request replace pointer %i - JSON Response: %s",
                       req->pointer_index,
                       json_object_to_json_string(req->response));
-
-    free_bucket_token(req->state);
 
     if (status != 0) {
 
@@ -687,7 +526,6 @@ static void queue_request_pointers(storj_download_state_t *state)
 
             req->http_options = state->env->http_options;
             req->options = state->env->bridge_options;
-            req->token = state->token;
             req->bucket_id = state->bucket_id;
             req->file_id = state->file_id;
             req->state = state;
@@ -763,7 +601,6 @@ static void queue_request_pointers(storj_download_state_t *state)
     req->path = path;
     req->body = NULL;
     req->auth = true;
-    req->token = state->token;
 
     req->state = state;
 
@@ -1085,7 +922,7 @@ static void send_exchange_report(uv_work_t *work)
     int request_status = fetch_json(req->http_options,
                                     req->options, "POST",
                                     "/reports/exchanges", body,
-                                    NULL, NULL, &response, &status_code);
+                                    true, &response, &status_code);
 
 
     if (request_status) {
@@ -1378,7 +1215,6 @@ static void request_info(uv_work_t *work)
                                     path,
                                     NULL,
                                     true,
-                                    NULL,
                                     &response,
                                     &status_code);
 
@@ -1940,13 +1776,7 @@ static void queue_next_work(storj_download_state_t *state)
         goto finish_up;
     }
 
-    if (!state->token) {
-        queue_request_bucket_token(state);
-    }
-
-    if (state->token) {
-        queue_request_pointers(state);
-    }
+    queue_request_pointers(state);
 
     if (!state->info) {
         queue_request_info(state);
@@ -1954,27 +1784,27 @@ static void queue_next_work(storj_download_state_t *state)
 
     if (state->info) {
         queue_request_shards(state);
+
+        if (state->rs) {
+            if (can_recover_shards(state)) {
+                queue_recover_shards(state);
+            } else {
+                state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
+                queue_next_work(state);
+                return;
+            }
+        } else {
+            if (!has_missing_shard(state)) {
+                queue_recover_shards(state);
+            } else {
+                state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
+                queue_next_work(state);
+                return;
+            }
+        }
     }
 
     queue_send_exchange_reports(state);
-
-    if (state->rs) {
-        if (can_recover_shards(state)) {
-            queue_recover_shards(state);
-        } else {
-            state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
-            queue_next_work(state);
-            return;
-        }
-    } else {
-        if (!has_missing_shard(state)) {
-            queue_recover_shards(state);
-        } else {
-            state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
-            queue_next_work(state);
-            return;
-        }
-    }
 
 finish_up:
 
@@ -2041,9 +1871,6 @@ int storj_bridge_resolve_file(storj_env_t *env,
     state->requesting_pointers = false;
     state->error_status = STORJ_TRANSFER_OK;
     state->writing = false;
-    state->token = NULL;
-    state->requesting_token = false;
-    state->token_fail_count = 0;
     state->shard_size = 0;
     state->excluded_farmer_ids = NULL;
     state->hmac = NULL;

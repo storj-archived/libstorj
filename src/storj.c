@@ -12,7 +12,7 @@ static void json_request_worker(uv_work_t *work)
 
     req->error_code = fetch_json(req->http_options,
                                  req->options, req->method, req->path, req->body,
-                                 req->auth, NULL, &req->response, &status_code);
+                                 req->auth, &req->response, &status_code);
 
     req->status_code = status_code;
 }
@@ -64,7 +64,7 @@ static void create_bucket_request_worker(uv_work_t *work)
 
     req->error_code = fetch_json(req->http_options,
                                  req->bridge_options, "POST", "/buckets", body,
-                                 true, NULL, &req->response, &status_code);
+                                 true, &req->response, &status_code);
 
     json_object_put(body);
 
@@ -89,7 +89,7 @@ static void get_buckets_request_worker(uv_work_t *work)
 
     req->error_code = fetch_json(req->http_options,
                                  req->options, req->method, req->path, req->body,
-                                 req->auth, NULL, &req->response, &status_code);
+                                 req->auth, &req->response, &status_code);
 
     req->status_code = status_code;
 
@@ -173,7 +173,7 @@ static void list_files_request_worker(uv_work_t *work)
 
     req->error_code = fetch_json(req->http_options,
                                  req->options, req->method, req->path, req->body,
-                                 req->auth, NULL, &req->response, &status_code);
+                                 req->auth, &req->response, &status_code);
 
     req->status_code = status_code;
 
