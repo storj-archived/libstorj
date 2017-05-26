@@ -510,7 +510,8 @@ int test_upload()
         .index = "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692",
         .bucket_id = "368be0816766b28fd5f43af5",
         .file_name = file_name,
-        .fd = fopen(file, "r")
+        .fd = fopen(file, "r"),
+        .rs = true
     };
 
     storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));

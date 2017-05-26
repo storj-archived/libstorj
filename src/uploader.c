@@ -2582,7 +2582,8 @@ cleanup:
 char *create_tmp_name(storj_upload_state_t *state, char *extension)
 {
     char *tmp_folder = strdup(state->env->tmp_path);
-    int file_name_len = strlen(state->file_name);
+    int encode_len = BASE16_ENCODE_LENGTH(SHA256_DIGEST_SIZE);
+    int file_name_len = strlen(state->encrypted_file_name);
     int extension_len = strlen(extension);
     int tmp_folder_len = strlen(tmp_folder);
     if (tmp_folder[tmp_folder_len - 1] == separator()) {
@@ -2591,15 +2592,25 @@ char *create_tmp_name(storj_upload_state_t *state, char *extension)
     }
 
     char *path = calloc(
-        tmp_folder_len + 1 + file_name_len + extension_len + 2,
+        tmp_folder_len + 1 + encode_len + extension_len + 2,
         sizeof(char)
     );
+
+    // hash and encode name for filesystem use
+    struct sha256_ctx ctx;
+    uint8_t digest[SHA256_DIGEST_SIZE];
+    uint8_t digest_encoded[encode_len + 1];
+    sha256_init(&ctx);
+    sha256_update(&ctx, file_name_len, state->encrypted_file_name);
+    sha256_digest(&ctx, SHA256_DIGEST_SIZE, digest);
+    base16_encode_update(digest_encoded, SHA256_DIGEST_SIZE, digest);
+    digest_encoded[encode_len] = '\0';
 
     sprintf(path,
             "%s%c%s%s%c",
             tmp_folder,
             separator(),
-            state->file_name,
+            digest_encoded,
             extension,
             '\0');
 
