@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -289,12 +290,29 @@ void close_signal(uv_handle_t *handle)
     ((void)0);
 }
 
+void hashing_int_handler(int sig){
+
+	char c;
+
+	signal(sig, SIG_IGN);
+	printf("\nCancel hashing & file upload? [y/n]\n");
+	c = getchar();
+	if(c == 'y' || c == 'Y')
+		exit(0);
+	else
+		signal(SIGINT, hashing_int_handler);
+	getchar();
+
+}
+
 static void file_progress(double progress,
                           uint64_t downloaded_bytes,
                           uint64_t total_bytes,
                           void *handle)
 {
     int bar_width = 70;
+
+	signal(SIGINT, hashing_int_handler);
 
     if (progress == 0 && downloaded_bytes == 0) {
         printf("Preparing File...");
@@ -407,15 +425,14 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     printf("\n");
     fclose(fd);
     if (status) {
-        // TODO send to stderr
         switch(status) {
             case STORJ_FILE_DECRYPTION_ERROR:
-                printf("Unable to properly decrypt file, please check " \
+                fprintf(stderr, "Unable to properly decrypt file, please check " \
                        "that the correct encryption key was " \
                        "imported correctly.\n\n");
                 break;
             default:
-                printf("Download failure: %s\n", storj_strerror(status));
+                fprintf(stderr, "Download failure: %s\n", storj_strerror(status));
         }
 
         exit(status);
