@@ -41,3 +41,4 @@ src/storj.dSYM/
 test/tests.dSYM/
 test/tests_rs
 test/tests_rs.dSYM/
+test/tests_rs.exe
