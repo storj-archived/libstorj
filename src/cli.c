@@ -1124,8 +1124,16 @@ int main(int argc, char **argv)
     // Parse the host, part and proto from the storj bridge url
     char proto[6];
     char host[100];
-    int port = 443;
+    int port = 0;
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
+
+    if (port == 0) {
+        if (strcmp(proto, "https") == 0) {
+            port = 443;
+        } else {
+            port = 80;
+        }
+    }
 
     if (strcmp(command, "login") == 0) {
         printf("'login' is not a storj command. Did you mean 'import-keys'?\n\n");
