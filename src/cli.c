@@ -226,28 +226,60 @@ static int generate_mnemonic(char **mnemonic)
     return status;
 }
 
-static void get_password(char *password)
+static int get_password(char *password, int mask)
 {
-    // do not echo the characters
+    int max_pass_len = 512;
+
 #ifdef _WIN32
     HANDLE hstdin = GetStdHandle(STD_INPUT_HANDLE);
     DWORD mode = 0;
     DWORD prev_mode = 0;
     GetConsoleMode(hstdin, &mode);
     GetConsoleMode(hstdin, &prev_mode);
-    SetConsoleMode(hstdin, mode & (~ENABLE_ECHO_INPUT));
+    SetConsoleMode(hstdin, mode & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT));
 #else
     static struct termios prev_terminal;
     static struct termios terminal;
 
     tcgetattr(STDIN_FILENO, &prev_terminal);
 
-    terminal = prev_terminal;
-    terminal.c_lflag &= ~(ECHO);
+    memcpy (&terminal, &prev_terminal, sizeof(struct termios));
+    terminal.c_lflag &= ~(ICANON | ECHO);
+    terminal.c_cc[VTIME] = 0;
+    terminal.c_cc[VMIN] = 1;
     tcsetattr(STDIN_FILENO, TCSANOW, &terminal);
 #endif
 
-    get_input(password);
+    size_t idx = 0;         /* index, number of chars in read   */
+    int c = 0;
+
+    const char BACKSPACE = 8;
+    const char RETURN = 13;
+
+    /* read chars from fp, mask if valid char specified */
+#ifdef _WIN32
+    long unsigned int char_read = 0;
+    while ((ReadConsole(hstdin, &c, 1, &char_read, NULL) && c != '\n' && c != RETURN && c != EOF && idx < max_pass_len - 1) ||
+            (idx == max_pass_len - 1 && c == BACKSPACE))
+#else
+    while (((c = fgetc(stdin)) != '\n' && c != EOF && idx < max_pass_len - 1) ||
+            (idx == max_pass_len - 1 && c == 127))
+#endif
+    {
+        if (c != 127 && c != BACKSPACE) {
+            if (31 < mask && mask < 127)    /* valid ascii char */
+                fputc(mask, stdout);
+            password[idx++] = c;
+        } else if (idx > 0) {         /* handle backspace (del)   */
+            if (31 < mask && mask < 127) {
+                fputc(0x8, stdout);
+                fputc(' ', stdout);
+                fputc(0x8, stdout);
+            }
+            password[--idx] = 0;
+        }
+    }
+    password[idx] = 0; /* null-terminate   */
 
     // go back to the previous settings
 #ifdef _WIN32
@@ -255,17 +287,19 @@ static void get_password(char *password)
 #else
     tcsetattr(STDIN_FILENO, TCSANOW, &prev_terminal);
 #endif
+
+    return idx; /* number of chars in passwd    */
 }
 
 static int get_password_verify(char *prompt, char *password, int count)
 {
     printf("%s", prompt);
     char first_password[BUFSIZ];
-    get_password(first_password);
+    get_password(first_password, '*');
 
     printf("\nAgain to verify: ");
     char second_password[BUFSIZ];
-    get_password(second_password);
+    get_password(second_password, '*');
 
     int match = strcmp(first_password, second_password);
     strncpy(password, first_password, BUFSIZ);
@@ -649,7 +683,7 @@ static int import_keys(user_options_t *options)
             status = 1;
             goto clear_variables;
         }
-        get_password(pass);
+        get_password(pass, '*');
         printf("\n");
     }
 
@@ -1010,7 +1044,7 @@ static int export_keys(char *host)
     if (access(user_file, F_OK) != -1) {
         key = calloc(BUFSIZ, sizeof(char));
         printf("Unlock passphrase: ");
-        get_password(key);
+        get_password(key, '*');
         printf("\n\n");
 
         if (storj_decrypt_read_auth(user_file, key, &user, &pass, &mnemonic)) {
@@ -1124,8 +1158,16 @@ int main(int argc, char **argv)
     // Parse the host, part and proto from the storj bridge url
     char proto[6];
     char host[100];
-    int port = 443;
+    int port = 0;
     sscanf(storj_bridge, "%5[^://]://%99[^:/]:%99d", proto, host, &port);
+
+    if (port == 0) {
+        if (strcmp(proto, "https") == 0) {
+            port = 443;
+        } else {
+            port = 80;
+        }
+    }
 
     if (strcmp(command, "login") == 0) {
         printf("'login' is not a storj command. Did you mean 'import-keys'?\n\n");
@@ -1210,7 +1252,7 @@ int main(int argc, char **argv)
         if (!pass) {
             return 1;
         }
-        get_password(pass);
+        get_password(pass, '*');
         printf("\n");
 
         user_options_t user_opts = {strdup(user), strdup(pass), strdup(host), NULL, NULL};
@@ -1260,7 +1302,7 @@ int main(int argc, char **argv)
                     return 1;
                 }
                 printf("Unlock passphrase: ");
-                get_password(key);
+                get_password(key, '*');
                 printf("\n");
             }
             char *file_user = NULL;
@@ -1322,7 +1364,7 @@ int main(int argc, char **argv)
             if (!pass) {
                 return 1;
             }
-            get_password(pass);
+            get_password(pass, '*');
             printf("\n");
         }
 

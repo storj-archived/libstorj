@@ -14,7 +14,7 @@ static void print_shard_info(storj_upload_state_t *state, int index) {
     printf("push_frame_request_count: %d\n", shard->push_frame_request_count);
     printf("push_shard_request_count: %d\n", shard->push_shard_request_count);
     printf("index: %d\n", shard->index);
-    printf("uploaded_size: %lu\n", shard->uploaded_size);
+    printf("uploaded_size: %"PRIu64"\n", shard->uploaded_size);
 
     printf("\n=== Shard Pointer ===\n");
     printf("token: %s\n", p->token);
@@ -27,7 +27,7 @@ static void print_shard_info(storj_upload_state_t *state, int index) {
     printf("\n=== Shard Meta ===\n");
     printf("hash: %s\n", shard_meta->hash);
     printf("index: %d\n", shard_meta->index);
-    printf("size: %lu\n", shard_meta->size);
+    printf("size:  %"PRIu64"\n", shard_meta->size);
     printf("is_parity: %d\n", shard_meta->is_parity);
     for (int i = 0; i < STORJ_SHARD_CHALLENGES; i++ ) {
         printf("Challenge [%d]: %s\n", i, (char *)shard_meta->challenges_as_str[i]);
