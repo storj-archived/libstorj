@@ -1499,6 +1499,37 @@ static void recover_shards(uv_work_t *work)
     uint64_t bytes_decrypted = 0;
     size_t len = AES_BLOCK_SIZE * 8;
 
+    // Make sure that the file is the correct size before recovering
+    // shards in case that the last shard is the one being recovered.
+#ifdef _WIN32
+
+    HANDLE prefile = (HANDLE)_get_osfhandle(req->fd);
+    if (prefile == INVALID_HANDLE_VALUE) {
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        return;
+    }
+
+    LARGE_INTEGER presize;
+    presize.HighPart = (uint32_t)((req->filesize & 0xFFFFFFFF00000000LL) >> 32);
+    presize.LowPart = (uint32_t)(req->filesize & 0xFFFFFFFFLL);
+
+    if (!SetFilePointerEx(prefile, presize, 0, FILE_BEGIN)) {
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        return;
+    }
+
+    if (!SetEndOfFile(prefile)) {
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+        return;
+    }
+
+#else
+    if (ftruncate(req->fd, req->filesize)) {
+        // errno for more details
+        req->error_status = STORJ_FILE_RESIZE_ERROR;
+    }
+#endif
+
     error = map_file(req->fd, req->filesize, &data_map, false);
     if (error) {
         req->error_status = STORJ_MAPPING_ERROR;
