@@ -2,7 +2,7 @@ AC_INIT([libstorj],[1.0.1])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([build-aux/m4])
 AM_INIT_AUTOMAKE([foreign])
-LT_INIT([win32-dll])
+LT_INIT([shared static win32-dll])
 
 AC_PATH_PROG(HEXDUMP,hexdump)
 
