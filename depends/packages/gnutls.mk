@@ -15,6 +15,11 @@ $(package)_config_env_x86_64-apple-darwin11=$($(package)_config_env_darwin)
 # 32 bit linux settings
 $(package)_config_env_i686-pc-linux-gnu=NETTLE_CFLAGS="-static" GMP_CFLAGS="-static" PKG_CONFIG_LIBDIR="$(PREFIX_DIR)/lib/pkgconfig" CFLAGS="-I$(PREFIX_DIR)include -L$(PREFIX_DIR)lib -static -m32" CXXFLAGS="-m32" LDFLAGS="-m32"
 
+# mingw dll specific settings
+ifeq ($(BUILD_DLL), 1)
+$(package)_config_env_x86_64-w64-mingw32=PKG_CONFIG_LIBDIR="$(PREFIX_DIR)/lib/pkgconfig" CFLAGS="-I$(PREFIX_DIR)include -L$(PREFIX_DIR)lib"
+endif
+
 # set settings based on host
 $(package)_config_env = $(if $($(package)_config_env_$(HOST)), $($(package)_config_env_$(HOST)), $($(package)_config_env_default))
 $(package)_config_opts = $(if $($(package)_config_opts_$(HOST)), $($(package)_config_opts_$(HOST)), $($(package)_config_opts_default))

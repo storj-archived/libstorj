@@ -2618,7 +2618,7 @@ char *create_tmp_name(storj_upload_state_t *state, char *extension)
     return path;
 }
 
-int storj_bridge_store_file_cancel(storj_upload_state_t *state)
+STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state)
 {
     if (state->canceled) {
         return 0;
@@ -2641,7 +2641,7 @@ int storj_bridge_store_file_cancel(storj_upload_state_t *state)
     return 0;
 }
 
-int storj_bridge_store_file(storj_env_t *env,
+STORJ_API int storj_bridge_store_file(storj_env_t *env,
                             storj_upload_state_t *state,
                             storj_upload_opts_t *opts,
                             void *handle,

@@ -8,6 +8,11 @@ $(package)_sha256_hash=5275bb04f4863a13516b2f39392ac5e272f5e1bb8057b18aec1c9b79d
 $(package)_config_env_default=
 $(package)_config_opts_default=
 
+#mingw dll specific settings
+ifeq ($(BUILD_DLL), 1)
+$(package)_config_opts_x86_64-w64-mingw32=--disable-static --enable-shared
+endif
+
 # arm specific settings
 $(package)_config_opts_arm=--disable-assembly
 $(package)_config_opts_aarch64-linux-gnu=$($(package)_config_opts_arm)

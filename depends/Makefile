@@ -24,6 +24,15 @@ ifeq ($(host_os),)
 host_os=$(full_host_os)
 endif
 
+config_lib_type=--enable-static --disable-shared
+
+# mingw dll build
+ifeq ($(HOST), x86_64-w64-mingw32)
+ifeq ($(BUILD_DLL), 1)
+config_lib_type=
+endif
+endif
+
 # mac build
 DARWIN_SDK_PATH ?= "$(CURDIR)/MacOSX10.11.sdk"
 DARWIN_CFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH) -mmacosx-version-min=10.8 -mlinker-version=253.9 -pipe -I$(PREFIX_DIR)include"
@@ -77,13 +86,13 @@ define build_source
 	echo "curdir: $(CURDIR)" && \
 	echo "build_env: $(build_env)" && \
 	echo "config_env: $($(1)_config_env)" && \
-	echo "config_opts: $($(1)_config_opts)" && \
+	echo "config_opts: $($(1)_config_opts) $(config_lib_type)" && \
 	echo "host: $(HOST)" && \
 	echo "prefix: $(PREFIX_DIR)" && \
 	echo "====================================\n\n" && \
 	export PATH="$(TOOLCHAIN_BUILD_DIR)bin:${PATH}" && \
 	if test -f "./autogen.sh"; then ./autogen.sh; fi && \
-	$(build_env) $($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) --enable-static --disable-shared --prefix=$(PREFIX_DIR) || exit && \
+	$(build_env) $($(1)_config_env) ./configure --host="$(HOST)" $($(1)_config_opts) $(config_lib_type) --prefix=$(PREFIX_DIR) || exit && \
 	make || exit && \
 	make install || exit && \
 	cd "$(CURDIR)"

@@ -1844,7 +1844,7 @@ finish_up:
 
 }
 
-int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
+STORJ_API int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
 {
     if (state->canceled) {
         return 0;
@@ -1866,7 +1866,7 @@ int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
     return 0;
 }
 
-int storj_bridge_resolve_file(storj_env_t *env,
+STORJ_API int storj_bridge_resolve_file(storj_env_t *env,
                               storj_download_state_t *state,
                               const char *bucket_id,
                               const char *file_id,
