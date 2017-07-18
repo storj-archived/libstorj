@@ -653,6 +653,11 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     } else {
         ho->proxy_url = NULL;
     }
+    if (http_options->cainfo_path) {
+        ho->cainfo_path = strdup(http_options->cainfo_path);
+    } else {
+        ho->cainfo_path = NULL;
+    }
     ho->low_speed_limit = http_options->low_speed_limit;
     ho->low_speed_time = http_options->low_speed_time;
     if (http_options->timeout == 0 ||
@@ -764,6 +769,9 @@ int storj_destroy_env(storj_env_t *env)
     free((char *)env->http_options->user_agent);
     if (env->http_options->proxy_url) {
         free((char *)env->http_options->proxy_url);
+    }
+    if (env->http_options->cainfo_path) {
+        free((char *)env->http_options->cainfo_path);
     }
     free(env->http_options);
 

@@ -120,6 +120,10 @@ int put_shard(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_PROXY, http_options->proxy_url);
     }
 
+    if (http_options->cainfo_path) {
+        curl_easy_setopt(curl, CURLOPT_CAINFO, http_options->cainfo_path);
+    }
+
     curl_easy_setopt(curl, CURLOPT_POST, 1);
 
     struct curl_slist *header_list = NULL;
@@ -310,6 +314,10 @@ int fetch_shard(storj_http_options_t *http_options,
 
     if (http_options->proxy_url) {
         curl_easy_setopt(curl, CURLOPT_PROXY, http_options->proxy_url);
+    }
+
+    if (http_options->cainfo_path) {
+        curl_easy_setopt(curl, CURLOPT_CAINFO, http_options->cainfo_path);
     }
 
     char query_args[80];
@@ -550,7 +558,12 @@ int fetch_json(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_PROXY, http_options->proxy_url);
     }
 
-    // Set the timeoeut
+    // Set the path to the Certificate Authority (CA) bundle
+    if (http_options->cainfo_path) {
+        curl_easy_setopt(curl, CURLOPT_CAINFO, http_options->cainfo_path);
+    }
+
+    // Set the timeout
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, http_options->timeout);
 
     // Setup the body handler
