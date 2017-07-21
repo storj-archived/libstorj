@@ -85,7 +85,7 @@ void random_buffer(uint8_t *buf, size_t len)
     static FILE *frand = NULL;
 #ifdef _WIN32
     HCRYPTPROV hProvider;
-    int ret = CryptAcquireContextW(&hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
+    int ret = CryptAcquireContext(&hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT);
     assert(ret);
     ret = CryptGenRandom(hProvider, len, buf);
     assert(ret);

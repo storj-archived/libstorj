@@ -89,6 +89,26 @@ Configure command for libstorj-c:
 PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-w64-mingw32/lib/pkgconfig" CFLAGS="-DCURL_STATICLIB -I$(pwd)/depends/build/x86_64-w64-mingw32/include -L$(pwd)/depends/build/x86_64-w64-mingw32/lib -static" ./configure --host=x86_64-w64-mingw32 --enable-static --disable-shared --prefix=$(pwd)/depends/build/x86_64-w64-mingw32
 ```
 
+**Windows Shared Library (DLL)**
+
+Supported hosts include:
+- x86_64-w64-mingw32
+
+Dependencies:
+```
+apt-get install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+```
+
+```
+cd ./depends
+make HOST="x86_64-w64-mingw32" BUILD_DLL=1
+```
+
+Configure command for libstorj-c:
+```
+PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-w64-mingw32/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/x86_64-w64-mingw32/include -L$(pwd)/depends/build/x86_64-w64-mingw32/lib -DSTORJDLL" ./configure --host=x86_64-w64-mingw32 --prefix=$(pwd)/depends/build/x86_64-w64-mingw32
+```
+
 **ARM GNU/Linux**
 
 Supported hosts include:

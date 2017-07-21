@@ -470,7 +470,7 @@ static void log_formatter_error(storj_log_options_t *options, void *handle,
     va_end(args);
 }
 
-struct storj_env *storj_init_env(storj_bridge_options_t *options,
+STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
                                  storj_encrypt_options_t *encrypt_options,
                                  storj_http_options_t *http_options,
                                  storj_log_options_t *log_options)
@@ -703,7 +703,7 @@ struct storj_env *storj_init_env(storj_bridge_options_t *options,
     return env;
 }
 
-int storj_destroy_env(storj_env_t *env)
+STORJ_API int storj_destroy_env(storj_env_t *env)
 {
     int status = 0;
 
@@ -790,7 +790,7 @@ int storj_destroy_env(storj_env_t *env)
     return status;
 }
 
-int storj_encrypt_auth(const char *passphrase,
+STORJ_API int storj_encrypt_auth(const char *passphrase,
                        const char *bridge_user,
                        const char *bridge_pass,
                        const char *mnemonic,
@@ -834,7 +834,7 @@ int storj_encrypt_auth(const char *passphrase,
     return 0;
 }
 
-int storj_encrypt_write_auth(const char *filepath,
+STORJ_API int storj_encrypt_write_auth(const char *filepath,
                              const char *passphrase,
                              const char *bridge_user,
                              const char *bridge_pass,
@@ -862,7 +862,7 @@ int storj_encrypt_write_auth(const char *filepath,
     return 0;
 }
 
-int storj_decrypt_auth(const char *buffer,
+STORJ_API int storj_decrypt_auth(const char *buffer,
                        const char *passphrase,
                        char **bridge_user,
                        char **bridge_pass,
@@ -910,7 +910,7 @@ clean_up:
     return status;
 }
 
-int storj_decrypt_read_auth(const char *filepath,
+STORJ_API int storj_decrypt_read_auth(const char *filepath,
                             const char *passphrase,
                             char **bridge_user,
                             char **bridge_pass,
@@ -955,22 +955,22 @@ int storj_decrypt_read_auth(const char *filepath,
 
 }
 
-uint64_t storj_util_timestamp()
+STORJ_API uint64_t storj_util_timestamp()
 {
     return get_time_milliseconds();
 }
 
-int storj_mnemonic_generate(int strength, char **buffer)
+STORJ_API int storj_mnemonic_generate(int strength, char **buffer)
 {
     return mnemonic_generate(strength, buffer);
 }
 
-bool storj_mnemonic_check(const char *mnemonic)
+STORJ_API bool storj_mnemonic_check(const char *mnemonic)
 {
     return mnemonic_check(mnemonic);
 }
 
-char *storj_strerror(int error_code)
+STORJ_API char *storj_strerror(int error_code)
 {
     switch(error_code) {
         case STORJ_BRIDGE_REQUEST_ERROR:
@@ -1060,7 +1060,7 @@ char *storj_strerror(int error_code)
     }
 }
 
-int storj_bridge_get_info(storj_env_t *env, void *handle, uv_after_work_cb cb)
+STORJ_API int storj_bridge_get_info(storj_env_t *env, void *handle, uv_after_work_cb cb)
 {
     uv_work_t *work = json_request_work_new(env,"GET", "/", NULL,
                                             false, handle);
@@ -1071,7 +1071,7 @@ int storj_bridge_get_info(storj_env_t *env, void *handle, uv_after_work_cb cb)
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb)
+STORJ_API int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb)
 {
     uv_work_t *work = uv_work_new();
     if (!work) {
@@ -1090,7 +1090,7 @@ int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb
                          get_buckets_request_worker, cb);
 }
 
-void storj_free_get_buckets_request(get_buckets_request_t *req)
+STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req)
 {
     json_object_put(req->response);
     if (req->buckets && req->total_buckets > 0) {
@@ -1102,7 +1102,7 @@ void storj_free_get_buckets_request(get_buckets_request_t *req)
     free(req);
 }
 
-int storj_bridge_create_bucket(storj_env_t *env,
+STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
                                const char *name,
                                void *handle,
                                uv_after_work_cb cb)
@@ -1125,7 +1125,7 @@ int storj_bridge_create_bucket(storj_env_t *env,
                          create_bucket_request_worker, cb);
 }
 
-int storj_bridge_delete_bucket(storj_env_t *env,
+STORJ_API int storj_bridge_delete_bucket(storj_env_t *env,
                                const char *id,
                                void *handle,
                                uv_after_work_cb cb)
@@ -1144,7 +1144,7 @@ int storj_bridge_delete_bucket(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_get_bucket(storj_env_t *env,
+STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
                             const char *id,
                             void *handle,
                             uv_after_work_cb cb)
@@ -1163,7 +1163,7 @@ int storj_bridge_get_bucket(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_list_files(storj_env_t *env,
+STORJ_API int storj_bridge_list_files(storj_env_t *env,
                             const char *id,
                             void *handle,
                             uv_after_work_cb cb)
@@ -1191,7 +1191,7 @@ int storj_bridge_list_files(storj_env_t *env,
                          list_files_request_worker, cb);
 }
 
-void storj_free_list_files_request(list_files_request_t *req)
+STORJ_API void storj_free_list_files_request(list_files_request_t *req)
 {
     json_object_put(req->response);
     free(req->path);
@@ -1204,7 +1204,7 @@ void storj_free_list_files_request(list_files_request_t *req)
     free(req);
 }
 
-int storj_bridge_create_bucket_token(storj_env_t *env,
+STORJ_API int storj_bridge_create_bucket_token(storj_env_t *env,
                                      const char *bucket_id,
                                      storj_bucket_op_t operation,
                                      void *handle,
@@ -1229,7 +1229,7 @@ int storj_bridge_create_bucket_token(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_get_file_pointers(storj_env_t *env,
+STORJ_API int storj_bridge_get_file_pointers(storj_env_t *env,
                                    const char *bucket_id,
                                    const char *file_id,
                                    void *handle,
@@ -1249,7 +1249,7 @@ int storj_bridge_get_file_pointers(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_delete_file(storj_env_t *env,
+STORJ_API int storj_bridge_delete_file(storj_env_t *env,
                              const char *bucket_id,
                              const char *file_id,
                              void *handle,
@@ -1269,7 +1269,7 @@ int storj_bridge_delete_file(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_create_frame(storj_env_t *env,
+STORJ_API int storj_bridge_create_frame(storj_env_t *env,
                               void *handle,
                               uv_after_work_cb cb)
 {
@@ -1282,7 +1282,7 @@ int storj_bridge_create_frame(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_get_frames(storj_env_t *env,
+STORJ_API int storj_bridge_get_frames(storj_env_t *env,
                             void *handle,
                             uv_after_work_cb cb)
 {
@@ -1295,7 +1295,7 @@ int storj_bridge_get_frames(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_get_frame(storj_env_t *env,
+STORJ_API int storj_bridge_get_frame(storj_env_t *env,
                            const char *frame_id,
                            void *handle,
                            uv_after_work_cb cb)
@@ -1315,7 +1315,7 @@ int storj_bridge_get_frame(storj_env_t *env,
 
 }
 
-int storj_bridge_delete_frame(storj_env_t *env,
+STORJ_API int storj_bridge_delete_frame(storj_env_t *env,
                               const char *frame_id,
                               void *handle,
                               uv_after_work_cb cb)
@@ -1334,7 +1334,7 @@ int storj_bridge_delete_frame(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_get_file_info(storj_env_t *env,
+STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
                                const char *bucket_id,
                                const char *file_id,
                                void *handle,
@@ -1355,7 +1355,7 @@ int storj_bridge_get_file_info(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_list_mirrors(storj_env_t *env,
+STORJ_API int storj_bridge_list_mirrors(storj_env_t *env,
                               const char *bucket_id,
                               const char *file_id,
                               void *handle,
@@ -1376,7 +1376,7 @@ int storj_bridge_list_mirrors(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-int storj_bridge_register(storj_env_t *env,
+STORJ_API int storj_bridge_register(storj_env_t *env,
                           const char *email,
                           const char *password,
                           void *handle,
