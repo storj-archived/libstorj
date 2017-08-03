@@ -24,7 +24,7 @@ ifeq ($(host_os),)
 host_os=$(full_host_os)
 endif
 
-config_lib_type=--enable-static --disable-shared
+config_lib_type=--enable-static --disable-shared --with-pic
 
 # mingw dll build
 ifeq ($(HOST), x86_64-w64-mingw32)

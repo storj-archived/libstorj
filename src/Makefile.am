@@ -7,11 +7,11 @@ libstorj_la_LDFLAGS += -no-undefined
 endif
 include_HEADERS = storj.h
 
-bin_PROGRAMS = storj
-storj_SOURCES = cli.c storj.h
-storj_LDADD = libstorj.la
-if BUILD_STORJ_DLL
-storj_LDFLAGS = -Wall
-else
-storj_LDFLAGS = -Wall -static
-endif
+# bin_PROGRAMS = storj
+# storj_SOURCES = cli.c storj.h
+# storj_LDADD = libstorj.la
+# if BUILD_STORJ_DLL
+# storj_LDFLAGS = -Wall
+# else
+# storj_LDFLAGS = -Wall -static
+# endif
