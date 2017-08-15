@@ -232,6 +232,8 @@ static void list_files_request_worker(uv_work_t *work)
         file->created = json_object_get_string(created);
         file->mimetype = json_object_get_string(mimetype);
         file->size = json_object_get_int64(size);
+        file->erasure = NULL;
+        file->index = NULL;
         file->hmac = NULL; // TODO though this value is not needed here
         file->id = json_object_get_string(id);
         file->decrypted = false;
