@@ -553,15 +553,12 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
     struct json_object *available;
     struct json_object *item;
     struct json_object *hash;
-    struct json_object *contact;
+    struct json_object *contract;
     struct json_object *address;
     struct json_object *port;
     struct json_object *node_id;
 
     for (int i = 0; i < num_mirrors; i++) {
-        printf("Established\n");
-        printf("-----------\n");
-        printf("Shard: %i\n", i);
         shard = json_object_array_get_idx(req->response, i);
         json_object_object_get_ex(shard, "established",
                                  &established);
@@ -572,47 +569,15 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
             if (j == 0) {
                 json_object_object_get_ex(item, "shardHash",
                                           &hash);
-                printf("Hash: %s\n", json_object_get_string(hash));
+                printf("Shard %i: %s\n", i, json_object_get_string(hash));
             }
-            json_object_object_get_ex(item, "contact", &contact);
-            json_object_object_get_ex(contact, "address",
-                                      &address);
-            json_object_object_get_ex(contact, "port", &port);
-            json_object_object_get_ex(contact, "nodeID", &node_id);
-            const char *address_str =
-                json_object_get_string(address);
-            const char *port_str = json_object_get_string(port);
-            const char *node_id_str =
-                json_object_get_string(node_id);
-            printf("\tstorj://%s:%s/%s\n", address_str, port_str, node_id_str);
-        }
+            json_object_object_get_ex(item, "contract", &contract);
+            json_object_object_get_ex(contract, "farmer_id", &node_id);
 
-        printf("\nAvailable\n");
-        printf("---------\n");
-        printf("Shard: %i\n", i);
-        json_object_object_get_ex(shard, "available",
-                                 &available);
-        int num_available =
-            json_object_array_length(available);
-        for (int j = 0; j < num_available; j++) {
-            item = json_object_array_get_idx(available, j);
-            if (j == 0) {
-                json_object_object_get_ex(item, "shardHash",
-                                          &hash);
-                printf("Hash: %s\n", json_object_get_string(hash));
-            }
-            json_object_object_get_ex(item, "contact", &contact);
-            json_object_object_get_ex(contact, "address",
-                                      &address);
-            json_object_object_get_ex(contact, "port", &port);
-            json_object_object_get_ex(contact, "nodeID", &node_id);
-            const char *address_str =
-                json_object_get_string(address);
-            const char *port_str = json_object_get_string(port);
-            const char *node_id_str =
-                json_object_get_string(node_id);
-            printf("\tstorj://%s:%s/%s\n", address_str, port_str, node_id_str);
+            const char *node_id_str = json_object_get_string(node_id);
+            printf("\tnodeID: %s\n", node_id_str);
         }
+        printf("\n\n");
     }
 
     json_object_put(req->response);
