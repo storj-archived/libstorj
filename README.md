@@ -2,6 +2,8 @@ libstorj
 =======
 
 [![Build Status](https://travis-ci.org/Storj/libstorj.svg?branch=master)](https://travis-ci.org/Storj/libstorj)
+[![License](https://img.shields.io/badge/license-AGPL3.0-blue.svg?style=flat-square)](https://raw.githubusercontent.com/Storj/libstorj/master/LICENSE)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg?style=flat-square)](https://store.docker.com/community/images/computeronix/libstorj)
 
 Asynchronous multi-platform C library and CLI for encrypted file transfer on the Storj network.
 
