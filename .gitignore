@@ -7,6 +7,7 @@
 Makefile.in
 aclocal.m4
 autom4te.cache/
+cmake-build-debug
 configure
 config.status
 config.log
@@ -14,6 +15,7 @@ Makefile
 libtool
 build-aux/
 .deps/
+.idea/*
 .libs/
 src/main
 src/storj
@@ -42,4 +44,3 @@ test/tests.dSYM/
 test/tests_rs
 test/tests_rs.dSYM/
 test/tests_rs.exe
-.idea/*
