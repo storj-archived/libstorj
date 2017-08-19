@@ -477,11 +477,8 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
 {
     curl_global_init(CURL_GLOBAL_ALL);
 
-    uv_loop_t *loop = malloc(sizeof(uv_loop_t));
+    uv_loop_t *loop = uv_default_loop();
     if (!loop) {
-        return NULL;
-    }
-    if (uv_loop_init(loop)) {
         return NULL;
     }
 
