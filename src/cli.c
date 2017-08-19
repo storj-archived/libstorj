@@ -1504,7 +1504,9 @@ int main(int argc, char **argv)
     // run all queued events
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         uv_loop_close(env->loop);
-        free(env->loop);
+
+        // cleanup
+        storj_destroy_env(env);
 
         status = 1;
         goto end_program;

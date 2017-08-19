@@ -775,6 +775,9 @@ STORJ_API int storj_destroy_env(storj_env_t *env)
     // free the log levels
     free(env->log);
 
+    // free the event loop
+    free(env->loop);
+
     // free the environment
     free(env);
 
