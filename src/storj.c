@@ -479,11 +479,8 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
 {
     curl_global_init(CURL_GLOBAL_ALL);
 
-    uv_loop_t *loop = malloc(sizeof(uv_loop_t));
+    uv_loop_t *loop = uv_default_loop();
     if (!loop) {
-        return NULL;
-    }
-    if (uv_loop_init(loop)) {
         return NULL;
     }
 
@@ -776,10 +773,6 @@ STORJ_API int storj_destroy_env(storj_env_t *env)
         free((char *)env->http_options->cainfo_path);
     }
     free(env->http_options);
-
-    // free the event loop
-    uv_loop_close(env->loop);
-    free(env->loop);
 
     // free the log levels
     free(env->log);
