@@ -6,7 +6,7 @@ $(package)_sha256_hash=46942627d5d0ca11720fec18d81fc38f7ef837ea4197c1f630e71ce0d
 
 # default settings
 $(package)_config_env_default=PKG_CONFIG_LIBDIR="$(PREFIX_DIR)/lib/pkgconfig" CFLAGS="-I$(PREFIX_DIR)include -L$(PREFIX_DIR)lib"
-$(package)_config_opts_default=
+$(package)_config_opts_default=--enable-pic
 
 # mingw specific settings
 $(package)_config_env_mingw32=PKG_CONFIG_LIBDIR="$(PREFIX_DIR)/lib/pkgconfig" CFLAGS="-I$(PREFIX_DIR)include -L$(PREFIX_DIR)lib" -static
