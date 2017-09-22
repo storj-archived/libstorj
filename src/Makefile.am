@@ -9,7 +9,7 @@ include_HEADERS = storj.h
 
 bin_PROGRAMS = storj
 storj_SOURCES = cli.c storj.h
-storj_LDADD = libstorj.la
+storj_LDADD = libstorj.la -lcurl -lnettle -ljson-c -luv -lm
 if BUILD_STORJ_DLL
 storj_LDFLAGS = -Wall
 else
