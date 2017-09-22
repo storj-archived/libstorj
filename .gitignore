@@ -13,6 +13,7 @@ config.status
 config.log
 Makefile
 libtool
+build/*
 build-aux/
 .deps/
 .idea/*
