@@ -171,8 +171,9 @@ make HOST="i686-pc-linux-gnu"
 
 Configure command for libstorj-c:
 ```
-PKG_CONFIG_LIBDIR="$(pwd)/depends/build/i686-pc-linux-gnu/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/i686-pc-linux-gnu/include -L$(pwd)/depends/build/i686-pc-linux-gnu/lib -static -m32" LDFLAGS="-m32" ./configure --host=i686-pc-linux-gnu --with-pic --enable-static --enable-shared --prefix=$(pwd)/depends/build/i686-pc-linux-gnu
+PKG_CONFIG_LIBDIR="$(pwd)/depends/build/i686-pc-linux-gnu/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/i686-pc-linux-gnu/include -L$(pwd)/depends/build/i686-pc-linux-gnu/lib -static -m32" LDFLAGS="-m32" ./configure --host=i686-pc-linux-gnu --with-pic --enable-static --disable-shared --prefix=$(pwd)/depends/build/i686-pc-linux-gnu
 ```
+*Note: `--enable-sharded` will also work*
 
 **Mac OSX**
 
