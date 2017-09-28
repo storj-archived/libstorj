@@ -152,7 +152,7 @@ Configure command for libstorj-c:
 PKG_CONFIG_LIBDIR="$(pwd)/depends/build/x86_64-pc-linux-gnu/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/x86_64-pc-linux-gnu/include -L$(pwd)/depends/build/x86_64-pc-linux-gnu/lib -static" ./configure --host=x86_64-pc-linux-gnu --with-pic --enable-static --disable-shared --prefix=$(pwd)/depends/build/x86_64-pc-linux-gnu
 ```
 
-*Note: `--enable-sharded` will also work*
+*Note: `--enable-shared` will also work*
 
 **32-bit GNU/linux**
 
@@ -173,7 +173,7 @@ Configure command for libstorj-c:
 ```
 PKG_CONFIG_LIBDIR="$(pwd)/depends/build/i686-pc-linux-gnu/lib/pkgconfig" CFLAGS="-I$(pwd)/depends/build/i686-pc-linux-gnu/include -L$(pwd)/depends/build/i686-pc-linux-gnu/lib -static -m32" LDFLAGS="-m32" ./configure --host=i686-pc-linux-gnu --with-pic --enable-static --disable-shared --prefix=$(pwd)/depends/build/i686-pc-linux-gnu
 ```
-*Note: `--enable-sharded` will also work*
+*Note: `--enable-shared` will also work*
 
 **Mac OSX**
 
