@@ -2100,7 +2100,7 @@ static void queue_send_exchange_report(storj_upload_state_t *state, int index)
 
 static void verify_bucket_id_callback(uv_work_t *work_req, int status)
 {
-	get_bucket_request_t *req = work_req->data;
+    get_bucket_request_t *req = work_req->data;
     storj_upload_state_t *state = req->handle;
 
     state->log->info(state->env->log_options, state->handle,
