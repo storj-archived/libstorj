@@ -310,8 +310,6 @@ static void cleanup_state(storj_upload_state_t *state)
     }
 
     state->finished_cb(state->error_status, state->file_id, state->handle);
-
-    free(state);
 }
 
 static void free_encryption_ctx(storj_encryption_ctx_t *ctx)
