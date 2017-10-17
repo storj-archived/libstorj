@@ -964,7 +964,8 @@ static void after_push_frame(uv_work_t *work, int status)
             p->farmer_node_id
         );
 
-    } else if (state->shard[req->shard_meta_index].push_frame_request_count == 6) {
+    } else if (state->shard[req->shard_meta_index].push_frame_request_count ==
+               STORJ_MAX_PUSH_FRAME_COUNT) {
         state->error_status = STORJ_BRIDGE_OFFER_ERROR;
     } else {
         state->shard[req->shard_meta_index].progress = AWAITING_PUSH_FRAME;
@@ -2640,8 +2641,7 @@ STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state)
     return 0;
 }
 
-STORJ_API int storj_bridge_store_file(storj_env_t *env,
-                            storj_upload_state_t *state,
+STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
                             storj_upload_opts_t *opts,
                             void *handle,
                             storj_progress_cb progress_cb,
@@ -2649,7 +2649,12 @@ STORJ_API int storj_bridge_store_file(storj_env_t *env,
 {
     if (!opts->fd) {
         env->log->error(env->log_options, handle, "Invalid File descriptor");
-        return 1;
+        return NULL;
+    }
+
+    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
+    if (!state) {
+        return NULL;
     }
 
     state->env = env;
@@ -2721,6 +2726,11 @@ STORJ_API int storj_bridge_store_file(storj_env_t *env,
     work->data = state;
 
     state->pending_work_count += 1;
-    return uv_queue_work(env->loop, (uv_work_t*) work,
-                         prepare_upload_state, begin_work_queue);
+
+    int status = uv_queue_work(env->loop, (uv_work_t*) work,
+                               prepare_upload_state, begin_work_queue);
+    if (status) {
+        state->error_status = STORJ_QUEUE_ERROR;
+    }
+    return state;
 }

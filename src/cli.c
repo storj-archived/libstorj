@@ -414,26 +414,26 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
     uv_signal_init(env->loop, sig);
     uv_signal_start(sig, upload_signal_handler, SIGINT);
 
-    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
-    if (!state) {
-        return 1;
-    }
 
-    sig->data = state;
 
     storj_progress_cb progress_cb = (storj_progress_cb)noop;
     if (env->log_options->level == 0) {
         progress_cb = file_progress;
     }
 
-    int status = storj_bridge_store_file(env,
-                                         state,
-                                         &upload_opts,
-                                         NULL,
-                                         progress_cb,
-                                         upload_file_complete);
+    storj_upload_state_t *state = storj_bridge_store_file(env,
+                                                          &upload_opts,
+                                                          NULL,
+                                                          progress_cb,
+                                                          upload_file_complete);
 
-    return status;
+    if (!state) {
+        return 1;
+    }
+
+    sig->data = state;
+
+    return state->error_status;
 }
 
 static void download_file_complete(int status, FILE *fd, void *handle)
@@ -509,24 +509,21 @@ static int download_file(storj_env_t *env, char *bucket_id,
     uv_signal_init(env->loop, sig);
     uv_signal_start(sig, download_signal_handler, SIGINT);
 
-    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
-    if (!state) {
-        return 1;
-    }
-
-    sig->data = state;
-
     storj_progress_cb progress_cb = (storj_progress_cb)noop;
     if (path && env->log_options->level == 0) {
         progress_cb = file_progress;
     }
 
-    int status = storj_bridge_resolve_file(env, state, bucket_id,
-                                           file_id, fd, NULL,
-                                           progress_cb,
-                                           download_file_complete);
+    storj_download_state_t *state = storj_bridge_resolve_file(env, bucket_id,
+                                                              file_id, fd, NULL,
+                                                              progress_cb,
+                                                              download_file_complete);
+    if (!state) {
+        return 1;
+    }
+    sig->data = state;
 
-    return status;
+    return state->error_status;
 }
 
 static void list_mirrors_callback(uv_work_t *work_req, int status)

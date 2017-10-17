@@ -529,18 +529,16 @@ int test_upload()
         .rs = true
     };
 
-    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
-
-    int status = storj_bridge_store_file(env,
-                                         state,
-                                         &upload_opts,
-                                         NULL,
-                                         check_store_file_progress,
-                                         check_store_file);
-    assert(status == 0);
+    storj_upload_state_t *state = storj_bridge_store_file(env,
+                                                          &upload_opts,
+                                                          NULL,
+                                                          check_store_file_progress,
+                                                          check_store_file);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
     // run all queued events
-
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return 1;
     }
@@ -578,21 +576,20 @@ int test_upload_cancel()
         .fd = fopen(file, "r")
     };
 
-    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
-
-    int status = storj_bridge_store_file(env,
-                                         state,
-                                         &upload_opts,
-                                         NULL,
-                                         check_store_file_progress,
-                                         check_store_file_cancel);
-    assert(status == 0);
-
+    storj_upload_state_t *state = storj_bridge_store_file(env,
+                                                          &upload_opts,
+                                                          NULL,
+                                                          check_store_file_progress,
+                                                          check_store_file_cancel);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
     // process the loop one at a time so that we can do other things while
     // the loop is processing, such as cancel the download
     int count = 0;
     bool more;
+    int status = 0;
     do {
         more = uv_run(env->loop, UV_RUN_ONCE);
         if (more == false) {
@@ -636,20 +633,19 @@ int test_download()
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
 
-    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+    storj_download_state_t *state = storj_bridge_resolve_file(env,
+                                                              bucket_id,
+                                                              file_id,
+                                                              download_fp,
+                                                              NULL,
+                                                              check_resolve_file_progress,
+                                                              check_resolve_file);
 
-    int status = storj_bridge_resolve_file(env,
-                                           state,
-                                           bucket_id,
-                                           file_id,
-                                           download_fp,
-                                           NULL,
-                                           check_resolve_file_progress,
-                                           check_resolve_file);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
     free(download_file);
-
-    assert(status == 0);
 
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return 1;
@@ -679,23 +675,23 @@ int test_download_cancel()
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
 
-    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+    storj_download_state_t *state = storj_bridge_resolve_file(env,
+                                                              bucket_id,
+                                                              file_id,
+                                                              download_fp,
+                                                              NULL,
+                                                              check_resolve_file_progress,
+                                                              check_resolve_file_cancel);
 
-    int status = storj_bridge_resolve_file(env,
-                                           state,
-                                           bucket_id,
-                                           file_id,
-                                           download_fp,
-                                           NULL,
-                                           check_resolve_file_progress,
-                                           check_resolve_file_cancel);
-
-    assert(status == 0);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
     // process the loop one at a time so that we can do other things while
     // the loop is processing, such as cancel the download
     int count = 0;
     bool more;
+    int status = 0;
     do {
         more = uv_run(env->loop, UV_RUN_ONCE);
         if (more == false) {

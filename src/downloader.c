@@ -1866,15 +1866,19 @@ STORJ_API int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
     return 0;
 }
 
-STORJ_API int storj_bridge_resolve_file(storj_env_t *env,
-                              storj_download_state_t *state,
-                              const char *bucket_id,
-                              const char *file_id,
-                              FILE *destination,
-                              void *handle,
-                              storj_progress_cb progress_cb,
-                              storj_finished_download_cb finished_cb)
+STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
+                                                            const char *bucket_id,
+                                                            const char *file_id,
+                                                            FILE *destination,
+                                                            void *handle,
+                                                            storj_progress_cb progress_cb,
+                                                            storj_finished_download_cb finished_cb)
 {
+    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+    if (!state) {
+        return NULL;
+    }
+
     // setup download state
     state->total_bytes = 0;
     state->info = NULL;
@@ -1915,5 +1919,5 @@ STORJ_API int storj_bridge_resolve_file(storj_env_t *env,
     // start download
     queue_next_work(state);
 
-    return state->error_status;
+    return state;
 }
