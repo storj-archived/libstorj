@@ -91,6 +91,7 @@ void check_get_bucket(uv_work_t *work_req, int status)
     assert(req->handle == NULL);
     assert(req->bucket);
     assert(strcmp(req->bucket->name, "test") == 0);
+    assert(req->bucket->decrypted);
 
     pass("storj_bridge_get_bucket");
 
