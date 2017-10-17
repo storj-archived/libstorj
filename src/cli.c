@@ -427,6 +427,10 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
                                                           progress_cb,
                                                           upload_file_complete);
 
+    if (!state) {
+        return 1;
+    }
+
     sig->data = state;
 
     return state->error_status;
@@ -514,6 +518,9 @@ static int download_file(storj_env_t *env, char *bucket_id,
                                                               file_id, fd, NULL,
                                                               progress_cb,
                                                               download_file_complete);
+    if (!state) {
+        return 1;
+    }
     sig->data = state;
 
     return state->error_status;

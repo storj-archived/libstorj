@@ -534,10 +534,11 @@ int test_upload()
                                                           NULL,
                                                           check_store_file_progress,
                                                           check_store_file);
-    assert(state->error_status == 0);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
     // run all queued events
-
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return 1;
     }
@@ -580,8 +581,9 @@ int test_upload_cancel()
                                                           NULL,
                                                           check_store_file_progress,
                                                           check_store_file_cancel);
-    assert(state->error_status == 0);
-
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
     // process the loop one at a time so that we can do other things while
     // the loop is processing, such as cancel the download
@@ -639,9 +641,11 @@ int test_download()
                                                               check_resolve_file_progress,
                                                               check_resolve_file);
 
-    free(download_file);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
-    assert(state->error_status == 0);
+    free(download_file);
 
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return 1;
@@ -679,7 +683,9 @@ int test_download_cancel()
                                                               check_resolve_file_progress,
                                                               check_resolve_file_cancel);
 
-    assert(state->error_status == 0);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
     // process the loop one at a time so that we can do other things while
     // the loop is processing, such as cancel the download
