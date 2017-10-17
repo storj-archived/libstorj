@@ -529,15 +529,12 @@ int test_upload()
         .rs = true
     };
 
-    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
-
-    int status = storj_bridge_store_file(env,
-                                         state,
-                                         &upload_opts,
-                                         NULL,
-                                         check_store_file_progress,
-                                         check_store_file);
-    assert(status == 0);
+    storj_upload_state_t *state = storj_bridge_store_file(env,
+                                                          &upload_opts,
+                                                          NULL,
+                                                          check_store_file_progress,
+                                                          check_store_file);
+    assert(state->error_status == 0);
 
     // run all queued events
 
@@ -578,21 +575,19 @@ int test_upload_cancel()
         .fd = fopen(file, "r")
     };
 
-    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
-
-    int status = storj_bridge_store_file(env,
-                                         state,
-                                         &upload_opts,
-                                         NULL,
-                                         check_store_file_progress,
-                                         check_store_file_cancel);
-    assert(status == 0);
+    storj_upload_state_t *state = storj_bridge_store_file(env,
+                                                          &upload_opts,
+                                                          NULL,
+                                                          check_store_file_progress,
+                                                          check_store_file_cancel);
+    assert(state->error_status == 0);
 
 
     // process the loop one at a time so that we can do other things while
     // the loop is processing, such as cancel the download
     int count = 0;
     bool more;
+    int status = 0;
     do {
         more = uv_run(env->loop, UV_RUN_ONCE);
         if (more == false) {

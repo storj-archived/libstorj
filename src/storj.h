@@ -947,13 +947,11 @@ STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state);
  * @param[in] finished_cb Function called when download finished
  * @return A non-zero error value on failure and 0 on success.
  */
-STORJ_API int storj_bridge_store_file(storj_env_t *env,
-                                      storj_upload_state_t *state,
-                                      storj_upload_opts_t *opts,
-                                      void *handle,
-                                      storj_progress_cb progress_cb,
-                                      storj_finished_upload_cb finished_cb);
-
+STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
+                                                        storj_upload_opts_t *opts,
+                                                        void *handle,
+                                                        storj_progress_cb progress_cb,
+                                                        storj_finished_upload_cb finished_cb);
 
 /**
  * @brief Will cancel a download
