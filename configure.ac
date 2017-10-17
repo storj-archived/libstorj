@@ -1,4 +1,4 @@
-AC_INIT([libstorj],[1.1.0-beta])
+AC_INIT([libstorj],[2.0.0-beta])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([build-aux/m4])
 AM_INIT_AUTOMAKE([foreign])
