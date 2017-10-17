@@ -84,6 +84,20 @@ void check_get_buckets(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+void check_get_bucket(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_bucket_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(req->bucket);
+    assert(strcmp(req->bucket->name, "test") == 0);
+
+    pass("storj_bridge_get_bucket");
+
+    storj_free_get_bucket_request(req);
+    free(work_req);
+}
+
 void check_get_buckets_badauth(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -758,12 +772,16 @@ int test_api()
     status = storj_bridge_get_buckets(env, NULL, check_get_buckets);
     assert(status == 0);
 
+    char *bucket_id = "368be0816766b28fd5f43af5";
+
+    // get bucket
+    status = storj_bridge_get_bucket(env, bucket_id, NULL, check_get_bucket);
+    assert(status == 0);
+
     // create a new bucket with a name
     status = storj_bridge_create_bucket(env, "backups", NULL,
                                         check_create_bucket);
     assert(status == 0);
-
-    char *bucket_id = "368be0816766b28fd5f43af5";
 
     // delete a bucket
     // TODO check for successful status code, response has object

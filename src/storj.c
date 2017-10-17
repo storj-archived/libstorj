@@ -177,6 +177,11 @@ static void get_bucket_request_worker(uv_work_t *work)
 
     req->status_code = status_code;
 
+    if (!req->response) {
+        req->bucket = NULL;
+        return;
+    }
+
     // Derive a key based on the master seed
     char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
     generate_bucket_key(req->encrypt_options->mnemonic,
