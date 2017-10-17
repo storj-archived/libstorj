@@ -363,6 +363,7 @@ static void upload_file_complete(int status, char *file_id, void *handle)
     printf("Upload Success! File ID: %s\n", file_id);
 
     free(file_id);
+    free((storj_upload_state_t *)handle);
 
     exit(0);
 }
@@ -429,7 +430,7 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
     int status = storj_bridge_store_file(env,
                                          state,
                                          &upload_opts,
-                                         NULL,
+                                         (void *)state,
                                          progress_cb,
                                          upload_file_complete);
 
