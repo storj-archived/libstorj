@@ -14,6 +14,7 @@
 
 #define STORJ_NULL -1
 #define STORJ_MAX_REPORT_TRIES 2
+#define STORJ_MAX_PUSH_FRAME_COUNT 6
 
 typedef enum {
     CANCELED = 0,

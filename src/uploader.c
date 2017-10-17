@@ -964,7 +964,8 @@ static void after_push_frame(uv_work_t *work, int status)
             p->farmer_node_id
         );
 
-    } else if (state->shard[req->shard_meta_index].push_frame_request_count == 6) {
+    } else if (state->shard[req->shard_meta_index].push_frame_request_count ==
+               STORJ_MAX_PUSH_FRAME_COUNT) {
         state->error_status = STORJ_BRIDGE_OFFER_ERROR;
     } else {
         state->shard[req->shard_meta_index].progress = AWAITING_PUSH_FRAME;
