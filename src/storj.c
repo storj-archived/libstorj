@@ -72,10 +72,14 @@ static void create_bucket_request_worker(uv_work_t *work)
         req->bucket = malloc(sizeof(storj_bucket_meta_t));
 
         struct json_object *id;
+        struct json_object *created;
+
         json_object_object_get_ex(req->response, "id", &id);
+        json_object_object_get_ex(req->response, "created", &created);
 
         req->bucket->id = json_object_get_string(id);
         req->bucket->name = req->bucket_name;
+        req->bucket->created = json_object_get_string(created);
         req->bucket->decrypted = true;
     }
 
