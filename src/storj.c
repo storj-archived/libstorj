@@ -293,6 +293,8 @@ static void list_files_request_worker(uv_work_t *work)
     struct json_object *size;
     struct json_object *id;
     struct json_object *created;
+    struct json_object *hmac;
+    struct json_object *hmac_value;
 
     for (int i = 0; i < num_files; i++) {
         file = json_object_array_get_idx(req->response, i);
@@ -302,6 +304,8 @@ static void list_files_request_worker(uv_work_t *work)
         json_object_object_get_ex(file, "size", &size);
         json_object_object_get_ex(file, "id", &id);
         json_object_object_get_ex(file, "created", &created);
+        json_object_object_get_ex(file, "hmac", &hmac);
+        json_object_object_get_ex(hmac, "value", &hmac_value);
 
         storj_file_meta_t *file = &req->files[i];
 
@@ -310,7 +314,7 @@ static void list_files_request_worker(uv_work_t *work)
         file->size = json_object_get_int64(size);
         file->erasure = NULL;
         file->index = NULL;
-        file->hmac = NULL; // TODO though this value is not needed here
+        file->hmac = json_object_get_string(hmac_value);
         file->id = json_object_get_string(id);
         file->decrypted = false;
         file->filename = NULL;
