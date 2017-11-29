@@ -2133,7 +2133,6 @@ static void verify_bucket_id_callback(uv_work_t *work_req, int status)
 clean_variables:
     queue_next_work(state);
 
-    json_object_put(req->response);
     storj_free_get_bucket_request(req);
     free(work_req);
 }

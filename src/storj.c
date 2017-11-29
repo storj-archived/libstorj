@@ -1198,7 +1198,9 @@ STORJ_API int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_
 
 STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req)
 {
-    json_object_put(req->response);
+    if (req->response) {
+        json_object_put(req->response);
+    }
     if (req->buckets && req->total_buckets > 0) {
         for (int i = 0; i < req->total_buckets; i++) {
             free((char *)req->buckets[i].name);
@@ -1279,7 +1281,9 @@ STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
 
 STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req)
 {
-    json_object_put(req->response);
+    if (req->response) {
+        json_object_put(req->response);
+    }
     free(req->path);
     if (req->bucket) {
         free((char *)req->bucket->name);
@@ -1318,7 +1322,9 @@ STORJ_API int storj_bridge_list_files(storj_env_t *env,
 
 STORJ_API void storj_free_list_files_request(list_files_request_t *req)
 {
-    json_object_put(req->response);
+    if (req->response) {
+        json_object_put(req->response);
+    }
     free(req->path);
     if (req->files && req->total_files > 0) {
         for (int i = 0; i < req->total_files; i++) {

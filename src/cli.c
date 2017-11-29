@@ -844,7 +844,6 @@ static void list_files_callback(uv_work_t *work_req, int status)
     }
 
 cleanup:
-    json_object_put(req->response);
     storj_free_list_files_request(req);
     free(work_req);
     exit(ret_status);
@@ -908,7 +907,6 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
                bucket->created, bucket->name);
     }
 
-    json_object_put(req->response);
     storj_free_get_buckets_request(req);
     free(work_req);
 }
