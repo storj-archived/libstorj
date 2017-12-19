@@ -900,11 +900,35 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
         printf("No buckets.\n");
     }
 
-    for (int i = 0; i < req->total_buckets; i++) {
+    for (int i = 0; i < req->total_buckets; i++) 
+    {
         storj_bucket_meta_t *bucket = &req->buckets[i];
-        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
-               bucket->id, bucket->decrypted ? "true" : "false",
-               bucket->created, bucket->name);
+        //printf("KSA:[%s] req->handle = %s & bucket->name = %s \n",__FUNCTION__, req->handle, bucket->name);
+
+        if (req->handle != NULL) 
+        {
+            int ret = strcmp(req->handle, bucket->name);
+            if (ret == 0x00)
+            {
+                printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
+                       bucket->id, bucket->decrypted ? "true" : "false",
+                       bucket->created, bucket->name);
+                break;
+            }
+            else
+            {
+                if (i >= (req->total_buckets -1)) 
+                {
+                    printf("Invalid bucket name. \n");
+                }
+            }
+        }
+        else
+        {
+            printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
+                   bucket->id, bucket->decrypted ? "true" : "false",
+                   bucket->created, bucket->name);
+        }
     }
 
     storj_free_get_buckets_request(req);
@@ -1439,9 +1463,24 @@ int main(int argc, char **argv)
             storj_bridge_delete_file(env, bucket_id, file_id,
                                      NULL, delete_file_callback);
 
-        } else if (strcmp(command, "list-buckets") == 0) {
-            storj_bridge_get_buckets(env, NULL, get_buckets_callback);
-        } else if (strcmp(command, "list-mirrors") == 0) {
+        } 
+        else if (strcmp(command, "list-buckets") == 0) 
+        {
+            char *bucket_name = argv[command_index + 1];
+            char *handle = NULL;
+            if (bucket_name != NULL) 
+            {
+                handle = (void *)bucket_name;
+                //printf("KSA:: # of argc = %d , arg[0] = %s, arg[] = %s, command index = %d\n", argc, argv[0], argv[command_index + 1], command_index);
+            }
+            else
+            {
+                handle = NULL;
+                //printf("KSA:: listing all bucket ");
+            }
+            storj_bridge_get_buckets(env, handle, get_buckets_callback);
+        }
+        else if (strcmp(command, "list-mirrors") == 0) {
             char *bucket_id = argv[command_index + 1];
             char *file_id = argv[command_index + 2];
 
