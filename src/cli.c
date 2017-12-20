@@ -917,7 +917,6 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
     {
         storj_bucket_meta_t *bucket = &req->buckets[i];
         cli_state_t *cli_state = req->handle;
-        //printf("KSA:[%s] req->handle = %s & bucket->name = %s \n",__FUNCTION__, req->handle, bucket->name);
 
         if (cli_state->bucket_name != NULL)
         {
@@ -1643,6 +1642,6 @@ static void queue_next_cli_cmd(cli_state_t *cli_state)
     if ((strcmp("list-files"  , cli_state->curr_cmd_req) == 0x00) && 
         (strcmp("list-files-1", cli_state->next_cmd_req) == 0x00))
     {
-	storj_bridge_list_files(cli_state->env, cli_state->bucket_id, NULL, list_files_callback);
+        storj_bridge_list_files(cli_state->env, cli_state->bucket_id, NULL, list_files_callback);
     }
 }
