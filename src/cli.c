@@ -32,7 +32,8 @@ typedef struct {
   char *bucket_id;
   char *file_name;
   char *file_id;
-  char *cmd_req;        /**< cli command requested */
+  char *curr_cmd_req;   /**< cli curr command requested */
+  char *next_cmd_req;   /**< cli next command requested */
   bool  cmd_resp;       /**< cli command response 0->fail; 1->success */
   void *handle;
 }cli_state_t;
@@ -41,6 +42,7 @@ typedef struct {
 extern int errno;
 #endif
 
+static void queue_next_cli_cmd(cli_state_t *cli_state);
 static inline void noop() {};
 
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
@@ -917,15 +919,15 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
         cli_state_t *cli_state = req->handle;
         //printf("KSA:[%s] req->handle = %s & bucket->name = %s \n",__FUNCTION__, req->handle, bucket->name);
 
-	if (cli_state->bucket_name != NULL)
+        if (cli_state->bucket_name != NULL)
         {
-	    int ret = strcmp(cli_state->bucket_name, bucket->name);
+            int ret = strcmp(cli_state->bucket_name, bucket->name);
             if (ret == 0x00)
             {
                 printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
                        bucket->id, bucket->decrypted ? "true" : "false",
                        bucket->created, bucket->name);
-		cli_state->bucket_id = bucket->id;
+                cli_state->bucket_id = (char *)bucket->id;
                 break;
             }
             else
@@ -952,6 +954,7 @@ static void get_bucket_id_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
     get_buckets_request_t *req = work_req->data;
+    cli_state_t *cli_state = req->handle;
 
     if (req->status_code == 401) {
        printf("Invalid user credentials.\n");
@@ -964,18 +967,19 @@ static void get_bucket_id_callback(uv_work_t *work_req, int status)
     for (int i = 0; i < req->total_buckets; i++)
     {
         storj_bucket_meta_t *bucket = &req->buckets[i];
-        cli_state_t *cli_state = req->handle;
+        cli_state->next_cmd_req = NULL;
 
-	if (cli_state->bucket_name != NULL)
+        if (cli_state->bucket_name != NULL)
         {
-	    int ret = strcmp(cli_state->bucket_name, bucket->name);
+            int ret = strcmp(cli_state->bucket_name, bucket->name);
             if (ret == 0x00)
             {
                 printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
                        bucket->id, bucket->decrypted ? "true" : "false",
                        bucket->created, bucket->name);
-		cli_state->bucket_id = bucket->id;
-                break;
+                cli_state->bucket_id = (char *)bucket->id;
+                cli_state->next_cmd_req = "list-files-1";
+               break;
             }
             else
             {
@@ -991,6 +995,12 @@ static void get_bucket_id_callback(uv_work_t *work_req, int status)
                    bucket->id, bucket->decrypted ? "true" : "false",
                    bucket->created, bucket->name);
         }
+    }
+
+    /* set the next command to execute, handled in queue_next_cli_cmd() */
+    if ((cli_state->next_cmd_req != NULL) && (strcmp(cli_state->curr_cmd_req, "list-files") == 0x00))
+    {
+        queue_next_cli_cmd(cli_state);
     }
 
     storj_free_get_buckets_request(req);
@@ -1505,30 +1515,16 @@ int main(int argc, char **argv)
             }
             else
             {
+                cli_state->curr_cmd_req = command;
                 cli_state->bucket_name = bucket_name;
                 printf("KSA:[%s] cli_state->bucket-name = %s\n", __FUNCTION__, cli_state->bucket_name);
                 printf("KSA:[%s] cli_state->bucket_id = %s\n", __FUNCTION__, cli_state->bucket_id);
                 if(!cli_state->bucket_id)
                 {
                     printf("KSA:[%s] current cli_state->bucket_id = %s ... Getting bucket id \n", __FUNCTION__, cli_state->bucket_id);
-                    //storj_bridge_get_buckets(env, cli_state->bucket_name, get_bucket_name_callback);
-
-                    if (!cli_state->bucket_id)
-                    {
-
-                    }
+                    storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
                 }
             }
-        #if 0
-            else
-            {
-                /* pass the bucket id to the below functio */
-                storj_bridge_get_buckets(env, bucket_name, get_bucket_name_callback);
-            }
-	           printf("KSA:[%s] bucket_id = %s\n", g_cli_info.p_bucket_id);
-	           //storj_bridge_list_files(env, g_cli_info.p_bucket_id, NULL, list_files_callback);
-	           //free(g_cli_info.p_bucket_id);
-        #endif
         } else if (strcmp(command, "add-bucket") == 0) {
             char *bucket_name = argv[command_index + 1];
 
@@ -1579,7 +1575,7 @@ int main(int argc, char **argv)
                 cli_state->bucket_name = NULL;
                 //printf("KSA:: listing all bucket ");
             }
-	    /* when callback returns, we store the bucket id of bucket name else null */
+            /* when callback returns, we store the bucket id of bucket name else null */
             storj_bridge_get_buckets(env, cli_state, get_buckets_callback);
         }
         else if (strcmp(command, "get-bucket-id") == 0)
@@ -1594,10 +1590,9 @@ int main(int argc, char **argv)
             else
             {
                 cli_state->bucket_name = (void *)bucket_name;
-		cli_state->cmd_req = command;
-                printf("cli_cmd=%s\n", cli_state->cmd_req);
+                cli_state->curr_cmd_req = command;
             }
-	    /* when callback returns, we store the bucket id of bucket name else null */
+            /* when callback returns, we store the bucket id of bucket name else null */
             storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
         }
         else if (strcmp(command, "list-mirrors") == 0) {
@@ -1617,7 +1612,6 @@ int main(int argc, char **argv)
             status = 1;
             goto end_program;
         }
-
     }
 
     // run all queued events
@@ -1645,4 +1639,17 @@ end_program:
         free(mnemonic);
     }
     return status;
+}
+
+/* cli cmd queue processing function */
+static void queue_next_cli_cmd(cli_state_t *cli_state)
+{
+    void *handle = cli_state->handle;
+
+    if ((strcmp("list-files"  , cli_state->curr_cmd_req) == 0x00) && 
+        (strcmp("list-files-1", cli_state->next_cmd_req) == 0x00))
+    {
+        printf("KSA->[%s]<- cli_state->curr_cmd_req = %s; cli_state->next_cmd_req = %s \n",__FUNCTION__, cli_state->curr_cmd_req, cli_state->next_cmd_req);
+	storj_bridge_list_files(cli_state->env, cli_state->bucket_id, NULL, list_files_callback);
+    }
 }
