@@ -1506,7 +1506,6 @@ int main(int argc, char **argv)
             /* get the corresponding bucket id from the bucket name */
             char *bucket_name = argv[command_index + 1];
 
-            printf("KSA:[%s]: # of argc = %d , arg[0] = %s, arg[] = %s, command index = %d\n", __FUNCTION__, argc, argv[0], argv[command_index + 1], command_index);
             if (!bucket_name)
             {
                 printf("Missing first argument: <bucket-id>\n");
@@ -1517,11 +1516,8 @@ int main(int argc, char **argv)
             {
                 cli_state->curr_cmd_req = command;
                 cli_state->bucket_name = bucket_name;
-                printf("KSA:[%s] cli_state->bucket-name = %s\n", __FUNCTION__, cli_state->bucket_name);
-                printf("KSA:[%s] cli_state->bucket_id = %s\n", __FUNCTION__, cli_state->bucket_id);
                 if(!cli_state->bucket_id)
                 {
-                    printf("KSA:[%s] current cli_state->bucket_id = %s ... Getting bucket id \n", __FUNCTION__, cli_state->bucket_id);
                     storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
                 }
             }
@@ -1568,12 +1564,10 @@ int main(int argc, char **argv)
             if (bucket_name != NULL)
             {
                 cli_state->bucket_name = (void *)bucket_name;
-                //printf("KSA:: # of argc = %d , arg[0] = %s, arg[] = %s, command index = %d\n", argc, argv[0], argv[command_index + 1], command_index);
             }
             else
             {
                 cli_state->bucket_name = NULL;
-                //printf("KSA:: listing all bucket ");
             }
             /* when callback returns, we store the bucket id of bucket name else null */
             storj_bridge_get_buckets(env, cli_state, get_buckets_callback);
@@ -1649,7 +1643,6 @@ static void queue_next_cli_cmd(cli_state_t *cli_state)
     if ((strcmp("list-files"  , cli_state->curr_cmd_req) == 0x00) && 
         (strcmp("list-files-1", cli_state->next_cmd_req) == 0x00))
     {
-        printf("KSA->[%s]<- cli_state->curr_cmd_req = %s; cli_state->next_cmd_req = %s \n",__FUNCTION__, cli_state->curr_cmd_req, cli_state->next_cmd_req);
 	storj_bridge_list_files(cli_state->env, cli_state->bucket_id, NULL, list_files_callback);
     }
 }
