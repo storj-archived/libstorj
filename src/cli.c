@@ -26,6 +26,17 @@ typedef struct {
     char *key;
 } user_options_t;
 
+typedef struct {
+  storj_env_t *env;
+  char *bucket_name;
+  char *bucket_id;
+  char *file_name;
+  char *file_id;
+  char *cmd_req;        /**< cli command requested */
+  bool  cmd_resp;       /**< cli command response 0->fail; 1->success */
+  void *handle;
+}cli_state_t;
+
 #ifndef errno
 extern int errno;
 #endif
@@ -68,7 +79,7 @@ static inline void noop() {};
     "  STORJ_ENCRYPTION_KEY      file encryption key\n\n"
 
 
-#define CLI_VERSION "libstorj-2.0.0-beta"
+#define CLI_VERSION "libstorj-2.0.1-beta"
 
 static void json_logger(const char *message, int level, void *handle)
 {
@@ -900,24 +911,75 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
         printf("No buckets.\n");
     }
 
-    for (int i = 0; i < req->total_buckets; i++) 
+    for (int i = 0; i < req->total_buckets; i++)
     {
         storj_bucket_meta_t *bucket = &req->buckets[i];
+        cli_state_t *cli_state = req->handle;
         //printf("KSA:[%s] req->handle = %s & bucket->name = %s \n",__FUNCTION__, req->handle, bucket->name);
 
-        if (req->handle != NULL) 
+	if (cli_state->bucket_name != NULL)
         {
-            int ret = strcmp(req->handle, bucket->name);
+	    int ret = strcmp(cli_state->bucket_name, bucket->name);
             if (ret == 0x00)
             {
                 printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
                        bucket->id, bucket->decrypted ? "true" : "false",
                        bucket->created, bucket->name);
+		cli_state->bucket_id = bucket->id;
                 break;
             }
             else
             {
-                if (i >= (req->total_buckets -1)) 
+                if (i >= (req->total_buckets -1))
+                {
+                    printf("Invalid bucket name. \n");
+                }
+            }
+        }
+        else
+        {
+            printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
+                   bucket->id, bucket->decrypted ? "true" : "false",
+                   bucket->created, bucket->name);
+        }
+    }
+
+    storj_free_get_buckets_request(req);
+    free(work_req);
+}
+
+static void get_bucket_id_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_buckets_request_t *req = work_req->data;
+
+    if (req->status_code == 401) {
+       printf("Invalid user credentials.\n");
+    } else if (req->status_code != 200 && req->status_code != 304) {
+        printf("Request failed with status code: %i\n", req->status_code);
+    } else if (req->total_buckets == 0) {
+        printf("No buckets.\n");
+    }
+
+    for (int i = 0; i < req->total_buckets; i++)
+    {
+        storj_bucket_meta_t *bucket = &req->buckets[i];
+        cli_state_t *cli_state = req->handle;
+
+	if (cli_state->bucket_name != NULL)
+        {
+	    int ret = strcmp(cli_state->bucket_name, bucket->name);
+            if (ret == 0x00)
+            {
+                printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
+                       bucket->id, bucket->decrypted ? "true" : "false",
+                       bucket->created, bucket->name);
+		cli_state->bucket_id = bucket->id;
+                break;
+            }
+            else
+            {
+                if (i >= (req->total_buckets -1))
                 {
                     printf("Invalid bucket name. \n");
                 }
@@ -1388,6 +1450,15 @@ int main(int argc, char **argv)
             goto end_program;
         }
 
+        cli_state_t *cli_state = malloc(sizeof(cli_state_t));
+        if (!cli_state) {
+            status = 1;
+            goto end_program;
+        }
+        memset(cli_state, 0x00, sizeof(cli_state_t));
+
+        cli_state->env = env;
+
         if (strcmp(command, "download-file") == 0) {
             char *bucket_id = argv[command_index + 1];
             char *file_id = argv[command_index + 2];
@@ -1417,16 +1488,47 @@ int main(int argc, char **argv)
                 status = 1;
                 goto end_program;
             }
-        } else if (strcmp(command, "list-files") == 0) {
-            char *bucket_id = argv[command_index + 1];
+        }
+        else if (strcmp(command, "list-files") == 0)
+        {
+            char *bucket_id = NULL;
 
-            if (!bucket_id) {
+            /* get the corresponding bucket id from the bucket name */
+            char *bucket_name = argv[command_index + 1];
+
+            printf("KSA:[%s]: # of argc = %d , arg[0] = %s, arg[] = %s, command index = %d\n", __FUNCTION__, argc, argv[0], argv[command_index + 1], command_index);
+            if (!bucket_name)
+            {
                 printf("Missing first argument: <bucket-id>\n");
                 status = 1;
                 goto end_program;
             }
+            else
+            {
+                cli_state->bucket_name = bucket_name;
+                printf("KSA:[%s] cli_state->bucket-name = %s\n", __FUNCTION__, cli_state->bucket_name);
+                printf("KSA:[%s] cli_state->bucket_id = %s\n", __FUNCTION__, cli_state->bucket_id);
+                if(!cli_state->bucket_id)
+                {
+                    printf("KSA:[%s] current cli_state->bucket_id = %s ... Getting bucket id \n", __FUNCTION__, cli_state->bucket_id);
+                    //storj_bridge_get_buckets(env, cli_state->bucket_name, get_bucket_name_callback);
 
-            storj_bridge_list_files(env, bucket_id, NULL, list_files_callback);
+                    if (!cli_state->bucket_id)
+                    {
+
+                    }
+                }
+            }
+        #if 0
+            else
+            {
+                /* pass the bucket id to the below functio */
+                storj_bridge_get_buckets(env, bucket_name, get_bucket_name_callback);
+            }
+	           printf("KSA:[%s] bucket_id = %s\n", g_cli_info.p_bucket_id);
+	           //storj_bridge_list_files(env, g_cli_info.p_bucket_id, NULL, list_files_callback);
+	           //free(g_cli_info.p_bucket_id);
+        #endif
         } else if (strcmp(command, "add-bucket") == 0) {
             char *bucket_name = argv[command_index + 1];
 
@@ -1463,22 +1565,40 @@ int main(int argc, char **argv)
             storj_bridge_delete_file(env, bucket_id, file_id,
                                      NULL, delete_file_callback);
 
-        } 
-        else if (strcmp(command, "list-buckets") == 0) 
+        }
+        else if (strcmp(command, "list-buckets") == 0)
         {
             char *bucket_name = argv[command_index + 1];
-            char *handle = NULL;
-            if (bucket_name != NULL) 
+            if (bucket_name != NULL)
             {
-                handle = (void *)bucket_name;
+                cli_state->bucket_name = (void *)bucket_name;
                 //printf("KSA:: # of argc = %d , arg[0] = %s, arg[] = %s, command index = %d\n", argc, argv[0], argv[command_index + 1], command_index);
             }
             else
             {
-                handle = NULL;
+                cli_state->bucket_name = NULL;
                 //printf("KSA:: listing all bucket ");
             }
-            storj_bridge_get_buckets(env, handle, get_buckets_callback);
+	    /* when callback returns, we store the bucket id of bucket name else null */
+            storj_bridge_get_buckets(env, cli_state, get_buckets_callback);
+        }
+        else if (strcmp(command, "get-bucket-id") == 0)
+        {
+            char *bucket_name = argv[command_index + 1];
+            if (!bucket_name)
+            {
+                printf("Missing first argument: <bucket-name>\n");
+                status = 1;
+                goto end_program;
+            }
+            else
+            {
+                cli_state->bucket_name = (void *)bucket_name;
+		cli_state->cmd_req = command;
+                printf("cli_cmd=%s\n", cli_state->cmd_req);
+            }
+	    /* when callback returns, we store the bucket id of bucket name else null */
+            storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
         }
         else if (strcmp(command, "list-mirrors") == 0) {
             char *bucket_id = argv[command_index + 1];
