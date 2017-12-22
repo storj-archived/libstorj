@@ -294,6 +294,7 @@ typedef struct {
     uint64_t size;
     const char *hmac;
     const char *id;
+    const char *bucket_id;
     bool decrypted;
     const char *index;
 } storj_file_meta_t;
