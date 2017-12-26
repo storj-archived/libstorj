@@ -827,6 +827,7 @@ static void list_files_callback(uv_work_t *work_req, int status)
     int ret_status = 0;
     assert(status == 0);
     list_files_request_t *req = work_req->data;
+    cli_state_t *cli_state = req->handle;
 
     if (req->status_code == 404) {
         printf("Bucket id [%s] does not exist\n", req->bucket_id);
@@ -845,23 +846,40 @@ static void list_files_callback(uv_work_t *work_req, int status)
         printf("No files for bucket.\n");
     }
 
-    for (int i = 0; i < req->total_files; i++) {
-
+    for (int i = 0; i < req->total_files; i++)
+    {
         storj_file_meta_t *file = &req->files[i];
 
-        printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
-               file->id,
-               file->size,
-               file->decrypted ? "true" : "false",
-               file->mimetype,
-               file->created,
-               file->filename);
+        /* get the file id of the given file name */
+        if(cli_state->file_name != NULL)
+        {
+            if(strcmp(cli_state->file_name, file->filename) == 0x00)
+            {
+                cli_state->file_id = (char *)file->id;
+                cli_state->next_cmd_req = "download-file-1";
+                break;
+            }
+        }
+        else
+        {
+            printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
+                   file->id,
+                   file->size,
+                   file->decrypted ? "true" : "false",
+                   file->mimetype,
+                   file->created,
+                   file->filename);
+        }
+    }
+
+    if(strcmp(cli_state->curr_cmd_req, "download-file" ) == 0x00)
+    {
+        queue_next_cli_cmd(cli_state);
     }
 
 cleanup:
     storj_free_list_files_request(req);
     free(work_req);
-    exit(ret_status);
 }
 
 static void delete_file_callback(uv_work_t *work_req, int status)
@@ -953,6 +971,7 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
 
 static void get_bucket_id_callback(uv_work_t *work_req, int status)
 {
+    int ret_status = 0x00;
     assert(status == 0);
     get_buckets_request_t *req = work_req->data;
     cli_state_t *cli_state = req->handle;
@@ -972,28 +991,28 @@ static void get_bucket_id_callback(uv_work_t *work_req, int status)
 
         if (cli_state->bucket_name != NULL)
         {
-            int ret = strcmp(cli_state->bucket_name, bucket->name);
-            if (ret == 0x00)
+            if(strcmp(cli_state->bucket_name, bucket->name) == 0x00)
             {
                 printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
                        bucket->id, bucket->decrypted ? "true" : "false",
                        bucket->created, bucket->name);
                 cli_state->bucket_id = (char *)bucket->id;
 
-                if((ret = strcmp(cli_state->curr_cmd_req, "list-files")) == 0x00)
+                if(((strcmp(cli_state->curr_cmd_req, "list-files")) == 0x00) ||
+                   ((strcmp(cli_state->curr_cmd_req, "download-file")) == 0x00))
                 {
                     cli_state->next_cmd_req = "list-files-1";
-                    status = 1;
+                    ret_status = 1;
                 }
-                else if((ret = strcmp(cli_state->curr_cmd_req, "upload-file")) == 0x00)
+                else if((strcmp(cli_state->curr_cmd_req, "upload-file")) == 0x00)
                 {
                     cli_state->next_cmd_req = "upload-file-1";
-                    status = 1;
+                    ret_status = 1;
                 }
                 else
                 {
                     printf("Invalid curr cmd req = %s\n", cli_state->curr_cmd_req);
-                    status = 0;
+                    ret_status = 0;
                 }
                 break;
             }
@@ -1013,7 +1032,7 @@ static void get_bucket_id_callback(uv_work_t *work_req, int status)
         }
     }
 
-    if(0x01 == status)
+    if(0x01 == ret_status)
     {
         queue_next_cli_cmd(cli_state);
     }
@@ -1485,20 +1504,28 @@ int main(int argc, char **argv)
 
         cli_state->env = env;
 
-        if (strcmp(command, "download-file") == 0) {
-            char *bucket_id = argv[command_index + 1];
-            char *file_id = argv[command_index + 2];
+        if (strcmp(command, "download-file") == 0)
+        {
+            char *bucket_name = argv[command_index + 1];
+            char *file_name = argv[command_index + 2];
             char *path = argv[command_index + 3];
 
-            if (!bucket_id || !file_id || !path) {
-                printf("Missing arguments: <bucket-id> <file-id> <path>\n");
+            if (!bucket_name || !file_name || !path)
+            {
+                printf("Missing arguments: <bucket-name> <file-name> <path>\n");
                 status = 1;
                 goto end_program;
             }
-
-            if (download_file(env, bucket_id, file_id, path)) {
-                status = 1;
-                goto end_program;
+            else
+            {
+                cli_state->curr_cmd_req = command;
+                cli_state->bucket_name = bucket_name;
+                cli_state->file_name = file_name;
+                cli_state->file_path = path;
+                if(!cli_state->bucket_id)
+                {
+                    storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
+                }
             }
         }
         else if (strcmp(command, "upload-file") == 0)
@@ -1543,6 +1570,8 @@ int main(int argc, char **argv)
             {
                 cli_state->curr_cmd_req = command;
                 cli_state->bucket_name = bucket_name;
+                cli_state->file_name = NULL;
+                cli_state->file_id = NULL;
                 if(!cli_state->bucket_id)
                 {
                     storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
@@ -1671,10 +1700,20 @@ static void queue_next_cli_cmd(cli_state_t *cli_state)
 {
     void *handle = cli_state->handle;
 
-    if ((strcmp("list-files"  , cli_state->curr_cmd_req) == 0x00) &&
-        (strcmp("list-files-1", cli_state->next_cmd_req) == 0x00))
+    if (((strcmp("list-files"  , cli_state->curr_cmd_req) == 0x00)||
+        ((strcmp("download-file" , cli_state->curr_cmd_req) == 0x00))) &&
+        ((strcmp("list-files-1", cli_state->next_cmd_req) == 0x00)||
+         (strcmp("download-file-1", cli_state->next_cmd_req)==0x00)))
     {
-        storj_bridge_list_files(cli_state->env, cli_state->bucket_id, NULL, list_files_callback);
+        if(strcmp("list-files-1" , cli_state->next_cmd_req) == 0x00)
+        {
+            storj_bridge_list_files(cli_state->env, cli_state->bucket_id, cli_state, list_files_callback);
+        }
+
+        if(strcmp("download-file-1" , cli_state->next_cmd_req) == 0x00)
+        {
+            download_file(cli_state->env, cli_state->bucket_id, cli_state->file_id, cli_state->file_path);
+        }
     }
     else if ((strcmp("upload-file"  , cli_state->curr_cmd_req) == 0x00) &&
              (strcmp("upload-file-1", cli_state->next_cmd_req) == 0x00))
