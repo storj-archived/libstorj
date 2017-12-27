@@ -1,5 +1,5 @@
-#include <errno.h>
 #include <getopt.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,6 +44,7 @@ extern int errno;
 #endif
 
 static void queue_next_cli_cmd(cli_state_t *cli_state);
+static const char *get_filename_separator(const char *file_path);
 static inline void noop() {};
 
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
@@ -83,6 +84,104 @@ static inline void noop() {};
 
 
 #define CLI_VERSION "libstorj-2.0.1-beta"
+
+
+static void print_error(char *this, char *filename1, char *filename2)
+{
+    fprintf(stderr, "%s cannot move %s to %s\n%s\n",
+            this, filename1, filename2, strerror(errno));
+
+    exit(EXIT_FAILURE);
+}
+
+static void print_upload_usage(char *this)
+{
+    fprintf(stderr,"SYNTAX ERROR:\nUsage %s [old_filename] [new_filename]",this);
+
+    exit(EXIT_FAILURE);
+}
+
+static int file_exists(char *file_path)
+{
+    FILE *fd = fopen(file_path, "r");
+
+    if (!fd) {
+        printf("Invalid file path: %s\n", file_path);
+        return 1;
+    }
+
+    const char *file_name = get_filename_separator(file_path);
+
+    if (!file_name)
+    {
+        file_name = file_path;
+    }
+    return 0;
+}
+
+static int strpos(char *str, char *sub_str)
+{
+  /* find first        occurance of substring in string */
+	char *sub_str_pos=strstr(str,sub_str);
+
+  /* if null return -1 , otherwise return substring address - base address */
+	return sub_str_pos == NULL ?  -1 :  (sub_str_pos - str );
+}
+
+static int validate_cmd_tokenize(char *cmd_str, char *str_token[])
+{
+	char sub_str[] = "storj://";
+  int i = 0x00;   /* num of tokens */
+
+	int ret = strpos(cmd_str,sub_str);
+	ret == -1 ? printf("Invalid Command Entry (%d), \ntry ... stroj://<bucket_name>/<file_name>\n", ret) : printf("%d",ret);
+
+  if(ret == 0x00)
+  {
+      /* start tokenizing */
+      str_token[0] = strtok(cmd_str, "/");
+      while(str_token[i] != NULL)
+      {
+          i++;
+          str_token[i] = strtok(NULL, "/");
+      }
+  }
+  else
+  {
+      i = ret;
+  }
+
+	return i;
+}
+
+void printdir(char *dir, int depth)
+{
+    DIR *dp;
+    struct dirent *entry;
+    struct stat statbuf;
+	int spaces = depth*4;
+
+    if((dp = opendir(dir)) == NULL) {
+        fprintf(stderr,"cannot open directory: %s\n", dir);
+        return;
+    }
+    chdir(dir);
+    while((entry = readdir(dp)) != NULL) {
+        lstat(entry->d_name,&statbuf);
+        if(S_ISDIR(statbuf.st_mode)) {
+            /* Found a directory, but ignore . and .. */
+            if(strcmp(".",entry->d_name) == 0 ||
+                strcmp("..",entry->d_name) == 0)
+                continue;
+            printf("%*s%s/\n",spaces,"",entry->d_name);
+            /* Recurse at a new indent level */
+            printdir(entry->d_name,depth+1);
+        }
+        else printf("%*s%s\n",spaces,"",entry->d_name);
+    }
+    chdir("..");
+    closedir(dp);
+}
 
 static void json_logger(const char *message, int level, void *handle)
 {
@@ -1526,6 +1625,52 @@ int main(int argc, char **argv)
                 {
                     storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
                 }
+            }
+        }
+        else if (strcmp(command, "cp") == 0)
+        {
+            int num_of_tokens = 0x00;
+            char *token[10]; /* Max 9 directories supported */
+            char *path = argv[command_index + 1];
+            char *bucket_name = argv[command_index + 2];
+
+            memset(token, 0x00, sizeof(token));
+            printf("KSA:[%s] file path = %s\n", __FUNCTION__, path);
+            printf("KSA:[%s] bucket_name = %s \n", __FUNCTION__, bucket_name);
+
+            /* check if file exists */
+            if(file_exists(path) == 0x00)
+            {
+                const char *file_name = get_filename_separator(path);
+                printf("KSA:[%s] file name = %s\n", __FUNCTION__, file_name);
+
+                num_of_tokens = validate_cmd_tokenize(bucket_name, token);
+                printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
+                for(int j = 0x00; j < num_of_tokens; j++)
+                {
+                    printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
+                }
+
+                if(num_of_tokens < 0x02) /* no file-name entered */
+                {
+                    printf("[%s] Invalid command ...  \n", __FUNCTION__);
+                    goto end_program;
+                }
+                else
+                {
+                    cli_state->curr_cmd_req = "upload-file";
+                    cli_state->bucket_name = token[1];
+                    cli_state->file_path = path;
+                    if(!cli_state->bucket_id)
+                    {
+                        storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
+                    }
+                }
+            }
+            else
+            {
+                printf("KSA:[%s] file path = %s\n", __FUNCTION__, path);
+                printf("Invalid filename \n");
             }
         }
         else if (strcmp(command, "upload-file") == 0)
