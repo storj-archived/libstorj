@@ -1642,7 +1642,7 @@ int main(int argc, char **argv)
             if(file_exists(path) == 0x00)
             {
                 const char *file_name = get_filename_separator(path);
-                printf("KSA:[%s] file name = %s\n", __FUNCTION__, file_name);
+                printf("KSA:[%s][%d] file name = %s\n", __FUNCTION__, __LINE__,file_name);
 
                 num_of_tokens = validate_cmd_tokenize(bucket_name, token);
                 printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
@@ -1651,20 +1651,56 @@ int main(int argc, char **argv)
                     printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
                 }
 
-                if(num_of_tokens < 0x02) /* no file-name entered */
+                switch (num_of_tokens ) 
                 {
-                    printf("[%s] Invalid command ...  \n", __FUNCTION__);
-                    goto end_program;
-                }
-                else
-                {
-                    cli_state->curr_cmd_req = "upload-file";
-                    cli_state->bucket_name = token[1];
-                    cli_state->file_path = path;
-                    if(!cli_state->bucket_id)
-                    {
-                        storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
-                    }
+                    case 0x03:  /* local filename and upload filename are valid names */
+                        if ((strcmp(file_name, token[2]) == 0x00) || 
+                            (strcmp(token[2], ".") == 0x00))
+                        {
+                            printf("[%d] am here file_path = %s\n", __LINE__, path);
+                            cli_state->curr_cmd_req = "upload-file";
+                            cli_state->bucket_name = token[1];
+                            cli_state->file_path = path;
+                            printf("[%d] am here file_path = %s\n", __LINE__, path);
+                            if(!cli_state->bucket_id)
+                            {
+                                storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
+                            }
+                        }
+                        else
+                        {    
+                            #if 0
+                            /* rename the source file same as target file and upload */
+                            int ret = 0x00;
+                            ret = rename(path, token[2]);
+                            printf("[%d]rename = %d \n", __LINE__, ret);
+                            #endif
+
+                            printf("KSA:[%s] Invalid upload target filename \n",
+                                  __FUNCTION__, file_name, token[2]);
+                        }
+                    break;
+
+                    case 0x02:  /* missing uploadfilename */
+                        if (token[2] == NULL) 
+                        {
+                            printf("[%d] am here file_path = %s\n", __LINE__, path);
+                            cli_state->curr_cmd_req = "upload-file";
+                            cli_state->bucket_name = token[1];
+                            cli_state->file_path = path;
+                            printf("[%d] am here file_path = %s\n", __LINE__, path);
+                            if(!cli_state->bucket_id)
+                            {
+                                storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
+                            }
+                        }
+                        break;
+                    case 0x01:
+                    case 0x00:
+                    default:
+                        printf("[%s] Invalid command ... token[2]=%s \n", __FUNCTION__, token[2]);
+                        goto end_program;
+                    break;
                 }
             }
             else
