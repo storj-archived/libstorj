@@ -105,6 +105,7 @@ static int file_exists(char *file_path)
 {
     struct stat sb;
     gid_t  st_grpid;
+    FILE *out_fd;
 
     if (stat(file_path, &sb) == -1) 
     {
@@ -124,7 +125,13 @@ static int file_exists(char *file_path)
         case S_IFDIR:
             printf("file_path = %s\n\n", file_path);
             printf("directory\n");
-            printdir(file_path, 0);
+
+            if((out_fd = fopen("output.txt", "a+")) == NULL)
+            {
+                return;
+            }
+            printdir(file_path, 0,out_fd);
+            fclose(out_fd);
             break;
         case S_IFIFO:
             printf("FIFO/pipe\n");
@@ -204,33 +211,58 @@ static int validate_cmd_tokenize(char *cmd_str, char *str_token[])
         return i;
 }
 
-void printdir(char *dir, int depth)
+void printdir(char *dir, int depth, FILE *fd)
 {
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
-        int spaces = depth*4;
+    int spaces = depth*4;
+    char tmp_dir[80];
+    char *full_path = NULL;
 
-    if((dp = opendir(dir)) == NULL) {
+    memset(tmp_dir, 0x00, sizeof(tmp_dir));
+
+    if((dp = opendir(dir)) == NULL) 
+    {
         fprintf(stderr,"cannot open directory: %s\n", dir);
         return;
     }
+
     chdir(dir);
-    while((entry = readdir(dp)) != NULL) {
+    while((entry = readdir(dp)) != NULL) 
+    {
         lstat(entry->d_name,&statbuf);
-        if(S_ISDIR(statbuf.st_mode)) {
+        if(S_ISDIR(statbuf.st_mode)) 
+        {
             /* Found a directory, but ignore . and .. */
             if(strcmp(".",entry->d_name) == 0 ||
                 strcmp("..",entry->d_name) == 0)
                 continue;
-            printf("%*s%s/\n",spaces,"",entry->d_name);
+
+            //fprintf(out_fd, "%*s%s\n",spaces,"",entry->d_name);
+            //printf("%*s%s/\n",spaces,"",entry->d_name);
+
+            //strcpy(tmp_dir,entry->d_name);
+            //printf("%*s%s/\n",spaces,"",tmp_dir);
+
+            //strcat(tmp_dir,"__");
+            //printf("%*s%s/\n",spaces,"",tmp_dir);
+
             /* Recurse at a new indent level */
-            printdir(entry->d_name,depth+1);
+            printdir(entry->d_name,depth+1,fd);
         }
-        else printf("%*s%s\n",spaces,"",entry->d_name);
+        else 
+        {
+            //fprintf(out_fd,"%s%s%s\n","",tmp_dir,entry->d_name);
+            //printf("%s%s%s\n","",tmp_dir,entry->d_name);
+            full_path = realpath(entry->d_name, NULL);
+            fprintf(fd,"%s%s\n","",full_path);
+            printf("%s%s\n","",full_path);
+        }
     }
     chdir("..");
     closedir(dp);
+    free(full_path);
 }
 
 static void json_logger(const char *message, int level, void *handle)
