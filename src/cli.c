@@ -239,22 +239,11 @@ void printdir(char *dir, int depth, FILE *fd)
                 strcmp("..",entry->d_name) == 0)
                 continue;
 
-            //fprintf(out_fd, "%*s%s\n",spaces,"",entry->d_name);
-            //printf("%*s%s/\n",spaces,"",entry->d_name);
-
-            //strcpy(tmp_dir,entry->d_name);
-            //printf("%*s%s/\n",spaces,"",tmp_dir);
-
-            //strcat(tmp_dir,"__");
-            //printf("%*s%s/\n",spaces,"",tmp_dir);
-
             /* Recurse at a new indent level */
             printdir(entry->d_name,depth+1,fd);
         }
         else 
         {
-            //fprintf(out_fd,"%s%s%s\n","",tmp_dir,entry->d_name);
-            //printf("%s%s%s\n","",tmp_dir,entry->d_name);
             full_path = realpath(entry->d_name, NULL);
             fprintf(fd,"%s%s\n","",full_path);
             printf("%s%s\n","",full_path);
