@@ -103,38 +103,88 @@ static void print_upload_usage(char *this)
 
 static int file_exists(char *file_path)
 {
-    FILE *fd = fopen(file_path, "r");
+    struct stat sb;
+    gid_t  st_grpid;
 
-    if (!fd) {
-        printf("Invalid file path: %s\n", file_path);
+    if (stat(file_path, &sb) == -1) 
+    {
+        perror("stat");
+        printf("\n\n returning 1\n\n");
         return 1;
     }
 
-    const char *file_name = get_filename_separator(file_path);
-
-    if (!file_name)
+    switch (sb.st_mode & S_IFMT) 
     {
-        file_name = file_path;
+        case S_IFBLK:
+            printf("block device\n");
+            break;
+        case S_IFCHR:
+            printf("character device\n");
+            break;
+        case S_IFDIR:
+            printf("file_path = %s\n\n", file_path);
+            printf("directory\n");
+            printdir(file_path, 0);
+            break;
+        case S_IFIFO:
+            printf("FIFO/pipe\n");
+            break;
+        case S_IFLNK:
+            printf("symlink\n");
+            break;
+        case S_IFREG:
+            printf("regular file\n");
+            return 0;
+            break;
+        case S_IFSOCK:
+            printf("socket\n");
+            break;
+        default:
+            printf("unknown?\n");
+            break;
     }
-    return 0;
+
+    #if ENABLE_FILE_DETAILS
+    printf("I-node number:            %ld\n", (long)sb.st_ino);
+
+    printf("Mode:                     %lo (octal)\n",
+           (unsigned long)sb.st_mode);
+
+    printf("Link count:               %ld\n", (long)sb.st_nlink);
+    printf("Ownership:                UID=%ld   GID=%ld\n",
+           (long)sb.st_uid, (long)sb.st_gid);
+
+    printf("Preferred I/O block size: %ld bytes\n",
+           (long)sb.st_blksize);
+    printf("File size:                %lld bytes\n",
+           (long long)sb.st_size);
+    printf("Blocks allocated:         %lld\n",
+           (long long)sb.st_blocks);
+
+    printf("Last status change:       %s", ctime(&sb.st_ctime));
+    printf("Last file access:         %s", ctime(&sb.st_atime));
+    printf("Last file modification:   %s", ctime(&sb.st_mtime));
+    #endif
+
+    return 1;
 }
 
 static int strpos(char *str, char *sub_str)
 {
   /* find first        occurance of substring in string */
-	char *sub_str_pos=strstr(str,sub_str);
+        char *sub_str_pos=strstr(str,sub_str);
 
   /* if null return -1 , otherwise return substring address - base address */
-	return sub_str_pos == NULL ?  -1 :  (sub_str_pos - str );
+        return sub_str_pos == NULL ?  -1 :  (sub_str_pos - str );
 }
 
 static int validate_cmd_tokenize(char *cmd_str, char *str_token[])
 {
-	char sub_str[] = "storj://";
+        char sub_str[] = "storj://";
   int i = 0x00;   /* num of tokens */
 
-	int ret = strpos(cmd_str,sub_str);
-	ret == -1 ? printf("Invalid Command Entry (%d), \ntry ... stroj://<bucket_name>/<file_name>\n", ret) : printf("%d",ret);
+        int ret = strpos(cmd_str,sub_str);
+        ret == -1 ? printf("Invalid Command Entry (%d), \ntry ... stroj://<bucket_name>/<file_name>\n", ret) : printf("%d",ret);
 
   if(ret == 0x00)
   {
@@ -151,7 +201,7 @@ static int validate_cmd_tokenize(char *cmd_str, char *str_token[])
       i = ret;
   }
 
-	return i;
+        return i;
 }
 
 void printdir(char *dir, int depth)
@@ -159,7 +209,7 @@ void printdir(char *dir, int depth)
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
-	int spaces = depth*4;
+        int spaces = depth*4;
 
     if((dp = opendir(dir)) == NULL) {
         fprintf(stderr,"cannot open directory: %s\n", dir);
@@ -1279,6 +1329,7 @@ int main(int argc, char **argv)
         {"log", required_argument,  0, 'l'},
         {"debug", no_argument,  0, 'd'},
         {"help", no_argument,  0, 'h'},
+        {"recursive", required_argument,  0, 'r'},
         {0, 0, 0, 0}
     };
 
@@ -1297,10 +1348,11 @@ int main(int argc, char **argv)
     char *storj_bridge = getenv("STORJ_BRIDGE");
     int c;
     int log_level = 0;
+    char *local_file_path = NULL;
 
     char *proxy = getenv("STORJ_PROXY");
 
-    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:",
+    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:r:R:",
                                  cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
@@ -1318,7 +1370,14 @@ int main(int argc, char **argv)
             case 'V':
             case 'v':
                 printf(CLI_VERSION "\n\n");
-                exit(0);
+                //exit(0);
+                break;
+            case 'R':
+            case 'r':
+                printf( "Recursive Coping \n\n");
+                local_file_path = optarg;
+                printf("local_file_path = %s, %s\n\n", local_file_path, optarg);
+                //exit(0);
                 break;
             case 'h':
                 printf(HELP_TEXT);
@@ -1635,8 +1694,8 @@ int main(int argc, char **argv)
             char *bucket_name = argv[command_index + 2];
 
             memset(token, 0x00, sizeof(token));
-            printf("KSA:[%s] file path = %s\n", __FUNCTION__, path);
-            printf("KSA:[%s] bucket_name = %s \n", __FUNCTION__, bucket_name);
+            printf("KSA:[%s][%d] local file path = %s\n", __FUNCTION__, __LINE__, path);
+            printf("KSA:[%s][%d] upload path     = %s\n", __FUNCTION__, __LINE__, bucket_name);
 
             /* check if file exists */
             if(file_exists(path) == 0x00)
@@ -1651,7 +1710,7 @@ int main(int argc, char **argv)
                     printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
                 }
 
-                switch (num_of_tokens ) 
+                switch (num_of_tokens) 
                 {
                     case 0x03:  /* local filename and upload filename are valid names */
                         if ((strcmp(file_name, token[2]) == 0x00) || 
@@ -1676,8 +1735,8 @@ int main(int argc, char **argv)
                             printf("[%d]rename = %d \n", __LINE__, ret);
                             #endif
 
-                            printf("KSA:[%s] Invalid upload target filename \n",
-                                  __FUNCTION__, file_name, token[2]);
+                            printf("KSA:[%s][%d] Invalid upload target filename \n",
+                                  __FUNCTION__, __LINE__);
                         }
                     break;
 
