@@ -412,22 +412,15 @@ void check_delete_frame(uv_work_t *work_req, int status)
 void check_file_info(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    get_file_info_request_t *req = work_req->data;
     assert(req->handle == NULL);
+    assert(req->file);
+    assert(strcmp(req->file->filename, "storj-test-download.data") == 0);
+    assert(strcmp(req->file->mimetype, "video/ogg") == 0);
 
-    struct json_object *value;
-    int success = json_object_object_get_ex(req->response, "mimetype", &value);
-    assert(success == 1);
-    assert(json_object_is_type(value, json_type_string) == 1);
-
-    const char* mimetype = json_object_get_string(value);
-
-    assert(strcmp(mimetype, "video/ogg") == 0);
     pass("storj_bridge_get_file_info");
 
-    json_object_put(req->response);
-    free(req->path);
-    free(req);
+    storj_free_get_file_info_request(req);
     free(work_req);
 }
 
