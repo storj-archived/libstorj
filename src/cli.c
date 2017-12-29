@@ -1715,6 +1715,7 @@ int main(int argc, char **argv)
             char *bucket_name = argv[command_index + 2];
 
             memset(token, 0x00, sizeof(token));
+            printf("KSA:[%s][%d] local_file_path = %s\n", __FUNCTION__, __LINE__, local_file_path);
             printf("KSA:[%s][%d] local file path = %s\n", __FUNCTION__, __LINE__, path);
             printf("KSA:[%s][%d] upload path     = %s\n", __FUNCTION__, __LINE__, bucket_name);
 
