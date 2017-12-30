@@ -318,6 +318,24 @@ typedef struct {
     void *handle;
 } list_files_request_t;
 
+/** @brief A structure for queueing get file info request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    const char *bucket_id;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
+    struct json_object *response;
+    storj_file_meta_t *file;
+    int error_code;
+    int status_code;
+    void *handle;
+} get_file_info_request_t;
+
 typedef enum {
     BUCKET_PUSH,
     BUCKET_PULL
@@ -912,6 +930,13 @@ STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
                                          const char *file_id,
                                          void *handle,
                                          uv_after_work_cb cb);
+
+/**
+ * @brief Will free all structs for get file info request
+ *
+ * @param[in] req - The work request from storj_bridge_get_file_info callback
+ */
+STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req);
 
 /**
  * @brief Get mirror data for a file
