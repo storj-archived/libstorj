@@ -1240,6 +1240,7 @@ static void request_info(uv_work_t *work)
         req->info->size = 0;
         req->info->hmac = NULL;
         req->info->id = NULL;
+        req->info->bucket_id = NULL;
         req->info->decrypted = false;
         req->info->index = NULL;
 

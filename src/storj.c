@@ -292,6 +292,7 @@ static void list_files_request_worker(uv_work_t *work)
     struct json_object *mimetype;
     struct json_object *size;
     struct json_object *id;
+    struct json_object *bucket_id;
     struct json_object *created;
     struct json_object *hmac;
     struct json_object *hmac_value;
@@ -303,6 +304,7 @@ static void list_files_request_worker(uv_work_t *work)
         json_object_object_get_ex(file, "mimetype", &mimetype);
         json_object_object_get_ex(file, "size", &size);
         json_object_object_get_ex(file, "id", &id);
+        json_object_object_get_ex(file, "bucket", &bucket_id);
         json_object_object_get_ex(file, "created", &created);
         json_object_object_get_ex(file, "hmac", &hmac);
         json_object_object_get_ex(hmac, "value", &hmac_value);
@@ -316,6 +318,7 @@ static void list_files_request_worker(uv_work_t *work)
         file->index = NULL;
         file->hmac = json_object_get_string(hmac_value);
         file->id = json_object_get_string(id);
+        file->bucket_id = json_object_get_string(bucket_id);
         file->decrypted = false;
         file->filename = NULL;
 
