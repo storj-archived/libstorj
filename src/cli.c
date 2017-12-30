@@ -216,7 +216,7 @@ static int validate_cmd_tokenize(char *cmd_str, char *str_token[])
       i = ret;
   }
 
-        return i;
+  return i;
 }
 
 void printdir(char *dir, int depth, FILE *fd)
@@ -1744,6 +1744,7 @@ int main(int argc, char **argv)
                         __FUNCTION__, __LINE__, file_exist_status);
             const char *file_name = NULL;
             char cwd[1024] = "/home/kishore/libstorj/src";
+            char *upload_file = cwd;
             switch(file_exist_status)
             {
                 case CLI_UNKNOWN_FILE_ATTR:
@@ -1828,11 +1829,46 @@ int main(int argc, char **argv)
                         goto end_program;
                     }
                 #endif
-                strcat(cwd, "/output.txt");
-                fprintf(stdout, "Current working dir: %s\n", cwd);
-                if(file_exists(cwd) == CLI_VALID_REGULAR_FILE)
+                strcat(upload_file, "/output.txt");
+                printf("KSA[%s][%d] upload file : %s\n", __FUNCTION__, __LINE__,  upload_file);
+                if(file_exists(upload_file) == CLI_VALID_REGULAR_FILE)
                 {
-                    printf("YAHOO>>>>>>\n\n\n");
+                    /* start reading one file at a time and upload the files */
+                    upload_file = "/home/kishore/libstorj/src/output1.txt";
+                    FILE *file = fopen ( upload_file, "r" );
+
+                    num_of_tokens = validate_cmd_tokenize(bucket_name, token);
+                    printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
+                    for(int j = 0x00; j < num_of_tokens; j++)
+                    {
+                        printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
+                    }
+
+                    if (file != NULL)
+                    {
+                        char line [1000];
+                        char *temp;
+                        memset(line, 0x00, sizeof(line));
+                        while(fgets(line,sizeof line,file)!= NULL) /* read a line from a file */
+                        {
+                            fprintf(stdout,"*****uploading file: %s *****\n",line); //print the file contents on stdout.
+                            temp = strrchr(line, '\n');
+                            if(temp) *temp = '\0';
+                            cli_state->curr_cmd_req = "upload-file";
+                            cli_state->bucket_name = token[1];
+                            cli_state->file_path = line;
+                            printf("[%s][%d] target file name = %s\n", __FUNCTION__, __LINE__, line);
+                            if(!cli_state->bucket_id)
+                            {
+                                storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
+                            }
+                        }
+                        fclose(file);
+                    }
+                    else
+                    {
+                        perror(upload_file); //print the error message on stderr.
+                    }
                 }
                 break;
 
