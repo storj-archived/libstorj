@@ -375,7 +375,7 @@ typedef void (*storj_finished_download_cb)(int status, FILE *fd, void *handle);
 
 /** @brief A function signature for an upload complete callback
  */
-typedef void (*storj_finished_upload_cb)(int error_status, char *file_id, void *handle);
+typedef void (*storj_finished_upload_cb)(int error_status, storj_file_meta_t *file, void *handle);
 
 /** @brief A structure that represents a pointer to a shard
  *
@@ -503,7 +503,7 @@ typedef struct {
     uint32_t shard_concurrency;
     const char *index;
     const char *file_name;
-    char *file_id;
+    storj_file_meta_t *info;
     const char *encrypted_file_name;
     FILE *original_file;
     uint64_t file_size;
@@ -978,6 +978,13 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
                                                         void *handle,
                                                         storj_progress_cb progress_cb,
                                                         storj_finished_upload_cb finished_cb);
+
+/**
+ * @brief Will free the file info struct passed to the upload finished callback
+ *
+ * @param[in] file - The storj_file_meta_t struct from storj_finished_upload_cb callback
+ */
+STORJ_API void storj_free_uploaded_file_info(storj_file_meta_t *file);
 
 /**
  * @brief Will cancel a download
