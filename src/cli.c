@@ -257,8 +257,8 @@ void printdir(char *dir, int depth, FILE *fd)
         else
         {
             full_path = realpath(entry->d_name, NULL);
-            fprintf(fd,"%s%s\n","",full_path);
-            printf("%s%s\n","",full_path);
+            //fprintf(fd,"%s%s\n","",full_path);
+            //printf("%s%s\n","",full_path);
         }
     }
     chdir("..");
@@ -551,15 +551,17 @@ static void file_progress(double progress,
 static void upload_file_complete(int status, char *file_id, void *handle)
 {
     printf("\n");
-    if (status != 0) {
+    if (status != 0)
+    {
         printf("Upload failure: %s\n", storj_strerror(status));
         //exit(status);
     }
-
-    printf("Upload Success! File ID: %s\n", file_id);
+    else
+    {
+        printf("Upload Success! File ID: %s\n", file_id);
+    }
 
     free(file_id);
-
     queue_next_cli_cmd(handle);
     //exit(0);
 }
@@ -1827,9 +1829,9 @@ int main(int argc, char **argv)
                         /* read a line from a file */
                         while(fgets(line[i],sizeof(line), file)!= NULL)
                         {
-                            fprintf(stdout,"*****uploading file: %s *****\n",line); //print the file contents on stdout.
+                            //fprintf(stdout,"*****uploading file: %s *****\n",line); //print the file contents on stdout.
                             i++;
-                            printf("[%s][%d] target file name = %s\n", __FUNCTION__, __LINE__, line[i-1]);
+                            //printf("[%s][%d] target file name = %s\n", __FUNCTION__, __LINE__, line[i-1]);
                         }
                         cli_state->total_files = i;
                         if(cli_state->total_files > 0x00)
@@ -2066,15 +2068,16 @@ static void queue_next_cli_cmd(cli_state_t *cli_state)
                 if(temp) *temp = '\0';
                 cli_state->file_path = line[i];
                 i++;
-                printf("[%s][%d] target file name = %s\n", __FUNCTION__, __LINE__, line[i-1]);
-                if(i > cli_state->curr_up_file)
+                printf("[%s][%d] [index = %d] target file name = %s\n", __FUNCTION__, __LINE__, i, line[i-1]);
+                if(i >= cli_state->curr_up_file)
                   break;
             }
-            if(cli_state->curr_up_file < cli_state->total_files)
+            if(cli_state->curr_up_file <= cli_state->total_files)
             {
-                fprintf(stdout,"*****uploading file: %s *****\n",line); //print the file contents on stdout.
+                fprintf(stdout,"*****uploading file: %s *****\n",line[i-1]); //print the file contents on stdout.
                 upload_file(cli_state->env, cli_state->bucket_id, cli_state->file_path, cli_state);
                 cli_state->curr_up_file++;
+                //queue_next_cli_cmd(cli_state);
             }
             else
             {
