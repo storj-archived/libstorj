@@ -550,6 +550,7 @@ static void file_progress(double progress,
 
 static void upload_file_complete(int status, char *file_id, void *handle)
 {
+    cli_state_t *cli_state = handle;
     printf("\n");
     if (status != 0)
     {
@@ -562,8 +563,12 @@ static void upload_file_complete(int status, char *file_id, void *handle)
     }
 
     free(file_id);
+    if((cli_state->total_files == 0x00) &&
+       (cli_state->curr_up_file == 0x00))
+    {
+        exit(0);
+    }
     queue_next_cli_cmd(handle);
-    //exit(0);
 }
 
 void upload_signal_handler(uv_signal_t *req, int signum)
@@ -1738,6 +1743,7 @@ int main(int argc, char **argv)
                     file_name = get_filename_separator(path);
                     printf("KSA:[%s][%d] file name = %s\n", __FUNCTION__, __LINE__,file_name);
 
+                    /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
                     num_of_tokens = validate_cmd_tokenize(bucket_name, token);
                     printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
                     for(int j = 0x00; j < num_of_tokens; j++)
@@ -1745,7 +1751,8 @@ int main(int argc, char **argv)
                         printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
                     }
 
-                    /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
+                    cli_state->total_files  = 0x00;
+                    cli_state->curr_up_file = 0x00;
                     switch (num_of_tokens)
                     {
                         case 0x03:  /* local filename and upload filename are valid names */
@@ -1793,23 +1800,6 @@ int main(int argc, char **argv)
                 break;
 
                 case CLI_VALID_DIR:
-                #if 0 //NEED_TO_FIX_GETCWD_FUNC_
-                    if (getcwd(cwd, sizeof(cwd)) != NULL)
-                    {
-                        fprintf(stdout, "Current working dir: %s\n", cwd);
-                        strcat(cwd, "/output.txt");
-                        fprintf(stdout, "Current working dir: %s\n", cwd);
-                        if(file_exists(cwd) == CLI_VALID_REGULAR_FILE)
-                        {
-                          printf("YAHOO>>>>>>\n\n\n");
-                        }
-                    }
-                    else
-                    {
-                        perror("getcwd() error");
-                        goto end_program;
-                    }
-                #endif
                 strcat(upload_list, "/output1.txt");
                 printf("KSA[%s][%d] upload file : %s\n", __FUNCTION__, __LINE__,  upload_list);
                 if(file_exists(upload_list) == CLI_VALID_REGULAR_FILE)
@@ -1829,9 +1819,7 @@ int main(int argc, char **argv)
                         /* read a line from a file */
                         while(fgets(line[i],sizeof(line), file)!= NULL)
                         {
-                            //fprintf(stdout,"*****uploading file: %s *****\n",line); //print the file contents on stdout.
                             i++;
-                            //printf("[%s][%d] target file name = %s\n", __FUNCTION__, __LINE__, line[i-1]);
                         }
                         cli_state->total_files = i;
                         if(cli_state->total_files > 0x00)
@@ -1848,7 +1836,8 @@ int main(int argc, char **argv)
                     }
                     else
                     {
-                        perror(upload_file); //print the error message on stderr.
+                        /* print the error message on stderr. */
+                        perror(upload_file);
                     }
                 }
 
@@ -1864,7 +1853,6 @@ int main(int argc, char **argv)
                 printf("[%s][%d] bucket id = %s\n", __FUNCTION__, __LINE__, cli_state->bucket_id);
                 if(!cli_state->bucket_id)
                 {
-                    printf("AM I HERE \n\n");
                     storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
                 }
                 break;
@@ -2077,7 +2065,6 @@ static void queue_next_cli_cmd(cli_state_t *cli_state)
                 fprintf(stdout,"*****uploading file: %s *****\n",line[i-1]); //print the file contents on stdout.
                 upload_file(cli_state->env, cli_state->bucket_id, cli_state->file_path, cli_state);
                 cli_state->curr_up_file++;
-                //queue_next_cli_cmd(cli_state);
             }
             else
             {
@@ -2089,6 +2076,8 @@ static void queue_next_cli_cmd(cli_state_t *cli_state)
         else
         {
             /* handle single file upload from the command line */
+            printf("handle it dudue\n\n\n");
+            upload_file(cli_state->env, cli_state->bucket_id, cli_state->file_path, cli_state);
         }
     }
 }
