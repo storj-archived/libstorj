@@ -1,5 +1,5 @@
-#include <getopt.h>
 #include <errno.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +42,7 @@ typedef struct {
   char *curr_cmd_req;   /**< cli curr command requested */
   char *next_cmd_req;   /**< cli next command requested */
   bool  cmd_resp;       /**< cli command response 0->fail; 1->success */
+  bool  file_xfer_stat; /**< false -> inprogress; true -> done */
   void *handle;
 }cli_state_t;
 
@@ -575,7 +576,6 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path)
 
     if (!fd) {
         printf("Invalid file path: %s\n", file_path);
-        return 1;
     }
 
     const char *file_name = get_filename_separator(file_path);
@@ -1111,36 +1111,11 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
         printf("No buckets.\n");
     }
 
-    for (int i = 0; i < req->total_buckets; i++)
-    {
+    for (int i = 0; i < req->total_buckets; i++) {
         storj_bucket_meta_t *bucket = &req->buckets[i];
-        cli_state_t *cli_state = req->handle;
-
-        if (cli_state->bucket_name != NULL)
-        {
-            int ret = strcmp(cli_state->bucket_name, bucket->name);
-            if (ret == 0x00)
-            {
-                printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
-                       bucket->id, bucket->decrypted ? "true" : "false",
-                       bucket->created, bucket->name);
-                cli_state->bucket_id = (char *)bucket->id;
-                break;
-            }
-            else
-            {
-                if (i >= (req->total_buckets -1))
-                {
-                    printf("Invalid bucket name. \n");
-                }
-            }
-        }
-        else
-        {
-            printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
-                   bucket->id, bucket->decrypted ? "true" : "false",
-                   bucket->created, bucket->name);
-        }
+        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
+               bucket->id, bucket->decrypted ? "true" : "false",
+               bucket->created, bucket->name);
     }
 
     storj_free_get_buckets_request(req);
@@ -1399,7 +1374,7 @@ int main(int argc, char **argv)
             case 'V':
             case 'v':
                 printf(CLI_VERSION "\n\n");
-                //exit(0);
+                exit(0);
                 break;
             case 'R':
             case 'r':
@@ -1851,9 +1826,9 @@ int main(int argc, char **argv)
                         memset(line, 0x00, sizeof(line));
                         while(fgets(line,sizeof line,file)!= NULL) /* read a line from a file */
                         {
-                            fprintf(stdout,"*****uploading file: %s *****\n",line); //print the file contents on stdout.
                             temp = strrchr(line, '\n');
                             if(temp) *temp = '\0';
+                            fprintf(stdout,"*****uploading file: %s *****\n",line); //print the file contents on stdout.
                             cli_state->curr_cmd_req = "upload-file";
                             cli_state->bucket_name = token[1];
                             cli_state->file_path = line;
@@ -1964,17 +1939,7 @@ int main(int argc, char **argv)
         }
         else if (strcmp(command, "list-buckets") == 0)
         {
-            char *bucket_name = argv[command_index + 1];
-            if (bucket_name != NULL)
-            {
-                cli_state->bucket_name = (void *)bucket_name;
-            }
-            else
-            {
-                cli_state->bucket_name = NULL;
-            }
-            /* when callback returns, we store the bucket id of bucket name else null */
-            storj_bridge_get_buckets(env, cli_state, get_buckets_callback);
+            storj_bridge_get_buckets(env, NULL, get_buckets_callback);
         }
         else if (strcmp(command, "get-bucket-id") == 0)
         {
