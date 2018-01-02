@@ -55,6 +55,8 @@ extern int errno;
 
 static void printdir(char *dir, int depth, FILE *fd);
 static void queue_next_cli_cmd(cli_state_t *cli_state);
+static int cli_upload_file(char *path, char *bucket_name, cli_state_t *cli_state);
+static int cli_download_file(char *path, char *bucket_name, cli_state_t *cli_state);
 static const char *get_filename_separator(const char *file_path);
 static inline void noop() {};
 
@@ -200,28 +202,28 @@ static int strpos(char *str, char *sub_str)
 
 static int validate_cmd_tokenize(char *cmd_str, char *str_token[])
 {
-        char sub_str[] = "storj://";
-  int i = 0x00;   /* num of tokens */
+    char sub_str[] = "storj://";
+    int i = 0x00;   /* num of tokens */
 
-        int ret = strpos(cmd_str,sub_str);
-        ret == -1 ? printf("Invalid Command Entry (%d), \ntry ... stroj://<bucket_name>/<file_name>\n", ret) : printf("%d",ret);
+    int ret = strpos(cmd_str, sub_str);
+    ret == -1 ? printf("Invalid Command Entry (%d), \ntry ... stroj://<bucket_name>/<file_name>\n", ret) : printf("sub string pos = %d\n", ret);
 
-  if(ret == 0x00)
-  {
-      /* start tokenizing */
-      str_token[0] = strtok(cmd_str, "/");
-      while(str_token[i] != NULL)
-      {
-          i++;
-          str_token[i] = strtok(NULL, "/");
-      }
-  }
-  else
-  {
-      i = ret;
-  }
+    if (ret == 0x00) 
+    {
+        /* start tokenizing */
+        str_token[0] = strtok(cmd_str, "/");
+        while (str_token[i] != NULL) 
+        {
+            i++;
+            str_token[i] = strtok(NULL, "/");
+        }
+    } 
+    else 
+    {
+        i = ret;
+    }
 
-  return i;
+    return i;
 }
 
 static void printdir(char *dir, int depth, FILE *fd)
@@ -1705,11 +1707,14 @@ int main(int argc, char **argv)
         }
         else if (strcmp(command, "cp") == 0)
         {
+            int ret = 0x00;
             int num_of_tokens = 0x00;
             char *token[10]; /* Max 9 directories supported */
             char *path = NULL;
             char *bucket_name = NULL;
+            char *file_name = NULL; 
 
+            /* cp command wrt to upload-file */
             if(local_file_path == NULL)
             {
                 path = argv[command_index + 1];
@@ -1721,167 +1726,53 @@ int main(int argc, char **argv)
                 bucket_name = argv[command_index + 1];
             }
 
-            memset(token, 0x00, sizeof(token));
-            printf("KSA:[%s][%d] cp -r[R] arg    = %s\n", __FUNCTION__, __LINE__, local_file_path);
-            printf("KSA:[%s][%d] local file path = %s\n", __FUNCTION__, __LINE__, path);
-            printf("KSA:[%s][%d] upload path     = %s\n", __FUNCTION__, __LINE__, bucket_name);
-
-            int file_exist_status = file_exists(path);
-            printf("KSA[%s][%d] file_exist_status = %d\n",
-                        __FUNCTION__, __LINE__, file_exist_status);
-            const char *file_name = NULL;
-            //char cwd[1024] = "/home/kishore/libstorj/src";
-            char cwd[1024];
-            char *upload_list = cwd;
-            memset(upload_list, 0x00, sizeof(cwd));
-            switch(file_exist_status)
+            if (strpos(bucket_name,"storj://") < 0x00) 
             {
-                case CLI_UNKNOWN_FILE_ATTR:
-                case CLI_NO_SUCH_FILE_OR_DIR:
-                    printf("KSA:[%s] file path = %s\n", __FUNCTION__, path);
-                    printf("Invalid filename \n");
-                break;
+                /* download-file command */
 
-                case CLI_VALID_REGULAR_FILE:
-                    file_name = get_filename_separator(path);
-                    printf("KSA:[%s][%d] file name = %s\n", __FUNCTION__, __LINE__,file_name);
+                /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
+                num_of_tokens = validate_cmd_tokenize(path, token);
+                printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
+                for(int j = 0x00; j < num_of_tokens; j++)
+                {
+                    printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
+                }
 
-                    /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
-                    num_of_tokens = validate_cmd_tokenize(bucket_name, token);
-                    printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
-                    for(int j = 0x00; j < num_of_tokens; j++)
-                    {
-                        printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
-                    }
+                printf("KSA[%s][%d] download file command \n\n", __FUNCTION__, __LINE__ );
+                path = bucket_name; 
+                bucket_name = token[1]; 
+                file_name = token[2]; 
 
-                    cli_state->total_files  = 0x00;
-                    cli_state->curr_up_file = 0x00;
-                    switch (num_of_tokens)
-                    {
-                        case 0x03:  /* local filename and upload filename are valid names */
-                            if ((strcmp(file_name, token[2]) == 0x00) ||
-                                (strcmp(token[2], ".") == 0x00))
-                            {
-                                cli_state->curr_cmd_req = "upload-file";
-                                cli_state->bucket_name = token[1];
-                                cli_state->file_path = path;
-                                printf("[%d] target file name = %s\n", __LINE__, file_name);
-                                if(!cli_state->bucket_id)
-                                {
-                                    storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
-                                }
-                            }
-                            else
-                            {
-                                printf("KSA:[%s][%d] Invalid upload target filename - ",
-                                      __FUNCTION__, __LINE__);
-                                printf("Use same filename as source or '.' or blank \n");
-                                goto end_program;
-                            }
-                        break;
-
-                        case 0x02:  /* missing upload filename */
-                            if (token[2] == NULL)
-                            {
-                                cli_state->curr_cmd_req = "upload-file";
-                                cli_state->bucket_name = token[1];
-                                cli_state->file_path = path;
-                                printf("[%d] target file name = %s\n", __LINE__, file_name);
-                                if(!cli_state->bucket_id)
-                                {
-                                    storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
-                                }
-                            }
-                            break;
-                        case 0x01:
-                        case 0x00:
-                        default:
-                            printf("[%s] Invalid command ... token[2]=%s \n", __FUNCTION__, token[2]);
-                            goto end_program;
-                        break;
-                    }
-                break;
-
-                case CLI_VALID_DIR:
-                    //printf("\tWorkdir: %s\n", getenv("PWD"));
-                    if ((upload_list = getenv("PWD")) != NULL)
-                    {
-                        fprintf(stdout, "Current working dir: %s\n", upload_list);
-                        strcat(upload_list, "/output.txt");
-                        fprintf(stdout, "Current working dir: %s\n", upload_list);
-                        if(file_exists(cwd) == CLI_VALID_REGULAR_FILE)
-                        {
-                          printf("YAHOO>>>>>>\n\n\n");
-                        }
-                    }
-                    else
-                    {
-                        perror("getcwd() error");
-                        goto end_program;
-                    }
-
-                    #if 1 
-                    //strcat(upload_list, "/output1.txt");
-                    printf("KSA[%s][%d] upload file : %s\n", __FUNCTION__, __LINE__,  upload_list);
-                    if(file_exists(upload_list) == CLI_VALID_REGULAR_FILE)
-                    {
-                        /* start reading one file at a time and upload the files */
-                        FILE *file = fopen ( upload_list, "r" );
-
-                        if (file != NULL)
-                        {
-                            char line [256][256];
-                            char *temp;
-                            int i = 0x00;
-                            memset(line, 0x00, sizeof(line));
-                            cli_state->file_name =  upload_list;
-                            printf("KSA[%s][%d] upload file : %s\n", __FUNCTION__, __LINE__,  upload_list);
-                            printf("[%s][%d] upload file name = %s\n", __FUNCTION__, __LINE__, cli_state->file_name);
-                            /* read a line from a file */
-                            while(fgets(line[i],sizeof(line), file)!= NULL)
-                            {
-                                i++;
-                            }
-                            cli_state->total_files = i;
-                            if(cli_state->total_files > 0x00)
-                            {
-                                cli_state->curr_up_file = 0x01;
-                            }
-                            else
-                            {
-                                cli_state->curr_up_file = 0x00;
-                            }
-                            printf("[%s][%d] total upload files = %d\n", __FUNCTION__, __LINE__, cli_state->total_files);
-                            printf("[%s][%d] upload cur up file# = %d\n", __FUNCTION__, __LINE__, cli_state->curr_up_file);
-                            fclose(file);
-                        }
-                        else
-                        {
-                            /* print the error message on stderr. */
-                            perror(upload_list);
-                        }
-                    }
-
-                    num_of_tokens = validate_cmd_tokenize(bucket_name, token);
-                    printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
-                    for(int j = 0x00; j < num_of_tokens; j++)
-                    {
-                        printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
-                    }
-
-                    cli_state->curr_cmd_req = "upload-file";
-                    cli_state->bucket_name = token[1];
-                    printf("[%s][%d] bucket id = %s\n", __FUNCTION__, __LINE__, cli_state->bucket_id);
+                printf("KSA[%s][%d] file path = %s\n",__FUNCTION__,__LINE__, path);
+                if (!bucket_name || !file_name || !path)
+                {
+                    printf("Missing arguments: storj cp [-rR]storj://<bucket-name>/<file-name> <local_download_path>\n");
+                    status = 1;
+                    goto end_program;
+                }
+                else
+                {
+                    cli_state->curr_cmd_req = "download-file";
+                    cli_state->bucket_name = bucket_name;
+                    cli_state->file_name = file_name;
+                    cli_state->file_path = path;
+                    printf("KSA[%s][%d] cmd = %s, bucket name = %s, file_name = %s, file path = %s\n",
+                            __FUNCTION__, __LINE__,cli_state->curr_cmd_req, cli_state->bucket_name, cli_state->file_name, cli_state->file_path );
                     if(!cli_state->bucket_id)
                     {
                         storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
                     }
-                    #endif
-                    break;
-
-                    default:
-                    break;
-            }/* switch - case */
+                }
+            }
+            else
+            {
+                /* upload-file command */
+                printf("KSA[%s][%d] upload file command \n\n", __FUNCTION__, __LINE__ );
+                if(cli_upload_file(path,bucket_name,cli_state) < 0x00)
+                {
+                    goto end_program;
+                }
+            }
         }
         else if (strcmp(command, "upload-file") == 0)
         {
@@ -2102,4 +1993,175 @@ static void queue_next_cli_cmd(cli_state_t *cli_state)
             upload_file(cli_state->env, cli_state->bucket_id, cli_state->file_path, cli_state);
         }
     }
+}
+
+static int cli_upload_file(char *path, char *bucket_name, cli_state_t *cli_state)
+{
+    int num_of_tokens = 0x00;
+    char *token[10]; /* Max 9 directories supported */
+
+    memset(token, 0x00, sizeof(token));
+    printf("KSA:[%s][%d] local file path = %s\n", __FUNCTION__, __LINE__, path);
+    printf("KSA:[%s][%d] upload path     = %s\n", __FUNCTION__, __LINE__, bucket_name);
+
+    int file_exist_status = file_exists(path);
+    printf("KSA[%s][%d] file_exist_status = %d\n",
+                __FUNCTION__, __LINE__, file_exist_status);
+    const char *file_name = NULL;
+    char cwd[1024];
+    char *upload_list = cwd;
+    memset(upload_list, 0x00, sizeof(cwd));
+    switch(file_exist_status)
+    {
+        case CLI_UNKNOWN_FILE_ATTR:
+        case CLI_NO_SUCH_FILE_OR_DIR:
+            printf("KSA:[%s] file path = %s\n", __FUNCTION__, path);
+            printf("Invalid filename \n");
+        break;
+
+        case CLI_VALID_REGULAR_FILE:
+            file_name = get_filename_separator(path);
+            printf("KSA:[%s][%d] file name = %s\n", __FUNCTION__, __LINE__,file_name);
+
+            /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
+            num_of_tokens = validate_cmd_tokenize(bucket_name, token);
+            printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
+            for(int j = 0x00; j < num_of_tokens; j++)
+            {
+                printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
+            }
+
+            cli_state->total_files  = 0x00;
+            cli_state->curr_up_file = 0x00;
+            switch (num_of_tokens)
+            {
+                case 0x03:  /* local filename and upload filename are valid names */
+                    if ((strcmp(file_name, token[2]) == 0x00) ||
+                        (strcmp(token[2], ".") == 0x00))
+                    {
+                        cli_state->curr_cmd_req = "upload-file";
+                        cli_state->bucket_name = token[1];
+                        cli_state->file_path = path;
+                        printf("[%d] target file name = %s\n", __LINE__, file_name);
+                        if(!cli_state->bucket_id)
+                        {
+                            storj_bridge_get_buckets(cli_state->env, cli_state, get_bucket_id_callback);
+                        }
+                    }
+                    else
+                    {
+                        printf("KSA:[%s][%d] Invalid upload target filename - ",
+                              __FUNCTION__, __LINE__);
+                        printf("Use same filename as source or '.' or blank \n");
+                        return -1; 
+                    }
+                break;
+
+                case 0x02:  /* missing upload filename */
+                    if (token[2] == NULL)
+                    {
+                        cli_state->curr_cmd_req = "upload-file";
+                        cli_state->bucket_name = token[1];
+                        cli_state->file_path = path;
+                        printf("[%d] target file name = %s\n", __LINE__, file_name);
+                        if(!cli_state->bucket_id)
+                        {
+                            storj_bridge_get_buckets(cli_state->env, cli_state, get_bucket_id_callback);
+                        }
+                    }
+                    break;
+                case 0x01:
+                case 0x00:
+                default:
+                    printf("[%s] Invalid command ... token[2]=%s \n", __FUNCTION__, token[2]);
+                    return -1; 
+                break;
+            }
+        break;
+
+        case CLI_VALID_DIR:
+            if ((upload_list = getenv("PWD")) != NULL)
+            {
+                fprintf(stdout, "Current working dir: %s\n", upload_list);
+                strcat(upload_list, "/output.txt");
+                fprintf(stdout, "Current working dir: %s\n", upload_list);
+                if(file_exists(upload_list) == CLI_VALID_REGULAR_FILE)
+                {
+                    printf("KSA:[%s][%d] Upload file list exists \n", __FUNCTION__, __LINE__);
+                }
+            }
+            else
+            {
+                perror("getenv() error");
+                return -1; 
+            }
+
+            printf("KSA[%s][%d] upload file : %s\n", __FUNCTION__, __LINE__,  upload_list);
+            if(file_exists(upload_list) == CLI_VALID_REGULAR_FILE)
+            {
+                /* start reading one file at a time and upload the files */
+                FILE *file = fopen ( upload_list, "r" );
+
+                if (file != NULL)
+                {
+                    char line [256][256];
+                    char *temp;
+                    int i = 0x00;
+                    memset(line, 0x00, sizeof(line));
+                    cli_state->file_name =  upload_list;
+                    printf("KSA[%s][%d] upload file : %s\n", __FUNCTION__, __LINE__,  upload_list);
+                    printf("[%s][%d] upload file name = %s\n", __FUNCTION__, __LINE__, cli_state->file_name);
+                    /* read a line from a file */
+                    while(fgets(line[i],sizeof(line), file)!= NULL)
+                    {
+                        i++;
+                    }
+                    cli_state->total_files = i;
+                    if(cli_state->total_files > 0x00)
+                    {
+                        cli_state->curr_up_file = 0x01;
+                    }
+                    else
+                    {
+                        cli_state->curr_up_file = 0x00;
+                    }
+                    printf("[%s][%d] total upload files = %d\n", __FUNCTION__, __LINE__, cli_state->total_files);
+                    printf("[%s][%d] upload cur up file# = %d\n", __FUNCTION__, __LINE__, cli_state->curr_up_file);
+                    fclose(file);
+                }
+                else
+                {
+                    /* print the error message on stderr. */
+                    perror(upload_list);
+                }
+            }
+
+            num_of_tokens = validate_cmd_tokenize(bucket_name, token);
+            printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
+            for(int j = 0x00; j < num_of_tokens; j++)
+            {
+                printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
+            }
+
+            cli_state->curr_cmd_req = "upload-file";
+            cli_state->bucket_name = token[1];
+            printf("[%s][%d] bucket id = %s\n", __FUNCTION__, __LINE__, cli_state->bucket_id);
+            if(!cli_state->bucket_id)
+            {
+                storj_bridge_get_buckets(cli_state->env, cli_state, get_bucket_id_callback);
+            }
+        break;
+
+        default:
+        break;
+    }/* switch - case */
+
+    return 0;
+}
+
+static int cli_download_file(char *path, char *bucket_name, cli_state_t *cli_state)
+{
+    printf("KSA[%s][%d] download file command \n\n", __FUNCTION__, __LINE__ );
+
+    return 0;
 }
