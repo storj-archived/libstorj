@@ -287,7 +287,7 @@ void check_store_file(int error_code, storj_file_meta_t *file, void *handle)
 {
     assert(handle == NULL);
     if (error_code == 0) {
-        if (strcmp(file->id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
+        if (file && strcmp(file->id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
             pass("storj_bridge_store_file");
         } else {
             fail("storj_bridge_store_file(0)");
