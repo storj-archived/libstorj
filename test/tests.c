@@ -283,11 +283,11 @@ void check_store_file_progress(double progress,
     }
 }
 
-void check_store_file(int error_code, char *file_id, void *handle)
+void check_store_file(int error_code, storj_file_meta_t *file, void *handle)
 {
     assert(handle == NULL);
     if (error_code == 0) {
-        if (strcmp(file_id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
+        if (file && strcmp(file->id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
             pass("storj_bridge_store_file");
         } else {
             fail("storj_bridge_store_file(0)");
@@ -297,10 +297,10 @@ void check_store_file(int error_code, char *file_id, void *handle)
         printf("\t\tERROR:   %s\n", storj_strerror(error_code));
     }
 
-    free(file_id);
+    storj_free_uploaded_file_info(file);
 }
 
-void check_store_file_cancel(int error_code, char *file_id, void *handle)
+void check_store_file_cancel(int error_code, storj_file_meta_t *file, void *handle)
 {
     assert(handle == NULL);
     if (error_code == STORJ_TRANSFER_CANCELED) {
@@ -310,7 +310,7 @@ void check_store_file_cancel(int error_code, char *file_id, void *handle)
         printf("\t\tERROR:   %s\n", storj_strerror(error_code));
     }
 
-    free(file_id);
+    storj_free_uploaded_file_info(file);
 }
 
 void check_delete_file(uv_work_t *work_req, int status)

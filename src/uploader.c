@@ -248,10 +248,6 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->frame_id);
     }
 
-    if (state->hmac_id) {
-        free(state->hmac_id);
-    }
-
     if (state->encrypted_file_name) {
         free((char *)state->encrypted_file_name);
     }
@@ -286,10 +282,6 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->encrypted_file_path);
     }
 
-    if (state->index) {
-        free((char *)state->index);
-    }
-
     if (state->shard) {
         for (int i = 0; i < state->total_shards; i++ ) {
 
@@ -309,7 +301,7 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->shard);
     }
 
-    state->finished_cb(state->error_status, state->file_id, state->handle);
+    state->finished_cb(state->error_status, state->info, state->handle);
 
     free(state);
 }
@@ -358,17 +350,36 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
         req->log->info(state->env->log_options, state->handle,
                        "Successfully Added bucket entry");
 
+        req->log->debug(state->env->log_options, state->handle,
+                        "fn[after_create_bucket_entry] - JSON Response: %s", json_object_to_json_string(req->response));
+
         state->add_bucket_entry_count = 0;
         state->completed_upload = true;
 
-        struct json_object *file_id_value = NULL;
-        char *file_id = NULL;
-        if (json_object_object_get_ex(req->response, "id", &file_id_value)) {
-            file_id = (char *)json_object_get_string(file_id_value);
-        }
+        state->info = malloc(sizeof(storj_file_meta_t));
+        state->info->created = NULL;
+        state->info->filename = state->file_name;
+        state->info->mimetype = NULL;
+        state->info->erasure = NULL;
+        state->info->size = state->file_size;
+        state->info->hmac = state->hmac_id;
+        state->info->id = NULL;
+        state->info->bucket_id = state->bucket_id;
+        state->info->decrypted = true;
+        state->info->index = state->index;
 
-        if (file_id) {
-            state->file_id = strdup(file_id);
+        struct json_object *file_id_value = NULL;
+        struct json_object *created_value = NULL;
+        struct json_object *mimetype_value = NULL;
+        
+        if (json_object_object_get_ex(req->response, "id", &file_id_value)) {
+        	state->info->id = strdup((char *)json_object_get_string(file_id_value));
+        }
+        if (json_object_object_get_ex(req->response, "created", &created_value)) {
+        	state->info->created = strdup((char *)json_object_get_string(created_value));
+        }
+        if (json_object_object_get_ex(req->response, "mimetype", &mimetype_value)) {
+        	state->info->mimetype = strdup((char *)json_object_get_string(mimetype_value));
         }
 
     } else if (state->add_bucket_entry_count == 6) {
@@ -2662,7 +2673,7 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     } else {
         state->index = NULL;
     }
-    state->file_id = NULL;
+    state->info = NULL;
     state->file_name = opts->file_name;
     state->encrypted_file_name = NULL;
     state->original_file = opts->fd;
@@ -2732,4 +2743,16 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
         state->error_status = STORJ_QUEUE_ERROR;
     }
     return state;
+}
+
+STORJ_API void storj_free_uploaded_file_info(storj_file_meta_t *file)
+{
+    if (file) {
+        free((char *)file->id);
+        free((char *)file->created);
+        free((char *)file->mimetype);
+        free((char *)file->hmac);
+        free((char *)file->index);
+    }
+    free(file);
 }
