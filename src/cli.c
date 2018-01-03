@@ -208,17 +208,17 @@ static int validate_cmd_tokenize(char *cmd_str, char *str_token[])
     int ret = strpos(cmd_str, sub_str);
     ret == -1 ? printf("Invalid Command Entry (%d), \ntry ... stroj://<bucket_name>/<file_name>\n", ret) : printf("sub string pos = %d\n", ret);
 
-    if (ret == 0x00) 
+    if (ret == 0x00)
     {
         /* start tokenizing */
         str_token[0] = strtok(cmd_str, "/");
-        while (str_token[i] != NULL) 
+        while (str_token[i] != NULL)
         {
             i++;
             str_token[i] = strtok(NULL, "/");
         }
-    } 
-    else 
+    }
+    else
     {
         i = ret;
     }
@@ -1708,11 +1708,8 @@ int main(int argc, char **argv)
         else if (strcmp(command, "cp") == 0)
         {
             int ret = 0x00;
-            int num_of_tokens = 0x00;
-            char *token[10]; /* Max 9 directories supported */
             char *path = NULL;
             char *bucket_name = NULL;
-            char *file_name = NULL; 
 
             /* cp command wrt to upload-file */
             if(local_file_path == NULL)
@@ -1726,42 +1723,12 @@ int main(int argc, char **argv)
                 bucket_name = argv[command_index + 1];
             }
 
-            if (strpos(bucket_name,"storj://") < 0x00) 
+            if (strpos(bucket_name,"storj://") < 0x00)
             {
                 /* download-file command */
-
-                /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
-                num_of_tokens = validate_cmd_tokenize(path, token);
-                printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
-                for(int j = 0x00; j < num_of_tokens; j++)
+                if(cli_download_file(bucket_name, path, cli_state) < 0x00)
                 {
-                    printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
-                }
-
-                printf("KSA[%s][%d] download file command \n\n", __FUNCTION__, __LINE__ );
-                path = bucket_name; 
-                bucket_name = token[1]; 
-                file_name = token[2]; 
-
-                printf("KSA[%s][%d] file path = %s\n",__FUNCTION__,__LINE__, path);
-                if (!bucket_name || !file_name || !path)
-                {
-                    printf("Missing arguments: storj cp [-rR]storj://<bucket-name>/<file-name> <local_download_path>\n");
-                    status = 1;
                     goto end_program;
-                }
-                else
-                {
-                    cli_state->curr_cmd_req = "download-file";
-                    cli_state->bucket_name = bucket_name;
-                    cli_state->file_name = file_name;
-                    cli_state->file_path = path;
-                    printf("KSA[%s][%d] cmd = %s, bucket name = %s, file_name = %s, file path = %s\n",
-                            __FUNCTION__, __LINE__,cli_state->curr_cmd_req, cli_state->bucket_name, cli_state->file_name, cli_state->file_path );
-                    if(!cli_state->bucket_id)
-                    {
-                        storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
-                    }
                 }
             }
             else
@@ -1998,7 +1965,7 @@ static void queue_next_cli_cmd(cli_state_t *cli_state)
 static int cli_upload_file(char *path, char *bucket_name, cli_state_t *cli_state)
 {
     int num_of_tokens = 0x00;
-    char *token[10]; /* Max 9 directories supported */
+    char *token[10];
 
     memset(token, 0x00, sizeof(token));
     printf("KSA:[%s][%d] local file path = %s\n", __FUNCTION__, __LINE__, path);
@@ -2053,7 +2020,7 @@ static int cli_upload_file(char *path, char *bucket_name, cli_state_t *cli_state
                         printf("KSA:[%s][%d] Invalid upload target filename - ",
                               __FUNCTION__, __LINE__);
                         printf("Use same filename as source or '.' or blank \n");
-                        return -1; 
+                        return -1;
                     }
                 break;
 
@@ -2074,7 +2041,7 @@ static int cli_upload_file(char *path, char *bucket_name, cli_state_t *cli_state
                 case 0x00:
                 default:
                     printf("[%s] Invalid command ... token[2]=%s \n", __FUNCTION__, token[2]);
-                    return -1; 
+                    return -1;
                 break;
             }
         break;
@@ -2093,7 +2060,7 @@ static int cli_upload_file(char *path, char *bucket_name, cli_state_t *cli_state
             else
             {
                 perror("getenv() error");
-                return -1; 
+                return -1;
             }
 
             printf("KSA[%s][%d] upload file : %s\n", __FUNCTION__, __LINE__,  upload_list);
@@ -2161,7 +2128,42 @@ static int cli_upload_file(char *path, char *bucket_name, cli_state_t *cli_state
 
 static int cli_download_file(char *path, char *bucket_name, cli_state_t *cli_state)
 {
+    /* download-file command */
+    char *file_name = NULL;
+    int num_of_tokens = 0x00;
+    char *token[10];
+
+    memset(token, 0x00, sizeof(token));
+    printf("KSA:[%s][%d] local file path = %s\n", __FUNCTION__, __LINE__, path);
+    printf("KSA:[%s][%d] download path     = %s\n", __FUNCTION__, __LINE__, bucket_name);
     printf("KSA[%s][%d] download file command \n\n", __FUNCTION__, __LINE__ );
 
+    /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
+    num_of_tokens = validate_cmd_tokenize(bucket_name, token);
+    printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
+    for(int j = 0x00; j < num_of_tokens; j++)
+    {
+        printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
+    }
+
+    printf("KSA[%s][%d] download file command \n\n", __FUNCTION__, __LINE__ );
+    cli_state->curr_cmd_req = "download-file";
+    cli_state->bucket_name = token[1];
+    cli_state->file_name = token[2];
+    cli_state->file_path = path;
+    printf("KSA[%s][%d] cmd = %s, bucket name = %s, file_name = %s, file path = %s\n",
+                __FUNCTION__, __LINE__,cli_state->curr_cmd_req, cli_state->bucket_name, cli_state->file_name, cli_state->file_path );
+    if (!cli_state->bucket_name || !cli_state->file_name || !cli_state->file_path)
+    {
+        printf("Missing arguments: storj cp [-rR] storj://<bucket-name>/<file-name> <local_download_path>\n");
+        return -1;
+    }
+    else
+    {
+        if(!cli_state->bucket_id)
+        {
+            storj_bridge_get_buckets(cli_state->env, cli_state, get_bucket_id_callback);
+        }
+    }
     return 0;
 }
