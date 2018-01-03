@@ -121,7 +121,6 @@ static int check_file_path(char *file_path)
     if (stat(file_path, &sb) == -1)
     {
         perror("stat");
-        printf("\n\n returning 1\n\n");
         return CLI_NO_SUCH_FILE_OR_DIR;
     }
 
@@ -134,8 +133,6 @@ static int check_file_path(char *file_path)
             printf("character device\n");
             break;
         case S_IFDIR:
-            printf("file_path = %s\n\n", file_path);
-            printf("directory\n");
             return CLI_VALID_DIR;
             break;
         case S_IFIFO:
@@ -189,7 +186,6 @@ static int file_exists(char *file_path)
     if (stat(file_path, &sb) == -1)
     {
         perror("stat");
-        printf("\n\n returning 1\n\n");
         return CLI_NO_SUCH_FILE_OR_DIR;
     }
 
@@ -272,7 +268,10 @@ static int validate_cmd_tokenize(char *cmd_str, char *str_token[])
     int i = 0x00;   /* num of tokens */
 
     int ret = strpos(cmd_str, sub_str);
-    ret == -1 ? printf("Invalid Command Entry (%d), \ntry ... stroj://<bucket_name>/<file_name>\n", ret) : printf("sub string pos = %d\n", ret);
+    if( ret == -1)
+    {
+        printf("Invalid Command Entry (%d), \ntry ... stroj://<bucket_name>/<file_name>\n", ret); 
+    }
 
     if (ret == 0x00)
     {
@@ -1139,7 +1138,7 @@ static void list_files_callback(uv_work_t *work_req, int status)
     FILE *dwnld_list_fd = stdout;
     cli_state->file_id = NULL;
 
-    if (strcmp(cli_state->file_name,"*") == 0x00)
+    if ((cli_state->file_name !=NULL) && (strcmp(cli_state->file_name,"*") == 0x00))
     {
         if ((dwnld_list_fd = fopen("dwnld_list.txt", "w")) == NULL)
         {
@@ -1155,15 +1154,17 @@ static void list_files_callback(uv_work_t *work_req, int status)
     {
         storj_file_meta_t *file = &req->files[i];
 
-        /* print to screen */
-        fprintf(stdout, "ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
-               file->id,
-               file->size,
-               file->decrypted ? "true" : "false",
-               file->mimetype,
-               file->created,
-               file->filename);
-
+        if (strcmp(cli_state->curr_cmd_req,"list-files") == 0x00)
+        {
+            /* print to screen */
+            fprintf(stdout, "ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
+                   file->id,
+                   file->size,
+                   file->decrypted ? "true" : "false",
+                   file->mimetype,
+                   file->created,
+                   file->filename);
+        }
 
         /* print to file */
         if (dwnld_list_fd != stdout) 
@@ -1176,9 +1177,15 @@ static void list_files_callback(uv_work_t *work_req, int status)
         /* get the file id of the given file name */
         if(cli_state->file_name != NULL)
         {
-            //cli_state->next_cmd_req = "download-file-1";
             if (strcmp(cli_state->file_name, file->filename) == 0x00)
             {
+                if(check_file_path("dwnld_list.txt") == CLI_VALID_REGULAR_FILE)
+                {
+                    if (remove("dwnld_list.txt") == 0x00) 
+                    {
+                        printf("%s file deleted \n", "dwnld_list.txt");
+                    }
+                }
                 cli_state->file_id = (char *)file->id;
                 cli_state->next_cmd_req = "download-file-1";
                 cli_state->total_files = 0x00;
@@ -1190,16 +1197,22 @@ static void list_files_callback(uv_work_t *work_req, int status)
     {
         fclose(dwnld_list_fd);
     }
-    
-    if ((cli_state->file_id != NULL) && 
-        (strcmp(cli_state->next_cmd_req, "download-file-1" ) == 0x00))
+   
+    if (strcmp(cli_state->curr_cmd_req, "download-file" ) == 0x00)
     {
         cli_state->curr_up_file = 0x01;
+        cli_state->next_cmd_req = "download-file-1";
         queue_next_cli_cmd(cli_state);
     }
     else
     {
-        printf("cp: cannot stat '%s' : No such file or directory\n",cli_state->file_name);
+        if(check_file_path("dwnld_list.txt") == CLI_VALID_REGULAR_FILE)
+        {
+            if (remove("dwnld_list.txt") == 0x00) 
+            {
+                printf("file deleted \n\n");
+            }
+        }
     }
 
 cleanup:
@@ -1299,20 +1312,25 @@ static void get_bucket_id_callback(uv_work_t *work_req, int status)
                        bucket->created, bucket->name);
                 cli_state->bucket_id = (char *)bucket->id;
 
-                if(((strcmp(cli_state->curr_cmd_req, "list-files")) == 0x00) ||
-                   ((strcmp(cli_state->curr_cmd_req, "download-file")) == 0x00))
+                if(strcmp(cli_state->curr_cmd_req, "list-files") == 0x00)
                 {
                     cli_state->next_cmd_req = "list-files-1";
                     ret_status = 1;
                 }
-                else if((strcmp(cli_state->curr_cmd_req, "upload-file")) == 0x00)
+                else if(strcmp(cli_state->curr_cmd_req, "download-file") == 0x00)
+                {
+                    cli_state->next_cmd_req = "list-files-1";
+                    ret_status = 1;
+                }
+                else if(strcmp(cli_state->curr_cmd_req, "upload-file") == 0x00)
                 {
                     cli_state->next_cmd_req = "upload-file-1";
                     ret_status = 1;
                 }
                 else
                 {
-                    printf("Invalid curr cmd req = %s\n", cli_state->curr_cmd_req);
+                    printf("[%s][%d]Invalid curr cmd req = %s\n", 
+                           __FUNCTION__, __LINE__, cli_state->curr_cmd_req);
                     ret_status = 0;
                 }
                 break;
@@ -1526,11 +1544,7 @@ int main(int argc, char **argv)
                 break;
             case 'R':
             case 'r':
-                printf( "Recursive Coping \n\n");
                 local_file_path = optarg;
-                printf("local_file_path = %s\n optarg = %s\n\n",
-                        local_file_path, optarg);
-                //exit(0);
                 break;
             case 'h':
                 printf(HELP_TEXT);
@@ -1857,8 +1871,6 @@ int main(int argc, char **argv)
                 bucket_name = argv[command_index + 1];
             }
 
-            printf("bucket-name = %s \n\n", bucket_name);
-            printf("path = %s \n\n", path);
             if (bucket_name != NULL) 
             {
                 if (strpos(bucket_name, "storj://") < 0x00)
@@ -1872,7 +1884,6 @@ int main(int argc, char **argv)
                 else
                 {
                     /* upload-file command */
-                    printf("KSA[%s][%d] upload file command \n\n", __FUNCTION__, __LINE__ );
                     if(cli_upload_file(path,bucket_name,cli_state) < 0x00)
                     {
                         goto end_program;
@@ -2059,7 +2070,8 @@ static void queue_next_cli_cmd(cli_state_t *cli_state)
 
         if(strcmp("download-file-1" , cli_state->next_cmd_req) == 0x00)
         {
-            FILE *file = fopen("/home/kishore/libstorj/src/dwnld_list.txt", "r");
+            //FILE *file = fopen("/home/kishore/libstorj/src/dwnld_list.txt", "r");
+            FILE *file = fopen("dwnld_list.txt", "r");
             if (file != NULL) 
             {
                 char line[256][256];
@@ -2330,26 +2342,15 @@ static int cli_download_file(char *path, char *bucket_name, cli_state_t *cli_sta
     char *token[10];
     int ret_status = 0x00;
 
-    printf("KSA[%s][%d] download file command \n\n", __FUNCTION__, __LINE__ );
     memset(token, 0x00, sizeof(token));
-    printf("KSA:[%s][%d] local file path = %s\n", __FUNCTION__, __LINE__, path);
-    printf("KSA:[%s][%d] download path     = %s\n", __FUNCTION__, __LINE__, bucket_name);
 
     /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
     num_of_tokens = validate_cmd_tokenize(bucket_name, token);
-    printf("KSA:[%s] num of tokens = %d \n", __FUNCTION__, num_of_tokens);
-    for(int j = 0x00; j < num_of_tokens; j++)
-    {
-        printf("KSA:[%s] token[%d] = %s\n", __FUNCTION__, j,token[j]);
-    }
 
-    printf("KSA[%s][%d] download file command \n\n", __FUNCTION__, __LINE__ );
     cli_state->curr_cmd_req = "download-file";
     cli_state->bucket_name = token[1];
     cli_state->file_name = token[2];
     cli_state->file_path = path;
-    printf("KSA[%s][%d] cmd = %s, bucket name = %s, file_name = %s, file path = %s\n",
-                __FUNCTION__, __LINE__,cli_state->curr_cmd_req, cli_state->bucket_name, cli_state->file_name, cli_state->file_path );
     if (!cli_state->bucket_name || !cli_state->file_name || !cli_state->file_path)
     {
         printf("Missing arguments: storj cp [-rR] storj://<bucket-name>/<file-name> <local_download_path>\n");
@@ -2365,7 +2366,7 @@ static int cli_download_file(char *path, char *bucket_name, cli_state_t *cli_sta
             }
             else
             {
-                printf("cp target '%s' is not a directory\n", cli_state->file_path);
+                printf("storj;// cp target '%s' is not a directory\n", cli_state->file_path);
                 ret_status = -1;
             }
         }
