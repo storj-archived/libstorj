@@ -190,6 +190,11 @@ bool mnemonic_check(const char *mnemonic)
 int mnemonic_to_seed(const char *mnemonic, const char *passphrase,
                      char **buffer)
 {
+    // If mnemonic is NULL, assume empty string
+    if (!mnemonic) {
+        mnemonic = "";
+    }
+
     int passphraselen = strlen(passphrase);
 
     // We can't exceed a password of 256 bytes

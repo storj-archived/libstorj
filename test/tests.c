@@ -1099,6 +1099,31 @@ int test_generate_seed_256_trezor()
     return 0;
 }
 
+int test_generate_seed_null_mnemonic()
+{
+    char *mnemonic = NULL;
+    char *seed = calloc(128 + 1, sizeof(char));
+    char *expected_seed = "4ed8d4b17698ddeaa1f1559f152f87b5d472f725ca86d341bd0276f1b61197e21dd5a391f9f5ed7340ff4d4513aab9cce44f9497a5e7ed85fd818876b6eb402e";
+
+    mnemonic_to_seed(mnemonic, "", &seed);
+    seed[128] = '\0';
+
+    int check = memcmp(seed, expected_seed, 128);
+    if (check != 0) {
+        fail("test_generate_seed");
+        printf("\t\texpected seed: %s\n", expected_seed);
+        printf("\t\tactual seed:   %s\n", seed);
+
+        free(seed);
+        return 1;
+    }
+
+    free(seed);
+    pass("test_generate_seed_null_mnemonic");
+
+    return 0;
+}
+
 int test_generate_bucket_key()
 {
     char *mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -1573,6 +1598,7 @@ int main(void)
     test_generate_seed();
     test_generate_seed_256();
     test_generate_seed_256_trezor();
+    test_generate_seed_null_mnemonic();
     printf("\n");
 
     printf("Test Suite: Crypto\n");
