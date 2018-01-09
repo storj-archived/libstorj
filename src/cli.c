@@ -1327,7 +1327,10 @@ static void get_bucket_id_callback(uv_work_t *work_req, int status)
                     cli_state->next_cmd_req = "upload-file-1";
                     ret_status = 1;
                 }
-                else
+                else if(strcmp(cli_state->curr_cmd_req, "get-bucket-id") == 0x00)
+                {
+                    ret_status = 0;
+                }else
                 {
                     printf("[%s][%d]Invalid curr cmd req = %s\n", 
                            __FUNCTION__, __LINE__, cli_state->curr_cmd_req);
