@@ -99,6 +99,20 @@ void check_get_bucket(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+void check_get_bucket_id(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_bucket_id_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(strcmp(req->bucket_id, "368be0816766b28fd5f43af5") == 0);
+
+    pass("storj_bridge_get_bucket_id");
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
 void check_get_buckets_badauth(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -185,6 +199,20 @@ void check_list_files_badauth(uv_work_t *work_req, int status)
     pass("storj_bridge_list_files_badauth");
 
     storj_free_list_files_request(req);
+    free(work_req);
+}
+
+void check_get_file_id(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_file_id_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(strcmp(req->file_id, "998960317b6725a3f8080c2b") == 0);
+
+    pass("storj_bridge_get_file_id");
+
+    json_object_put(req->response);
+    free(req);
     free(work_req);
 }
 
@@ -768,6 +796,10 @@ int test_api()
     status = storj_bridge_get_bucket(env, bucket_id, NULL, check_get_bucket);
     assert(status == 0);
 
+    // get bucket id
+    status = storj_bridge_get_bucket_id(env, "test", NULL, check_get_bucket_id);
+    assert(status == 0);
+
     // create a new bucket with a name
     status = storj_bridge_create_bucket(env, "backups", NULL,
                                         check_create_bucket);
@@ -782,6 +814,11 @@ int test_api()
     // list files in a bucket
     status = storj_bridge_list_files(env, bucket_id, NULL,
                                      check_list_files);
+    assert(status == 0);
+
+    // get file id
+    status = storj_bridge_get_file_id(env, bucket_id, "storj-test-download.data",
+                                      NULL, check_get_file_id);
     assert(status == 0);
 
     // create bucket tokens

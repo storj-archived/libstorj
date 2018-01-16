@@ -90,7 +90,12 @@ int mock_bridge_server(void *cls,
               page = get_response_string(responses, "getbucket");
               status_code = MHD_HTTP_OK;
           }
-        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/files")) {
+        } else if (0 == strcmp(url, "/bucket-ids/g9qacwq2AE1+5nzL/HYyYdY9WoIr+1ueOuVEx6/IzzZKK9sULoKDDdYvhOpavHH2P3xQNw==")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                page = get_response_string(responses, "getbucketid");
+                status_code = MHD_HTTP_OK;
+            }
+        }  else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/files")) {
             if (check_auth(user, pass, &status_code, page)) {
                 page = get_response_string(responses, "listfiles");
                 status_code = MHD_HTTP_OK;
@@ -98,6 +103,11 @@ int mock_bridge_server(void *cls,
         } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/files/998960317b6725a3f8080c2b/info")) {
             if (check_auth(user, pass, &status_code, page)) {
                 page = get_response_string(responses, "getfileinfo");
+                status_code = MHD_HTTP_OK;
+            }
+        } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/file-ids/QR6/qHizNFm+t+4vSvr575xVp2R3/rC/qFlmOH10HsdGQtofpUUqwEdaZUJI0jPIImYMZFu6cZDrMIvJtcK3pHAb+kkPv0Y5")) {
+            if (check_auth(user, pass, &status_code, page)) {
+                page = get_response_string(responses, "getfileid");
                 status_code = MHD_HTTP_OK;
             }
         } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/file-ids/hTY5wsqYyLJQppCMiFQI7v2n/IZZiKb0ES1RCrUqK7Fe5m0/+fYwh+E/vp8M3FCEECle63BhlWlHi/Hj/Yg5y/bIjy8SxQ==")) {

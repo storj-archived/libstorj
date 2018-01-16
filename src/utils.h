@@ -48,6 +48,18 @@ uint8_t *str2hex(size_t length, char *data);
 
 char *str_concat_many(int count, ...);
 
+/**
+ * @brief Replace all occurrences of the search string with the replacement string
+ *
+ * The result string from this function must be freed.
+ *
+ * @param[in] search The value being searched for, otherwise known as the needle
+ * @param[in] replace The replacement value that replaces found search values
+ * @param[in] subject The string being searched and replaced on, otherwise known as the haystack.
+ * @return A null value on error, otherwise a string with replaced values.
+ */
+char *str_replace(char *search, char *replace, char *subject);
+
 void random_buffer(uint8_t *buf, size_t len);
 
 uint64_t shard_size(int hops);

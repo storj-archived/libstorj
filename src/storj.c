@@ -242,6 +242,77 @@ static void get_bucket_request_worker(uv_work_t *work)
     }
 }
 
+static void get_bucket_id_request_worker(uv_work_t *work)
+{
+    get_bucket_id_request_t *req = work->data;
+    int status_code = 0;
+
+    // Derive a key based on the master seed and bucket name magic number
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(req->encrypt_options->mnemonic,
+                        BUCKET_NAME_MAGIC,
+                        &bucket_key_as_str);
+
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    free(bucket_key_as_str);
+
+    // Get bucket name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    // Generate the synthetic iv with first half of hmac w/ name
+    struct hmac_sha512_ctx ctx2;
+    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx2, strlen(req->bucket_name),
+                       (uint8_t *)req->bucket_name);
+    uint8_t bucketname_iv[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
+
+    free(bucket_key);
+
+    // Encrypt the bucket name
+    char *encrypted_bucket_name;
+    encrypt_meta(req->bucket_name, key, bucketname_iv, &encrypted_bucket_name);
+
+    char *escaped_encrypted_bucket_name = str_replace("/", "%2F", encrypted_bucket_name);
+    if (!escaped_encrypted_bucket_name) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    free(encrypted_bucket_name);
+
+    char *path = str_concat_many(2, "/bucket-ids/", escaped_encrypted_bucket_name);
+    if (!path) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    free(escaped_encrypted_bucket_name);
+
+    req->error_code = fetch_json(req->http_options,
+                                 req->options, "GET", path, NULL,
+                                 true, &req->response, &status_code);
+
+    free(path);
+
+    if (req->response != NULL) {
+        struct json_object *id;
+        json_object_object_get_ex(req->response, "id", &id);
+        req->bucket_id = json_object_get_string(id);
+    }
+
+    req->status_code = status_code;
+}
+
 static void list_files_request_worker(uv_work_t *work)
 {
     list_files_request_t *req = work->data;
@@ -425,6 +496,79 @@ static void get_file_info_request_worker(uv_work_t *work)
         	req->file->filename = strdup(encrypted_file_name);
         }
     }
+}
+
+static void get_file_id_request_worker(uv_work_t *work)
+{
+    get_file_id_request_t *req = work->data;
+    int status_code = 0;
+
+    // Get the bucket key to encrypt the filename
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(req->encrypt_options->mnemonic,
+                        req->bucket_id,
+                        &bucket_key_as_str);
+
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    free(bucket_key_as_str);
+
+    // Get file name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    // Generate the synthetic iv with first half of hmac w/ bucket and filename
+    struct hmac_sha512_ctx ctx2;
+    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx2, strlen(req->bucket_id),
+                       (uint8_t *)req->bucket_id);
+    hmac_sha512_update(&ctx2, strlen(req->file_name),
+                       (uint8_t *)req->file_name);
+    uint8_t filename_iv[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
+
+    free(bucket_key);
+
+    char *encrypted_file_name;
+    encrypt_meta(req->file_name, key, filename_iv, &encrypted_file_name);
+
+    char *escaped_encrypted_file_name = str_replace("/", "%2F", encrypted_file_name);
+    if (!escaped_encrypted_file_name) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    free(encrypted_file_name);
+
+    char *path = str_concat_many(4, "/buckets/", req->bucket_id,
+                                    "/file-ids/", escaped_encrypted_file_name);
+    if (!path) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    free(escaped_encrypted_file_name);
+
+    req->error_code = fetch_json(req->http_options,
+                                 req->options, "GET", path, NULL,
+                                 true, &req->response, &status_code);
+
+    free(path);
+
+    if (req->response != NULL) {
+        struct json_object *id;
+        json_object_object_get_ex(req->response, "id", &id);
+        req->file_id = json_object_get_string(id);
+    }
+
+    req->status_code = status_code;
 }
 
 static uv_work_t *uv_work_new()
@@ -611,6 +755,58 @@ static get_bucket_request_t *get_bucket_request_new(
     req->body = request_body;
     req->response = NULL;
     req->bucket = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
+static get_bucket_id_request_t *get_bucket_id_request_new(
+        storj_http_options_t *http_options,
+        storj_bridge_options_t *options,
+        storj_encrypt_options_t *encrypt_options,
+        const char *bucket_name,
+        void *handle)
+{
+    get_bucket_id_request_t *req = malloc(sizeof(get_bucket_id_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->http_options = http_options;
+    req->options = options;
+    req->encrypt_options = encrypt_options;
+    req->bucket_name = bucket_name;
+    req->response = NULL;
+    req->bucket_id = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
+static get_file_id_request_t *get_file_id_request_new(
+        storj_http_options_t *http_options,
+        storj_bridge_options_t *options,
+        storj_encrypt_options_t *encrypt_options,
+        const char *bucket_id,
+        const char *file_name,
+        void *handle)
+{
+    get_file_id_request_t *req = malloc(sizeof(get_file_id_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->http_options = http_options;
+    req->options = options;
+    req->encrypt_options = encrypt_options;
+    req->bucket_id = bucket_id;
+    req->file_name = file_name;
+    req->response = NULL;
+    req->file_id = NULL;
     req->error_code = 0;
     req->status_code = 0;
     req->handle = handle;
@@ -1412,6 +1608,27 @@ STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req)
     free(req);
 }
 
+STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
+                                         const char *name,
+                                         void *handle,
+                                         uv_after_work_cb cb)
+{
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    work->data = get_bucket_id_request_new(env->http_options,
+                                           env->bridge_options,
+                                           env->encrypt_options,
+                                           name, handle);
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    return uv_queue_work(env->loop, (uv_work_t*) work, get_bucket_id_request_worker, cb);
+}
+
 STORJ_API int storj_bridge_list_files(storj_env_t *env,
                             const char *id,
                             void *handle,
@@ -1614,6 +1831,28 @@ STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
 
     return uv_queue_work(env->loop, (uv_work_t*) work,
                          get_file_info_request_worker, cb);
+}
+
+STORJ_API int storj_bridge_get_file_id(storj_env_t *env,
+                                       const char *bucket_id,
+                                       const char *file_name,
+                                       void *handle,
+                                       uv_after_work_cb cb)
+{
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    work->data = get_file_id_request_new(env->http_options,
+                                         env->bridge_options,
+                                         env->encrypt_options,
+                                         bucket_id, file_name, handle);
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    return uv_queue_work(env->loop, (uv_work_t*) work, get_file_id_request_worker, cb);
 }
 
 STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req)
