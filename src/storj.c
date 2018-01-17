@@ -1579,3 +1579,20 @@ STORJ_API int storj_get_bucket_files(storj_api_t *storj_api)
     storj_get_bucket_id(storj_api);
     storj_api->next_cmd_req  = "list-files-req";
 }
+
+
+/**
+ * @brief Function gets the list of files for a given bucket 
+ *        name
+ * 
+ * @author kishore (1/16/2018)
+ * 
+ * @param storj_api 
+ * 
+ * @return STORJ_API int 
+ */
+STORJ_API int storj_remove_bucket(storj_api_t *storj_api)
+{
+    storj_get_bucket_id(storj_api);
+    storj_api->next_cmd_req  = "remove-bucket-req";
+}

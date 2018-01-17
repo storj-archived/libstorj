@@ -1940,6 +1940,10 @@ int main(int argc, char **argv)
                                        NULL, create_bucket_callback);
 
         } else if (strcmp(command, "remove-bucket") == 0) {
+
+            storj_api->bucket_name = argv[command_index + 1];
+            storj_remove_bucket(storj_api);
+            #if 0
             char *bucket_id = argv[command_index + 1];
 
             if (!bucket_id) {
@@ -1950,6 +1954,7 @@ int main(int argc, char **argv)
 
             storj_bridge_delete_bucket(env, bucket_id, NULL,
                                        delete_bucket_callback);
+            #endif
 
         } else if (strcmp(command, "remove-file") == 0) {
             char *bucket_id = argv[command_index + 1];
