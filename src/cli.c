@@ -1956,7 +1956,21 @@ int main(int argc, char **argv)
                                        delete_bucket_callback);
             #endif
 
-        } else if (strcmp(command, "remove-file") == 0) {
+        } 
+        else if (strcmp(command, "remove-file") == 0) 
+        {
+            storj_api->bucket_name = argv[command_index + 1];
+            storj_api->file_name = argv[command_index + 2];
+
+            if (!storj_api->bucket_name|| !storj_api->file_name) 
+            {
+                printf("Missing arguments, expected: <bucket-name> <file-name>\n");
+                status = 1;
+                goto end_program;
+            }
+
+            storj_remove_file(storj_api);
+            #if 0
             char *bucket_id = argv[command_index + 1];
             char *file_id = argv[command_index + 2];
 
@@ -1967,6 +1981,7 @@ int main(int argc, char **argv)
             }
             storj_bridge_delete_file(env, bucket_id, file_id,
                                      NULL, delete_file_callback);
+            #endif
 
         }
         else if (strcmp(command, "list-buckets") == 0)

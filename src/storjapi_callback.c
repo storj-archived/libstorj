@@ -1,12 +1,39 @@
 #include "storjapi_callback.h"
 
+static void delete_file_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    storj_api_t *storj_api = req->handle;
+    storj_api->last_cmd_req = storj_api->curr_cmd_req;
+    storj_api->rcvd_cmd_resp = "get-bucket-id-resp";
+
+    if (req->status_code == 200 || req->status_code == 204) {
+        printf("File was successfully removed from bucket.\n");
+    } else if (req->status_code == 401) {
+        printf("Invalid user credentials.\n");
+        goto cleanup;
+    } else {
+        printf("Failed to remove file from bucket. (%i)\n", req->status_code);
+        goto cleanup;
+    }
+
+    json_object_put(req->response);
+
+    queue_next_cmd_req(storj_api);
+cleanup:
+    free(req->path);
+    free(req);
+    free(work_req);
+}
 
 static void delete_bucket_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
     json_request_t *req = work_req->data;
-    storj_api_t *storj_api = req->handle;
 
+    storj_api_t *storj_api = req->handle;
     storj_api->last_cmd_req = storj_api->curr_cmd_req;
     storj_api->rcvd_cmd_resp = "get-bucket-id-resp";
 
@@ -14,11 +41,16 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
         printf("Bucket was successfully removed.\n");
     } else if (req->status_code == 401) {
         printf("Invalid user credentials.\n");
+        goto cleanup;
     } else {
         printf("Failed to destroy bucket. (%i)\n", req->status_code);
+        goto cleanup;
     }
 
     json_object_put(req->response);
+
+    queue_next_cmd_req(storj_api);
+cleanup:
     free(req->path);
     free(req);
     free(work_req);
@@ -110,6 +142,13 @@ void list_files_callback(uv_work_t *work_req, int status)
     {
         storj_file_meta_t *file = &req->files[i];
 
+        if ((storj_api->file_name != NULL) && 
+            (strcmp(storj_api->file_name,file->filename)) == 0x00)
+        {
+            /* store the file id */
+            storj_api->file_id = (char *)file->id;
+        }
+        
         printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
                file->id,
                file->size,
@@ -144,7 +183,8 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             (strcmp(storj_api->next_cmd_req, "list-files-req") == 0x00))
         {
             storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->next_cmd_req  = NULL;
+            storj_api->next_cmd_req  = storj_api->final_cmd_req;
+            storj_api->final_cmd_req = NULL;
             storj_api->excp_cmd_resp = "list-files-resp";
             storj_bridge_list_files(storj_api->env, storj_api->bucket_id, 
                                     storj_api, list_files_callback);
@@ -153,10 +193,26 @@ void queue_next_cmd_req(storj_api_t *storj_api)
                  (strcmp(storj_api->next_cmd_req, "remove-bucket-req") == 0x00))
         {
             storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->next_cmd_req  = NULL;
+            storj_api->next_cmd_req  = storj_api->final_cmd_req;
+            storj_api->final_cmd_req = NULL;
             storj_api->excp_cmd_resp = "remove-bucekt-resp";
             storj_bridge_delete_bucket(storj_api->env, storj_api->bucket_id, 
                                        storj_api, delete_bucket_callback);
+        }
+        else if ((storj_api->next_cmd_req != NULL) && 
+                 (strcmp(storj_api->next_cmd_req, "remove-file-req") == 0x00))
+        {
+            printf("I am here\n");
+            printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
+                   __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
+                   storj_api->bucket_name);
+
+            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+            storj_api->next_cmd_req  = storj_api->final_cmd_req;
+            storj_api->final_cmd_req = NULL;
+            storj_api->excp_cmd_resp = "remove-file-resp";
+            storj_bridge_delete_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
+                                     storj_api, delete_file_callback);
         }
     }
 

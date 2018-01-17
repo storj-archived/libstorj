@@ -1556,8 +1556,9 @@ STORJ_API int storj_get_bucket_id(storj_api_t *storj_api)
     }
 
     storj_api->last_cmd_req  = NULL;
-    storj_api->next_cmd_req  = NULL;
     storj_api->curr_cmd_req  = "get-bucket-id-req";
+    storj_api->next_cmd_req  = NULL;
+    storj_api->final_cmd_req = NULL;
     storj_api->excp_cmd_resp = "get-bucket-id-resp";
 
     /* when callback returns, we store the bucket id of bucket name else null */
@@ -1578,8 +1579,8 @@ STORJ_API int storj_get_bucket_files(storj_api_t *storj_api)
 {
     storj_get_bucket_id(storj_api);
     storj_api->next_cmd_req  = "list-files-req";
+    storj_api->final_cmd_req = NULL;
 }
-
 
 /**
  * @brief Function gets the list of files for a given bucket 
@@ -1595,4 +1596,22 @@ STORJ_API int storj_remove_bucket(storj_api_t *storj_api)
 {
     storj_get_bucket_id(storj_api);
     storj_api->next_cmd_req  = "remove-bucket-req";
+    storj_api->final_cmd_req = NULL;
 }
+
+/**
+ * @brief Function gets the list of files for a given bucket 
+ *        name
+ * 
+ * @author kishore (1/16/2018)
+ * 
+ * @param storj_api 
+ * 
+ * @return STORJ_API int 
+ */
+STORJ_API int storj_remove_file(storj_api_t *storj_api)
+{
+    storj_get_bucket_files(storj_api);
+    storj_api->final_cmd_req  = "remove-file-req";
+}
+

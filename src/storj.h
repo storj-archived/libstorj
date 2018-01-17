@@ -558,11 +558,12 @@ typedef struct storj_api {
     char *src_info;      /**< next file ready to upload */
     char *dst_file;      /**< next file ready to upload */
     int  total_files;    /**< total files to upload */
+    char *last_cmd_req;  /**< last command requested */
     char *curr_cmd_req;  /**< cli curr command requested */
     char *next_cmd_req;  /**< cli curr command requested */
+    char *final_cmd_req; /**< final command in the seq */
     char *excp_cmd_resp; /**< expected cmd response */
     char *rcvd_cmd_resp; /**< received cmd response */
-    char *last_cmd_req;  /**< last command requested */
     int  error_status;   /**< command response/error status */
     storj_log_levels_t *log;
     void *handle;
@@ -1059,6 +1060,18 @@ STORJ_API int storj_get_bucket_files(storj_api_t *storj_api);
  * @return A non-zero error value on failure and 0 on success.
  */
 STORJ_API int storj_remove_bucket(storj_api_t *storj_api);
+
+/**
+ * @brief Function gets the list of files for a given bucket 
+ *        name
+ * 
+ * @author kishore (1/16/2018)
+ * 
+ * @param storj_api 
+ * 
+ * @return STORJ_API int 
+ */
+STORJ_API int storj_remove_file(storj_api_t *storj_api);
 
 static inline char separator()
 {
