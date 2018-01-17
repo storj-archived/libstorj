@@ -1073,6 +1073,18 @@ STORJ_API int storj_remove_bucket(storj_api_t *storj_api);
  */
 STORJ_API int storj_remove_file(storj_api_t *storj_api);
 
+/**
+ * @brief Function gets the list of files for a given bucket 
+ *        name
+ * 
+ * @author kishore (1/16/2018)
+ * 
+ * @param storj_api 
+ * 
+ * @return STORJ_API int 
+ */
+STORJ_API int storj_list_mirrors(storj_api_t *storj_api);
+
 static inline char separator()
 {
 #ifdef _WIN32

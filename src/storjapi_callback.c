@@ -1,5 +1,66 @@
 #include "storjapi_callback.h"
 
+static void list_mirrors_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    json_request_t *req = work_req->data;
+
+    storj_api_t *storj_api = req->handle;
+    storj_api->last_cmd_req = storj_api->curr_cmd_req;
+    storj_api->rcvd_cmd_resp = "get-bucket-id-resp";
+
+    if (req->status_code != 200) {
+        printf("Request failed with status code: %i\n",
+               req->status_code);
+    }
+
+    if (req->response == NULL) {
+        free(req);
+        free(work_req);
+        printf("Failed to list mirrors.\n");
+        exit(1);
+    }
+
+    int num_mirrors = json_object_array_length(req->response);
+
+    struct json_object *shard;
+    struct json_object *established;
+    struct json_object *available;
+    struct json_object *item;
+    struct json_object *hash;
+    struct json_object *contract;
+    struct json_object *address;
+    struct json_object *port;
+    struct json_object *node_id;
+
+    for (int i = 0; i < num_mirrors; i++) {
+        shard = json_object_array_get_idx(req->response, i);
+        json_object_object_get_ex(shard, "established",
+                                 &established);
+        int num_established =
+            json_object_array_length(established);
+        for (int j = 0; j < num_established; j++) {
+            item = json_object_array_get_idx(established, j);
+            if (j == 0) {
+                json_object_object_get_ex(item, "shardHash",
+                                          &hash);
+                printf("Shard %i: %s\n", i, json_object_get_string(hash));
+            }
+            json_object_object_get_ex(item, "contract", &contract);
+            json_object_object_get_ex(contract, "farmer_id", &node_id);
+
+            const char *node_id_str = json_object_get_string(node_id);
+            printf("\tnodeID: %s\n", node_id_str);
+        }
+        printf("\n\n");
+    }
+
+    json_object_put(req->response);
+    free(req->path);
+    free(req);
+    free(work_req);
+}
+
 static void delete_file_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -214,7 +275,29 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             storj_bridge_delete_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
                                      storj_api, delete_file_callback);
         }
+        else if ((storj_api->next_cmd_req != NULL) && 
+                 (strcmp(storj_api->next_cmd_req, "list-mirrors-req") == 0x00))
+        {
+            printf("I am here\n");
+            printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
+                   __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
+                   storj_api->bucket_name);
+
+            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+            storj_api->next_cmd_req  = storj_api->final_cmd_req;
+            storj_api->final_cmd_req = NULL;
+            storj_api->excp_cmd_resp = "list-mirrors-resp";
+            storj_bridge_list_mirrors(storj_api->env, storj_api->bucket_id, storj_api->file_id,
+                                      storj_api, list_mirrors_callback);
+        }
     }
+    else
+    {
+        printf("[%s][%d]Oops !!!! expt resp = %s; rcvd resp = %s \n",
+               __FUNCTION__, __LINE__,
+                storj_api->excp_cmd_resp, storj_api->rcvd_cmd_resp );
+    }
+
 
 #if 0
     if (((strcmp("list-files"  , storj_api->curr_cmd_req) == 0x00)||

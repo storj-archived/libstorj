@@ -1993,7 +1993,21 @@ int main(int argc, char **argv)
             storj_api->bucket_name = argv[command_index + 1];
             storj_get_bucket_id(storj_api);
         }
-        else if (strcmp(command, "list-mirrors") == 0) {
+        else if (strcmp(command, "list-mirrors") == 0) 
+        {
+            storj_api->bucket_name = argv[command_index + 1];
+            storj_api->file_name = argv[command_index + 2];
+
+            if (!storj_api->bucket_name|| !storj_api->file_name) 
+            {
+                printf("Missing arguments, expected: <bucket-name> <file-name>\n");
+                status = 1;
+                goto end_program;
+            }
+
+            storj_list_mirrors(storj_api);
+
+            #if 0
             char *bucket_id = argv[command_index + 1];
             char *file_id = argv[command_index + 2];
 
@@ -2004,7 +2018,9 @@ int main(int argc, char **argv)
             }
             storj_bridge_list_mirrors(env, bucket_id, file_id,
                                       NULL, list_mirrors_callback);
-        } else {
+            #endif
+        } 
+        else {
             printf("'%s' is not a storj command. See 'storj --help'\n\n",
                    command);
             status = 1;
