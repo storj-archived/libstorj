@@ -7,18 +7,19 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
 
     storj_api_t *storj_api = req->handle;
     storj_api->last_cmd_req = storj_api->curr_cmd_req;
-    storj_api->rcvd_cmd_resp = "get-bucket-id-resp";
+    storj_api->rcvd_cmd_resp = "list-mirrors-resp";
 
     if (req->status_code != 200) {
         printf("Request failed with status code: %i\n",
                req->status_code);
+        goto cleanup;
     }
 
     if (req->response == NULL) {
         free(req);
         free(work_req);
         printf("Failed to list mirrors.\n");
-        exit(1);
+        goto cleanup;
     }
 
     int num_mirrors = json_object_array_length(req->response);
@@ -56,6 +57,9 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
     }
 
     json_object_put(req->response);
+
+    queue_next_cmd_req(storj_api);
+cleanup:
     free(req->path);
     free(req);
     free(work_req);
@@ -68,7 +72,7 @@ static void delete_file_callback(uv_work_t *work_req, int status)
 
     storj_api_t *storj_api = req->handle;
     storj_api->last_cmd_req = storj_api->curr_cmd_req;
-    storj_api->rcvd_cmd_resp = "get-bucket-id-resp";
+    storj_api->rcvd_cmd_resp = "remove-file-resp";
 
     if (req->status_code == 200 || req->status_code == 204) {
         printf("File was successfully removed from bucket.\n");
@@ -96,7 +100,7 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
 
     storj_api_t *storj_api = req->handle;
     storj_api->last_cmd_req = storj_api->curr_cmd_req;
-    storj_api->rcvd_cmd_resp = "get-bucket-id-resp";
+    storj_api->rcvd_cmd_resp = "remove-bucket-resp";
 
     if (req->status_code == 200 || req->status_code == 204) {
         printf("Bucket was successfully removed.\n");
@@ -176,8 +180,8 @@ void list_files_callback(uv_work_t *work_req, int status)
     int ret_status = 0;
     assert(status == 0);
     list_files_request_t *req = work_req->data;
-    storj_api_t *storj_api = req->handle;
 
+    storj_api_t *storj_api = req->handle;
     storj_api->last_cmd_req = storj_api->curr_cmd_req;
     storj_api->rcvd_cmd_resp = "list-files-resp";
 
@@ -199,6 +203,7 @@ void list_files_callback(uv_work_t *work_req, int status)
         goto cleanup;
     }
 
+    storj_api->file_id = NULL;
     for (int i = 0; i < req->total_files; i++) 
     {
         storj_file_meta_t *file = &req->files[i];
@@ -247,6 +252,7 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             storj_api->next_cmd_req  = storj_api->final_cmd_req;
             storj_api->final_cmd_req = NULL;
             storj_api->excp_cmd_resp = "list-files-resp";
+
             storj_bridge_list_files(storj_api->env, storj_api->bucket_id, 
                                     storj_api, list_files_callback);
         }
@@ -256,39 +262,62 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             storj_api->curr_cmd_req  = storj_api->next_cmd_req;
             storj_api->next_cmd_req  = storj_api->final_cmd_req;
             storj_api->final_cmd_req = NULL;
-            storj_api->excp_cmd_resp = "remove-bucekt-resp";
+            storj_api->excp_cmd_resp = "remove-bucket-resp";
+
             storj_bridge_delete_bucket(storj_api->env, storj_api->bucket_id, 
                                        storj_api, delete_bucket_callback);
         }
         else if ((storj_api->next_cmd_req != NULL) && 
                  (strcmp(storj_api->next_cmd_req, "remove-file-req") == 0x00))
         {
-            printf("I am here\n");
-            printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
-                   __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
-                   storj_api->bucket_name);
+            if (storj_api->file_id != NULL)
+            {
+                printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
+                       __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
+                       storj_api->bucket_name);
 
-            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->next_cmd_req  = storj_api->final_cmd_req;
-            storj_api->final_cmd_req = NULL;
-            storj_api->excp_cmd_resp = "remove-file-resp";
-            storj_bridge_delete_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
-                                     storj_api, delete_file_callback);
+                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+                storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                storj_api->final_cmd_req = NULL;
+                storj_api->excp_cmd_resp = "remove-file-resp";
+
+                storj_bridge_delete_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
+                                         storj_api, delete_file_callback);
+            }
+            else
+            {
+                printf("\'%s\' file doesn't exists in \'%s\' bucket\n", 
+                       storj_api->file_name, storj_api->bucket_name);
+            }
         }
         else if ((storj_api->next_cmd_req != NULL) && 
                  (strcmp(storj_api->next_cmd_req, "list-mirrors-req") == 0x00))
         {
-            printf("I am here\n");
-            printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
-                   __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
-                   storj_api->bucket_name);
+            if (storj_api->file_id != NULL)
+            {   
+                printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
+                       __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
+                       storj_api->bucket_name);
 
-            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->next_cmd_req  = storj_api->final_cmd_req;
-            storj_api->final_cmd_req = NULL;
-            storj_api->excp_cmd_resp = "list-mirrors-resp";
-            storj_bridge_list_mirrors(storj_api->env, storj_api->bucket_id, storj_api->file_id,
-                                      storj_api, list_mirrors_callback);
+                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+                storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                storj_api->final_cmd_req = NULL;
+                storj_api->excp_cmd_resp = "list-mirrors-resp";
+
+                storj_bridge_list_mirrors(storj_api->env, storj_api->bucket_id, storj_api->file_id,
+                                          storj_api, list_mirrors_callback);
+            }
+            else
+            {
+                printf("\'%s\' file doesn't exists in \'%s\' bucket\n", 
+                       storj_api->file_name, storj_api->bucket_name);
+            }
+        }
+        else
+        {
+            
+            printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", 
+                   __FUNCTION__, __LINE__);
         }
     }
     else
@@ -296,6 +325,9 @@ void queue_next_cmd_req(storj_api_t *storj_api)
         printf("[%s][%d]Oops !!!! expt resp = %s; rcvd resp = %s \n",
                __FUNCTION__, __LINE__,
                 storj_api->excp_cmd_resp, storj_api->rcvd_cmd_resp );
+        printf("[%s][%d]last cmd = %s; cur cmd = %s; next cmd = %s\n",
+               __FUNCTION__, __LINE__, storj_api->last_cmd_req, 
+               storj_api->curr_cmd_req, storj_api->next_cmd_req);
     }
 
 
