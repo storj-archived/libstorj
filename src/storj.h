@@ -101,6 +101,9 @@ extern "C" {
 // Miscellaneous errors
 #define STORJ_HEX_DECODE_ERROR 7000
 
+// Storj API related errors
+#define STORJAPI_BUCKET_NAME_MISSING_ERROR 8000
+
 // Exchange report codes
 #define STORJ_REPORT_SUCCESS 1000
 #define STORJ_REPORT_FAILURE 1100
@@ -541,6 +544,29 @@ typedef struct {
     shard_tracker_t *shard;
     int pending_work_count;
 } storj_upload_state_t;
+
+/**
+ * @brief A Structure for passing the User's Application info to 
+ *        Storj API.
+ */
+typedef struct storj_api {
+    storj_env_t *env;
+    char *bucket_name;
+    char *bucket_id;
+    char *file_name;
+    char *file_id;
+    char *src_info;      /**< next file ready to upload */
+    char *dst_file;      /**< next file ready to upload */
+    int  total_files;    /**< total files to upload */
+    char *curr_cmd_req;  /**< cli curr command requested */
+    char *next_cmd_req;  /**< cli curr command requested */
+    char *excp_cmd_resp; /**< expected cmd response */
+    char *rcvd_cmd_resp; /**< received cmd response */
+    char *last_cmd_req;  /**< last command requested */
+    int  error_status;   /**< command response/error status */
+    storj_log_levels_t *log;
+    void *handle;
+} storj_api_t;
 
 /**
  * @brief Initialize a Storj environment
@@ -997,6 +1023,18 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
                                     const char *password,
                                     void *handle,
                                     uv_after_work_cb cb);
+
+/**
+ * @brief Get bucket id by bucket name 
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] email the user's email
+ * @param[in] password the user's password
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_get_bucket_id(storj_api_t *storj_api);
 
 static inline char separator()
 {

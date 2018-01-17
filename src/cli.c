@@ -1606,6 +1606,7 @@ int main(int argc, char **argv)
     char *pass = NULL;
     char *mnemonic = NULL;
     cli_state_t *cli_state = NULL;
+    storj_api_t *storj_api = NULL;
 
     if (strcmp(command, "get-info") == 0) {
         printf("Storj bridge: %s\n\n", storj_bridge);
@@ -1804,6 +1805,7 @@ int main(int argc, char **argv)
         }
 
         cli_state = malloc(sizeof(cli_state_t));
+
         if (!cli_state) {
             status = 1;
             goto end_program;
@@ -1811,6 +1813,17 @@ int main(int argc, char **argv)
         memset(cli_state, 0x00, sizeof(cli_state_t));
 
         cli_state->env = env;
+
+        storj_api = malloc(sizeof(storj_api_t));
+
+        if (!cli_state) {
+            status = 1;
+            goto end_program;
+        }
+        memset(storj_api, 0x00, sizeof(storj_api));
+
+        storj_api->env = env;
+
 
         if (strcmp(command, "download-file") == 0)
         {
@@ -1911,28 +1924,9 @@ int main(int argc, char **argv)
         }
         else if (strcmp(command, "list-files") == 0)
         {
-            char *bucket_id = NULL;
-
             /* get the corresponding bucket id from the bucket name */
-            char *bucket_name = argv[command_index + 1];
-
-            if (!bucket_name)
-            {
-                printf("Missing first argument: <bucket-id>\n");
-                status = 1;
-                goto end_program;
-            }
-            else
-            {
-                cli_state->curr_cmd_req = command;
-                cli_state->bucket_name = bucket_name;
-                cli_state->file_name = NULL;
-                cli_state->file_id = NULL;
-                if(!cli_state->bucket_id)
-                {
-                    storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
-                }
-            }
+            storj_api->bucket_name = argv[command_index + 1];
+            storj_get_bucket_files(storj_api);
         } else if (strcmp(command, "add-bucket") == 0) {
             char *bucket_name = argv[command_index + 1];
 
@@ -1976,20 +1970,8 @@ int main(int argc, char **argv)
         }
         else if (strcmp(command, "get-bucket-id") == 0)
         {
-            char *bucket_name = argv[command_index + 1];
-            if (!bucket_name)
-            {
-                printf("Missing first argument: <bucket-name>\n");
-                status = 1;
-                goto end_program;
-            }
-            else
-            {
-                cli_state->bucket_name = (void *)bucket_name;
-                cli_state->curr_cmd_req = command;
-            }
-            /* when callback returns, we store the bucket id of bucket name else null */
-            storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
+            storj_api->bucket_name = argv[command_index + 1];
+            storj_get_bucket_id(storj_api);
         }
         else if (strcmp(command, "list-mirrors") == 0) {
             char *bucket_id = argv[command_index + 1];

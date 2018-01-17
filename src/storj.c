@@ -2,6 +2,7 @@
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
+#include "storjapi_callback.h"
 
 static inline void noop() {};
 
@@ -1534,4 +1535,47 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
         return STORJ_MEMORY_ERROR;
     }
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+}
+
+/**
+ * @brief Function gets the bucket id for a given bucket name
+ * 
+ * @author kishore (1/16/2018)
+ * 
+ * @param storj_api 
+ * 
+ * @return STORJ_API int 
+ */
+STORJ_API int storj_get_bucket_id(storj_api_t *storj_api)
+{
+    char *bucket_name = storj_api->bucket_name;
+    if (!bucket_name)
+    {
+        printf("Missing : <bucket-name>\n");
+        return STORJAPI_BUCKET_NAME_MISSING_ERROR;
+    }
+
+    storj_api->last_cmd_req  = NULL;
+    storj_api->next_cmd_req  = NULL;
+    storj_api->curr_cmd_req  = "get-bucket-id-req";
+    storj_api->excp_cmd_resp = "get-bucket-id-resp";
+
+    /* when callback returns, we store the bucket id of bucket name else null */
+    storj_bridge_get_buckets(storj_api->env, storj_api, get_bucket_id_callback);
+}
+
+/**
+ * @brief Function gets the list of files for a given bucket 
+ *        name
+ * 
+ * @author kishore (1/16/2018)
+ * 
+ * @param storj_api 
+ * 
+ * @return STORJ_API int 
+ */
+STORJ_API int storj_get_bucket_files(storj_api_t *storj_api)
+{
+    storj_get_bucket_id(storj_api);
+    storj_api->next_cmd_req  = "list-files-req";
 }

@@ -14,7 +14,7 @@ endif
 include_HEADERS = storj.h
 
 bin_PROGRAMS = storj
-storj_SOURCES = cli.c storj.h
+storj_SOURCES = cli.c storj.h storjapi_callback.c storjapi_callback.h
 storj_LDADD = libstorj.la
 if BUILD_STORJ_DLL
 storj_LDFLAGS = -Wall
