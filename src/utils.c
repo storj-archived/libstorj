@@ -101,8 +101,10 @@ char *str_replace(char *search, char *replace, char *subject) {
 
     // count the number of replacements needed
     ins = subject;
-    for (count = 0; tmp = strstr(ins, search); ++count) {
+    tmp = strstr(ins, search);
+    for (count = 0; tmp != NULL; ++count) {
         ins = tmp + len_search;
+        tmp = strstr(ins, search);
     }
 
     tmp = result = malloc(strlen(subject) + (len_replace - len_search) * count + 1);
