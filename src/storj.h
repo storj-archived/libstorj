@@ -555,7 +555,7 @@ typedef struct storj_api {
     char *bucket_id;
     char *file_name;
     char *file_id;
-    char *src_info;      /**< next file ready to upload */
+    char *src_file;      /**< next file ready to upload */
     char *dst_file;      /**< next file ready to upload */
     int  total_files;    /**< total files to upload */
     char *last_cmd_req;  /**< last command requested */
@@ -979,6 +979,12 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
                                                         void *handle,
                                                         storj_progress_cb progress_cb,
                                                         storj_finished_upload_cb finished_cb);
+/**
+ * @brief Will free the file info struct passed to the upload finished callback
+ *
+ * @param[in] file - The storj_file_meta_t struct from storj_finished_upload_cb callback
+ */
+STORJ_API void storj_free_uploaded_file_info(storj_file_meta_t *file);
 
 /**
  * @brief Will cancel a download
@@ -1084,6 +1090,30 @@ STORJ_API int storj_remove_file(storj_api_t *storj_api);
  * @return STORJ_API int 
  */
 STORJ_API int storj_list_mirrors(storj_api_t *storj_api);
+
+/**
+ * @brief Function gets the list of files for a given bucket 
+ *        name
+ * 
+ * @author kishore (1/16/2018)
+ * 
+ * @param storj_api 
+ * 
+ * @return STORJ_API int 
+ */
+STORJ_API int storj_upload_file(storj_api_t *storj_api);
+
+/**
+ * @brief Function gets the list of files for a given bucket 
+ *        name
+ * 
+ * @author kishore (1/16/2018)
+ * 
+ * @param storj_api 
+ * 
+ * @return STORJ_API int 
+ */
+STORJ_API int storj_download_file(storj_api_t *storj_api);
 
 static inline char separator()
 {

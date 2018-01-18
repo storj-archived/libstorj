@@ -2,6 +2,25 @@
 
 static inline void noop() {};
 
+static void get_input(char *line)
+{
+    if (fgets(line, BUFSIZ, stdin) == NULL) {
+        line[0] = '\0';
+    } else {
+        int len = strlen(line);
+        if (len > 0) {
+            char *last = strrchr(line, '\n');
+            if (last) {
+                last[0] = '\0';
+            }
+            last = strrchr(line, '\r');
+            if (last) {
+                last[0] = '\0';
+            }
+        }
+    }
+}
+
 static const char *get_filename_separator(const char *file_path)
 {
     const char *file_name = NULL;
@@ -39,16 +58,6 @@ static void close_signal(uv_handle_t *handle)
     ((void)0);
 }
 
-static void upload_signal_handler(uv_signal_t *req, int signum)
-{
-    storj_upload_state_t *state = req->data;
-    storj_bridge_store_file_cancel(state);
-    if (uv_signal_stop(req)) {
-        printf("Unable to stop signal\n");
-    }
-    uv_close((uv_handle_t *)req, close_signal);
-}
-
 static void file_progress(double progress,
                           uint64_t downloaded_bytes,
                           uint64_t total_bytes,
@@ -84,35 +93,37 @@ static void upload_file_complete(int status, char *file_id, void *handle)
     storj_api->rcvd_cmd_resp = "upload-file-resp";
 
     printf("\n");
-    if (status != 0)
-    {
+    if (status != 0) {
         printf("Upload failure: %s\n", storj_strerror(status));
-        //exit(status);
-    }
-    else
-    {
-        printf("Upload Success! File ID: %s\n", file_id);
+        exit(status);
     }
 
-    free(file_id);
+    printf("Upload Success! File ID: %s\n", file_id);
 
     queue_next_cmd_req(storj_api);
+}
+
+void upload_signal_handler(uv_signal_t *req, int signum)
+{
+    storj_upload_state_t *state = req->data;
+    storj_bridge_store_file_cancel(state);
+    if (uv_signal_stop(req)) {
+        printf("Unable to stop signal\n");
+    }
+    uv_close((uv_handle_t *)req, close_signal);
 }
 
 static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path, void *handle)
 {
     FILE *fd = fopen(file_path, "r");
 
-    if (!fd) 
-    {
+    if (!fd) {
         printf("Invalid file path: %s\n", file_path);
-        exit(-1);
     }
 
     const char *file_name = get_filename_separator(file_path);
 
-    if (!file_name) 
-    {
+    if (!file_name) {
         file_name = file_path;
     }
 
@@ -122,8 +133,7 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
     char *push_shard_limit = getenv("STORJ_PUSH_SHARD_LIMIT");
     char *rs = getenv("STORJ_REED_SOLOMON");
 
-    storj_upload_opts_t upload_opts = 
-    {
+    storj_upload_opts_t upload_opts = {
         .prepare_frame_limit = (prepare_frame_limit) ? atoi(prepare_frame_limit) : 1,
         .push_frame_limit = (push_frame_limit) ? atoi(push_frame_limit) : 64,
         .push_shard_limit = (push_shard_limit) ? atoi(push_shard_limit) : 64,
@@ -134,8 +144,7 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
     };
 
     uv_signal_t *sig = malloc(sizeof(uv_signal_t));
-    if (!sig) 
-    {
+    if (!sig) {
         return 1;
     }
     uv_signal_init(env->loop, sig);
@@ -144,8 +153,7 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
 
 
     storj_progress_cb progress_cb = (storj_progress_cb)noop;
-    if (env->log_options->level == 0) 
-    {
+    if (env->log_options->level == 0) {
         progress_cb = file_progress;
     }
 
@@ -155,11 +163,104 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
                                                           progress_cb,
                                                           upload_file_complete);
 
-    if (!state) 
-    {
+    if (!state) {
         return 1;
     }
 
+    sig->data = state;
+
+    return state->error_status;
+}
+
+static void download_file_complete(int status, FILE *fd, void *handle)
+{
+    storj_api_t *storj_api = handle;
+    storj_api->rcvd_cmd_resp = "download-file-resp";
+
+    printf("\n");
+    fclose(fd);
+    if (status) {
+        // TODO send to stderr
+        switch(status) {
+            case STORJ_FILE_DECRYPTION_ERROR:
+                printf("Unable to properly decrypt file, please check " \
+                       "that the correct encryption key was " \
+                       "imported correctly.\n\n");
+                break;
+            default:
+                printf("Download failure: %s\n", storj_strerror(status));
+        }
+
+        exit(status);
+    }
+    printf("Download Success!\n");
+
+    queue_next_cmd_req(storj_api);
+}
+
+static void download_signal_handler(uv_signal_t *req, int signum)
+{
+    storj_download_state_t *state = req->data;
+    storj_bridge_resolve_file_cancel(state);
+    if (uv_signal_stop(req)) {
+        printf("Unable to stop signal\n");
+    }
+    uv_close((uv_handle_t *)req, close_signal);
+}
+
+static int download_file(storj_env_t *env, char *bucket_id,
+                         char *file_id, char *path, void *handle)
+{
+    FILE *fd = NULL;
+
+    if (path) {
+        char user_input[BUFSIZ];
+        memset(user_input, '\0', BUFSIZ);
+
+        if(access(path, F_OK) != -1 ) {
+            printf("Warning: File already exists at path [%s].\n", path);
+            while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0)
+            {
+                memset(user_input, '\0', BUFSIZ);
+                printf("Would you like to overwrite [%s]: [y/n] ", path);
+                get_input(user_input);
+            }
+
+            if (strcmp(user_input, "n") == 0) {
+                printf("\nCanceled overwriting of [%s].\n", path);
+                return 1;
+            }
+
+            unlink(path);
+        }
+
+        fd = fopen(path, "w+");
+    } else {
+        fd = stdout;
+    }
+
+    if (fd == NULL) {
+        // TODO send to stderr
+        printf("Unable to open %s: %s\n", path, strerror(errno));
+        return 1;
+    }
+
+    uv_signal_t *sig = malloc(sizeof(uv_signal_t));
+    uv_signal_init(env->loop, sig);
+    uv_signal_start(sig, download_signal_handler, SIGINT);
+
+    storj_progress_cb progress_cb = (storj_progress_cb)noop;
+    if (path && env->log_options->level == 0) {
+        progress_cb = file_progress;
+    }
+
+    storj_download_state_t *state = storj_bridge_resolve_file(env, bucket_id,
+                                                              file_id, fd, handle,
+                                                              progress_cb,
+                                                              download_file_complete);
+    if (!state) {
+        return 1;
+    }
     sig->data = state;
 
     return state->error_status;
@@ -487,6 +588,19 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             storj_api->excp_cmd_resp = "upload-file-resp";
 
             upload_file(storj_api->env, storj_api->bucket_id, storj_api->file_name, storj_api);
+        }
+        else if ((storj_api->next_cmd_req != NULL) && 
+                 (strcmp(storj_api->next_cmd_req, "download-file-req") == 0x00))
+        {
+            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+            storj_api->next_cmd_req  = storj_api->final_cmd_req;
+            storj_api->final_cmd_req = NULL;
+            storj_api->excp_cmd_resp = "download-file-resp";
+            printf("\n\nAM here ....\n\n");
+
+            printf("dst_file= %s\n", storj_api->dst_file);
+            download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, 
+                          storj_api->dst_file, storj_api);
         }
         else
         {

@@ -741,7 +741,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     queue_next_cli_cmd(handle);
 }
 
-void download_signal_handler(uv_signal_t *req, int signum)
+static void download_signal_handler(uv_signal_t *req, int signum)
 {
     storj_download_state_t *state = req->data;
     storj_bridge_resolve_file_cancel(state);
@@ -1827,6 +1827,22 @@ int main(int argc, char **argv)
 
         if (strcmp(command, "download-file") == 0)
         {
+
+            /* get the corresponding bucket id from the bucket name */
+            storj_api->bucket_name = argv[command_index + 1];
+            storj_api->file_name = argv[command_index + 2];
+            storj_api->dst_file = argv[command_index + 3];
+
+            if (!storj_api->bucket_name || !storj_api->file_name)
+            {
+                printf("Missing arguments: <bucket-name> <file_name> <into_local_file_name>\n");
+                status = 1;
+                goto end_program;
+            }
+           
+            storj_download_file(storj_api); 
+
+            #if 0
             char *bucket_name = argv[command_index + 1];
             char *file_name = argv[command_index + 2];
             char *path = argv[command_index + 3];
@@ -1848,6 +1864,7 @@ int main(int argc, char **argv)
                     storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
                 }
             }
+            #endif
         }
         else if (strcmp(command, "cp") == 0)
         {

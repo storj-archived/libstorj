@@ -1647,3 +1647,20 @@ STORJ_API int storj_upload_file(storj_api_t *storj_api)
     storj_api->next_cmd_req  = "upload-file-req";
     storj_api->final_cmd_req = NULL;
 }
+
+/**
+ * @brief Function gets the list of files for a given bucket 
+ *        name
+ * 
+ * @author kishore (1/16/2018)
+ * 
+ * @param storj_api 
+ * 
+ * @return STORJ_API int 
+ */
+STORJ_API int storj_download_file(storj_api_t *storj_api)
+{
+    storj_get_bucket_files(storj_api);
+    storj_api->final_cmd_req  = "download-file-req";
+}
+
