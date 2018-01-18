@@ -583,7 +583,7 @@ static int get_password_verify(char *prompt, char *password, int count)
     }
 }
 
-void close_signal(uv_handle_t *handle)
+static void close_signal(uv_handle_t *handle)
 {
     ((void)0);
 }
@@ -640,7 +640,7 @@ static void upload_file_complete(int status, char *file_id, void *handle)
     queue_next_cli_cmd(handle);
 }
 
-void upload_signal_handler(uv_signal_t *req, int signum)
+static void upload_signal_handler(uv_signal_t *req, int signum)
 {
     storj_upload_state_t *state = req->data;
     storj_bridge_store_file_cancel(state);
@@ -1894,6 +1894,20 @@ int main(int argc, char **argv)
         }
         else if (strcmp(command, "upload-file") == 0)
         {
+            /* get the corresponding bucket id from the bucket name */
+            storj_api->bucket_name = argv[command_index + 1];
+            storj_api->file_name = argv[command_index + 2];
+
+            if (!storj_api->bucket_name || !storj_api->file_name)
+            {
+                printf("Missing arguments: <bucket-name> <path>\n");
+                status = 1;
+                goto end_program;
+            }
+           
+            storj_upload_file(storj_api); 
+ 
+            #if 0
             char *bucket_id = NULL;
 
             /* get the corresponding bucket id from the bucket name */
@@ -1921,11 +1935,19 @@ int main(int argc, char **argv)
                     storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
                 }
             }
+            #endif
         }
         else if (strcmp(command, "list-files") == 0)
         {
             /* get the corresponding bucket id from the bucket name */
             storj_api->bucket_name = argv[command_index + 1];
+
+            if (!storj_api->bucket_name)
+            {
+                printf("Missing argument: <bucket-name>\n");
+                status = 1;
+                goto end_program;
+            }
             storj_get_bucket_files(storj_api);
         } else if (strcmp(command, "add-bucket") == 0) {
             char *bucket_name = argv[command_index + 1];

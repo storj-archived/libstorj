@@ -1,5 +1,170 @@
 #include "storjapi_callback.h"
 
+static inline void noop() {};
+
+static const char *get_filename_separator(const char *file_path)
+{
+    const char *file_name = NULL;
+#ifdef _WIN32
+    file_name = strrchr(file_path, '\\');
+    if (!file_name) {
+        file_name = strrchr(file_path, '/');
+    }
+    if (!file_name && file_path) {
+        file_name = file_path;
+    }
+    if (!file_name) {
+        return NULL;
+    }
+    if (file_name[0] == '\\' || file_name[0] == '/') {
+        file_name++;
+    }
+#else
+    file_name = strrchr(file_path, '/');
+    if (!file_name && file_path) {
+        file_name = file_path;
+    }
+    if (!file_name) {
+        return NULL;
+    }
+    if (file_name[0] == '/') {
+        file_name++;
+    }
+#endif
+    return file_name;
+}
+
+static void close_signal(uv_handle_t *handle)
+{
+    ((void)0);
+}
+
+static void upload_signal_handler(uv_signal_t *req, int signum)
+{
+    storj_upload_state_t *state = req->data;
+    storj_bridge_store_file_cancel(state);
+    if (uv_signal_stop(req)) {
+        printf("Unable to stop signal\n");
+    }
+    uv_close((uv_handle_t *)req, close_signal);
+}
+
+static void file_progress(double progress,
+                          uint64_t downloaded_bytes,
+                          uint64_t total_bytes,
+                          void *handle)
+{
+    int bar_width = 70;
+
+    if (progress == 0 && downloaded_bytes == 0) {
+        printf("Preparing File...");
+        fflush(stdout);
+        return;
+    }
+
+    printf("\r[");
+    int pos = bar_width * progress;
+    for (int i = 0; i < bar_width; ++i) {
+        if (i < pos) {
+            printf("=");
+        } else if (i == pos) {
+            printf(">");
+        } else {
+            printf(" ");
+        }
+    }
+    printf("] %.*f%%", 2, progress * 100);
+
+    fflush(stdout);
+}
+
+static void upload_file_complete(int status, char *file_id, void *handle)
+{
+    storj_api_t *storj_api = handle;
+    storj_api->rcvd_cmd_resp = "upload-file-resp";
+
+    printf("\n");
+    if (status != 0)
+    {
+        printf("Upload failure: %s\n", storj_strerror(status));
+        //exit(status);
+    }
+    else
+    {
+        printf("Upload Success! File ID: %s\n", file_id);
+    }
+
+    free(file_id);
+
+    queue_next_cmd_req(storj_api);
+}
+
+static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path, void *handle)
+{
+    FILE *fd = fopen(file_path, "r");
+
+    if (!fd) 
+    {
+        printf("Invalid file path: %s\n", file_path);
+        exit(-1);
+    }
+
+    const char *file_name = get_filename_separator(file_path);
+
+    if (!file_name) 
+    {
+        file_name = file_path;
+    }
+
+    // Upload opts env variables:
+    char *prepare_frame_limit = getenv("STORJ_PREPARE_FRAME_LIMIT");
+    char *push_frame_limit = getenv("STORJ_PUSH_FRAME_LIMIT");
+    char *push_shard_limit = getenv("STORJ_PUSH_SHARD_LIMIT");
+    char *rs = getenv("STORJ_REED_SOLOMON");
+
+    storj_upload_opts_t upload_opts = 
+    {
+        .prepare_frame_limit = (prepare_frame_limit) ? atoi(prepare_frame_limit) : 1,
+        .push_frame_limit = (push_frame_limit) ? atoi(push_frame_limit) : 64,
+        .push_shard_limit = (push_shard_limit) ? atoi(push_shard_limit) : 64,
+        .rs = (!rs) ? true : (strcmp(rs, "false") == 0) ? false : true,
+        .bucket_id = bucket_id,
+        .file_name = file_name,
+        .fd = fd
+    };
+
+    uv_signal_t *sig = malloc(sizeof(uv_signal_t));
+    if (!sig) 
+    {
+        return 1;
+    }
+    uv_signal_init(env->loop, sig);
+    uv_signal_start(sig, upload_signal_handler, SIGINT);
+
+
+
+    storj_progress_cb progress_cb = (storj_progress_cb)noop;
+    if (env->log_options->level == 0) 
+    {
+        progress_cb = file_progress;
+    }
+
+    storj_upload_state_t *state = storj_bridge_store_file(env,
+                                                          &upload_opts,
+                                                          handle,
+                                                          progress_cb,
+                                                          upload_file_complete);
+
+    if (!state) 
+    {
+        return 1;
+    }
+
+    sig->data = state;
+
+    return state->error_status;
+}
+
 static void list_mirrors_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -313,11 +478,22 @@ void queue_next_cmd_req(storj_api_t *storj_api)
                        storj_api->file_name, storj_api->bucket_name);
             }
         }
+        else if ((storj_api->next_cmd_req != NULL) && 
+                 (strcmp(storj_api->next_cmd_req, "upload-file-req") == 0x00))
+        {
+            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+            storj_api->next_cmd_req  = storj_api->final_cmd_req;
+            storj_api->final_cmd_req = NULL;
+            storj_api->excp_cmd_resp = "upload-file-resp";
+
+            upload_file(storj_api->env, storj_api->bucket_id, storj_api->file_name, storj_api);
+        }
         else
         {
             
             printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", 
                    __FUNCTION__, __LINE__);
+            exit(0);
         }
     }
     else
