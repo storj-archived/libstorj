@@ -22,41 +22,13 @@ static void create_bucket_request_worker(uv_work_t *work)
     create_bucket_request_t *req = work->data;
     int status_code = 0;
 
-    // Derive a key based on the master seed and bucket name magic number
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->mnemonic,
-                        BUCKET_NAME_MAGIC,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
+    // Encrypt the bucket name
+    if (encrypt_bucket_name(req->encrypt_options->mnemonic,
+                            req->bucket_name,
+                            (char **)&req->encrypted_bucket_name)) {
         req->error_code = STORJ_MEMORY_ERROR;
         return;
     }
-
-    free(bucket_key_as_str);
-
-    // Get bucket name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    // Generate the synthetic iv with first half of hmac w/ name
-    struct hmac_sha512_ctx ctx2;
-    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx2, strlen(req->bucket_name),
-                       (uint8_t *)req->bucket_name);
-    uint8_t bucketname_iv[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
-
-    free(bucket_key);
-
-    // Encrypt the bucket name
-    char *encrypted_bucket_name;
-    encrypt_meta(req->bucket_name, key, bucketname_iv, &encrypted_bucket_name);
-    req->encrypted_bucket_name = encrypted_bucket_name;
 
     struct json_object *body = json_object_new_object();
     json_object *name = json_object_new_string(req->encrypted_bucket_name);
@@ -108,29 +80,6 @@ static void get_buckets_request_worker(uv_work_t *work)
         req->total_buckets = num_buckets;
     }
 
-    // Derive a key based on the master seed
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->mnemonic,
-                        BUCKET_NAME_MAGIC,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
-        req->error_code = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    free(bucket_key_as_str);
-
-    // Get bucket name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    free(bucket_key);
-
     struct json_object *bucket_item;
     struct json_object *name;
     struct json_object *created;
@@ -158,14 +107,17 @@ static void get_buckets_request_worker(uv_work_t *work)
             continue;
         }
         char *decrypted_name;
-        int error_status = decrypt_meta(encrypted_name, key,
-                                        &decrypted_name);
+        int error_status = decrypt_bucket_name(req->encrypt_options->mnemonic,
+                                               encrypted_name,
+                                               &decrypted_name);
         if (!error_status) {
             bucket->decrypted = true;
             bucket->name = decrypted_name;
-        } else {
+        } else if (error_status == STORJ_META_DECRYPTION_ERROR){
             bucket->decrypted = false;
             bucket->name = strdup(encrypted_name);
+        } else {
+            req->error_code = STORJ_MEMORY_ERROR;
         }
     }
 }
@@ -185,29 +137,6 @@ static void get_bucket_request_worker(uv_work_t *work)
         req->bucket = NULL;
         return;
     }
-
-    // Derive a key based on the master seed
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->mnemonic,
-                        BUCKET_NAME_MAGIC,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
-        req->error_code = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    free(bucket_key_as_str);
-
-    // Get bucket name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    free(bucket_key);
 
     struct json_object *name;
     struct json_object *created;
@@ -230,14 +159,17 @@ static void get_bucket_request_worker(uv_work_t *work)
     const char *encrypted_name = json_object_get_string(name);
     if (encrypted_name) {
         char *decrypted_name;
-        int error_status = decrypt_meta(encrypted_name, key,
-                                        &decrypted_name);
+        int error_status = decrypt_bucket_name(req->encrypt_options->mnemonic,
+                                               encrypted_name,
+                                               &decrypted_name);
         if (!error_status) {
             req->bucket->decrypted = true;
             req->bucket->name = decrypted_name;
-        } else {
+        } else if (error_status == STORJ_META_DECRYPTION_ERROR){
             req->bucket->decrypted = false;
             req->bucket->name = strdup(encrypted_name);
+        } else {
+            req->error_code = STORJ_MEMORY_ERROR;
         }
     }
 }
@@ -247,40 +179,14 @@ static void get_bucket_id_request_worker(uv_work_t *work)
     get_bucket_id_request_t *req = work->data;
     int status_code = 0;
 
-    // Derive a key based on the master seed and bucket name magic number
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->mnemonic,
-                        BUCKET_NAME_MAGIC,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
+    // Encrypt the bucket name
+    char *encrypted_bucket_name;
+    if (encrypt_bucket_name(req->encrypt_options->mnemonic,
+                            req->bucket_name,
+                            &encrypted_bucket_name)) {
         req->error_code = STORJ_MEMORY_ERROR;
         return;
     }
-
-    free(bucket_key_as_str);
-
-    // Get bucket name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    // Generate the synthetic iv with first half of hmac w/ name
-    struct hmac_sha512_ctx ctx2;
-    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx2, strlen(req->bucket_name),
-                       (uint8_t *)req->bucket_name);
-    uint8_t bucketname_iv[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, bucketname_iv);
-
-    free(bucket_key);
-
-    // Encrypt the bucket name
-    char *encrypted_bucket_name;
-    encrypt_meta(req->bucket_name, key, bucketname_iv, &encrypted_bucket_name);
 
     char *escaped_encrypted_bucket_name = str_replace("/", "%2F", encrypted_bucket_name);
     if (!escaped_encrypted_bucket_name) {
@@ -335,29 +241,6 @@ static void list_files_request_worker(uv_work_t *work)
         req->total_files = num_files;
     }
 
-    // Get the bucket key to encrypt the filename from bucket id
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->mnemonic,
-                        req->bucket_id,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
-        req->error_code = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    free(bucket_key_as_str);
-
-    // Get file name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    free(bucket_key);
-
     struct json_object *file;
     struct json_object *filename;
     struct json_object *mimetype;
@@ -402,14 +285,18 @@ static void list_files_request_worker(uv_work_t *work)
             continue;
         }
         char *decrypted_file_name;
-        int error_status = decrypt_meta(encrypted_file_name, key,
-                                        &decrypted_file_name);
+        int error_status = decrypt_file_name(req->encrypt_options->mnemonic,
+                                             req->bucket_id,
+                                             encrypted_file_name,
+                                             &decrypted_file_name);
         if (!error_status) {
             file->decrypted = true;
             file->filename = decrypted_file_name;
-        } else {
+        } else if (error_status == STORJ_META_DECRYPTION_ERROR) {
             file->decrypted = false;
             file->filename = strdup(encrypted_file_name);
+        } else {
+            req->error_code = STORJ_MEMORY_ERROR;
         }
     }
 }
@@ -425,30 +312,6 @@ static void get_file_info_request_worker(uv_work_t *work)
 
     req->status_code = status_code;
 
-    // Get the bucket key to encrypt the filename from bucket id
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->mnemonic,
-                        req->bucket_id,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
-        req->error_code = STORJ_MEMORY_ERROR;
-        return;
-    }
-
-    free(bucket_key_as_str);
-
-    // Get file name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    free(bucket_key);
-
-    struct json_object *file;
     struct json_object *filename;
     struct json_object *mimetype;
     struct json_object *size;
@@ -486,14 +349,18 @@ static void get_file_info_request_worker(uv_work_t *work)
     const char *encrypted_file_name = json_object_get_string(filename);
     if (encrypted_file_name) {
         char *decrypted_file_name;
-        int error_status = decrypt_meta(encrypted_file_name, key,
-                                        &decrypted_file_name);
+        int error_status = decrypt_file_name(req->encrypt_options->mnemonic,
+                                             req->bucket_id,
+                                             encrypted_file_name,
+                                             &decrypted_file_name);
         if (!error_status) {
             req->file->decrypted = true;
             req->file->filename = decrypted_file_name;
-        } else {
+        } else if (error_status == STORJ_META_DECRYPTION_ERROR) {
         	req->file->decrypted = false;
         	req->file->filename = strdup(encrypted_file_name);
+        } else {
+            req->error_code = STORJ_MEMORY_ERROR;
         }
     }
 }
@@ -503,41 +370,14 @@ static void get_file_id_request_worker(uv_work_t *work)
     get_file_id_request_t *req = work->data;
     int status_code = 0;
 
-    // Get the bucket key to encrypt the filename
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(req->encrypt_options->mnemonic,
-                        req->bucket_id,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
+    char *encrypted_file_name;
+    if (encrypt_file_name(req->encrypt_options->mnemonic,
+                          req->bucket_id,
+                          req->file_name,
+                          &encrypted_file_name)) {
         req->error_code = STORJ_MEMORY_ERROR;
         return;
     }
-
-    free(bucket_key_as_str);
-
-    // Get file name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    // Generate the synthetic iv with first half of hmac w/ bucket and filename
-    struct hmac_sha512_ctx ctx2;
-    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx2, strlen(req->bucket_id),
-                       (uint8_t *)req->bucket_id);
-    hmac_sha512_update(&ctx2, strlen(req->file_name),
-                       (uint8_t *)req->file_name);
-    uint8_t filename_iv[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
-
-    free(bucket_key);
-
-    char *encrypted_file_name;
-    encrypt_meta(req->file_name, key, filename_iv, &encrypted_file_name);
 
     char *escaped_encrypted_file_name = str_replace("/", "%2F", encrypted_file_name);
     if (!escaped_encrypted_file_name) {

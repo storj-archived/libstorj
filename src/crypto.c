@@ -141,6 +141,98 @@ cleanup:
     return status;
 }
 
+int decrypt_bucket_name(const char *mnemonic, const char *encrypted_name, char **decrypted_name) {
+    return decrypt_file_name(mnemonic, BUCKET_NAME_MAGIC, encrypted_name, decrypted_name);
+}
+
+int decrypt_file_name(const char *mnemonic, const char* bucket_id,
+                      const char *encrypted_name, char **decrypted_name) {
+    int status = 0;
+
+    // Derive a key based on the bucket id
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(mnemonic, bucket_id, &bucket_key_as_str);
+
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        status = 1;
+        goto cleanup;
+    }
+
+    // Get encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    status = decrypt_meta(encrypted_name, key, decrypted_name);
+
+cleanup:
+
+    if (bucket_key) {
+        memset_zero(bucket_key, BASE16_DECODE_LENGTH(strlen(bucket_key_as_str)) + 1);
+        free(bucket_key);
+    }
+    if (bucket_key_as_str) {
+        memset_zero(bucket_key_as_str, DETERMINISTIC_KEY_SIZE + 1);
+        free(bucket_key_as_str);
+    }
+
+    return status;
+}
+
+int encrypt_bucket_name(const char *mnemonic, const char *bucket_name, char **encrypted_name) {
+    return encrypt_file_name(mnemonic, BUCKET_NAME_MAGIC, bucket_name, encrypted_name);
+}
+
+int encrypt_file_name(const char *mnemonic, const char* bucket_id,
+                      const char *file_name, char **encrypted_name) {
+    int status = 0;
+
+    // Derive a key based on the bucket id
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(mnemonic, bucket_id, &bucket_key_as_str);
+
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        status = 1;
+        goto cleanup;
+    }
+
+    // Get encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    // Generate the synthetic iv with first half of hmac w/ bucket and filename
+    struct hmac_sha512_ctx ctx2;
+    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
+    if (strcmp(bucket_id, BUCKET_NAME_MAGIC)) {
+        hmac_sha512_update(&ctx2, strlen(bucket_id), (uint8_t *) bucket_id);
+    }
+    hmac_sha512_update(&ctx2, strlen(file_name), (uint8_t *)file_name);
+    uint8_t iv[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, iv);
+
+    status = encrypt_meta(file_name, key, iv, encrypted_name);
+
+cleanup:
+
+    if (bucket_key) {
+        memset_zero(bucket_key, BASE16_DECODE_LENGTH(strlen(bucket_key_as_str)) + 1);
+        free(bucket_key);
+    }
+    if (bucket_key_as_str) {
+        memset_zero(bucket_key_as_str, DETERMINISTIC_KEY_SIZE + 1);
+        free(bucket_key_as_str);
+    }
+
+    return status;
+}
+
 int get_deterministic_key(const char *key, int key_len,
                           const char *id, char **buffer)
 {
@@ -462,18 +554,20 @@ int decrypt_meta(const char *buffer_base64,
     if (!base64_decode_update(&ctx3, &decode_len, buffer,
                               strlen(buffer_base64), (uint8_t *)buffer_base64)) {
         free(buffer);
-        return 1;
+        //STORJ_META_DECRYPTION_ERROR
+        return 6001;
     }
 
     if (!base64_decode_final(&ctx3)) {
         free(buffer);
-        return 1;
+        //STORJ_META_DECRYPTION_ERROR
+        return 6001;
     }
 
     if (GCM_DIGEST_SIZE + SHA256_DIGEST_SIZE + 1 > decode_len) {
         free(buffer);
         //STORJ_META_DECRYPTION_ERROR
-        return 1;
+        return 6001;
     }
 
     size_t length = decode_len - GCM_DIGEST_SIZE - SHA256_DIGEST_SIZE;
@@ -511,7 +605,7 @@ int decrypt_meta(const char *buffer_base64,
     int digest_match = memcmp(actual_digest, digest, GCM_DIGEST_SIZE);
     if (digest_match != 0) {
         //STORJ_META_DECRYPTION_ERROR
-        return 1;
+        return 6001;
     }
 
     *filemeta = calloc(length + 1, sizeof(char));
