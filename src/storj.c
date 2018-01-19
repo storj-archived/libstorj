@@ -185,30 +185,24 @@ static void get_bucket_id_request_worker(uv_work_t *work)
                             req->bucket_name,
                             &encrypted_bucket_name)) {
         req->error_code = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
 
     char *escaped_encrypted_bucket_name = str_replace("/", "%2F", encrypted_bucket_name);
     if (!escaped_encrypted_bucket_name) {
         req->error_code = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
-
-    free(encrypted_bucket_name);
 
     char *path = str_concat_many(2, "/bucket-ids/", escaped_encrypted_bucket_name);
     if (!path) {
         req->error_code = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
-
-    free(escaped_encrypted_bucket_name);
 
     req->error_code = fetch_json(req->http_options,
                                  req->options, "GET", path, NULL,
                                  true, &req->response, &status_code);
-
-    free(path);
 
     if (req->response != NULL) {
         struct json_object *id;
@@ -217,6 +211,12 @@ static void get_bucket_id_request_worker(uv_work_t *work)
     }
 
     req->status_code = status_code;
+
+cleanup:
+
+    free(encrypted_bucket_name);
+    free(escaped_encrypted_bucket_name);
+    free(path);
 }
 
 static void list_files_request_worker(uv_work_t *work)
@@ -376,31 +376,25 @@ static void get_file_id_request_worker(uv_work_t *work)
                           req->file_name,
                           &encrypted_file_name)) {
         req->error_code = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
 
     char *escaped_encrypted_file_name = str_replace("/", "%2F", encrypted_file_name);
     if (!escaped_encrypted_file_name) {
         req->error_code = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
-
-    free(encrypted_file_name);
 
     char *path = str_concat_many(4, "/buckets/", req->bucket_id,
                                     "/file-ids/", escaped_encrypted_file_name);
     if (!path) {
         req->error_code = STORJ_MEMORY_ERROR;
-        return;
+        goto cleanup;
     }
-
-    free(escaped_encrypted_file_name);
 
     req->error_code = fetch_json(req->http_options,
                                  req->options, "GET", path, NULL,
                                  true, &req->response, &status_code);
-
-    free(path);
 
     if (req->response != NULL) {
         struct json_object *id;
@@ -409,6 +403,12 @@ static void get_file_id_request_worker(uv_work_t *work)
     }
 
     req->status_code = status_code;
+
+cleanup:
+
+    free(encrypted_file_name);
+    free(escaped_encrypted_file_name);
+    free(path);
 }
 
 static uv_work_t *uv_work_new()
