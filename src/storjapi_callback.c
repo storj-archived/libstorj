@@ -65,7 +65,8 @@ static void file_progress(double progress,
 {
     int bar_width = 70;
 
-    if (progress == 0 && downloaded_bytes == 0) {
+    if (progress == 0 && downloaded_bytes == 0) 
+    {
         printf("Preparing File...");
         fflush(stdout);
         return;
@@ -73,12 +74,18 @@ static void file_progress(double progress,
 
     printf("\r[");
     int pos = bar_width * progress;
-    for (int i = 0; i < bar_width; ++i) {
-        if (i < pos) {
+    for (int i = 0; i < bar_width; ++i) 
+    {
+        if (i < pos) 
+        {
             printf("=");
-        } else if (i == pos) {
+        } 
+        else if (i == pos) 
+        {
             printf(">");
-        } else {
+        } 
+        else 
+        {
             printf(" ");
         }
     }
@@ -93,7 +100,8 @@ static void upload_file_complete(int status, char *file_id, void *handle)
     storj_api->rcvd_cmd_resp = "upload-file-resp";
 
     printf("\n");
-    if (status != 0) {
+    if (status != 0) 
+    {
         printf("Upload failure: %s\n", storj_strerror(status));
         exit(status);
     }
@@ -103,11 +111,12 @@ static void upload_file_complete(int status, char *file_id, void *handle)
     queue_next_cmd_req(storj_api);
 }
 
-void upload_signal_handler(uv_signal_t *req, int signum)
+static void upload_signal_handler(uv_signal_t *req, int signum)
 {
     storj_upload_state_t *state = req->data;
     storj_bridge_store_file_cancel(state);
-    if (uv_signal_stop(req)) {
+    if (uv_signal_stop(req)) 
+    {
         printf("Unable to stop signal\n");
     }
     uv_close((uv_handle_t *)req, close_signal);
@@ -117,13 +126,15 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
 {
     FILE *fd = fopen(file_path, "r");
 
-    if (!fd) {
+    if (!fd) 
+    {
         printf("Invalid file path: %s\n", file_path);
     }
 
     const char *file_name = get_filename_separator(file_path);
 
-    if (!file_name) {
+    if (!file_name) 
+    {
         file_name = file_path;
     }
 
@@ -133,7 +144,8 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
     char *push_shard_limit = getenv("STORJ_PUSH_SHARD_LIMIT");
     char *rs = getenv("STORJ_REED_SOLOMON");
 
-    storj_upload_opts_t upload_opts = {
+    storj_upload_opts_t upload_opts = 
+    {
         .prepare_frame_limit = (prepare_frame_limit) ? atoi(prepare_frame_limit) : 1,
         .push_frame_limit = (push_frame_limit) ? atoi(push_frame_limit) : 64,
         .push_shard_limit = (push_shard_limit) ? atoi(push_shard_limit) : 64,
@@ -144,7 +156,8 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
     };
 
     uv_signal_t *sig = malloc(sizeof(uv_signal_t));
-    if (!sig) {
+    if (!sig) 
+    {
         return 1;
     }
     uv_signal_init(env->loop, sig);
@@ -153,7 +166,8 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
 
 
     storj_progress_cb progress_cb = (storj_progress_cb)noop;
-    if (env->log_options->level == 0) {
+    if (env->log_options->level == 0) 
+    {
         progress_cb = file_progress;
     }
 
@@ -368,12 +382,17 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
     storj_api->last_cmd_req = storj_api->curr_cmd_req;
     storj_api->rcvd_cmd_resp = "remove-bucket-resp";
 
-    if (req->status_code == 200 || req->status_code == 204) {
+    if (req->status_code == 200 || req->status_code == 204)
+    {
         printf("Bucket was successfully removed.\n");
-    } else if (req->status_code == 401) {
+    } 
+    else if (req->status_code == 401)
+    {
         printf("Invalid user credentials.\n");
         goto cleanup;
-    } else {
+    } 
+    else
+    {
         printf("Failed to destroy bucket. (%i)\n", req->status_code);
         goto cleanup;
     }
@@ -397,13 +416,18 @@ void get_bucket_id_callback(uv_work_t *work_req, int status)
     storj_api->last_cmd_req = storj_api->curr_cmd_req;
     storj_api->rcvd_cmd_resp = "get-bucket-id-resp";
 
-    if (req->status_code == 401) {
-       printf("Invalid user credentials.\n");
-       goto cleanup;
-    } else if (req->status_code != 200 && req->status_code != 304) {
+    if (req->status_code == 401)
+    {
+        printf("Invalid user credentials.\n");
+        goto cleanup;
+    } 
+    else if (req->status_code != 200 && req->status_code != 304)
+    {
         printf("Request failed with status code: %i\n", req->status_code);
         goto cleanup;
-    } else if (req->total_buckets == 0) {
+    } 
+    else if (req->total_buckets == 0)
+    {
         printf("No buckets.\n");
         goto cleanup;
     }
@@ -412,20 +436,20 @@ void get_bucket_id_callback(uv_work_t *work_req, int status)
     {
         storj_bucket_meta_t *bucket = &req->buckets[i];
 
-        if(strcmp(storj_api->bucket_name, bucket->name) == 0x00)
+        if (strcmp(storj_api->bucket_name, bucket->name) == 0x00)
         {
             printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
                    bucket->id, bucket->decrypted ? "true" : "false",
                    bucket->created, bucket->name);
-            
+
             /* store the bucket id */
             storj_api->bucket_id = (char *)bucket->id;
 
             break;
-        }
+        } 
         else
         {
-            if (i >= (req->total_buckets -1))
+            if (i >= (req->total_buckets - 1))
             {
                 printf("Invalid bucket name. \n");
                 goto cleanup;
@@ -451,36 +475,44 @@ void list_files_callback(uv_work_t *work_req, int status)
     storj_api->last_cmd_req = storj_api->curr_cmd_req;
     storj_api->rcvd_cmd_resp = "list-files-resp";
 
-    if (req->status_code == 404) {
+    if (req->status_code == 404)
+    {
         printf("Bucket id [%s] does not exist\n", req->bucket_id);
         goto cleanup;
-    } else if (req->status_code == 400) {
+    } 
+    else if (req->status_code == 400)
+    {
         printf("Bucket id [%s] is invalid\n", req->bucket_id);
         goto cleanup;
-    } else if (req->status_code == 401) {
+    } 
+    else if (req->status_code == 401)
+    {
         printf("Invalid user credentials.\n");
         goto cleanup;
-    } else if (req->status_code != 200) {
+    } 
+    else if (req->status_code != 200)
+    {
         printf("Request failed with status code: %i\n", req->status_code);
     }
 
-    if (req->total_files == 0) {
+    if (req->total_files == 0)
+    {
         printf("No files for bucket.\n");
         goto cleanup;
     }
 
     storj_api->file_id = NULL;
-    for (int i = 0; i < req->total_files; i++) 
+    for (int i = 0; i < req->total_files; i++)
     {
         storj_file_meta_t *file = &req->files[i];
 
-        if ((storj_api->file_name != NULL) && 
-            (strcmp(storj_api->file_name,file->filename)) == 0x00)
+        if ((storj_api->file_name != NULL) &&
+            (strcmp(storj_api->file_name, file->filename)) == 0x00)
         {
             /* store the file id */
             storj_api->file_id = (char *)file->id;
         }
-        
+
         printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
                file->id,
                file->size,
@@ -492,7 +524,7 @@ void list_files_callback(uv_work_t *work_req, int status)
 
     queue_next_cmd_req(storj_api);
 
-cleanup:
+  cleanup:
 
     storj_free_list_files_request(req);
     free(work_req);
@@ -604,7 +636,6 @@ void queue_next_cmd_req(storj_api_t *storj_api)
         }
         else
         {
-            
             printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", 
                    __FUNCTION__, __LINE__);
             exit(0);
@@ -619,116 +650,4 @@ void queue_next_cmd_req(storj_api_t *storj_api)
                __FUNCTION__, __LINE__, storj_api->last_cmd_req, 
                storj_api->curr_cmd_req, storj_api->next_cmd_req);
     }
-
-
-#if 0
-    if (((strcmp("list-files"  , storj_api->curr_cmd_req) == 0x00)||
-        ((strcmp("download-file" , storj_api->curr_cmd_req) == 0x00))) &&
-        ((strcmp("list-files-1", storj_api->next_cmd_req) == 0x00)||
-         (strcmp("download-file-1", storj_api->next_cmd_req)==0x00)))
-    {
-        if(strcmp("list-files-1" , storj_api->next_cmd_req) == 0x00)
-        {
-            storj_bridge_list_files(storj_api->env, storj_api->bucket_id, storj_api, list_files_callback);
-        }
-
-        if(strcmp("download-file-1" , storj_api->next_cmd_req) == 0x00)
-        {
-            //FILE *file = fopen("/home/kishore/libstorj/src/dwnld_list.txt", "r");
-            FILE *file = fopen("dwnld_list.txt", "r");
-            if (file != NULL)
-            {
-                char line[256][256];
-                char *temp;
-                char temp_path[1024];
-                int i = 0x00;
-                char *token[10];
-                int tk_idx= 0x00;
-                memset(token, 0x00, sizeof(token));
-                memset(temp_path, 0x00, sizeof(temp_path));
-                memset(line, 0x00, sizeof(line));
-                while((fgets(line[i],sizeof(line), file)!= NULL)) /* read a line from a file */
-                {
-                    temp = strrchr(line[i], '\n');
-                    if(temp) *temp = '\0';
-                    temp = line[i];
-                    i++;
-                    if (i >= storj_api->curr_up_file)
-                    {
-                        break;
-                    }
-                }
-
-                /* start tokenizing */
-                token[0] = strtok(temp, ":");
-                while (token[tk_idx] != NULL)
-                {
-                    tk_idx++;
-                    token[tk_idx] = strtok(NULL, ":");
-                }
-
-                if(storj_api->curr_up_file <= storj_api->total_files)
-                {
-                    storj_api->file_id = token[0];
-                    strcpy(temp_path, storj_api->file_path);
-                    strcat(temp_path, token[1]);
-                    fprintf(stdout,"*****[%d:%d] downloading file: %s *****\n",
-                            storj_api->curr_up_file, storj_api->total_files, temp_path);
-                    storj_api->curr_up_file++;
-                    download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, temp_path, storj_api);
-                }
-                else
-                {
-                    fprintf(stdout,"***** done downloading files  *****\n");
-                    fclose(file);
-                    exit(0);
-                }
-            }
-            else
-            {
-                download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, storj_api->file_path,storj_api);
-            }
-
-        }
-    }
-    else if ((strcmp("upload-file"  , storj_api->curr_cmd_req) == 0x00) &&
-             (strcmp("upload-file-1", storj_api->next_cmd_req) == 0x00))
-    {
-        FILE *file = fopen(storj_api->file_name, "r");
-        if (file != NULL)
-        {
-            char line[256][256];
-            char *temp;
-            int i = 0x00;
-            memset(line, 0x00, sizeof(line));
-            while((fgets(line[i],sizeof(line), file)!= NULL)) /* read a line from a file */
-            {
-                temp = strrchr(line[i], '\n');
-                if(temp) *temp = '\0';
-                storj_api->file_path = line[i];
-                i++;
-                printf("[%s][%d] [index = %d] target file name = %s\n", __FUNCTION__, __LINE__, i, line[i-1]);
-                if(i >= storj_api->curr_up_file)
-                  break;
-            }
-            if(storj_api->curr_up_file <= storj_api->total_files)
-            {
-                fprintf(stdout,"*****uploading file: %s *****\n",line[i-1]); //print the file contents on stdout.
-                upload_file(storj_api->env, storj_api->bucket_id, storj_api->file_path, storj_api);
-                storj_api->curr_up_file++;
-            }
-            else
-            {
-                fprintf(stdout,"***** done uploading files  *****\n");
-                fclose(file);
-                exit(0);
-            }
-        }
-        else
-        {
-            /* handle single file upload from the command line */
-            upload_file(storj_api->env, storj_api->bucket_id, storj_api->file_path, storj_api);
-        }
-    }
-    #endif
 }

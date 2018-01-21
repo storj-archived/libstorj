@@ -1030,88 +1030,70 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
                                     const char *password,
                                     void *handle,
                                     uv_after_work_cb cb);
-
 /**
- * @brief Get bucket id by bucket name 
- *
- * @param[in] env The storj environment struct
- * @param[in] email the user's email
- * @param[in] password the user's password
- * @param[in] handle A pointer that will be available in the callback
- * @param[in] cb A function called with response when complete
+ * @brief Function returns the corresponding bucket's id for a 
+ *        given bucket name
+ * 
+ * @param[in] storj_api_t structure that passes user's input 
+ *       info
  * @return A non-zero error value on failure and 0 on success.
  */
 STORJ_API int storj_get_bucket_id(storj_api_t *storj_api);
 
 /**
- * @brief Function gets the list of files for a given bucket 
- *        name
+ * @brief Function to list files in a given bucket name
  * 
- * @author kishore (1/16/2018)
- * 
- * @param storj_api 
- * 
- * @return STORJ_API int 
+ * @param[in] storj_api_t structure that passes user's input 
+ *       info
+ * @return A non-zero error value on failure and 0 on success.
  */
-STORJ_API int storj_get_bucket_files(storj_api_t *storj_api);
+STORJ_API int storj_list_files(storj_api_t *storj_api);
 
 /**
- * @brief Get bucket id by bucket name 
- *
- * @param[in] env The storj environment struct
- * @param[in] email the user's email
- * @param[in] password the user's password
- * @param[in] handle A pointer that will be available in the callback
- * @param[in] cb A function called with response when complete
+ * @brief Function to remove a given bucket name 
+ * 
+ * @param[in] storj_api_t structure that passes user's input 
+ *       info
  * @return A non-zero error value on failure and 0 on success.
  */
 STORJ_API int storj_remove_bucket(storj_api_t *storj_api);
 
 /**
- * @brief Function gets the list of files for a given bucket 
- *        name
+ * @brief Function to remove a file from a given bucket name 
  * 
- * @author kishore (1/16/2018)
- * 
- * @param storj_api 
- * 
- * @return STORJ_API int 
+ * @param[in] storj_api_t structure that passes user's input 
+ *       info
+ * @return A non-zero error value on failure and 0 on success.
  */
 STORJ_API int storj_remove_file(storj_api_t *storj_api);
 
 /**
- * @brief Function gets the list of files for a given bucket 
- *        name
+ * @brief Function to return the node IDs for a given file for a
+ *        given bucket name
  * 
- * @author kishore (1/16/2018)
- * 
- * @param storj_api 
- * 
- * @return STORJ_API int 
+ * @param[in] storj_api_t structure that passes user's input 
+ *       info
+ * @return A non-zero error value on failure and 0 on success.
  */
 STORJ_API int storj_list_mirrors(storj_api_t *storj_api);
 
 /**
- * @brief Function gets the list of files for a given bucket 
+ * @brief Function to upload a local file into a given bucket 
  *        name
  * 
- * @author kishore (1/16/2018)
- * 
- * @param storj_api 
- * 
- * @return STORJ_API int 
+ * @param[in] storj_api_t structure that passes user's input 
+ *       info
+ * @return A non-zero error value on failure and 0 on success.
  */
 STORJ_API int storj_upload_file(storj_api_t *storj_api);
 
 /**
- * @brief Function gets the list of files for a given bucket 
- *        name
+ * @brief Function to download a file from a given bucket to a 
+ *        local folder
  * 
- * @author kishore (1/16/2018)
- * 
- * @param storj_api 
- * 
- * @return STORJ_API int 
+ * @param[in] storj_api_t structure that passes user's input 
+ *       info
+ * @return A non-zero error value on failure and 0 on success.
  */
 STORJ_API int storj_download_file(storj_api_t *storj_api);
 

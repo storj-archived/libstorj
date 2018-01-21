@@ -1965,7 +1965,7 @@ int main(int argc, char **argv)
                 status = 1;
                 goto end_program;
             }
-            storj_get_bucket_files(storj_api);
+            storj_list_files(storj_api);
         } else if (strcmp(command, "add-bucket") == 0) {
             char *bucket_name = argv[command_index + 1];
 
