@@ -1579,6 +1579,34 @@ int test_memory_mapping()
     return 0;
 }
 
+int test_str_replace()
+{
+    char *subject = "g9qacwq2AE1+5nzL/HYyYdY9WoIr+1ueOuVEx6/IzzZKK9sULoKDDdYvhOpavHH2P3xQNw==";
+
+    char *result = str_replace("/", "%2F", subject);
+    if (!result) {
+        fail("test_str_replace");
+        return 0;
+    }
+
+    char *expected = "g9qacwq2AE1+5nzL%2FHYyYdY9WoIr+1ueOuVEx6%2FIzzZKK9sULoKDDdYvhOpavHH2P3xQNw==";
+
+    int failed = 0;
+    if (strcmp(expected, result) != 0) {
+        failed = 1;
+    }
+
+    if (failed) {
+        fail("test_str_replace");
+    } else {
+        pass("test_str_replace");
+    }
+
+    free(result);
+
+    return 0;
+}
+
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
 {
@@ -1652,6 +1680,7 @@ int main(void)
     test_get_time_milliseconds();
     test_determine_shard_size();
     test_memory_mapping();
+    test_str_replace();
 
     int num_failed = tests_ran - test_status;
     printf(KGRN "\nPASSED: %i" RESET, test_status);
