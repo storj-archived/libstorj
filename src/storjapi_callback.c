@@ -94,19 +94,20 @@ static void file_progress(double progress,
     fflush(stdout);
 }
 
-static void upload_file_complete(int status, char *file_id, void *handle)
+static void upload_file_complete(int status, storj_file_meta_t *file, void *handle)
 {
     storj_api_t *storj_api = handle;
     storj_api->rcvd_cmd_resp = "upload-file-resp";
 
     printf("\n");
-    if (status != 0) 
-    {
+    if (status != 0) {
         printf("Upload failure: %s\n", storj_strerror(status));
         exit(status);
     }
 
-    printf("Upload Success! File ID: %s\n", file_id);
+    printf("Upload Success! File ID: %s\n", file->id);
+
+    storj_free_uploaded_file_info(file);
 
     queue_next_cmd_req(storj_api);
 }
@@ -115,8 +116,7 @@ static void upload_signal_handler(uv_signal_t *req, int signum)
 {
     storj_upload_state_t *state = req->data;
     storj_bridge_store_file_cancel(state);
-    if (uv_signal_stop(req)) 
-    {
+    if (uv_signal_stop(req)) {
         printf("Unable to stop signal\n");
     }
     uv_close((uv_handle_t *)req, close_signal);
@@ -126,15 +126,13 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
 {
     FILE *fd = fopen(file_path, "r");
 
-    if (!fd) 
-    {
+    if (!fd) {
         printf("Invalid file path: %s\n", file_path);
     }
 
     const char *file_name = get_filename_separator(file_path);
 
-    if (!file_name) 
-    {
+    if (!file_name) {
         file_name = file_path;
     }
 
@@ -144,8 +142,7 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
     char *push_shard_limit = getenv("STORJ_PUSH_SHARD_LIMIT");
     char *rs = getenv("STORJ_REED_SOLOMON");
 
-    storj_upload_opts_t upload_opts = 
-    {
+    storj_upload_opts_t upload_opts = {
         .prepare_frame_limit = (prepare_frame_limit) ? atoi(prepare_frame_limit) : 1,
         .push_frame_limit = (push_frame_limit) ? atoi(push_frame_limit) : 64,
         .push_shard_limit = (push_shard_limit) ? atoi(push_shard_limit) : 64,
@@ -156,8 +153,7 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
     };
 
     uv_signal_t *sig = malloc(sizeof(uv_signal_t));
-    if (!sig) 
-    {
+    if (!sig) {
         return 1;
     }
     uv_signal_init(env->loop, sig);
@@ -166,8 +162,7 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
 
 
     storj_progress_cb progress_cb = (storj_progress_cb)noop;
-    if (env->log_options->level == 0) 
-    {
+    if (env->log_options->level == 0) {
         progress_cb = file_progress;
     }
 
@@ -628,7 +623,6 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             storj_api->next_cmd_req  = storj_api->final_cmd_req;
             storj_api->final_cmd_req = NULL;
             storj_api->excp_cmd_resp = "download-file-resp";
-            printf("\n\nAM here ....\n\n");
 
             printf("dst_file= %s\n", storj_api->dst_file);
             download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, 

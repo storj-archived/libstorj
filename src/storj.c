@@ -293,6 +293,7 @@ static void list_files_request_worker(uv_work_t *work)
     struct json_object *mimetype;
     struct json_object *size;
     struct json_object *id;
+    struct json_object *bucket_id;
     struct json_object *created;
     struct json_object *hmac;
     struct json_object *hmac_value;
@@ -304,6 +305,7 @@ static void list_files_request_worker(uv_work_t *work)
         json_object_object_get_ex(file, "mimetype", &mimetype);
         json_object_object_get_ex(file, "size", &size);
         json_object_object_get_ex(file, "id", &id);
+        json_object_object_get_ex(file, "bucket", &bucket_id);
         json_object_object_get_ex(file, "created", &created);
         json_object_object_get_ex(file, "hmac", &hmac);
         json_object_object_get_ex(hmac, "value", &hmac_value);
@@ -317,6 +319,7 @@ static void list_files_request_worker(uv_work_t *work)
         file->index = NULL;
         file->hmac = json_object_get_string(hmac_value);
         file->id = json_object_get_string(id);
+        file->bucket_id = json_object_get_string(bucket_id);
         file->decrypted = false;
         file->filename = NULL;
 
@@ -337,6 +340,90 @@ static void list_files_request_worker(uv_work_t *work)
         } else {
             file->decrypted = false;
             file->filename = strdup(encrypted_file_name);
+        }
+    }
+}
+
+static void get_file_info_request_worker(uv_work_t *work)
+{
+    get_file_info_request_t *req = work->data;
+    int status_code = 0;
+
+    req->error_code = fetch_json(req->http_options,
+                                 req->options, req->method, req->path, req->body,
+                                 req->auth, &req->response, &status_code);
+
+    req->status_code = status_code;
+
+    // Get the bucket key to encrypt the filename from bucket id
+    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
+    generate_bucket_key(req->encrypt_options->mnemonic,
+                        req->bucket_id,
+                        &bucket_key_as_str);
+
+    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
+    if (!bucket_key) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+    free(bucket_key_as_str);
+
+    // Get file name encryption key with first half of hmac w/ magic
+    struct hmac_sha512_ctx ctx1;
+    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
+    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
+    uint8_t key[SHA256_DIGEST_SIZE];
+    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
+
+    free(bucket_key);
+
+    struct json_object *file;
+    struct json_object *filename;
+    struct json_object *mimetype;
+    struct json_object *size;
+    struct json_object *id;
+    struct json_object *bucket_id;
+    struct json_object *created;
+    struct json_object *hmac;
+    struct json_object *hmac_value;
+
+    json_object_object_get_ex(req->response, "filename", &filename);
+    json_object_object_get_ex(req->response, "mimetype", &mimetype);
+    json_object_object_get_ex(req->response, "size", &size);
+    json_object_object_get_ex(req->response, "id", &id);
+    json_object_object_get_ex(req->response, "bucket", &bucket_id);
+    json_object_object_get_ex(req->response, "created", &created);
+    json_object_object_get_ex(req->response, "hmac", &hmac);
+    json_object_object_get_ex(hmac, "value", &hmac_value);
+
+    req->file = malloc(sizeof(storj_file_meta_t));
+    req->file->created = json_object_get_string(created);
+    req->file->mimetype = json_object_get_string(mimetype);
+    req->file->size = json_object_get_int64(size);
+    req->file->erasure = NULL;
+    req->file->index = NULL;
+    req->file->hmac = json_object_get_string(hmac_value);
+    req->file->id = json_object_get_string(id);
+    req->file->bucket_id = json_object_get_string(bucket_id);
+    req->file->decrypted = false;
+    req->file->filename = NULL;
+
+    // Attempt to decrypt the filename, otherwise
+    // we will default the filename to the encrypted text.
+    // The decrypted flag will be set to indicate the status
+    // of decryption for alternative display.
+    const char *encrypted_file_name = json_object_get_string(filename);
+    if (encrypted_file_name) {
+        char *decrypted_file_name;
+        int error_status = decrypt_meta(encrypted_file_name, key,
+                                        &decrypted_file_name);
+        if (!error_status) {
+            req->file->decrypted = true;
+            req->file->filename = decrypted_file_name;
+        } else {
+        	req->file->decrypted = false;
+        	req->file->filename = strdup(encrypted_file_name);
         }
     }
 }
@@ -403,6 +490,39 @@ static list_files_request_t *list_files_request_new(
     req->response = NULL;
     req->files = NULL;
     req->total_files = 0;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
+static get_file_info_request_t *get_file_info_request_new(
+    storj_http_options_t *http_options,
+    storj_bridge_options_t *options,
+    storj_encrypt_options_t *encrypt_options,
+    const char *bucket_id,
+    char *method,
+    char *path,
+    struct json_object *request_body,
+    bool auth,
+    void *handle)
+{
+    get_file_info_request_t *req = malloc(sizeof(get_file_info_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->http_options = http_options;
+    req->options = options;
+    req->encrypt_options = encrypt_options;
+    req->bucket_id = bucket_id;
+    req->method = method;
+    req->path = path;
+    req->auth = auth;
+    req->body = request_body;
+    req->response = NULL;
+    req->file = NULL;
     req->error_code = 0;
     req->status_code = 0;
     req->handle = handle;
@@ -1467,10 +1587,10 @@ STORJ_API int storj_bridge_delete_frame(storj_env_t *env,
 }
 
 STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
-                               const char *bucket_id,
-                               const char *file_id,
-                               void *handle,
-                               uv_after_work_cb cb)
+                                         const char *bucket_id,
+                                         const char *file_id,
+                                         void *handle,
+                                         uv_after_work_cb cb)
 {
     char *path = str_concat_many(5, "/buckets/", bucket_id, "/files/",
                                  file_id, "/info");
@@ -1478,13 +1598,36 @@ STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
         return STORJ_MEMORY_ERROR;
     }
 
-    uv_work_t *work = json_request_work_new(env, "GET", path, NULL,
-                                            true, handle);
+    uv_work_t *work = uv_work_new();
     if (!work) {
         return STORJ_MEMORY_ERROR;
     }
 
-    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+    work->data = get_file_info_request_new(env->http_options,
+                                           env->bridge_options,
+                                           env->encrypt_options,
+                                           bucket_id, "GET", path,
+                                           NULL, true, handle);
+
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    return uv_queue_work(env->loop, (uv_work_t*) work,
+                         get_file_info_request_worker, cb);
+}
+
+STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req)
+{
+    if (req->response) {
+        json_object_put(req->response);
+    }
+    free(req->path);
+    if (req->file) {
+        free((char *)req->file->filename);
+    }
+    free(req->file);
+    free(req);
 }
 
 STORJ_API int storj_bridge_list_mirrors(storj_env_t *env,

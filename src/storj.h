@@ -297,6 +297,7 @@ typedef struct {
     uint64_t size;
     const char *hmac;
     const char *id;
+    const char *bucket_id;
     bool decrypted;
     const char *index;
 } storj_file_meta_t;
@@ -319,6 +320,24 @@ typedef struct {
     int status_code;
     void *handle;
 } list_files_request_t;
+
+/** @brief A structure for queueing get file info request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    const char *bucket_id;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
+    struct json_object *response;
+    storj_file_meta_t *file;
+    int error_code;
+    int status_code;
+    void *handle;
+} get_file_info_request_t;
 
 typedef enum {
     BUCKET_PUSH,
@@ -359,7 +378,7 @@ typedef void (*storj_finished_download_cb)(int status, FILE *fd, void *handle);
 
 /** @brief A function signature for an upload complete callback
  */
-typedef void (*storj_finished_upload_cb)(int error_status, char *file_id, void *handle);
+typedef void (*storj_finished_upload_cb)(int error_status, storj_file_meta_t *file, void *handle);
 
 /** @brief A structure that represents a pointer to a shard
  *
@@ -487,7 +506,7 @@ typedef struct {
     uint32_t shard_concurrency;
     const char *index;
     const char *file_name;
-    char *file_id;
+    storj_file_meta_t *info;
     const char *encrypted_file_name;
     FILE *original_file;
     uint64_t file_size;
@@ -940,6 +959,13 @@ STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
                                          uv_after_work_cb cb);
 
 /**
+ * @brief Will free all structs for get file info request
+ *
+ * @param[in] req - The work request from storj_bridge_get_file_info callback
+ */
+STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req);
+
+/**
  * @brief Get mirror data for a file
  *
  * @param[in] env The storj environment struct
@@ -979,6 +1005,7 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
                                                         void *handle,
                                                         storj_progress_cb progress_cb,
                                                         storj_finished_upload_cb finished_cb);
+
 /**
  * @brief Will free the file info struct passed to the upload finished callback
  *

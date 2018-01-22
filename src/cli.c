@@ -617,7 +617,7 @@ static void file_progress(double progress,
     fflush(stdout);
 }
 
-static void upload_file_complete(int status, char *file_id, void *handle)
+static void upload_file_complete(int status, storj_file_meta_t *file, void *handle)
 {
     cli_state_t *cli_state = handle;
     printf("\n");
@@ -626,12 +626,11 @@ static void upload_file_complete(int status, char *file_id, void *handle)
         printf("Upload failure: %s\n", storj_strerror(status));
         //exit(status);
     }
-    else
-    {
-        printf("Upload Success! File ID: %s\n", file_id);
-    }
 
-    free(file_id);
+    printf("Upload Success! File ID: %s\n", file->id);
+
+    storj_free_uploaded_file_info(file);
+
     if((cli_state->total_files == 0x00) &&
        (cli_state->curr_up_file == 0x00))
     {
