@@ -99,6 +99,20 @@ void check_get_bucket(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+void check_get_bucket_id(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_bucket_id_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(strcmp(req->bucket_id, "368be0816766b28fd5f43af5") == 0);
+
+    pass("storj_bridge_get_bucket_id");
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
 void check_get_buckets_badauth(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -185,6 +199,20 @@ void check_list_files_badauth(uv_work_t *work_req, int status)
     pass("storj_bridge_list_files_badauth");
 
     storj_free_list_files_request(req);
+    free(work_req);
+}
+
+void check_get_file_id(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_file_id_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(strcmp(req->file_id, "998960317b6725a3f8080c2b") == 0);
+
+    pass("storj_bridge_get_file_id");
+
+    json_object_put(req->response);
+    free(req);
     free(work_req);
 }
 
@@ -768,6 +796,10 @@ int test_api()
     status = storj_bridge_get_bucket(env, bucket_id, NULL, check_get_bucket);
     assert(status == 0);
 
+    // get bucket id
+    status = storj_bridge_get_bucket_id(env, "test", NULL, check_get_bucket_id);
+    assert(status == 0);
+
     // create a new bucket with a name
     status = storj_bridge_create_bucket(env, "backups", NULL,
                                         check_create_bucket);
@@ -782,6 +814,11 @@ int test_api()
     // list files in a bucket
     status = storj_bridge_list_files(env, bucket_id, NULL,
                                      check_list_files);
+    assert(status == 0);
+
+    // get file id
+    status = storj_bridge_get_file_id(env, bucket_id, "storj-test-download.data",
+                                      NULL, check_get_file_id);
     assert(status == 0);
 
     // create bucket tokens
@@ -1542,6 +1579,34 @@ int test_memory_mapping()
     return 0;
 }
 
+int test_str_replace()
+{
+    char *subject = "g9qacwq2AE1+5nzL/HYyYdY9WoIr+1ueOuVEx6/IzzZKK9sULoKDDdYvhOpavHH2P3xQNw==";
+
+    char *result = str_replace("/", "%2F", subject);
+    if (!result) {
+        fail("test_str_replace");
+        return 0;
+    }
+
+    char *expected = "g9qacwq2AE1+5nzL%2FHYyYdY9WoIr+1ueOuVEx6%2FIzzZKK9sULoKDDdYvhOpavHH2P3xQNw==";
+
+    int failed = 0;
+    if (strcmp(expected, result) != 0) {
+        failed = 1;
+    }
+
+    if (failed) {
+        fail("test_str_replace");
+    } else {
+        pass("test_str_replace");
+    }
+
+    free(result);
+
+    return 0;
+}
+
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
 {
@@ -1615,6 +1680,7 @@ int main(void)
     test_get_time_milliseconds();
     test_determine_shard_size();
     test_memory_mapping();
+    test_str_replace();
 
     int num_failed = tests_ran - test_status;
     printf(KGRN "\nPASSED: %i" RESET, test_status);

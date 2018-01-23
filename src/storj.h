@@ -284,6 +284,20 @@ typedef struct {
     void *handle;
 } get_bucket_request_t;
 
+/** @brief A structure for queueing get bucket id request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    const char *bucket_name;
+    struct json_object *response;
+    const char *bucket_id;
+    int error_code;
+    int status_code;
+    void *handle;
+} get_bucket_id_request_t;
+
 /** @brief A structure for that describes a bucket entry/file
  */
 typedef struct {
@@ -335,6 +349,21 @@ typedef struct {
     int status_code;
     void *handle;
 } get_file_info_request_t;
+
+/** @brief A structure for queueing get file id request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    const char *bucket_id;
+    const char *file_name;
+    struct json_object *response;
+    const char *file_id;
+    int error_code;
+    int status_code;
+    void *handle;
+} get_file_id_request_t;
 
 typedef enum {
     BUCKET_PUSH,
@@ -777,7 +806,7 @@ STORJ_API int storj_bridge_delete_bucket(storj_env_t *env,
  * @brief Get a info of specific bucket.
  *
  * @param[in] env The storj environment struct
- * @param[in] bucket_id The bucket id
+ * @param[in] id The bucket id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -793,6 +822,20 @@ STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
  * @param[in] req - The work request from storj_bridge_get_bucket callback
  */
 STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req);
+
+/**
+ * @brief Get the bucket id by name.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] name The bucket name
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
+                                         const char *name,
+                                         void *handle,
+                                         uv_after_work_cb cb);
 
 /**
  * @brief Get a list of all files in a bucket.
@@ -920,7 +963,7 @@ STORJ_API int storj_bridge_delete_frame(storj_env_t *env,
  *
  * @param[in] env The storj environment struct
  * @param[in] bucket_id The bucket id
- * @param[in] file_id The bucket id
+ * @param[in] file_id The file id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -937,6 +980,22 @@ STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
  * @param[in] req - The work request from storj_bridge_get_file_info callback
  */
 STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req);
+
+/**
+ * @brief Get the file id by name.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] file_name The file name
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_bridge_get_file_id(storj_env_t *env,
+                                       const char *bucket_id,
+                                       const char *file_name,
+                                       void *handle,
+                                       uv_after_work_cb cb);
 
 /**
  * @brief Get mirror data for a file

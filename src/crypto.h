@@ -72,6 +72,57 @@ int generate_file_key(const char *mnemonic,
                       char **file_key);
 
 /**
+ * @brief Decrypt a bucket name
+ *
+ * @param[in] mnemonic Character array of the mnemonic
+ * @param[in] encrypted_name Character array of the encrypted name
+ * @param[out] decrypted_name Character array of the decrypted name
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int decrypt_bucket_name(const char *mnemonic,
+                        const char *encrypted_name,
+                        char **decrypted_name);
+
+/**
+ * @brief Decrypt a file name
+ *
+ * @param[in] mnemonic Character array of the mnemonic
+ * @param[in] bucket_id Character array of bucket id
+ * @param[in] encrypted_name Character array of the encrypted name
+ * @param[out] decrypted_name Character array of the decrypted name
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int decrypt_file_name(const char *mnemonic,
+                      const char *bucket_id,
+                      const char *encrypted_name,
+                      char **decrypted_name);
+/**
+ * @brief Encrypt a bucket name
+ *
+ * @param[in] mnemonic Character array of the mnemonic
+ * @param[in] bucket_name Character array of the bucket name
+ * @param[out] encrypted_name Character array of the encrypted name
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int encrypt_bucket_name(const char *mnemonic,
+                        const char *bucket_name,
+                        char **encrypted_name);
+
+/**
+ * @brief Encrypt a file name
+ *
+ * @param[in] mnemonic Character array of the mnemonic
+ * @param[in] bucket_id Character array of bucket id
+ * @param[in] file_name Character array of the file name
+ * @param[out] encrypted_name Character array of the encrypted name
+ * @return A non-zero error value on failure and 0 on success.
+ */
+int encrypt_file_name(const char *mnemonic,
+                      const char *bucket_id,
+                      const char *file_name,
+                      char **encrypted_name);
+
+/**
  * @brief Calculate deterministic key by getting sha512 of key + id
  *
  * @param[in] Character array of the key

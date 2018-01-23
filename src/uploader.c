@@ -2470,43 +2470,13 @@ static void prepare_upload_state(uv_work_t *work)
         state->shard[i].work = NULL;
     }
 
-    // Get the bucket key to encrypt the filename
-    char *bucket_key_as_str = calloc(DETERMINISTIC_KEY_SIZE + 1, sizeof(char));
-    generate_bucket_key(state->env->encrypt_options->mnemonic,
-                        state->bucket_id,
-                        &bucket_key_as_str);
-
-    uint8_t *bucket_key = str2hex(strlen(bucket_key_as_str), bucket_key_as_str);
-    if (!bucket_key) {
+    if (encrypt_file_name(state->env->encrypt_options->mnemonic,
+                          state->bucket_id,
+                          state->file_name,
+                          (char **)&state->encrypted_file_name)) {
         state->error_status = STORJ_MEMORY_ERROR;
         return;
     }
-
-    free(bucket_key_as_str);
-
-    // Get file name encryption key with first half of hmac w/ magic
-    struct hmac_sha512_ctx ctx1;
-    hmac_sha512_set_key(&ctx1, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx1, SHA256_DIGEST_SIZE, BUCKET_META_MAGIC);
-    uint8_t key[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx1, SHA256_DIGEST_SIZE, key);
-
-    // Generate the synthetic iv with first half of hmac w/ bucket and filename
-    struct hmac_sha512_ctx ctx2;
-    hmac_sha512_set_key(&ctx2, SHA256_DIGEST_SIZE, bucket_key);
-    hmac_sha512_update(&ctx2, strlen(state->bucket_id),
-                       (uint8_t *)state->bucket_id);
-    hmac_sha512_update(&ctx2, strlen(state->file_name),
-                       (uint8_t *)state->file_name);
-    uint8_t filename_iv[SHA256_DIGEST_SIZE];
-    hmac_sha512_digest(&ctx2, SHA256_DIGEST_SIZE, filename_iv);
-
-    free(bucket_key);
-
-    char *encrypted_file_name;
-    encrypt_meta(state->file_name, key, filename_iv, &encrypted_file_name);
-
-    state->encrypted_file_name = encrypted_file_name;
 
     uint8_t *index = NULL;
     char *key_as_str = NULL;
