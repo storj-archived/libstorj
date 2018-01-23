@@ -574,7 +574,12 @@ typedef struct storj_api {
     char *bucket_id;
     char *file_name;
     char *file_id;
+    char *file_path;     /**< local upload files directory path */
+    FILE *src_fd;
+    char *src_list;      /**< file list ready to upload */
     char *src_file;      /**< next file ready to upload */
+    FILE *dst_fd;
+    char *dst_list;      /**< file list ready to upload */
     char *dst_file;      /**< next file ready to upload */
     int  total_files;    /**< total files to upload */
     char *last_cmd_req;  /**< last command requested */
@@ -1113,6 +1118,16 @@ STORJ_API int storj_list_mirrors(storj_api_t *storj_api);
  * @return A non-zero error value on failure and 0 on success.
  */
 STORJ_API int storj_upload_file(storj_api_t *storj_api);
+
+/**
+ * @brief Function to upload local files into a given bucket 
+ *        name
+ * 
+ * @param[in] storj_api_t structure that passes user's input 
+ *       info
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_upload_files(storj_api_t *storj_api);
 
 /**
  * @brief Function to download a file from a given bucket to a 

@@ -1747,6 +1747,16 @@ STORJ_API int storj_upload_file(storj_api_t *storj_api)
     return ret;
 }
 
+STORJ_API int storj_upload_files(storj_api_t *storj_api)
+{
+    int ret = 0x00;
+    ret = storj_get_bucket_id(storj_api);
+    storj_api->next_cmd_req  = "verify-upload-files-req";
+    storj_api->final_cmd_req = "upload-files-req";
+
+    return ret;
+}
+
 STORJ_API int storj_download_file(storj_api_t *storj_api)
 {
     int ret = 0x00;

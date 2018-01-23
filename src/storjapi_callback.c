@@ -21,6 +21,152 @@ static void get_input(char *line)
     }
 }
 
+// inserts into subject[] at position pos
+void append(char subject[], const char insert[], int pos)
+{
+    char buf[100] = {}; // 100 so that it's big enough. fill with 0
+    // or you could use malloc() to allocate sufficient space
+
+    strncpy(buf, subject, pos); // copy at most first pos characters
+    int len = strlen(buf);
+    strcpy(buf+len, insert); // copy all of insert[] at the end
+    len += strlen(insert);  // increase the length by length of insert[]
+    strcpy(buf+len, subject+pos); // copy the rest
+
+    strcpy(subject, buf);   // copy it back to subject
+    // deallocate buf[] here, if used malloc()
+}
+
+char* replace_char(char* str, char find, char replace)
+{
+    char *current_pos = strchr(str,find);
+    while (current_pos)
+    {
+        *current_pos= replace;
+	append(current_pos,"_",0);
+        current_pos = strchr(current_pos,find);
+    }
+    return str;
+}
+
+int no_of_files = 0x00;
+static void printdir(char *dir, int depth, FILE *src_fd, FILE *dst_fd, void *handle)
+{
+    DIR *dp;
+    struct dirent *entry;
+    struct stat statbuf;
+    int spaces = depth*4;
+    char tmp_dir[800] = {};
+    char *full_path = NULL;
+    char *s;
+    char * start;
+    storj_api_t *storj_api = handle;
+
+    if((dp = opendir(dir)) == NULL)
+    {
+        fprintf(stderr,"cannot open directory: %s\n", dir);
+        return;
+    }
+
+    chdir(dir);
+    while((entry = readdir(dp)) != NULL)
+    {
+        lstat(entry->d_name, &statbuf);
+        if (S_ISDIR(statbuf.st_mode))
+        {
+            /* Found a directory, but ignore . and .. */
+            if (strcmp(".", entry->d_name) == 0 ||
+                strcmp("..", entry->d_name) == 0) continue;
+
+            /* Recurse at a new indent level */
+            printdir(entry->d_name, depth + 1, src_fd, dst_fd, handle);
+        } 
+        else
+        {
+            no_of_files++;
+            full_path = realpath(entry->d_name, NULL);
+            /* write to src file */
+            fprintf(src_fd, "%s%s\n", "", full_path);
+            printf("[%d]%s%s\n", no_of_files, "", full_path);
+
+            /* replace the dir with __ */
+            s = strstr(full_path, storj_api->file_path);
+            start = s + strlen(storj_api->file_path);
+            start = replace_char(start, '/', '_');
+            memset(tmp_dir, 0x00, sizeof(tmp_dir));
+            strcat(tmp_dir, storj_api->file_path);
+            strcat(tmp_dir, start);
+
+            /* write to dst file */
+            fprintf(dst_fd, "%s%s\n", "", tmp_dir);
+            printf("[%d]%s%s\n", no_of_files, "", tmp_dir);
+        }
+    }
+    chdir("..");
+    closedir(dp);
+    free(full_path);
+}
+
+static int file_exists(void *handle)
+{
+    struct stat sb;
+    gid_t  st_grpid;
+    storj_api_t *storj_api = handle;
+
+    FILE *src_fd, *dst_fd;
+
+    if (stat(storj_api->file_path, &sb) == -1)
+    {
+        perror("stat");
+        return CLI_NO_SUCH_FILE_OR_DIR;
+    }
+
+    switch (sb.st_mode & S_IFMT)
+    {
+        case S_IFBLK:
+            printf("block device\n");
+            break;
+        case S_IFCHR:
+            printf("character device\n");
+            break;
+        case S_IFDIR:
+            printf("file_path = %s\n\n", storj_api->file_path);
+            printf("directory\n");
+
+            if((src_fd = fopen("src_list.txt", "w")) == NULL)
+            {
+                return CLI_UPLOAD_FILE_LOG_ERR;
+            }
+ 
+            if((dst_fd = fopen("dst_list.txt", "w")) == NULL)
+            {
+                return CLI_UPLOAD_FILE_LOG_ERR;
+            }
+            printdir(storj_api->file_path, 0, src_fd, dst_fd, handle);
+            fclose(src_fd);
+            fclose(dst_fd);
+            return CLI_VALID_DIR;
+            break;
+        case S_IFIFO:
+            printf("FIFO/pipe\n");
+            break;
+        case S_IFLNK:
+            printf("symlink\n");
+            break;
+        case S_IFREG:
+            return CLI_VALID_REGULAR_FILE;
+            break;
+        case S_IFSOCK:
+            printf("socket\n");
+            break;
+        default:
+            printf("unknown?\n");
+            break;
+    }
+
+    return CLI_UNKNOWN_FILE_ATTR;
+}
+
 static const char *get_filename_separator(const char *file_path)
 {
     const char *file_name = NULL;
@@ -128,6 +274,7 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
 
     if (!fd) {
         printf("Invalid file path: %s\n", file_path);
+        exit(0);
     }
 
     const char *file_name = get_filename_separator(file_path);
@@ -179,6 +326,182 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
     sig->data = state;
 
     return state->error_status;
+}
+
+static void upload_files_complete(int status, storj_file_meta_t *file, void *handle)
+{
+    storj_api_t *storj_api = handle;
+    storj_api->rcvd_cmd_resp = "upload-files-resp";
+
+    printf("\n");
+    if (status != 0) 
+    {
+        printf("[%s][%d]Upload failure: %s\n", 
+               __FUNCTION__, __LINE__, storj_strerror(status));
+    }
+    else
+    {
+        printf("Upload Success! File ID: %s\n", file->id);
+        storj_free_uploaded_file_info(file);
+    }
+
+    queue_next_cmd_req(storj_api);
+}
+
+static int upload_files(storj_env_t *env, char *bucket_id, const char *file_path, void *handle)
+{
+    storj_api_t *storj_api = handle;
+
+    FILE *fd = fopen(file_path, "r");
+
+    if (!fd) 
+    {
+        printf("[%s][%d]Invalid file : %s\n", __FUNCTION__, __LINE__, file_path);
+        exit(0);
+    }
+
+    printf("uploading src file = %s as ", file_path);
+
+    /* replace the dir with __ */
+    char *s = strstr(storj_api->src_file, storj_api->file_path);
+    char *start = s + strlen(storj_api->file_path);
+    char tmp_dir[256];
+    start = replace_char(start, '/', '_');
+    memset(tmp_dir, 0x00, sizeof(tmp_dir));
+    strcat(tmp_dir, storj_api->file_path);
+    strcat(tmp_dir, start);
+    storj_api->dst_file = tmp_dir;
+
+    const char *file_name = get_filename_separator(storj_api->dst_file);
+
+    if (!file_name) 
+    {
+        file_name = file_path;
+    }
+    printf(" %s\n", file_name);
+
+    // Upload opts env variables:
+    char *prepare_frame_limit = getenv("STORJ_PREPARE_FRAME_LIMIT");
+    char *push_frame_limit = getenv("STORJ_PUSH_FRAME_LIMIT");
+    char *push_shard_limit = getenv("STORJ_PUSH_SHARD_LIMIT");
+    char *rs = getenv("STORJ_REED_SOLOMON");
+
+    storj_upload_opts_t upload_opts = {
+        .prepare_frame_limit = (prepare_frame_limit) ? atoi(prepare_frame_limit) : 1,
+        .push_frame_limit = (push_frame_limit) ? atoi(push_frame_limit) : 64,
+        .push_shard_limit = (push_shard_limit) ? atoi(push_shard_limit) : 64,
+        .rs = (!rs) ? true : (strcmp(rs, "false") == 0) ? false : true,
+        .bucket_id = bucket_id,
+        .file_name = file_name,
+        .fd = fd
+    };
+
+    uv_signal_t *sig = malloc(sizeof(uv_signal_t));
+    if (!sig) {
+        return 1;
+    }
+    uv_signal_init(env->loop, sig);
+    uv_signal_start(sig, upload_signal_handler, SIGINT);
+
+
+
+    storj_progress_cb progress_cb = (storj_progress_cb)noop;
+    if (env->log_options->level == 0) {
+        progress_cb = file_progress;
+    }
+
+    storj_upload_state_t *state = storj_bridge_store_file(env,
+                                                          &upload_opts,
+                                                          handle,
+                                                          progress_cb,
+                                                          upload_files_complete);
+
+    if (!state) {
+        return 1;
+    }
+
+    sig->data = state;
+
+    return state->error_status;
+}
+
+static void verify_upload_files(void *handle)
+{
+    storj_api_t *storj_api = handle;
+    char cwd[1024];
+    int total_src_files = 0x00;
+    int total_dst_files = 0x00;
+    int ret = 0x00;
+
+    storj_api->rcvd_cmd_resp = "verify-upload-files-resp";
+    int file_attr = file_exists(handle);
+
+    memset(cwd, 0x00, sizeof(cwd));
+    strcpy(cwd, storj_api->file_path);
+    strcat(cwd, "/src_list.txt");
+
+    storj_api->src_fd = fopen(cwd, "r");
+
+    if (!storj_api->src_fd)
+    {
+        printf("Invalid file path: %s\n", "src_list.txt");
+        exit(0);
+    } 
+    else
+    {
+        /* count total src_list files */
+        char line[256][256];
+        char *temp;
+        int i = 0x00;
+
+        memset(line, 0x00, sizeof(line));
+
+        /* read a line from a file */
+        while (fgets(line[i], sizeof(line), storj_api->src_fd) != NULL)
+        {
+            i++;
+        }
+
+        total_src_files = i;
+        printf("total_src_files = %d\n", total_src_files);
+    }
+
+    memset(cwd, 0x00, sizeof(cwd));
+    strcpy(cwd, storj_api->file_path);
+    strcat(cwd, "/dst_list.txt");
+
+    storj_api->dst_fd = fopen(cwd, "r");
+
+    if (!storj_api->dst_fd)
+    {
+        printf("Invalid file path: %s\n", "dst_list.txt");
+        exit(0);
+    } 
+    else
+    {
+        /* count total src_list files */
+        char line[256][256];
+        char *temp;
+        int i = 0x00;
+
+        memset(line, 0x00, sizeof(line));
+
+        /* read a line from a file */
+        while (fgets(line[i], sizeof(line), storj_api->dst_fd) != NULL)
+        {
+            i++;
+        }
+
+        total_dst_files = i;
+        printf("total_dst_files = %d\n", total_dst_files);
+    }
+
+
+    if (total_dst_files == total_src_files)
+    {
+        storj_api->total_files = total_src_files;
+    }
+    queue_next_cmd_req(storj_api);
 }
 
 static void download_file_complete(int status, FILE *fd, void *handle)
@@ -615,6 +938,60 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             storj_api->excp_cmd_resp = "upload-file-resp";
 
             upload_file(storj_api->env, storj_api->bucket_id, storj_api->file_name, storj_api);
+        }
+        else if ((storj_api->next_cmd_req != NULL) && 
+                 (strcmp(storj_api->next_cmd_req, "verify-upload-files-req") == 0x00))
+        {
+            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+            storj_api->next_cmd_req  = storj_api->final_cmd_req;
+            storj_api->final_cmd_req = NULL;
+            storj_api->excp_cmd_resp = "verify-upload-files-resp";
+
+            verify_upload_files(storj_api);
+        }
+        else if ((storj_api->next_cmd_req != NULL) && 
+                 (strcmp(storj_api->next_cmd_req, "upload-files-req") == 0x00))
+        {
+            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+            //storj_api->next_cmd_req  = storj_api->final_cmd_req;
+            //storj_api->final_cmd_req = NULL;
+            storj_api->excp_cmd_resp = "upload-files-resp";
+            static int curr_upload_file = 0x01;
+
+            FILE *file = fopen(storj_api->src_list, "r");
+
+            char line[256][256];
+            char *temp;
+            int i = 0x00;
+            memset(line, 0x00, sizeof(line));
+
+            if (file != NULL)
+            {
+               while((fgets(line[i],sizeof(line), file)!= NULL)) /* read a line from a file */
+                {
+                    temp = strrchr(line[i], '\n');
+                    if(temp) *temp = '\0';
+                    storj_api->src_file = line[i];
+                    i++;
+                    if(i >= curr_upload_file)
+                    {
+                        break;
+                    }
+                }
+            }
+            fclose(file);
+
+            if (curr_upload_file <= storj_api->total_files)
+            {
+                curr_upload_file++;
+            }
+            else
+            {
+                exit(0);
+            }
+
+            printf("about to upload = %s \n\n", storj_api->src_file);
+            upload_files(storj_api->env, storj_api->bucket_id, storj_api->src_file, storj_api);
         }
         else if ((storj_api->next_cmd_req != NULL) && 
                  (strcmp(storj_api->next_cmd_req, "download-file-req") == 0x00))
