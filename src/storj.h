@@ -565,6 +565,18 @@ typedef struct {
 } storj_upload_state_t;
 
 /**
+ * @brief A Structure for management information base (MIB) for
+ *        Storj API.
+ */
+typedef struct storj_api_mib {
+    int  xfer_count;            /**< # of files xferred (up/down) */
+    int  total_files;           /**< total files to xfer */
+    int  success_xfer_count;    /**< files xferred successfully */
+    int  fail_xfer_count;       /**< files xferred successfully */
+    void *handle;
+} storj_api_mib_t;
+
+/**
  * @brief A Structure for passing the User's Application info to 
  *        Storj API.
  */
@@ -579,7 +591,7 @@ typedef struct storj_api {
     char src_list[256];      /**< file list ready to upload */
     char *src_file;      /**< next file ready to upload */
     FILE *dst_fd;
-    char *dst_list;      /**< file list ready to upload */
+    int  xfer_count;     /**< # of files xferred (up/down) */
     char *dst_file;      /**< next file ready to upload */
     int  total_files;    /**< total files to upload */
     char *last_cmd_req;  /**< last command requested */

@@ -342,7 +342,8 @@ static int upload_files(storj_env_t *env, char *bucket_id, const char *file_path
         exit(0);
     }
 
-    printf("uploading src file = %s as ", file_path);
+    printf("Uploading[%d]of[%d] src file = %s as ",
+           storj_api->xfer_count, storj_api->total_files, file_path);
 
     /* replace the dir with __ */
     char *s = strstr(storj_api->src_file, storj_api->file_path);
@@ -384,8 +385,6 @@ static int upload_files(storj_env_t *env, char *bucket_id, const char *file_path
     }
     uv_signal_init(env->loop, sig);
     uv_signal_start(sig, upload_signal_handler, SIGINT);
-
-
 
     storj_progress_cb progress_cb = (storj_progress_cb)noop;
     if (env->log_options->level == 0) {
@@ -452,6 +451,7 @@ static void verify_upload_files(void *handle)
     }
 
     storj_api->total_files = total_src_files;
+    storj_api->xfer_count = 0x01;
 
     queue_next_cmd_req(storj_api);
 }
@@ -899,7 +899,6 @@ void queue_next_cmd_req(storj_api_t *storj_api)
         {
             storj_api->curr_cmd_req  = storj_api->next_cmd_req;
             storj_api->excp_cmd_resp = "upload-files-resp";
-            static int curr_upload_file = 0x01;
 
             FILE *file = fopen(storj_api->src_list, "r");
 
@@ -916,7 +915,7 @@ void queue_next_cmd_req(storj_api_t *storj_api)
                     if(temp) *temp = '\0';
                     storj_api->src_file = line[i];
                     i++;
-                    if(i >= curr_upload_file)
+                    if(i >= storj_api->xfer_count)
                     {
                         break;
                     }
@@ -924,18 +923,23 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             }
             fclose(file);
 
-            if (curr_upload_file <= storj_api->total_files)
+            if (storj_api->xfer_count <= storj_api->total_files)
             {
-                curr_upload_file++;
+                /* is it the last file ? */
+                if(storj_api->xfer_count == storj_api->total_files)
+                {
+                    storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                    storj_api->final_cmd_req = NULL;
+                }
+
+                upload_files(storj_api->env, storj_api->bucket_id, storj_api->src_file, storj_api);
+                storj_api->xfer_count++;
             }
             else
             {
-                storj_api->next_cmd_req  = storj_api->final_cmd_req;
-                storj_api->final_cmd_req = NULL;
-                //exit(0);
+                printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
+                exit(0);
             }
-
-            upload_files(storj_api->env, storj_api->bucket_id, storj_api->src_file, storj_api);
         }
         else if ((storj_api->next_cmd_req != NULL) && 
                  (strcmp(storj_api->next_cmd_req, "download-file-req") == 0x00))
