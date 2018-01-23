@@ -1960,12 +1960,6 @@ int main(int argc, char **argv)
             storj_api->bucket_name = argv[command_index + 1];
             storj_api->file_path = argv[command_index + 2];
 
-
-            storj_api->src_list = "/home/kishore/libstorj/src/src_list.txt";
-            storj_api->dst_list = "/home/kishore/libstorj/src/dst_list.txt";
-
-            //printf("src_file=%s; dst_file=%s\n", storj_api->src_file, storj_api->dst_file);
-
             if (!storj_api->bucket_name || !storj_api->file_name)
             {
                 printf("Missing arguments: <bucket-name> <path>\n");
@@ -1973,22 +1967,6 @@ int main(int argc, char **argv)
                 goto end_program;
             }
            
-            #if 0
-            storj_api->src_fd = fopen(storj_api->src_file, "r");
-
-            if (!storj_api->src_fd) {
-                printf("Invalid file path: %s\n", storj_api->src_file);
-                exit(0);
-            }
-
-            storj_api->dst_fd = fopen(storj_api->dst_file, "r");
-
-            if (!storj_api->dst_fd) {
-                printf("Invalid file path: %s\n", storj_api->dst_file);
-                exit(0);
-            }
-            #endif
-
             storj_upload_files(storj_api); 
         }
         else if (strcmp(command, "list-files") == 0)

@@ -576,7 +576,7 @@ typedef struct storj_api {
     char *file_id;
     char *file_path;     /**< local upload files directory path */
     FILE *src_fd;
-    char *src_list;      /**< file list ready to upload */
+    char src_list[256];      /**< file list ready to upload */
     char *src_file;      /**< next file ready to upload */
     FILE *dst_fd;
     char *dst_list;      /**< file list ready to upload */
