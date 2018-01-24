@@ -1824,6 +1824,12 @@ int main(int argc, char **argv)
         storj_api->env = env;
 
 
+        printf("command = %s; command_index = %d\n", command, command_index);
+        printf("local_file_path (req arg_ = %s\n", local_file_path);
+        printf("argv[command_index+1] = %s\n", argv[command_index+1]);
+        printf("argv[command_index+2] = %s\n", argv[command_index+2]);
+        printf("argv[command_index+3] = %s\n", argv[command_index+3]);
+
         if (strcmp(command, "download-file") == 0)
         {
 
@@ -1922,36 +1928,6 @@ int main(int argc, char **argv)
             }
            
             storj_upload_file(storj_api); 
- 
-            #if 0
-            char *bucket_id = NULL;
-
-            /* get the corresponding bucket id from the bucket name */
-            char *bucket_name = argv[command_index + 1];
-            char *path = argv[command_index + 2];
-
-            if (!bucket_name || !path)
-            {
-                printf("Missing arguments: <bucket-name> <path>\n");
-                status = 1;
-                goto end_program;
-            }
-            else
-            {
-                cli_state->curr_cmd_req = command;
-                cli_state->bucket_name = bucket_name;
-                if(check_file_path(path) != CLI_VALID_REGULAR_FILE)
-                {
-                    status = 1;
-                    goto end_program;
-                }
-                cli_state->file_path = path;
-                if(!cli_state->bucket_id)
-                {
-                    storj_bridge_get_buckets(env, cli_state, get_bucket_id_callback);
-                }
-            }
-            #endif
         }
         else if (strcmp(command, "upload-files") == 0)
         {
@@ -2007,10 +1983,6 @@ int main(int argc, char **argv)
             storj_bridge_create_bucket(env, bucket_name,
                                        NULL, create_bucket_callback);
         } else if (strcmp(command, "remove-bucket") == 0) {
-
-            storj_api->bucket_name = argv[command_index + 1];
-            storj_remove_bucket(storj_api);
-            #if 0
             char *bucket_id = argv[command_index + 1];
 
             if (!bucket_id) {
@@ -2019,11 +1991,10 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            storj_bridge_delete_bucket(env, bucket_id, NULL,
-                                       delete_bucket_callback);
-            #endif
+            storj_api->bucket_name = argv[command_index + 1];
+            storj_remove_bucket(storj_api);
         }
-        else if (strcmp(command, "remove-file") == 0) 
+        else if ((strcmp(command, "remove-file") == 0) || (strcmp(command, "rm") == 0))
         {
             storj_api->bucket_name = argv[command_index + 1];
             storj_api->file_name = argv[command_index + 2];
@@ -2036,30 +2007,27 @@ int main(int argc, char **argv)
             }
 
             storj_remove_file(storj_api);
-            #if 0
-            char *bucket_id = argv[command_index + 1];
-            char *file_id = argv[command_index + 2];
-
-            if (!bucket_id || !file_id) {
-                printf("Missing arguments, expected: <bucket-id> <file-id>\n");
-                status = 1;
-                goto end_program;
-            }
-            storj_bridge_delete_file(env, bucket_id, file_id,
-                                     NULL, delete_file_callback);
-            #endif
-
         }
-        else if (strcmp(command, "list-buckets") == 0)
+        else if ((strcmp(command, "list-buckets") == 0) || (strcmp(command, "ls") == 0x00))
         {
-            storj_bridge_get_buckets(env, NULL, get_buckets_callback);
+            if (argv[command_index + 1] != NULL)
+            {
+                /* bucket-name , used to list files */
+                storj_api->bucket_name = argv[command_index + 1];
+
+                storj_list_files(storj_api);
+            }
+            else
+            {
+                storj_bridge_get_buckets(env, NULL, get_buckets_callback);
+            }
         }
         else if (strcmp(command, "get-bucket-id") == 0)
         {
             storj_api->bucket_name = argv[command_index + 1];
             storj_get_bucket_id(storj_api);
         }
-        else if (strcmp(command, "list-mirrors") == 0) 
+        else if ((strcmp(command, "list-mirrors") == 0) || (strcmp(command, "lm") == 0))
         {
             storj_api->bucket_name = argv[command_index + 1];
             storj_api->file_name = argv[command_index + 2];
@@ -2072,19 +2040,6 @@ int main(int argc, char **argv)
             }
 
             storj_list_mirrors(storj_api);
-
-            #if 0
-            char *bucket_id = argv[command_index + 1];
-            char *file_id = argv[command_index + 2];
-
-            if (!bucket_id || !file_id) {
-                printf("Missing arguments, expected: <bucket-id> <file-id>\n");
-                status = 1;
-                goto end_program;
-            }
-            storj_bridge_list_mirrors(env, bucket_id, file_id,
-                                      NULL, list_mirrors_callback);
-            #endif
         }
         else if (strcmp(command, "test-cli") == 0)
         {
