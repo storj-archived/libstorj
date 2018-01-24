@@ -1953,7 +1953,6 @@ int main(int argc, char **argv)
             }
             #endif
         }
-
         else if (strcmp(command, "upload-files") == 0)
         {
             /* get the corresponding bucket id from the bucket name */
@@ -1968,6 +1967,21 @@ int main(int argc, char **argv)
             }
            
             storj_upload_files(storj_api); 
+        }
+        else if (strcmp(command, "download-files") == 0)
+        {
+            /* get the corresponding bucket id from the bucket name */
+            storj_api->bucket_name = argv[command_index + 1];
+            storj_api->file_path = argv[command_index + 2];
+
+            if (!storj_api->bucket_name || !storj_api->file_name)
+            {
+                printf("Missing arguments: <bucket-name> <path>\n");
+                status = 1;
+                goto end_program;
+            }
+
+            storj_download_files(storj_api);
         }
         else if (strcmp(command, "list-files") == 0)
         {
@@ -1992,7 +2006,6 @@ int main(int argc, char **argv)
 
             storj_bridge_create_bucket(env, bucket_name,
                                        NULL, create_bucket_callback);
-
         } else if (strcmp(command, "remove-bucket") == 0) {
 
             storj_api->bucket_name = argv[command_index + 1];
@@ -2009,8 +2022,7 @@ int main(int argc, char **argv)
             storj_bridge_delete_bucket(env, bucket_id, NULL,
                                        delete_bucket_callback);
             #endif
-
-        } 
+        }
         else if (strcmp(command, "remove-file") == 0) 
         {
             storj_api->bucket_name = argv[command_index + 1];
@@ -2073,8 +2085,30 @@ int main(int argc, char **argv)
             storj_bridge_list_mirrors(env, bucket_id, file_id,
                                       NULL, list_mirrors_callback);
             #endif
-        } 
-        else {
+        }
+        else if (strcmp(command, "test-cli") == 0)
+        {
+            time_t rawtime;
+            char buffer [255];
+
+            time (&rawtime);
+            sprintf(buffer,"/tmp/STORJ_%s" ,ctime(&rawtime) );
+
+            // Lets convert space to _ in
+            char *p = buffer;
+            for (; *p; ++p)
+            {
+                if (*p == ' ')
+                    *p = '_';
+                else if (*p == '\n')
+                    *p = '\0';
+            }
+
+            printf("%s\n",buffer);
+            //fopen(buffer,"w");
+        }
+        else
+        {
             printf("'%s' is not a storj command. See 'storj --help'\n\n",
                    command);
             status = 1;

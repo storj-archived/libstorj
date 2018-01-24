@@ -1766,3 +1766,12 @@ STORJ_API int storj_download_file(storj_api_t *storj_api)
     return ret;
 }
 
+STORJ_API int storj_download_files(storj_api_t *storj_api)
+{
+    int ret = 0x00;
+    ret = storj_list_files(storj_api);
+    storj_api->final_cmd_req  = "download-files-req";
+
+    return ret;
+}
+

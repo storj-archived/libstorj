@@ -472,12 +472,14 @@ static void download_file_complete(int status, FILE *fd, void *handle)
                        "imported correctly.\n\n");
                 break;
             default:
-                printf("Download failure: %s\n", storj_strerror(status));
+                printf("[%d][%d]Download failure: %s\n",
+                       __FUNCTION__, __LINE__, storj_strerror(status));
         }
-
-        exit(status);
     }
-    printf("Download Success!\n");
+    else
+    {
+        printf("Download Success!\n");
+    }
 
     queue_next_cmd_req(storj_api);
 }
@@ -771,6 +773,15 @@ void list_files_callback(uv_work_t *work_req, int status)
         goto cleanup;
     }
 
+
+    FILE *dwnld_list_fd = stdout;
+    if ((dwnld_list_fd = fopen("/tmp/dwnld_list.txt", "w")) == NULL)
+    {
+        printf("[%s][%d] Unable to create download list file\n",
+               __FUNCTION__, __LINE__);
+        goto cleanup;
+    }
+
     storj_api->file_id = NULL;
     for (int i = 0; i < req->total_files; i++)
     {
@@ -790,8 +801,13 @@ void list_files_callback(uv_work_t *work_req, int status)
                file->mimetype,
                file->created,
                file->filename);
+
+        fprintf(dwnld_list_fd, "%s:%s\n",file->id, file->filename);
     }
 
+    storj_api->total_files = req->total_files;
+    storj_api->xfer_count = 0x01;
+    fclose(dwnld_list_fd);
     queue_next_cmd_req(storj_api);
 
   cleanup:
@@ -804,6 +820,12 @@ void queue_next_cmd_req(storj_api_t *storj_api)
 {
     void *handle = storj_api->handle;
 
+    printf("[%s][%d]start !!!! expt resp = %s; rcvd resp = %s \n",
+           __FUNCTION__, __LINE__,
+            storj_api->excp_cmd_resp, storj_api->rcvd_cmd_resp );
+    printf("[%s][%d]last cmd = %s; cur cmd = %s; next cmd = %s\n",
+           __FUNCTION__, __LINE__, storj_api->last_cmd_req, 
+           storj_api->curr_cmd_req, storj_api->next_cmd_req);
     if (strcmp(storj_api->excp_cmd_resp, storj_api->rcvd_cmd_resp) == 0x00)
     {
         if ((storj_api->next_cmd_req != NULL) && 
@@ -953,10 +975,71 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, 
                           storj_api->dst_file, storj_api);
         }
+        else if ((storj_api->next_cmd_req != NULL) && 
+                 (strcmp(storj_api->next_cmd_req, "download-files-req") == 0x00))
+        {
+            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+            storj_api->excp_cmd_resp = "download-file-resp";
+
+            FILE *file = stdout;
+
+            if ((file = fopen("/tmp/dwnld_list.txt", "r")) != NULL)
+            {
+                char line[256][256];
+                char *temp;
+                char temp_path[1024];
+                int i = 0x00;
+                char *token[10];
+                int tk_idx= 0x00;
+                memset(token, 0x00, sizeof(token));
+                memset(temp_path, 0x00, sizeof(temp_path));
+                memset(line, 0x00, sizeof(line));
+                while((fgets(line[i],sizeof(line), file)!= NULL)) /* read a line from a file */
+                {
+                    temp = strrchr(line[i], '\n');
+                    if(temp) *temp = '\0';
+                    i++;
+                    if (i >= storj_api->xfer_count)
+                    {
+                        break;
+                    }
+                }
+                fclose(file);
+
+                /* start tokenizing */
+                token[0] = strtok(line[i-1], ":");
+                while (token[tk_idx] != NULL)
+                {
+                    tk_idx++;
+                    token[tk_idx] = strtok(NULL, ":");
+                }
+
+                if(storj_api->xfer_count <= storj_api->total_files)
+                {
+                    /* is it the last file ? */
+                    if(storj_api->xfer_count == storj_api->total_files)
+                    {
+                        storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                        storj_api->final_cmd_req = NULL;
+                    }
+
+                    storj_api->file_id = token[0];
+                    strcpy(temp_path, storj_api->file_path);
+                    strcat(temp_path, token[1]);
+                    fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", storj_api->xfer_count, storj_api->total_files, temp_path);
+                    storj_api->xfer_count++;
+                    download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, temp_path, storj_api);
+                }
+                else
+                {
+                    printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
+                    exit(0);
+                }
+           }
+        }
         else
         {
-            printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", 
-                   __FUNCTION__, __LINE__);
+            printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", __FUNCTION__, __LINE__);
             exit(0);
         }
     }
