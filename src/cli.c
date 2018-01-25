@@ -1948,9 +1948,12 @@ int main(int argc, char **argv)
                         {
                             char pwd_path[256]= {};
                             memset(pwd_path, 0x00, sizeof(pwd_path));
-
                             char *upload_list_file = pwd_path;
 
+                            /* save the src file path */
+                            storj_api->file_path = local_file_path;
+
+                            /* create upload files list based on the file path */
                             if ((upload_list_file = getenv("TMPDIR")) != NULL)
                             {
                                 if (upload_list_file[strlen(upload_list_file)] == '/')
@@ -1962,14 +1965,10 @@ int main(int argc, char **argv)
                                     strcat(upload_list_file, "/STORJ_output_list.txt");
                                 }
 
-                                /* check the directory and create the upload list */
-                                storj_api->dst_file = upload_list_file;
-                                fprintf(stdout, "upload files list : %s\n", storj_api->dst_file);
-                                FILE *dst_file_fd = NULL;
-                                if ((dst_file_fd = fopen(storj_api->dst_file, "w")) != NULL)
-                                {
-                                    printdir(local_file_path, 0x00, dst_file_fd);
-                                }
+                                /* check the directory and create the path to upload list file */
+                                memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
+                                memcpy(storj_api->src_list, upload_list_file, sizeof(pwd_path));
+                                storj_api->dst_file = storj_api->src_list;
 
                                 /* Handle the dst argument (storj://<bucket-name>/ */
                                 bucket_name = argv[argc - 0x01];
@@ -1996,7 +1995,7 @@ int main(int argc, char **argv)
                                         (strcmp(token[2], ".") == 0x00))
                                     {
                                         printf("******* EXECUTE UPLOAD**S** CMD HERE \n");
-                                        //storj_upload_file(storj_api);
+                                        storj_upload_files(storj_api);
                                     }
                                     else
                                     {
@@ -2012,9 +2011,11 @@ int main(int argc, char **argv)
 
                             }
                         }
-
-                        printf("[%s][%d] Invalid upload src path entered\n", __FUNCTION__, __LINE__);
-                        goto end_program;
+                        else
+                        {
+                            printf("[%s][%d] Invalid upload src path entered\n", __FUNCTION__, __LINE__);
+                            goto end_program;
+                        }
                     }
                 }
                
@@ -2101,6 +2102,7 @@ int main(int argc, char **argv)
             /* get the corresponding bucket id from the bucket name */
             storj_api->bucket_name = argv[command_index + 1];
             storj_api->file_path = argv[command_index + 2];
+            storj_api->dst_file = NULL;
 
             if (!storj_api->bucket_name || !storj_api->file_name)
             {

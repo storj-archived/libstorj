@@ -419,22 +419,44 @@ static int upload_files(storj_env_t *env, char *bucket_id, const char *file_path
 static void verify_upload_files(void *handle)
 {
     storj_api_t *storj_api = handle;
-    char cwd[256];
     int total_src_files = 0x00;
     int total_dst_files = 0x00;
     int ret = 0x00;
 
+    /* upload list file previously not created? */
+    if (storj_api->dst_file == NULL)
+    {
+        char pwd_path[256]= {};
+        memset(pwd_path, 0x00, sizeof(pwd_path));
+        char *upload_list_file = pwd_path;
+
+        printf("am here \n");
+        /* create upload files list based on the file path */
+        if ((upload_list_file = getenv("TMPDIR")) != NULL)
+        {
+            if (upload_list_file[strlen(upload_list_file)] == '/')
+            {
+                strcat(upload_list_file, "STORJ_output_list.txt");
+            }
+            else
+            {
+                strcat(upload_list_file, "/STORJ_output_list.txt");
+            }
+
+            /* check the directory and create the path to upload list file */
+            memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
+            memcpy(storj_api->src_list, upload_list_file, sizeof(pwd_path));
+            storj_api->dst_file = storj_api->src_list;
+        }
+    }
+
     /* create a upload list file src_list.txt */
-    memset(cwd, 0x00, sizeof(cwd));
-    strcpy(cwd, storj_api->file_path);
-    strcat(cwd, "src_list.txt");
-    memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
-    strcpy(storj_api->src_list, cwd);
+    printf("inside verify src list = %s\n",storj_api->src_list);
 
     storj_api->rcvd_cmd_resp = "verify-upload-files-resp";
     int file_attr = file_exists(handle);
 
-    storj_api->src_fd = fopen(cwd, "r");
+    storj_api->src_fd = fopen(storj_api->src_list, "r");
 
     if (!storj_api->src_fd)
     {
