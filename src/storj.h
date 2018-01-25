@@ -591,8 +591,8 @@ typedef struct storj_api {
     char src_list[256];      /**< file list ready to upload */
     char *src_file;      /**< next file ready to upload */
     FILE *dst_fd;
-    int  xfer_count;     /**< # of files xferred (up/down) */
     char *dst_file;      /**< next file ready to upload */
+    int  xfer_count;     /**< # of files xferred (up/down) */
     int  total_files;    /**< total files to upload */
     char *last_cmd_req;  /**< last command requested */
     char *curr_cmd_req;  /**< cli curr command requested */
@@ -1150,6 +1150,16 @@ STORJ_API int storj_upload_files(storj_api_t *storj_api);
  * @return A non-zero error value on failure and 0 on success.
  */
 STORJ_API int storj_download_file(storj_api_t *storj_api);
+
+/**
+ * @brief Function to download files from a given bucket to a 
+ *        local folder
+ * 
+ * @param[in] storj_api_t structure that passes user's input 
+ *       info
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_download_files(storj_api_t *storj_api);
 
 static inline char separator()
 {

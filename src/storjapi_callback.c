@@ -252,6 +252,8 @@ static void upload_signal_handler(uv_signal_t *req, int signum)
 
 static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path, void *handle)
 {
+    storj_api_t *storj_api = handle;
+
     FILE *fd = fopen(file_path, "r");
 
     if (!fd) {
@@ -261,8 +263,16 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
 
     const char *file_name = get_filename_separator(file_path);
 
-    if (!file_name) {
-        file_name = file_path;
+    if (storj_api->dst_file == NULL)
+    {
+        if (!file_name)
+        {
+            file_name = file_path;
+        }
+    }
+    else
+    {
+        file_name = storj_api->dst_file;
     }
 
     // Upload opts env variables:
@@ -472,7 +482,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
                        "imported correctly.\n\n");
                 break;
             default:
-                printf("[%d][%d]Download failure: %s\n",
+                printf("[%s][%d]Download failure: %s\n",
                        __FUNCTION__, __LINE__, storj_strerror(status));
         }
     }
