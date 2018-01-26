@@ -434,7 +434,7 @@ static void verify_upload_files(void *handle)
         /* create upload files list based on the file path */
         if ((upload_list_file = getenv("TMPDIR")) != NULL)
         {
-            if (upload_list_file[strlen(upload_list_file)] == '/')
+            if (upload_list_file[(strlen(upload_list_file) - 1)] == '/')
             {
                 strcat(upload_list_file, "STORJ_output_list.txt");
             }
@@ -448,14 +448,15 @@ static void verify_upload_files(void *handle)
             memcpy(storj_api->src_list, upload_list_file, sizeof(pwd_path));
             storj_api->dst_file = storj_api->src_list;
         }
-    }
+
+        /* create a upload list file src_list.txt */
+        printf("inside verify src list = %s\n",storj_api->src_list);
+
+        int file_attr = file_exists(handle);
+   }
 
     /* create a upload list file src_list.txt */
     printf("inside verify src list = %s\n",storj_api->src_list);
-
-    storj_api->rcvd_cmd_resp = "verify-upload-files-resp";
-    int file_attr = file_exists(handle);
-
     storj_api->src_fd = fopen(storj_api->src_list, "r");
 
     if (!storj_api->src_fd)
@@ -484,7 +485,9 @@ static void verify_upload_files(void *handle)
 
     storj_api->total_files = total_src_files;
     storj_api->xfer_count = 0x01;
+    printf("[][] total files = %d, xfer_count = %d\n", storj_api->total_files, storj_api->xfer_count);
 
+    storj_api->rcvd_cmd_resp = "verify-upload-files-resp";
     queue_next_cmd_req(storj_api);
 }
 
