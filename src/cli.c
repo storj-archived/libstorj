@@ -1905,9 +1905,10 @@ int main(int argc, char **argv)
 
                     /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
                     char *token[0x03];
+                    memset(token,0x00, sizeof(token));
                     int num_of_tokens = validate_cmd_tokenize(bucket_name, token);
 
-                    if (num_of_tokens == 0x03)
+                    if ((num_of_tokens == 0x02) || (num_of_tokens == 0x03))
                     {
                         for (int j = 0x00; j < num_of_tokens; j++)
                         {
@@ -1919,7 +1920,7 @@ int main(int argc, char **argv)
                         storj_api->bucket_name = token[1];
                         dst_file_name = (char *)get_filename_separator(local_file_path);
 
-                        if ((strcmp(dst_file_name, token[2]) == 0x00) ||
+                        if ((token[2] == NULL) || (strcmp(dst_file_name, token[2]) == 0x00) ||
                             (strcmp(token[2], ".") == 0x00))
                         {
                             memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
