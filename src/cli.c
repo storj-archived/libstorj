@@ -1533,6 +1533,10 @@ int main(int argc, char **argv)
                 printf(HELP_TEXT);
                 exit(0);
                 break;
+            default:
+                exit(0);
+                break;
+
         }
     }
 
@@ -1904,29 +1908,40 @@ int main(int argc, char **argv)
             }
             else /* with -r[R] */
             {
-                src_path = local_file_path;
+                if ((strcmp(argv[1],"-r") == 0x00) || (strcmp(argv[1],"-R") == 0x00))
+                {
+                    src_path = local_file_path;
 
-                /* Handle the dst argument (storj://<bucket-name>/ */
-                dst_path = argv[argc - 0x01];
+                    /* Handle the dst argument (storj://<bucket-name>/ */
+                    dst_path = argv[argc - 0x01];
 
-                cmd_type = RECURSIVE_CMD;
+                    cmd_type = RECURSIVE_CMD;
+                }
+                else
+                {
+                    printf("[%s][%d] Invalid command option '%s'\n",
+                           __FUNCTION__, __LINE__, argv[1]);
+                    goto end_program;
+                }
             }
 
             char sub_str[] = "storj://";
 
             /* check for upload or download command */
             ret = strpos(dst_path, sub_str);
-            if( ret == 0x00)
+            if( ret == 0x00) /* Handle upload command*/
             {
                 if (cmd_type == NON_RECURSIVE_CMD)
                 {
                     if (check_file_path(src_path) != CLI_VALID_DIR)
                     {
                         local_file_path = src_path;
-                        printf("[main.c][1906] local_file_path = %s\n", local_file_path);
+                        printf("[%s][%d] local_file_path = %s\n",
+                                __FUNCTION__, __LINE__, local_file_path);
 
                         bucket_name = dst_path;
-                        printf("[main.c][1912] bucket-name = %s\n", bucket_name);
+                        printf("[%s][%d] bucket-name = %s\n", 
+                               __FUNCTION__, __LINE__, bucket_name);
                     }
                     else
                     {
@@ -1938,10 +1953,12 @@ int main(int argc, char **argv)
                 else if (cmd_type == RECURSIVE_CMD)
                 {
                     local_file_path = src_path;
-                    printf("[main.c][1906] local_file_path = %s\n", local_file_path);
+                    printf("[%s][%d] local_file_path = %s\n",
+                            __FUNCTION__, __LINE__, local_file_path);
 
                     bucket_name = dst_path;
-                    printf("[main.c][1912] bucket-name = %s\n", bucket_name);
+                    printf("[%s][%d] bucket-name = %s\n", 
+                           __FUNCTION__, __LINE__, bucket_name);
                 }
                 else
                 {
@@ -1952,7 +1969,7 @@ int main(int argc, char **argv)
                 printf("[main.c][1921] upload command\n");
                 cmd_type = UPLOAD_CMD;
             }
-            else if (ret == -1)
+            else if (ret == -1) /* Handle download command*/
             {
                 ret = strpos(src_path, sub_str);
                  
