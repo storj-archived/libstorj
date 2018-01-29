@@ -1060,6 +1060,10 @@ void queue_next_cmd_req(storj_api_t *storj_api)
 
                     storj_api->file_id = token[0];
                     strcpy(temp_path, storj_api->file_path);
+                    if (storj_api->file_path[(strlen(storj_api->file_path)-1)] != '/')
+                    {
+                        strcat(temp_path, "/");
+                    }
                     strcat(temp_path, token[1]);
                     fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", storj_api->xfer_count, storj_api->total_files, temp_path);
                     storj_api->xfer_count++;

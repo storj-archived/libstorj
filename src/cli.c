@@ -1925,10 +1925,10 @@ int main(int argc, char **argv)
                 }
             }
 
-            char sub_str[] = "storj://";
-
             /* check for upload or download command */
+            char sub_str[] = "storj://";
             ret = strpos(dst_path, sub_str);
+
             if( ret == 0x00) /* Handle upload command*/
             {
                 if (cmd_type == NON_RECURSIVE_CMD)
@@ -1975,148 +1975,270 @@ int main(int argc, char **argv)
                  
                 if (ret == 0x00)
                 {
-                    printf("[main.c][1941] download command\n");
-                    cmd_type = DOWNLOAD_CMD;
+                    if ((cmd_type == NON_RECURSIVE_CMD) || (cmd_type == RECURSIVE_CMD))
+                    {
+                        local_file_path = dst_path;
+                        bucket_name = src_path;
 
-                    local_file_path = dst_path;
-                    printf("[main.c][1906] local_file_path = %s\n", local_file_path);
+                        char *dst_file_name = NULL;
+                        dst_file_name = get_filename_separator(local_file_path);
+                        printf("[%s][%d] local_file_path = %s, dst_file_name = %s and leng = %d\n",
+                                __FUNCTION__, __LINE__, local_file_path, dst_file_name, strlen(dst_file_name));
 
-                    bucket_name = src_path;
-                    printf("[main.c][1912] bucket-name = %s\n", bucket_name);
+                        /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
+                        char *token[0x03];
+                        memset(token, 0x00, sizeof(token));
+                        int num_of_tokens = validate_cmd_tokenize(bucket_name, token);
+                        printf("num of tokes = %d; \n", num_of_tokens);
+
+                        /* set the bucket name from which file(s) to be downloaded */
+                        storj_api->bucket_name = token[1];
+
+                        /* initialize the local folder to copy the downloaded file into */
+                        storj_api->file_path = local_file_path;
+
+                        /* initialize the filename to be downloaded as */
+                        storj_api->dst_file = dst_file_name;
+
+                        if ((argc == 0x04) || (argc == 0x05)) /* handle non recursive operations */
+                        {
+                            if (strcmp(token[2], "*") == 0x00)
+                            {
+                                if (check_file_path(local_file_path) == CLI_VALID_DIR)
+                                {
+                                    storj_download_files(storj_api);
+                                }
+                                else
+                                {
+                                    printf("[%s][%d] Invalid '%s' dst directory !!!!!\n", 
+                                            __FUNCTION__, __LINE__, local_file_path);
+                                    goto end_program;
+                                }
+                            }
+                            else if (token[2] != NULL) 
+                            {
+                                /* set the file to be downloaded */
+                                storj_api->file_name = token[2];
+
+                                if ((check_file_path(local_file_path) == CLI_VALID_DIR) || (strcmp(dst_file_name, ".") == 0x00))
+                                {
+                                    memset(temp_buff, 0x00, sizeof(temp_buff));
+                                    strcat(temp_buff, local_file_path);
+                                    strcat(temp_buff, "/");
+                                    strcat(temp_buff, token[2]);
+                                    storj_api->dst_file = temp_buff;
+                                }
+                                else if (strlen(dst_file_name) > 0x00)
+                                {
+                                    storj_api->dst_file = local_file_path;
+                                }
+                                else
+                                {
+                                    printf("[%s][%d] Invalid '%s' dst directory !!!!!\n", 
+                                            __FUNCTION__, __LINE__, local_file_path);
+                                    goto end_program;
+                                }
+                                printf("[%s][%d]file %s downloaded from bucketname = %s as file %s\n",
+                                       __FUNCTION__, __LINE__, storj_api->file_name, storj_api->bucket_name, storj_api->dst_file);
+                                storj_download_file(storj_api);
+                            }
+                            else
+                            {
+                                printf("[%s][%d] Invalid '%s' dst directory !!!!!\n", 
+                                        __FUNCTION__, __LINE__, local_file_path);
+                                goto end_program;
+                            }
+                        }
+                        else
+                        {
+                            /* more args then needed wrong command */
+                            printf("[%s][%d] Valid dst filename missing !!!!!\n", __FUNCTION__, __LINE__);
+                            goto end_program;
+                        }
+                    }
+                    else 
+                    {
+                        printf("[%s][%d] Invalid command entry \n", __FUNCTION__, __LINE__);
+                        goto end_program;
+                    }
                 }
                 else
                 {
-                    printf("[%s][%d]Invalid Command Entry (%d), \ntry ... stroj://<bucket_name>/<file_name>\n", 
+                    printf("[%s][%d]Invalid Command Entry (%d) \n", 
                            __FUNCTION__, __LINE__, ret);
                     goto end_program;
                 }
             }
             else
             {
-                printf("[%s][%d]Invalid Command Entry (%d), \ntry ... stroj://<bucket_name>/<file_name>\n", 
+                printf("[%s][%d]Invalid Command Entry (%d) \n", 
                        __FUNCTION__, __LINE__, ret);
                 goto end_program;
             }
 
-            /* handling single file copy with -r[R]: ./storj cp -r /home/kishore/libstorj/src/xxx.y storj://testbucket/yyy.x */
-            /* Handle the src argument */
-            /* single file to copy, make sure the files exits */
-            if ((argc == 0x05) && (check_file_path(local_file_path) == CLI_VALID_REGULAR_FILE))
+            if (cmd_type == UPLOAD_CMD)
             {
-                storj_api->file_name = local_file_path;
-
-                /* Handle the dst argument (storj://<bucket-name>/<file-name> */
-                /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
-                char *token[0x03];
-                memset(token,0x00, sizeof(token));
-                int num_of_tokens = validate_cmd_tokenize(bucket_name, token);
-
-                if ((num_of_tokens == 0x02) || (num_of_tokens == 0x03))
+                /* handling single file copy with -r[R]: ./storj cp -r /home/kishore/libstorj/src/xxx.y storj://testbucket/yyy.x */
+                /* Handle the src argument */
+                /* single file to copy, make sure the files exits */
+                if ((argc == 0x05) && (check_file_path(local_file_path) == CLI_VALID_REGULAR_FILE))
                 {
-                    for (int j = 0x00; j < num_of_tokens; j++)
+                    storj_api->file_name = local_file_path;
+
+                    /* Handle the dst argument (storj://<bucket-name>/<file-name> */
+                    /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
+                    char *token[0x03];
+                    memset(token,0x00, sizeof(token));
+                    int num_of_tokens = validate_cmd_tokenize(bucket_name, token);
+
+                    if ((num_of_tokens == 0x02) || (num_of_tokens == 0x03))
                     {
-                        printf("num of tokes = %d; token[%d] = %s\n", num_of_tokens, j, token[j]);
-                    }
+                        for (int j = 0x00; j < num_of_tokens; j++)
+                        {
+                            printf("num of tokes = %d; token[%d] = %s\n", num_of_tokens, j, token[j]);
+                        }
 
-                    char *dst_file_name = NULL;
+                        char *dst_file_name = NULL;
 
-                    storj_api->bucket_name = token[1];
-                    dst_file_name = (char *)get_filename_separator(local_file_path);
+                        storj_api->bucket_name = token[1];
+                        dst_file_name = (char *)get_filename_separator(local_file_path);
 
-                    if ((token[2] == NULL) || (strcmp(dst_file_name, token[2]) == 0x00) ||
-                        (strcmp(token[2], ".") == 0x00))
-                    {
-                        /* use the src list buff as temp memory to hold the dst filename */
-                        memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
-                        strcpy(storj_api->src_list, dst_file_name);
-                        storj_api->dst_file = storj_api->src_list; 
-                        printf("file uploaded as same %s \n", storj_api->dst_file);
+                        if ((token[2] == NULL) || (strcmp(dst_file_name, token[2]) == 0x00) ||
+                            (strcmp(token[2], ".") == 0x00))
+                        {
+                            /* use the src list buff as temp memory to hold the dst filename */
+                            memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
+                            strcpy(storj_api->src_list, dst_file_name);
+                            storj_api->dst_file = storj_api->src_list; 
+                            printf("file uploaded as same %s \n", storj_api->dst_file);
+                        } 
+                        else
+                        {
+                            storj_api->dst_file = token[2];
+                            printf("file uploaded as %s\n", storj_api->dst_file);
+                        }
+                        printf("******* EXECUTE UPLOAD CMD HERE \n");
+                        storj_upload_file(storj_api);
                     } 
                     else
                     {
-                        storj_api->dst_file = token[2];
-                        printf("file uploaded as %s\n", storj_api->dst_file);
+                        printf("[%s][%d] Valid dst filename missing !!!!!\n", __FUNCTION__, __LINE__);
+                        goto end_program;
                     }
-                    printf("******* EXECUTE UPLOAD CMD HERE \n");
-                    storj_upload_file(storj_api);
                 } 
                 else
                 {
-                    printf("[%s][%d] Valid dst filename missing !!!!!\n", __FUNCTION__, __LINE__);
-                    goto end_program;
-                }
-            } 
-            else
-            {
-                /* directory is being used, store it in file_path */
-                storj_api->file_path = local_file_path;
+                    /* directory is being used, store it in file_path */
+                    storj_api->file_path = local_file_path;
 
-                char pwd_path[256]= {};
-                memset(pwd_path, 0x00, sizeof(pwd_path));
-                char *upload_list_file = pwd_path;
+                    char pwd_path[256]= {};
+                    memset(pwd_path, 0x00, sizeof(pwd_path));
+                    char *upload_list_file = pwd_path;
 
-                /* create "/tmp/STORJ_upload_list_file.txt" upload files list based on the file path */
-                if ((upload_list_file = getenv("TMPDIR")) != NULL)
-                {
-                    printf("uploadlistfile = %s\n", upload_list_file);
-                    printf("upload_list_file[strlen(upload_list_file)] = %d\n", strlen(upload_list_file));
-                    if (upload_list_file[(strlen(upload_list_file) - 1)] == '/')
+                    /* create "/tmp/STORJ_upload_list_file.txt" upload files list based on the file path */
+                    if ((upload_list_file = getenv("TMPDIR")) != NULL)
                     {
-                        strcat(upload_list_file, "STORJ_output_list.txt");
-                    }
-                    else
-                    {
-                        strcat(upload_list_file, "/STORJ_output_list.txt");
-                    }
-
-                    /* check the directory and create the path to upload list file */
-                    memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
-                    memcpy(storj_api->src_list, upload_list_file, sizeof(pwd_path));
-                    storj_api->dst_file = storj_api->src_list;
-                    printf("**dst_file = %s\n", storj_api->dst_file);
-                }
-                else
-                {
-                    printf("[%s][%d] Upload list file generation error!!! \n",
-                           __FUNCTION__, __LINE__);
-                    goto end_program;
-                }
-
-                /* Handle wild character options for files selection */
-                if(check_file_path(local_file_path) != CLI_VALID_DIR)
-                {
-                    /* if local file path is a file, then just get the directory
-                       from that */
-                    char *ret = NULL;
-                    ret = strrchr(local_file_path, '/');
-                    memset(temp_buff, 0x00, sizeof(temp_buff));
-                    memcpy(temp_buff, local_file_path, (ret-local_file_path));
-
-                    printf("ret = %s diff = %d temp = %s\n", ret, ret -local_file_path, temp_buff);
-
-                    FILE *file= NULL;
-                    /* create the file and add the list of files to be uploaded */
-                    if ((file = fopen(storj_api->src_list, "w")) != NULL)
-                    {
-                        fprintf(file, "%s\n", local_file_path);
-                        fprintf(stdout, "%s\n", local_file_path);
-
-                        for (int i = 0x01; i < ((argc - command_index) - 1); i++)
+                        printf("uploadlistfile = %s\n", upload_list_file);
+                        printf("upload_list_file[strlen(upload_list_file)] = %d\n", strlen(upload_list_file));
+                        if (upload_list_file[(strlen(upload_list_file) - 1)] == '/')
                         {
-                            fprintf(file, "%s\n", argv[command_index + i]);
-                            fprintf(stdout, "%s\n", argv[command_index + i]);
+                            strcat(upload_list_file, "STORJ_output_list.txt");
                         }
+                        else
+                        {
+                            strcat(upload_list_file, "/STORJ_output_list.txt");
+                        }
+
+                        /* check the directory and create the path to upload list file */
+                        memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
+                        memcpy(storj_api->src_list, upload_list_file, sizeof(pwd_path));
+                        storj_api->dst_file = storj_api->src_list;
+                        printf("**dst_file = %s\n", storj_api->dst_file);
                     }
                     else
                     {
-                        printf("[%s][%d] Invalid upload src path entered\n", __FUNCTION__, __LINE__);
+                        printf("[%s][%d] Upload list file generation error!!! \n",
+                               __FUNCTION__, __LINE__);
                         goto end_program;
                     }
-                    fclose(file);
 
-                    storj_api->file_path = temp_buff;
-                    printf("src file path = %s\n", storj_api->file_path);
+                    /* Handle wild character options for files selection */
+                    if(check_file_path(local_file_path) != CLI_VALID_DIR)
+                    {
+                        /* if local file path is a file, then just get the directory
+                           from that */
+                        char *ret = NULL;
+                        ret = strrchr(local_file_path, '/');
+                        memset(temp_buff, 0x00, sizeof(temp_buff));
+                        memcpy(temp_buff, local_file_path, (ret-local_file_path));
+
+                        printf("ret = %s diff = %d temp = %s\n", ret, ret -local_file_path, temp_buff);
+
+                        FILE *file= NULL;
+                        /* create the file and add the list of files to be uploaded */
+                        if ((file = fopen(storj_api->src_list, "w")) != NULL)
+                        {
+                            fprintf(file, "%s\n", local_file_path);
+                            fprintf(stdout, "%s\n", local_file_path);
+
+                            for (int i = 0x01; i < ((argc - command_index) - 1); i++)
+                            {
+                                fprintf(file, "%s\n", argv[command_index + i]);
+                                fprintf(stdout, "%s\n", argv[command_index + i]);
+                            }
+                        }
+                        else
+                        {
+                            printf("[%s][%d] Invalid upload src path entered\n", __FUNCTION__, __LINE__);
+                            goto end_program;
+                        }
+                        fclose(file);
+
+                        storj_api->file_path = temp_buff;
+                        printf("src file path = %s\n", storj_api->file_path);
+                    }
+
+                    /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
+                    char *token[0x03];
+                    memset(token, 0x00, sizeof(token));
+                    int num_of_tokens = validate_cmd_tokenize(bucket_name, token);
+                    printf("num of tokes = %d; \n", num_of_tokens);
+
+                    if ((num_of_tokens > 0x00) && ((num_of_tokens >= 0x02) || (num_of_tokens <= 0x03)))
+                    {
+                        for (int j = 0x00; j < num_of_tokens; j++)
+                        {
+                            printf("num of tokes = %d; token[%d] = %s\n", num_of_tokens, j, token[j]);
+                        }
+
+                        char *dst_file_name = NULL;
+
+                        storj_api->bucket_name = token[1];
+
+                        if ((token[2] == NULL) || 
+                            (strcmp(token[2], ".") == 0x00))
+                        {
+                            printf("******* EXECUTE UPLOAD**S** CMD HERE \n");
+                            storj_upload_files(storj_api);
+                        }
+                        else
+                        {
+                            printf("[%s][%d] storj://<bucket-name>; storj://<bucket-name>/ storj://<bucket-name>/. !!!!!\n", __FUNCTION__, __LINE__);
+                            goto end_program;
+                        }
+                    } 
+                    else
+                    {
+                        printf("[%s][%d] Valid dst filename missing !!!!!\n", __FUNCTION__, __LINE__);
+                        goto end_program;
+                    }
                 }
+            }
+            #if 0
+            else if (cmd_type == DOWNLOAD_CMD)
+            {
+                storj_api->file_name = local_file_path;
+                char *dst_file_name = get_filename_separator(local_file_path);
 
                 /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
                 char *token[0x03];
@@ -2124,36 +2246,52 @@ int main(int argc, char **argv)
                 int num_of_tokens = validate_cmd_tokenize(bucket_name, token);
                 printf("num of tokes = %d; \n", num_of_tokens);
 
-                if ((num_of_tokens > 0x00) && ((num_of_tokens >= 0x02) || (num_of_tokens <= 0x03)))
+                storj_api->bucket_name = token[1];
+
+                if (argc == 0x04) /* handle non recursive operations */
                 {
-                    for (int j = 0x00; j < num_of_tokens; j++)
+                    if (strcmp(token[2], "*") == 0x00)
                     {
-                        printf("num of tokes = %d; token[%d] = %s\n", num_of_tokens, j, token[j]);
+                        if (check_file_path(local_file_path) != CLI_VALID_DIR)
+                        {
+                            printf("[%s][%d] Invalid '%s' dst directory !!!!!\n", 
+                                    __FUNCTION__, __LINE__, local_file_path);
+                            goto end_program;
+                        }
                     }
-
-                    char *dst_file_name = NULL;
-
-                    storj_api->bucket_name = token[1];
-
-                    if ((token[2] == NULL) || 
-                        (strcmp(token[2], ".") == 0x00))
+                    else if (token[2] != NULL) 
                     {
-                        printf("******* EXECUTE UPLOAD**S** CMD HERE \n");
-                        storj_upload_files(storj_api);
+                        if ((dst_file_name != NULL) || check_file_path(local_file_path) == CLI_VALID_DIR)
+                        {
+                            /* call single file download command */
+                            printf("****** single file download command function \n");
+                        }
+                        else
+                        {
+                            printf("[%s][%d] Invalid '%s' dst directory !!!!!\n", 
+                                    __FUNCTION__, __LINE__, local_file_path);
+                            goto end_program;
+                        }
                     }
                     else
                     {
-                        printf("[%s][%d] storj://<bucket-name>; storj://<bucket-name>/ storj://<bucket-name>/. !!!!!\n", __FUNCTION__, __LINE__);
+                        printf("[%s][%d] Invalid '%s' dst directory !!!!!\n", 
+                                __FUNCTION__, __LINE__, local_file_path);
                         goto end_program;
                     }
-                } 
+                }
+                else if(argc == 0x05)  /* handle recursive operations */
+                {
+
+                }
                 else
                 {
+                    /* more args then needed wrong command */
                     printf("[%s][%d] Valid dst filename missing !!!!!\n", __FUNCTION__, __LINE__);
                     goto end_program;
                 }
-
             }
+            #endif
         }
         else if (strcmp(command, "upload-file") == 0)
         {
@@ -2193,7 +2331,7 @@ int main(int argc, char **argv)
             storj_api->bucket_name = argv[command_index + 1];
             storj_api->file_path = argv[command_index + 2];
 
-            if (!storj_api->bucket_name || !storj_api->file_name)
+            if (!storj_api->bucket_name || !storj_api->file_path)
             {
                 printf("Missing arguments: <bucket-name> <path>\n");
                 status = 1;
