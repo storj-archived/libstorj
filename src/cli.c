@@ -2367,7 +2367,9 @@ int main(int argc, char **argv)
                 goto end_program;
             }
             storj_list_files(storj_api);
-        } else if (strcmp(command, "add-bucket") == 0) {
+        } 
+        else if ((strcmp(command, "add-bucket") == 0) || (strcmp(command, "mkbkt") == 0x00)) 
+        {
             char *bucket_name = argv[command_index + 1];
 
             if (!bucket_name) {
@@ -2397,14 +2399,14 @@ int main(int argc, char **argv)
 
             if (storj_api->file_name != NULL)
             {
-            if (!storj_api->bucket_name|| !storj_api->file_name) 
-            {
-                printf("Missing arguments, expected: <bucket-name> <file-name>\n");
-                status = 1;
-                goto end_program;
-            }
+                if (!storj_api->bucket_name|| !storj_api->file_name) 
+                {
+                    printf("Missing arguments, expected: <bucket-name> <file-name>\n");
+                    status = 1;
+                    goto end_program;
+                }
 
-            storj_remove_file(storj_api);
+                storj_remove_file(storj_api);
             }
             else
             {
