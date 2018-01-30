@@ -1925,6 +1925,15 @@ int main(int argc, char **argv)
                 }
             }
 
+            if ((strcmp(src_path, argv[command_index]) == 0x00) || 
+                (strcmp(dst_path, argv[command_index]) == 0x00) ||
+                (strcmp(dst_path, src_path) == 0x00))
+            {
+                printf("[%s][%d] Invalid command option '%s'\n",
+                       __FUNCTION__, __LINE__, argv[1]);
+                goto end_program;
+            }
+            
             /* check for upload or download command */
             char sub_str[] = "storj://";
             ret = strpos(dst_path, sub_str);
@@ -2002,7 +2011,7 @@ int main(int argc, char **argv)
 
                         if ((argc == 0x04) || (argc == 0x05)) /* handle non recursive operations */
                         {
-                            if (strcmp(token[2], "*") == 0x00)
+                            if ((token[2] == NULL) || (strcmp(token[2], "*") == 0x00))
                             {
                                 if (check_file_path(local_file_path) == CLI_VALID_DIR)
                                 {

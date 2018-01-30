@@ -1007,8 +1007,16 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             storj_api->excp_cmd_resp = "download-file-resp";
 
             printf("dst_file= %s\n", storj_api->dst_file);
-            download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, 
-                          storj_api->dst_file, storj_api);
+            if (storj_api->file_id != NULL)
+            {
+                download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
+                              storj_api->dst_file, storj_api);
+            }
+            else
+            {
+                printf("[%s][%d] File not found!!!\n", __FUNCTION__, __LINE__);
+                exit(0);
+            }
         }
         else if ((storj_api->next_cmd_req != NULL) && 
                  (strcmp(storj_api->next_cmd_req, "download-files-req") == 0x00))
@@ -1067,7 +1075,15 @@ void queue_next_cmd_req(storj_api_t *storj_api)
                     strcat(temp_path, token[1]);
                     fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", storj_api->xfer_count, storj_api->total_files, temp_path);
                     storj_api->xfer_count++;
-                    download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, temp_path, storj_api);
+                    if (storj_api->file_id != NULL)
+                    {
+                        download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, temp_path, storj_api);
+                    }
+                    else
+                    {
+                        printf("[%s][%d] File not found!!!\n", __FUNCTION__, __LINE__);
+                        exit(0);
+                    }
                 }
                 else
                 {
