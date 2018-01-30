@@ -1,5 +1,7 @@
 #include "storjapi_callback.h"
 
+//#define debug_enable
+
 #define MAX_UPLOAD_FILES        256
 
 static inline void noop() {};
@@ -93,7 +95,6 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
             full_path = realpath(entry->d_name, NULL);
             /* write to src file */
             fprintf(src_fd, "%s%s\n", "", full_path);
-            fprintf(stdout, "%s%s\n", "", full_path);
         }
     }
     chdir("..");
@@ -433,7 +434,6 @@ static void verify_upload_files(void *handle)
         memset(pwd_path, 0x00, sizeof(pwd_path));
         char *upload_list_file = pwd_path;
 
-        printf("am here \n");
         /* create upload files list based on the file path */
         if ((upload_list_file = getenv("TMPDIR")) != NULL)
         {
@@ -453,14 +453,10 @@ static void verify_upload_files(void *handle)
         }
 
         /* create a upload list file src_list.txt */
-        printf("inside verify src list = %s\n",storj_api->src_list);
-
         int file_attr = file_exists(handle);
-        printf("file _attr = %d\n", file_attr);
    }
 
     /* create a upload list file src_list.txt */
-    printf("inside verify src list = %s\n",storj_api->src_list);
     storj_api->src_fd = fopen(storj_api->src_list, "r");
 
     if (!storj_api->src_fd)
@@ -499,7 +495,6 @@ static void verify_upload_files(void *handle)
 
     storj_api->total_files = total_src_files;
     storj_api->xfer_count = 0x01;
-    printf("[][] total files = %d, xfer_count = %d\n", storj_api->total_files, storj_api->xfer_count);
 
     storj_api->rcvd_cmd_resp = "verify-upload-files-resp";
     queue_next_cmd_req(storj_api);
@@ -869,12 +864,15 @@ void queue_next_cmd_req(storj_api_t *storj_api)
 {
     void *handle = storj_api->handle;
 
+    #ifdef debug_enable
     printf("[%s][%d]start !!!! expt resp = %s; rcvd resp = %s \n",
            __FUNCTION__, __LINE__,
             storj_api->excp_cmd_resp, storj_api->rcvd_cmd_resp );
     printf("[%s][%d]last cmd = %s; cur cmd = %s; next cmd = %s\n",
            __FUNCTION__, __LINE__, storj_api->last_cmd_req, 
            storj_api->curr_cmd_req, storj_api->next_cmd_req);
+    #endif
+
     if (strcmp(storj_api->excp_cmd_resp, storj_api->rcvd_cmd_resp) == 0x00)
     {
         if ((storj_api->next_cmd_req != NULL) && 
@@ -1020,7 +1018,6 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             storj_api->final_cmd_req = NULL;
             storj_api->excp_cmd_resp = "download-file-resp";
 
-            printf("dst_file= %s\n", storj_api->dst_file);
             if (storj_api->file_id != NULL)
             {
                 download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
@@ -1108,7 +1105,10 @@ void queue_next_cmd_req(storj_api_t *storj_api)
         }
         else
         {
+            #ifdef debug_enable
             printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", __FUNCTION__, __LINE__);
+            #endif
+
             exit(0);
         }
     }
