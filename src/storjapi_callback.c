@@ -1,5 +1,7 @@
 #include "storjapi_callback.h"
 
+#define MAX_UPLOAD_FILES        256
+
 static inline void noop() {};
 
 static void get_input(char *line)
@@ -91,6 +93,7 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
             full_path = realpath(entry->d_name, NULL);
             /* write to src file */
             fprintf(src_fd, "%s%s\n", "", full_path);
+            fprintf(stdout, "%s%s\n", "", full_path);
         }
     }
     chdir("..");
@@ -453,6 +456,7 @@ static void verify_upload_files(void *handle)
         printf("inside verify src list = %s\n",storj_api->src_list);
 
         int file_attr = file_exists(handle);
+        printf("file _attr = %d\n", file_attr);
    }
 
     /* create a upload list file src_list.txt */
@@ -468,7 +472,7 @@ static void verify_upload_files(void *handle)
     else
     {
         /* count total src_list files */
-        char line[256][256];
+        char line[MAX_UPLOAD_FILES][256];
         char *temp;
         int i = 0x00;
 
@@ -477,7 +481,17 @@ static void verify_upload_files(void *handle)
         /* read a line from a file */
         while (fgets(line[i], sizeof(line), storj_api->src_fd) != NULL)
         {
-            i++;
+            if (i <= MAX_UPLOAD_FILES)
+            {
+                i++;
+            }
+            else
+            {
+                i = (i - 1);
+                printf("[%s][%d] Upload files limit set to %d \n", 
+                       __FUNCTION__, __LINE__, (MAX_UPLOAD_FILES));
+                break;
+            }
         }
 
         total_src_files = i;

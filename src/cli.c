@@ -2395,6 +2395,8 @@ int main(int argc, char **argv)
             storj_api->bucket_name = argv[command_index + 1];
             storj_api->file_name = argv[command_index + 2];
 
+            if (storj_api->file_name != NULL)
+            {
             if (!storj_api->bucket_name|| !storj_api->file_name) 
             {
                 printf("Missing arguments, expected: <bucket-name> <file-name>\n");
@@ -2403,6 +2405,11 @@ int main(int argc, char **argv)
             }
 
             storj_remove_file(storj_api);
+            }
+            else
+            {
+                storj_remove_bucket(storj_api);
+            }
         }
         else if ((strcmp(command, "list-buckets") == 0) || (strcmp(command, "ls") == 0x00))
         {
