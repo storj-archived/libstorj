@@ -2131,50 +2131,50 @@ int main(int argc, char **argv)
                     /* directory is being used, store it in file_path */
                     storj_api->file_path = local_file_path;
 
-                    char pwd_path[256]= {};
-                    memset(pwd_path, 0x00, sizeof(pwd_path));
-                    char *upload_list_file = pwd_path;
-
-                    /* create "/tmp/STORJ_upload_list_file.txt" upload files list based on the file path */
-                    if ((upload_list_file = getenv("TMPDIR")) != NULL)
-                    {
-                        printf("uploadlistfile = %s\n", upload_list_file);
-                        printf("upload_list_file[strlen(upload_list_file)] = %d\n", strlen(upload_list_file));
-                        if (upload_list_file[(strlen(upload_list_file) - 1)] == '/')
-                        {
-                            strcat(upload_list_file, "STORJ_output_list.txt");
-                        }
-                        else
-                        {
-                            strcat(upload_list_file, "/STORJ_output_list.txt");
-                        }
-
-                        /* check the directory and create the path to upload list file */
-                        memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
-                        memcpy(storj_api->src_list, upload_list_file, sizeof(pwd_path));
-                        storj_api->dst_file = storj_api->src_list;
-                        printf("**dst_file = %s\n", storj_api->dst_file);
-                    }
-                    else
-                    {
-                        printf("[%s][%d] Upload list file generation error!!! \n",
-                               __FUNCTION__, __LINE__);
-                        goto end_program;
-                    }
-
                     /* Handle wild character options for files selection */
                     if(check_file_path(local_file_path) != CLI_VALID_DIR)
                     {
+                        char pwd_path[256] = { };
+                        memset(pwd_path, 0x00, sizeof(pwd_path));
+                        char *upload_list_file = pwd_path;
+
+                        /* create "/tmp/STORJ_upload_list_file.txt" upload files list based on the file path */
+                        if ((upload_list_file = getenv("TMPDIR")) != NULL)
+                        {
+                            printf("uploadlistfile = %s\n", upload_list_file);
+                            printf("upload_list_file[strlen(upload_list_file)] = %d\n", strlen(upload_list_file));
+                            if (upload_list_file[(strlen(upload_list_file) - 1)] == '/')
+                            {
+                                strcat(upload_list_file, "STORJ_output_list.txt");
+                            } 
+                            else
+                            {
+                                strcat(upload_list_file, "/STORJ_output_list.txt");
+                            }
+
+                            /* check the directory and create the path to upload list file */
+                            memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
+                            memcpy(storj_api->src_list, upload_list_file, sizeof(pwd_path));
+                            storj_api->dst_file = storj_api->src_list;
+                            printf("**dst_file = %s\n", storj_api->dst_file);
+                        } 
+                        else
+                        {
+                            printf("[%s][%d] Upload list file generation error!!! \n",
+                                   __FUNCTION__, __LINE__);
+                            goto end_program;
+                        }
+
                         /* if local file path is a file, then just get the directory
                            from that */
                         char *ret = NULL;
                         ret = strrchr(local_file_path, '/');
                         memset(temp_buff, 0x00, sizeof(temp_buff));
-                        memcpy(temp_buff, local_file_path, (ret-local_file_path));
+                        memcpy(temp_buff, local_file_path, (ret - local_file_path));
 
                         printf("ret = %s diff = %d temp = %s\n", ret, ret -local_file_path, temp_buff);
 
-                        FILE *file= NULL;
+                        FILE *file = NULL;
                         /* create the file and add the list of files to be uploaded */
                         if ((file = fopen(storj_api->src_list, "w")) != NULL)
                         {
@@ -2186,7 +2186,7 @@ int main(int argc, char **argv)
                                 fprintf(file, "%s\n", argv[command_index + i]);
                                 fprintf(stdout, "%s\n", argv[command_index + i]);
                             }
-                        }
+                        } 
                         else
                         {
                             printf("[%s][%d] Invalid upload src path entered\n", __FUNCTION__, __LINE__);
@@ -2196,6 +2196,12 @@ int main(int argc, char **argv)
 
                         storj_api->file_path = temp_buff;
                         printf("src file path = %s\n", storj_api->file_path);
+                    }
+                    else
+                    {
+                        /* its a valid directory so let the list of files to be uploaded be handled in
+                           verify upload file () */
+                        storj_api->dst_file = NULL;
                     }
 
                     /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
