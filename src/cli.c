@@ -56,9 +56,9 @@ extern int errno;
 #endif
 
 static void printdir(char *dir, int depth, FILE *fd);
-static void queue_next_cli_cmd(cli_state_t *cli_state);
-static int cli_upload_file(char *path, char *bucket_name, cli_state_t *cli_state);
-static int cli_download_file(char *path, char *bucket_name, cli_state_t *cli_state);
+//static void queue_next_cli_cmd(cli_state_t *cli_state);
+//static int cli_upload_file(char *path, char *bucket_name, cli_state_t *cli_state);
+//static int cli_download_file(char *path, char *bucket_name, cli_state_t *cli_state);
 static const char *get_filename_separator(const char *file_path);
 static inline void noop() {};
 
@@ -102,22 +102,6 @@ static inline void noop() {};
 
 
 #define CLI_VERSION "libstorj-2.0.1-beta"
-
-
-static void print_error(char *this, char *filename1, char *filename2)
-{
-    fprintf(stderr, "%s cannot move %s to %s\n%s\n",
-            this, filename1, filename2, strerror(errno));
-
-    exit(EXIT_FAILURE);
-}
-
-static void print_upload_usage(char *this)
-{
-    fprintf(stderr,"SYNTAX ERROR:\nUsage %s [old_filename] [new_filename]",this);
-
-    exit(EXIT_FAILURE);
-}
 
 static int check_file_path(char *file_path)
 {
@@ -590,6 +574,7 @@ static void close_signal(uv_handle_t *handle)
     ((void)0);
 }
 
+#if 0
 static void file_progress(double progress,
                           uint64_t downloaded_bytes,
                           uint64_t total_bytes,
@@ -667,7 +652,7 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
 
     // Upload opts env variables:
     char *prepare_frame_limit = getenv("STORJ_PREPARE_FRAME_LIMIT");
-    char *push_frame_limit = getenv("STORJ_PUSH_FRAME_LIMIT");
+    char *push_frame_limit = getenv("STORJ_PU:SH_FRAME_LIMIT");
     char *push_shard_limit = getenv("STORJ_PUSH_SHARD_LIMIT");
     char *rs = getenv("STORJ_REED_SOLOMON");
 
@@ -866,6 +851,7 @@ static void list_mirrors_callback(uv_work_t *work_req, int status)
     free(req);
     free(work_req);
 }
+#endif
 
 static int import_keys(user_options_t *options)
 {
@@ -1091,6 +1077,7 @@ static void register_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+#if 0
 static void list_files_callback(uv_work_t *work_req, int status)
 {
     int ret_status = 0;
@@ -1239,6 +1226,7 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
     free(req);
     free(work_req);
 }
+#endif
 
 static void get_buckets_callback(uv_work_t *work_req, int status)
 {
@@ -1264,6 +1252,7 @@ static void get_buckets_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+#if 0
 static void get_bucket_id_callback(uv_work_t *work_req, int status)
 {
     int ret_status = 0x00;
@@ -1343,6 +1332,7 @@ static void get_bucket_id_callback(uv_work_t *work_req, int status)
     storj_free_get_buckets_request(req);
     free(work_req);
 }
+#endif
 
 static void create_bucket_callback(uv_work_t *work_req, int status)
 {
@@ -2392,6 +2382,7 @@ end_program:
     return status;
 }
 
+#if 0
 /* cli cmd queue processing function */
 static void queue_next_cli_cmd(cli_state_t *cli_state)
 {
@@ -2701,3 +2692,5 @@ static int cli_download_file(char *path, char *bucket_name, cli_state_t *cli_sta
     }
     return ret_status;
 }
+#endif
+
