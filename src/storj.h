@@ -1074,6 +1074,16 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
                                     const char *password,
                                     void *handle,
                                     uv_after_work_cb cb);
+
+/**
+ * @brief Function lists the bucket names & IDs 
+ * 
+ * @param[in] storj_api_t structure that passes user's input 
+ *       info
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_list_buckets(storj_api_t *storj_api);
+
 /**
  * @brief Function returns the corresponding bucket's id for a 
  *        given bucket name

@@ -22,6 +22,11 @@ extern "C" {
 #define CLI_UPLOAD_FILE_LOG_ERR   0x04
 
 /**
+ * @brief Callback function listing bucket names & IDs 
+ */
+void get_buckets_callback(uv_work_t *work_req, int status);
+
+/**
  * @brief Callback function returning the bucket id for a given
  *        bucket name
  */

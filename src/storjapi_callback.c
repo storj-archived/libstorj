@@ -722,6 +722,30 @@ cleanup:
     free(work_req);
 }
 
+void get_buckets_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_buckets_request_t *req = work_req->data;
+
+    if (req->status_code == 401) {
+       printf("Invalid user credentials.\n");
+    } else if (req->status_code != 200 && req->status_code != 304) {
+        printf("Request failed with status code: %i\n", req->status_code);
+    } else if (req->total_buckets == 0) {
+        printf("No buckets.\n");
+    }
+
+    for (int i = 0; i < req->total_buckets; i++) {
+        storj_bucket_meta_t *bucket = &req->buckets[i];
+        printf("ID: %s \tDecrypted: %s \tCreated: %s \tName: %s\n",
+               bucket->id, bucket->decrypted ? "true" : "false",
+               bucket->created, bucket->name);
+    }
+
+    storj_free_get_buckets_request(req);
+    free(work_req);
+}
+
 void get_bucket_id_callback(uv_work_t *work_req, int status)
 {
     int ret_status = 0x00;
