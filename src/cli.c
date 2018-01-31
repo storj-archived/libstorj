@@ -64,24 +64,39 @@ static inline void noop() {};
 
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
-    "setting up users profiles\n"                                       \
+    "setting up users profiles:\n"                                       \
+    "=========================\n"                                       \
     "  register                  setup a new storj bridge user\n"       \
     "  import-keys               import existing user\n"                \
     "  export-keys               export bridge user, password and "     \
     "encryption keys\n\n"                                               \
-    "working with buckets and files\n"                                  \
+    "working with buckets and files:\n"                                  \
+    "==============================\n"                                  \
     "  list-buckets\n"                                                  \
-    "  get-bucket-id <bucket-name>\n"                                   \
+    "  ls (lists the available buckets)\n"                              \
     "  list-files <bucket-name>\n"                                      \
-    "  remove-file <bucket-id> <file-id>\n"                             \
+    "  ls <bucket-name> (lists the files in a bucket)\n"                \
+    "  get-bucket-id <bucket-name>\n"                                   \
+    "  remove-file <bucket-name> <file-name>\n"                         \
+    "  rm <bucket-name> <file-name> (to remove a file from a bucket)\n" \
+    "  remove-bucket <bucket-name>\n"                                   \
+    "  rm <bucket-name> (to remove a bucket)\n"                         \
     "  add-bucket <name> \n"                                            \
-    "  remove-bucket <bucket-id>\n"                                     \
-    "  list-mirrors <bucket-id> <file-id>\n\n"                          \
-    "downloading and uploading files\n"                                 \
+    "  mkbkt <bucket-name> \n"                                          \
+    "  list-mirrors <bucket-name> <file-name>\n"                        \
+    "  lm <bucket-name> <file-name>\n\n"                                \
+    "uploading files:\n"                                                 \
+    "===============\n"                                                 \
     "  upload-file <bucket-name> <path>\n"                              \
-    "  cp <path-to-local-file-name> storj://<bucketname>/<file-name>"   \
+    "  cp [-rR] <path-to-local-file-name> "                             \
+    "storj://<bucketname>/<file-name>\n"                                \
+    "  (e.g. storj cp -[rR] /some-dir/* storj://bucketname/.)\n\n"      \
+    "downloading files:\n"                                               \
+    "=================\n"                                               \
     "  download-file <bucket-name> <file-name> <path>\n"                \
-    "  cp storj://<bucketname>/<file-name> <path-to-local-file-name> "  \
+    "  cp [-rR] storj://<bucketname>/<file-name> "                      \
+    "<path-to-local-file-name>\n"                                       \
+    "  (e.g. storj cp -[rR] storj://bucketname/ /some-dir/.)\n\n"       \
     "bridge api information\n"                                          \
     "  get-info\n\n"                                                    \
     "options:\n"                                                        \
