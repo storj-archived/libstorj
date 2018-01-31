@@ -33,18 +33,9 @@ void get_buckets_callback(uv_work_t *work_req, int status);
 void get_bucket_id_callback(uv_work_t *work_req, int status);
 
 /**
- * @brief Callback function listing the files in a given bucket
- *
- */
-void list_files_callback(uv_work_t *work_req, int status);
-
-/**
  * @brief Storj api state machine function 
  */
 void queue_next_cmd_req(storj_api_t *storj_api);
-
-
-
 
 #ifdef __cplusplus
 }

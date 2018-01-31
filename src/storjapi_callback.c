@@ -77,7 +77,7 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
         return;
     }
 
-    chdir(dir);
+    int ret = chdir(dir);
     while((entry = readdir(dp)) != NULL)
     {
         lstat(entry->d_name, &statbuf);
@@ -97,7 +97,7 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
             fprintf(src_fd, "%s%s\n", "", full_path);
         }
     }
-    chdir("..");
+    ret = chdir("..");
     closedir(dp);
     free(full_path);
 }
