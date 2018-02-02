@@ -256,6 +256,10 @@ static void cleanup_state(storj_upload_state_t *state)
         free(state->exclude);
     }
 
+    if (state->index) {
+        free((char *)state->index);
+    }
+
     if (state->encryption_ctr) {
         free(state->encryption_ctr);
     }
@@ -2722,7 +2726,6 @@ STORJ_API void storj_free_uploaded_file_info(storj_file_meta_t *file)
         free((char *)file->created);
         free((char *)file->mimetype);
         free((char *)file->hmac);
-        free((char *)file->index);
     }
     free(file);
 }
