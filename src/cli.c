@@ -68,7 +68,7 @@ static inline void noop() {};
     "  STORJ_ENCRYPTION_KEY      file encryption key\n\n"
 
 
-#define CLI_VERSION "libstorj-2.0.0-beta"
+#define CLI_VERSION "libstorj-2.0.0-beta2"
 
 static void json_logger(const char *message, int level, void *handle)
 {
