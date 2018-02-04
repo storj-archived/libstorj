@@ -783,8 +783,8 @@ void get_bucket_id_callback(uv_work_t *work_req, int status)
                    bucket->created, bucket->name);
 
             /* store the bucket id */
-            storj_api->bucket_id = (char *)bucket->id;
-
+            memset(storj_api->bucket_id, 0x00, sizeof(storj_api->bucket_id));
+            strcpy(storj_api->bucket_id, (char *)bucket->id);
             break;
         } 
         else
@@ -850,7 +850,6 @@ void list_files_callback(uv_work_t *work_req, int status)
         goto cleanup;
     }
 
-    storj_api->file_id = NULL;
     for (int i = 0; i < req->total_files; i++)
     {
         storj_file_meta_t *file = &req->files[i];
@@ -859,7 +858,8 @@ void list_files_callback(uv_work_t *work_req, int status)
             (strcmp(storj_api->file_name, file->filename)) == 0x00)
         {
             /* store the file id */
-            storj_api->file_id = (char *)file->id;
+            memset(storj_api->file_id, 0x00, sizeof(storj_api->file_id));
+            strcpy(storj_api->file_id, (char *)file->id);
         }
 
         printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
@@ -1101,7 +1101,8 @@ void queue_next_cmd_req(storj_api_t *storj_api)
                         storj_api->final_cmd_req = NULL;
                     }
 
-                    storj_api->file_id = token[0];
+                    memset(storj_api->file_id, 0x00, sizeof(storj_api->file_id));
+                    strcpy(storj_api->file_id, token[0]);
                     strcpy(temp_path, storj_api->file_path);
                     if (storj_api->file_path[(strlen(storj_api->file_path)-1)] != '/')
                     {

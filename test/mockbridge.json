@@ -23,6 +23,9 @@
     "name": "g9qacwq2AE1+5nzL/HYyYdY9WoIr+1ueOuVEx6/IzzZKK9sULoKDDdYvhOpavHH2P3xQNw==",
     "id": "368be0816766b28fd5f43af5"
   },
+  "getbucketid": {
+    "id": "368be0816766b28fd5f43af5"
+  },
   "putbuckets": {
     "user": "user@sample.com",
     "encryptionKey": "",
