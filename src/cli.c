@@ -34,31 +34,11 @@ typedef struct {
     char *key;
 } user_options_t;
 
-typedef struct {
-  storj_env_t *env;
-  char *bucket_name;
-  char *bucket_id;
-  char *file_name;      /**< next file ready to upload */
-  char *file_path;      /**< next file ready to upload */
-  char *file_id;        /**< file id of from the bridge */
-  FILE *file_fd;        /**< upload file list fd */
-  int   total_files;    /**< total files to upload */
-  int   curr_up_file;   /**< current file number in uploadinng */
-  char *curr_cmd_req;   /**< cli curr command requested */
-  char *next_cmd_req;   /**< cli next command requested */
-  bool  cmd_resp;       /**< cli command response 0->fail; 1->success */
-  bool  file_xfer_stat; /**< false -> inprogress; true -> done */
-  void *handle;
-}cli_state_t;
-
 #ifndef errno
 extern int errno;
 #endif
 
 static void printdir(char *dir, int depth, FILE *fd);
-//static void queue_next_cli_cmd(cli_state_t *cli_state);
-//static int cli_upload_file(char *path, char *bucket_name, cli_state_t *cli_state);
-//static int cli_download_file(char *path, char *bucket_name, cli_state_t *cli_state);
 static const char *get_filename_separator(const char *file_path);
 static inline void noop() {};
 
@@ -1080,7 +1060,6 @@ int main(int argc, char **argv)
     char *user = NULL;
     char *pass = NULL;
     char *mnemonic = NULL;
-    cli_state_t *cli_state = NULL;
     storj_api_t *storj_api = NULL;
 
     if (strcmp(command, "get-info") == 0) {
@@ -1278,23 +1257,13 @@ int main(int argc, char **argv)
             goto end_program;
         }
 
-        cli_state = malloc(sizeof(cli_state_t));
-
-        if (!cli_state) {
-            status = 1;
-            goto end_program;
-        }
-        memset(cli_state, 0x00, sizeof(cli_state_t));
-
-        cli_state->env = env;
-
         storj_api = malloc(sizeof(storj_api_t));
 
-        if (!cli_state) {
+        if (!storj_api) {
             status = 1;
             goto end_program;
         }
-        memset(storj_api, 0x00, sizeof(storj_api));
+        memset(storj_api, 0x00, sizeof(*storj_api));
 
         storj_api->env = env;
 
@@ -1314,7 +1283,6 @@ int main(int argc, char **argv)
 
         if (strcmp(command, "download-file") == 0)
         {
-
             /* get the corresponding bucket id from the bucket name */
             storj_api->bucket_name = argv[command_index + 1];
             storj_api->file_name = argv[command_index + 2];
@@ -1864,8 +1832,8 @@ end_program:
     if (mnemonic) {
         free(mnemonic);
     }
-    if(cli_state){
-        free(cli_state);
+    if(storj_api){
+        free(storj_api);
     }
 
     return status;

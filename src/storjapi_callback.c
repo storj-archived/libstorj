@@ -924,48 +924,32 @@ void queue_next_cmd_req(storj_api_t *storj_api)
         else if ((storj_api->next_cmd_req != NULL) && 
                  (strcmp(storj_api->next_cmd_req, "remove-file-req") == 0x00))
         {
-            if (storj_api->file_id != NULL)
-            {
-                printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
-                       __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
-                       storj_api->bucket_name);
+            printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
+                    __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
+                    storj_api->bucket_name);
 
-                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-                storj_api->next_cmd_req  = storj_api->final_cmd_req;
-                storj_api->final_cmd_req = NULL;
-                storj_api->excp_cmd_resp = "remove-file-resp";
+            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+            storj_api->next_cmd_req  = storj_api->final_cmd_req;
+            storj_api->final_cmd_req = NULL;
+            storj_api->excp_cmd_resp = "remove-file-resp";
 
-                storj_bridge_delete_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
-                                         storj_api, delete_file_callback);
-            }
-            else
-            {
-                printf("\'%s\' file doesn't exists in \'%s\' bucket\n", 
-                       storj_api->file_name, storj_api->bucket_name);
-            }
+            storj_bridge_delete_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
+                                        storj_api, delete_file_callback);
         }
         else if ((storj_api->next_cmd_req != NULL) && 
                  (strcmp(storj_api->next_cmd_req, "list-mirrors-req") == 0x00))
         {
-            if (storj_api->file_id != NULL)
-            {   
-                printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
-                       __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
-                       storj_api->bucket_name);
+            printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
+                    __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
+                    storj_api->bucket_name);
 
-                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-                storj_api->next_cmd_req  = storj_api->final_cmd_req;
-                storj_api->final_cmd_req = NULL;
-                storj_api->excp_cmd_resp = "list-mirrors-resp";
+            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+            storj_api->next_cmd_req  = storj_api->final_cmd_req;
+            storj_api->final_cmd_req = NULL;
+            storj_api->excp_cmd_resp = "list-mirrors-resp";
 
-                storj_bridge_list_mirrors(storj_api->env, storj_api->bucket_id, storj_api->file_id,
-                                          storj_api, list_mirrors_callback);
-            }
-            else
-            {
-                printf("\'%s\' file doesn't exists in \'%s\' bucket\n", 
-                       storj_api->file_name, storj_api->bucket_name);
-            }
+            storj_bridge_list_mirrors(storj_api->env, storj_api->bucket_id, storj_api->file_id,
+                                        storj_api, list_mirrors_callback);
         }
         else if ((storj_api->next_cmd_req != NULL) && 
                  (strcmp(storj_api->next_cmd_req, "upload-file-req") == 0x00))
@@ -1042,16 +1026,8 @@ void queue_next_cmd_req(storj_api_t *storj_api)
             storj_api->final_cmd_req = NULL;
             storj_api->excp_cmd_resp = "download-file-resp";
 
-            if (storj_api->file_id != NULL)
-            {
-                download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
-                              storj_api->dst_file, storj_api);
-            }
-            else
-            {
-                printf("[%s][%d] File not found!!!\n", __FUNCTION__, __LINE__);
-                exit(0);
-            }
+            download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
+                            storj_api->dst_file, storj_api);
         }
         else if ((storj_api->next_cmd_req != NULL) && 
                  (strcmp(storj_api->next_cmd_req, "download-files-req") == 0x00))
@@ -1111,15 +1087,8 @@ void queue_next_cmd_req(storj_api_t *storj_api)
                     strcat(temp_path, token[1]);
                     fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", storj_api->xfer_count, storj_api->total_files, temp_path);
                     storj_api->xfer_count++;
-                    if (storj_api->file_id != NULL)
-                    {
-                        download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, temp_path, storj_api);
-                    }
-                    else
-                    {
-                        printf("[%s][%d] File not found!!!\n", __FUNCTION__, __LINE__);
-                        exit(0);
-                    }
+                    
+                    download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, temp_path, storj_api);
                 }
                 else
                 {
