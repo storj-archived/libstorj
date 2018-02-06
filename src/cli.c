@@ -96,7 +96,7 @@ static inline void noop() {};
     "  STORJ_ENCRYPTION_KEY      file encryption key\n\n"
 
 
-#define CLI_VERSION "libstorj-2.0.1-beta"
+#define CLI_VERSION "libstorj-2.0.0-beta2"
 
 static int check_file_path(char *file_path)
 {

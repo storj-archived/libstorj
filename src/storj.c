@@ -1774,11 +1774,12 @@ STORJ_API int storj_list_buckets(storj_api_t *storj_api)
 
 STORJ_API int storj_get_bucket_id(storj_api_t *storj_api)
 {
+    int ret = -1;
     char *bucket_name = storj_api->bucket_name;
     if (!bucket_name)
     {
         printf("Missing : <bucket-name>\n");
-        return STORJAPI_BUCKET_NAME_MISSING_ERROR;
+        return ret;
     }
 
     storj_api->last_cmd_req  = NULL;

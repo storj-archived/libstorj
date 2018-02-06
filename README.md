@@ -66,7 +66,11 @@ Dependencies:
 brew install curl nettle json-c libuv
 ```
 
-### Cross Compiling Dependencies from Ubuntu 16.04
+------
+
+## Cross Compiling Dependencies from Ubuntu 16.04
+
+These notes are for cross compiling for various systems from a Debian based linux distribution, specifically Ubuntu 16.04. The mingw toolchain is used to build for Windows and clang and cctools for macOS builds.
 
 **Windows**
 

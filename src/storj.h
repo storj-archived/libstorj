@@ -101,9 +101,6 @@ extern "C" {
 // Miscellaneous errors
 #define STORJ_HEX_DECODE_ERROR 7000
 
-// Storj API related errors
-#define STORJAPI_BUCKET_NAME_MISSING_ERROR 8000
-
 // Exchange report codes
 #define STORJ_REPORT_SUCCESS 1000
 #define STORJ_REPORT_FAILURE 1100
@@ -594,18 +591,6 @@ typedef struct {
 } storj_upload_state_t;
 
 /**
- * @brief A Structure for management information base (MIB) for
- *        Storj API.
- */
-typedef struct storj_api_mib {
-    int  xfer_count;            /**< # of files xferred (up/down) */
-    int  total_files;           /**< total files to xfer */
-    int  success_xfer_count;    /**< files xferred successfully */
-    int  fail_xfer_count;       /**< files xferred successfully */
-    void *handle;
-} storj_api_mib_t;
-
-/**
  * @brief A Structure for passing the User's Application info to 
  *        Storj API.
  */
@@ -850,7 +835,7 @@ STORJ_API int storj_bridge_delete_bucket(storj_env_t *env,
  * @brief Get a info of specific bucket.
  *
  * @param[in] env The storj environment struct
- * @param[in] bucket_id The bucket id
+ * @param[in] id The bucket id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -1007,7 +992,7 @@ STORJ_API int storj_bridge_delete_frame(storj_env_t *env,
  *
  * @param[in] env The storj environment struct
  * @param[in] bucket_id The bucket id
- * @param[in] file_id The bucket id
+ * @param[in] file_id The file id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
