@@ -1580,7 +1580,10 @@ int main(int argc, char **argv)
                         /* create the file and add the list of files to be uploaded */
                         if ((file = fopen(storj_api->src_list, "w")) != NULL)
                         {
-                            fprintf(file, "%s\n", local_file_path);
+                            if ((strcmp(argv[1],"-r") == 0x00) || (strcmp(argv[1],"-R") == 0x00))
+                            {
+                                fprintf(file, "%s\n", local_file_path);
+                            }
 
                             for (int i = 0x01; i < ((argc - command_index) - 1); i++)
                             {
