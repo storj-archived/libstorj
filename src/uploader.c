@@ -370,7 +370,7 @@ static void after_create_bucket_entry(uv_work_t *work, int status)
         state->info->id = NULL;
         state->info->bucket_id = state->bucket_id;
         state->info->decrypted = true;
-        state->info->index = state->index;
+        state->info->index = strdup(state->index);
 
         struct json_object *file_id_value = NULL;
         struct json_object *created_value = NULL;
@@ -2726,6 +2726,7 @@ STORJ_API void storj_free_uploaded_file_info(storj_file_meta_t *file)
         free((char *)file->created);
         free((char *)file->mimetype);
         free((char *)file->hmac);
+        free((char *)file->index);
     }
     free(file);
 }
