@@ -21,12 +21,6 @@
 
 #define STORJ_THREADPOOL_SIZE "64"
 
-#define CLI_NO_SUCH_FILE_OR_DIR   0x00
-#define CLI_VALID_REGULAR_FILE    0x01
-#define CLI_VALID_DIR             0x02
-#define CLI_UNKNOWN_FILE_ATTR     0x03
-#define CLI_UPLOAD_FILE_LOG_ERR   0x04
-
 typedef struct {
     char *user;
     char *pass;
@@ -1547,7 +1541,7 @@ int main(int argc, char **argv)
         }
         else if (strcmp(command, "get-bucket-id") == 0) {
             storj_api->bucket_name = argv[command_index + 1];
-            storj_get_bucket_id(storj_api);
+            cli_get_bucket_id(storj_api);
         }
         else if (strcmp(command, "lm") == 0) {
             storj_api->bucket_name = argv[command_index + 1];

@@ -1136,7 +1136,7 @@ STORJ_API int storj_list_buckets(storj_api_t *storj_api);
  *       info
  * @return A non-zero error value on failure and 0 on success.
  */
-STORJ_API int storj_get_bucket_id(storj_api_t *storj_api);
+STORJ_API int cli_get_bucket_id(storj_api_t *storj_api);
 
 /**
  * @brief Function to list files in a given bucket name

@@ -1772,7 +1772,7 @@ STORJ_API int storj_list_buckets(storj_api_t *storj_api)
     return storj_bridge_get_buckets(storj_api->env, storj_api, get_buckets_callback);
 }
 
-STORJ_API int storj_get_bucket_id(storj_api_t *storj_api)
+STORJ_API int cli_get_bucket_id(storj_api_t *storj_api)
 {
     int ret = -1;
     char *bucket_name = storj_api->bucket_name;
@@ -1795,7 +1795,7 @@ STORJ_API int storj_get_bucket_id(storj_api_t *storj_api)
 STORJ_API int storj_list_files(storj_api_t *storj_api)
 {
     int ret = 0x00;
-    ret = storj_get_bucket_id(storj_api);
+    ret = cli_get_bucket_id(storj_api);
     storj_api->next_cmd_req  = "list-files-req";
     storj_api->final_cmd_req = NULL;
 
@@ -1805,7 +1805,7 @@ STORJ_API int storj_list_files(storj_api_t *storj_api)
 STORJ_API int storj_remove_bucket(storj_api_t *storj_api)
 {
     int ret = 0x00;
-    ret = storj_get_bucket_id(storj_api);
+    ret = cli_get_bucket_id(storj_api);
     storj_api->next_cmd_req  = "remove-bucket-req";
     storj_api->final_cmd_req = NULL;
 
@@ -1833,7 +1833,7 @@ STORJ_API int storj_list_mirrors(storj_api_t *storj_api)
 STORJ_API int storj_upload_file(storj_api_t *storj_api)
 {
     int ret = 0x00;
-    ret = storj_get_bucket_id(storj_api);
+    ret = cli_get_bucket_id(storj_api);
     storj_api->next_cmd_req  = "upload-file-req";
     storj_api->final_cmd_req = NULL;
 
@@ -1843,7 +1843,7 @@ STORJ_API int storj_upload_file(storj_api_t *storj_api)
 STORJ_API int storj_upload_files(storj_api_t *storj_api)
 {
     int ret = 0x00;
-    ret = storj_get_bucket_id(storj_api);
+    ret = cli_get_bucket_id(storj_api);
     storj_api->next_cmd_req  = "verify-upload-files-req";
     storj_api->final_cmd_req = "upload-files-req";
 
