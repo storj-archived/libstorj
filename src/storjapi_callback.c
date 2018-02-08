@@ -897,178 +897,112 @@ void queue_next_cmd_req(storj_api_t *storj_api)
            storj_api->curr_cmd_req, storj_api->next_cmd_req);
     #endif
 
-    if (strcmp(storj_api->excp_cmd_resp, storj_api->rcvd_cmd_resp) == 0x00)
+    if(storj_api->excp_cmd_resp != NULL)
     {
-        if ((storj_api->next_cmd_req != NULL) && 
-            (strcmp(storj_api->next_cmd_req, "list-files-req") == 0x00))
+        if (strcmp(storj_api->excp_cmd_resp, storj_api->rcvd_cmd_resp) == 0x00)
         {
-            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->next_cmd_req  = storj_api->final_cmd_req;
-            storj_api->final_cmd_req = NULL;
-            storj_api->excp_cmd_resp = "list-files-resp";
-
-            storj_bridge_list_files(storj_api->env, storj_api->bucket_id, 
-                                    storj_api, list_files_callback);
-        }
-        else if ((storj_api->next_cmd_req != NULL) && 
-                 (strcmp(storj_api->next_cmd_req, "remove-bucket-req") == 0x00))
-        {
-            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->next_cmd_req  = storj_api->final_cmd_req;
-            storj_api->final_cmd_req = NULL;
-            storj_api->excp_cmd_resp = "remove-bucket-resp";
-
-            storj_bridge_delete_bucket(storj_api->env, storj_api->bucket_id, 
-                                       storj_api, delete_bucket_callback);
-        }
-        else if ((storj_api->next_cmd_req != NULL) && 
-                 (strcmp(storj_api->next_cmd_req, "remove-file-req") == 0x00))
-        {
-            printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
-                    __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
-                    storj_api->bucket_name);
-
-            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->next_cmd_req  = storj_api->final_cmd_req;
-            storj_api->final_cmd_req = NULL;
-            storj_api->excp_cmd_resp = "remove-file-resp";
-
-            storj_bridge_delete_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
-                                        storj_api, delete_file_callback);
-        }
-        else if ((storj_api->next_cmd_req != NULL) && 
-                 (strcmp(storj_api->next_cmd_req, "list-mirrors-req") == 0x00))
-        {
-            printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
-                    __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
-                    storj_api->bucket_name);
-
-            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->next_cmd_req  = storj_api->final_cmd_req;
-            storj_api->final_cmd_req = NULL;
-            storj_api->excp_cmd_resp = "list-mirrors-resp";
-
-            storj_bridge_list_mirrors(storj_api->env, storj_api->bucket_id, storj_api->file_id,
-                                        storj_api, list_mirrors_callback);
-        }
-        else if ((storj_api->next_cmd_req != NULL) && 
-                 (strcmp(storj_api->next_cmd_req, "upload-file-req") == 0x00))
-        {
-            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->next_cmd_req  = storj_api->final_cmd_req;
-            storj_api->final_cmd_req = NULL;
-            storj_api->excp_cmd_resp = "upload-file-resp";
-
-            upload_file(storj_api->env, storj_api->bucket_id, storj_api->file_name, storj_api);
-        }
-        else if ((storj_api->next_cmd_req != NULL) && 
-                 (strcmp(storj_api->next_cmd_req, "verify-upload-files-req") == 0x00))
-        {
-            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->next_cmd_req  = storj_api->final_cmd_req;
-            storj_api->final_cmd_req = NULL;
-            storj_api->excp_cmd_resp = "verify-upload-files-resp";
-
-            verify_upload_files(storj_api);
-        }
-        else if ((storj_api->next_cmd_req != NULL) && 
-                 (strcmp(storj_api->next_cmd_req, "upload-files-req") == 0x00))
-        {
-            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->excp_cmd_resp = "upload-files-resp";
-
-            FILE *file = fopen(storj_api->src_list, "r");
-
-            char line[256][256];
-            char *temp;
-            int i = 0x00;
-            memset(line, 0x00, sizeof(line));
-
-            if (file != NULL)
+            if ((storj_api->next_cmd_req != NULL) &&
+                (strcmp(storj_api->next_cmd_req, "list-files-req") == 0x00))
             {
-               while((fgets(line[i],sizeof(line), file)!= NULL)) /* read a line from a file */
-                {
-                    temp = strrchr(line[i], '\n');
-                    if(temp) *temp = '\0';
-                    storj_api->src_file = line[i];
-                    i++;
-                    if(i >= storj_api->xfer_count)
-                    {
-                        break;
-                    }
-                }
+                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+                storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                storj_api->final_cmd_req = NULL;
+                storj_api->excp_cmd_resp = "list-files-resp";
+
+                storj_bridge_list_files(storj_api->env, storj_api->bucket_id,
+                                        storj_api, list_files_callback);
             }
-            fclose(file);
-
-            if (storj_api->xfer_count <= storj_api->total_files)
+            else if ((storj_api->next_cmd_req != NULL) &&
+                     (strcmp(storj_api->next_cmd_req, "remove-bucket-req") == 0x00))
             {
-                /* is it the last file ? */
-                if(storj_api->xfer_count == storj_api->total_files)
-                {
-                    storj_api->next_cmd_req  = storj_api->final_cmd_req;
-                    storj_api->final_cmd_req = NULL;
-                }
+                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+                storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                storj_api->final_cmd_req = NULL;
+                storj_api->excp_cmd_resp = "remove-bucket-resp";
 
-                upload_files(storj_api->env, storj_api->bucket_id, storj_api->src_file, storj_api);
-                storj_api->xfer_count++;
+                storj_bridge_delete_bucket(storj_api->env, storj_api->bucket_id,
+                                           storj_api, delete_bucket_callback);
             }
-            else
+            else if ((storj_api->next_cmd_req != NULL) &&
+                     (strcmp(storj_api->next_cmd_req, "remove-file-req") == 0x00))
             {
-                printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
-                exit(0);
+                printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
+                        __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
+                        storj_api->bucket_name);
+
+                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+                storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                storj_api->final_cmd_req = NULL;
+                storj_api->excp_cmd_resp = "remove-file-resp";
+
+                storj_bridge_delete_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
+                                            storj_api, delete_file_callback);
             }
-        }
-        else if ((storj_api->next_cmd_req != NULL) && 
-                 (strcmp(storj_api->next_cmd_req, "download-file-req") == 0x00))
-        {
-            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->next_cmd_req  = storj_api->final_cmd_req;
-            storj_api->final_cmd_req = NULL;
-            storj_api->excp_cmd_resp = "download-file-resp";
-
-            download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
-                            storj_api->dst_file, storj_api);
-        }
-        else if ((storj_api->next_cmd_req != NULL) && 
-                 (strcmp(storj_api->next_cmd_req, "download-files-req") == 0x00))
-        {
-            storj_api->curr_cmd_req  = storj_api->next_cmd_req;
-            storj_api->excp_cmd_resp = "download-file-resp";
-
-            FILE *file = stdout;
-
-            if ((file = fopen("/tmp/dwnld_list.txt", "r")) != NULL)
+            else if ((storj_api->next_cmd_req != NULL) &&
+                     (strcmp(storj_api->next_cmd_req, "list-mirrors-req") == 0x00))
             {
+                printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
+                        __FUNCTION__, __LINE__, storj_api->file_name, storj_api->file_id,
+                        storj_api->bucket_name);
+
+                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+                storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                storj_api->final_cmd_req = NULL;
+                storj_api->excp_cmd_resp = "list-mirrors-resp";
+
+                storj_bridge_list_mirrors(storj_api->env, storj_api->bucket_id, storj_api->file_id,
+                                            storj_api, list_mirrors_callback);
+            }
+            else if ((storj_api->next_cmd_req != NULL) &&
+                     (strcmp(storj_api->next_cmd_req, "upload-file-req") == 0x00))
+            {
+                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+                storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                storj_api->final_cmd_req = NULL;
+                storj_api->excp_cmd_resp = "upload-file-resp";
+
+                upload_file(storj_api->env, storj_api->bucket_id, storj_api->file_name, storj_api);
+            }
+            else if ((storj_api->next_cmd_req != NULL) &&
+                     (strcmp(storj_api->next_cmd_req, "verify-upload-files-req") == 0x00))
+            {
+                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+                storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                storj_api->final_cmd_req = NULL;
+                storj_api->excp_cmd_resp = "verify-upload-files-resp";
+
+                verify_upload_files(storj_api);
+            }
+            else if ((storj_api->next_cmd_req != NULL) &&
+                     (strcmp(storj_api->next_cmd_req, "upload-files-req") == 0x00))
+            {
+                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+                storj_api->excp_cmd_resp = "upload-files-resp";
+
+                FILE *file = fopen(storj_api->src_list, "r");
+
                 char line[256][256];
                 char *temp;
-                char temp_path[1024];
                 int i = 0x00;
-                char *token[10];
-                int tk_idx= 0x00;
-                memset(token, 0x00, sizeof(token));
-                memset(temp_path, 0x00, sizeof(temp_path));
                 memset(line, 0x00, sizeof(line));
-                while((fgets(line[i],sizeof(line), file)!= NULL)) /* read a line from a file */
+
+                if (file != NULL)
                 {
-                    temp = strrchr(line[i], '\n');
-                    if(temp) *temp = '\0';
-                    i++;
-                    if (i >= storj_api->xfer_count)
+                   while((fgets(line[i],sizeof(line), file)!= NULL)) /* read a line from a file */
                     {
-                        break;
+                        temp = strrchr(line[i], '\n');
+                        if(temp) *temp = '\0';
+                        storj_api->src_file = line[i];
+                        i++;
+                        if(i >= storj_api->xfer_count)
+                        {
+                            break;
+                        }
                     }
                 }
                 fclose(file);
 
-                /* start tokenizing */
-                token[0] = strtok(line[i-1], ":");
-                while (token[tk_idx] != NULL)
-                {
-                    tk_idx++;
-                    token[tk_idx] = strtok(NULL, ":");
-                }
-
-                if(storj_api->xfer_count <= storj_api->total_files)
+                if (storj_api->xfer_count <= storj_api->total_files)
                 {
                     /* is it the last file ? */
                     if(storj_api->xfer_count == storj_api->total_files)
@@ -1077,42 +1011,116 @@ void queue_next_cmd_req(storj_api_t *storj_api)
                         storj_api->final_cmd_req = NULL;
                     }
 
-                    memset(storj_api->file_id, 0x00, sizeof(storj_api->file_id));
-                    strcpy(storj_api->file_id, token[0]);
-                    strcpy(temp_path, storj_api->file_path);
-                    if (storj_api->file_path[(strlen(storj_api->file_path)-1)] != '/')
-                    {
-                        strcat(temp_path, "/");
-                    }
-                    strcat(temp_path, token[1]);
-                    fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", storj_api->xfer_count, storj_api->total_files, temp_path);
+                    upload_files(storj_api->env, storj_api->bucket_id, storj_api->src_file, storj_api);
                     storj_api->xfer_count++;
-                    
-                    download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, temp_path, storj_api);
                 }
                 else
                 {
                     printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
                     exit(0);
                 }
-           }
+            }
+            else if ((storj_api->next_cmd_req != NULL) &&
+                     (strcmp(storj_api->next_cmd_req, "download-file-req") == 0x00))
+            {
+                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+                storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                storj_api->final_cmd_req = NULL;
+                storj_api->excp_cmd_resp = "download-file-resp";
+
+                download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id,
+                                storj_api->dst_file, storj_api);
+            }
+            else if ((storj_api->next_cmd_req != NULL) &&
+                     (strcmp(storj_api->next_cmd_req, "download-files-req") == 0x00))
+            {
+                storj_api->curr_cmd_req  = storj_api->next_cmd_req;
+                storj_api->excp_cmd_resp = "download-file-resp";
+
+                FILE *file = stdout;
+
+                if ((file = fopen("/tmp/dwnld_list.txt", "r")) != NULL)
+                {
+                    char line[256][256];
+                    char *temp;
+                    char temp_path[1024];
+                    int i = 0x00;
+                    char *token[10];
+                    int tk_idx= 0x00;
+                    memset(token, 0x00, sizeof(token));
+                    memset(temp_path, 0x00, sizeof(temp_path));
+                    memset(line, 0x00, sizeof(line));
+                    while((fgets(line[i],sizeof(line), file)!= NULL)) /* read a line from a file */
+                    {
+                        temp = strrchr(line[i], '\n');
+                        if(temp) *temp = '\0';
+                        i++;
+                        if (i >= storj_api->xfer_count)
+                        {
+                            break;
+                        }
+                    }
+                    fclose(file);
+
+                    /* start tokenizing */
+                    token[0] = strtok(line[i-1], ":");
+                    while (token[tk_idx] != NULL)
+                    {
+                        tk_idx++;
+                        token[tk_idx] = strtok(NULL, ":");
+                    }
+
+                    if(storj_api->xfer_count <= storj_api->total_files)
+                    {
+                        /* is it the last file ? */
+                        if(storj_api->xfer_count == storj_api->total_files)
+                        {
+                            storj_api->next_cmd_req  = storj_api->final_cmd_req;
+                            storj_api->final_cmd_req = NULL;
+                        }
+
+                        memset(storj_api->file_id, 0x00, sizeof(storj_api->file_id));
+                        strcpy(storj_api->file_id, token[0]);
+                        strcpy(temp_path, storj_api->file_path);
+                        if (storj_api->file_path[(strlen(storj_api->file_path)-1)] != '/')
+                        {
+                            strcat(temp_path, "/");
+                        }
+                        strcat(temp_path, token[1]);
+                        fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", storj_api->xfer_count, storj_api->total_files, temp_path);
+                        storj_api->xfer_count++;
+
+                        download_file(storj_api->env, storj_api->bucket_id, storj_api->file_id, temp_path, storj_api);
+                    }
+                    else
+                    {
+                        printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
+                        exit(0);
+                    }
+               }
+            }
+            else
+            {
+                #ifdef debug_enable
+                printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", __FUNCTION__, __LINE__);
+                #endif
+
+                exit(0);
+            }
         }
         else
         {
-            #ifdef debug_enable
-            printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", __FUNCTION__, __LINE__);
-            #endif
-
-            exit(0);
+            printf("[%s][%d]Oops !!!! expt resp = %s; rcvd resp = %s \n",
+                   __FUNCTION__, __LINE__,
+                    storj_api->excp_cmd_resp, storj_api->rcvd_cmd_resp );
+            printf("[%s][%d]last cmd = %s; cur cmd = %s; next cmd = %s\n",
+                   __FUNCTION__, __LINE__, storj_api->last_cmd_req,
+                   storj_api->curr_cmd_req, storj_api->next_cmd_req);
         }
     }
     else
     {
-        printf("[%s][%d]Oops !!!! expt resp = %s; rcvd resp = %s \n",
-               __FUNCTION__, __LINE__,
-                storj_api->excp_cmd_resp, storj_api->rcvd_cmd_resp );
-        printf("[%s][%d]last cmd = %s; cur cmd = %s; next cmd = %s\n",
-               __FUNCTION__, __LINE__, storj_api->last_cmd_req, 
-               storj_api->curr_cmd_req, storj_api->next_cmd_req);
+        /* calling straight storj calls without going thru the state machine */
+        exit(0);
     }
 }
