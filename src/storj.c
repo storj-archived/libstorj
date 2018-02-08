@@ -2,7 +2,7 @@
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
-#include "storjapi_callback.h"
+#include "cli_callback.h"
 
 static inline void noop() {};
 

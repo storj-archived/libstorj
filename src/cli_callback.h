@@ -6,8 +6,8 @@
  * end user's application
  */
 
-#ifndef STORJAPI_CALLBACK_H
-#define STORJAPI_CALLBACK_H
+#ifndef CLI_CALLBACK_H
+#define CLI_CALLBACK_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,4 +41,4 @@ void queue_next_cmd_req(storj_api_t *storj_api);
 }
 #endif
 
-#endif /* STORJ_H */
+#endif /* CLI_CALLBACK_H */

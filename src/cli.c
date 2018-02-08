@@ -15,7 +15,7 @@
 #endif
 
 #include "storj.h"
-#include "storjapi_callback.c"
+#include "cli_callback.c"
 
 //#define debug_enable
 
@@ -177,7 +177,7 @@ static int validate_cmd_tokenize(char *cmd_str, char *str_token[])
     int ret = strpos(cmd_str, sub_str);
     if( ret == -1)
     {
-        printf("Invalid Command Entry (%d), \ntry ... stroj://<bucket_name>/<file_name>\n", ret);
+        printf("Invalid Command Entry (%d), \ntry ... storj://<bucket_name>/<file_name>\n", ret);
     }
 
     if (ret == 0x00)
