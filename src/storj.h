@@ -591,35 +591,6 @@ typedef struct {
 } storj_upload_state_t;
 
 /**
- * @brief A Structure for passing the User's Application info to 
- *        Storj API.
- */
-typedef struct storj_api {
-    storj_env_t *env;
-    char *bucket_name;
-    char bucket_id[256];
-    char *file_name;
-    char file_id[256];
-    char *file_path;     /**< local upload files directory path */
-    FILE *src_fd;
-    char src_list[256];      /**< file list ready to upload */
-    char *src_file;      /**< next file ready to upload */
-    FILE *dst_fd;
-    char *dst_file;      /**< next file ready to upload */
-    int  xfer_count;     /**< # of files xferred (up/down) */
-    int  total_files;    /**< total files to upload */
-    char *last_cmd_req;  /**< last command requested */
-    char *curr_cmd_req;  /**< cli curr command requested */
-    char *next_cmd_req;  /**< cli curr command requested */
-    char *final_cmd_req; /**< final command in the seq */
-    char *excp_cmd_resp; /**< expected cmd response */
-    char *rcvd_cmd_resp; /**< received cmd response */
-    int  error_status;   /**< command response/error status */
-    storj_log_levels_t *log;
-    void *handle;
-} storj_api_t;
-
-/**
  * @brief Initialize a Storj environment
  *
  * This will setup an event loop for queueing further actions, as well
@@ -1118,102 +1089,6 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
                                     const char *password,
                                     void *handle,
                                     uv_after_work_cb cb);
-
-/**
- * @brief Function lists the bucket names & IDs 
- * 
- * @param[in] storj_api_t structure that passes user's input 
- *       info
- * @return A non-zero error value on failure and 0 on success.
- */
-STORJ_API int storj_list_buckets(storj_api_t *storj_api);
-
-/**
- * @brief Function returns the corresponding bucket's id for a 
- *        given bucket name
- * 
- * @param[in] storj_api_t structure that passes user's input 
- *       info
- * @return A non-zero error value on failure and 0 on success.
- */
-STORJ_API int cli_get_bucket_id(storj_api_t *storj_api);
-
-/**
- * @brief Function to list files in a given bucket name
- * 
- * @param[in] storj_api_t structure that passes user's input 
- *       info
- * @return A non-zero error value on failure and 0 on success.
- */
-STORJ_API int storj_list_files(storj_api_t *storj_api);
-
-/**
- * @brief Function to remove a given bucket name 
- * 
- * @param[in] storj_api_t structure that passes user's input 
- *       info
- * @return A non-zero error value on failure and 0 on success.
- */
-STORJ_API int storj_remove_bucket(storj_api_t *storj_api);
-
-/**
- * @brief Function to remove a file from a given bucket name 
- * 
- * @param[in] storj_api_t structure that passes user's input 
- *       info
- * @return A non-zero error value on failure and 0 on success.
- */
-STORJ_API int storj_remove_file(storj_api_t *storj_api);
-
-/**
- * @brief Function to return the node IDs for a given file for a
- *        given bucket name
- * 
- * @param[in] storj_api_t structure that passes user's input 
- *       info
- * @return A non-zero error value on failure and 0 on success.
- */
-STORJ_API int storj_list_mirrors(storj_api_t *storj_api);
-
-/**
- * @brief Function to upload a local file into a given bucket 
- *        name
- * 
- * @param[in] storj_api_t structure that passes user's input 
- *       info
- * @return A non-zero error value on failure and 0 on success.
- */
-STORJ_API int storj_upload_file(storj_api_t *storj_api);
-
-/**
- * @brief Function to upload local files into a given bucket 
- *        name
- * 
- * @param[in] storj_api_t structure that passes user's input 
- *       info
- * @return A non-zero error value on failure and 0 on success.
- */
-STORJ_API int storj_upload_files(storj_api_t *storj_api);
-
-/**
- * @brief Function to download a file from a given bucket to a 
- *        local folder
- * 
- * @param[in] storj_api_t structure that passes user's input 
- *       info
- * @return A non-zero error value on failure and 0 on success.
- */
-STORJ_API int storj_download_file(storj_api_t *storj_api);
-
-/**
- * @brief Function to download files from a given bucket to a 
- *        local folder
- * 
- * @param[in] storj_api_t structure that passes user's input 
- *       info
- * @return A non-zero error value on failure and 0 on success.
- */
-STORJ_API int storj_download_files(storj_api_t *storj_api);
 
 static inline char separator()
 {

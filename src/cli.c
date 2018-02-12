@@ -883,7 +883,7 @@ int main(int argc, char **argv)
     char *user = NULL;
     char *pass = NULL;
     char *mnemonic = NULL;
-    storj_api_t *storj_api = NULL;
+    cli_api_t *cli_api = NULL;
 
     if (strcmp(command, "get-info") == 0) {
         printf("Storj bridge: %s\n\n", storj_bridge);
@@ -1080,15 +1080,15 @@ int main(int argc, char **argv)
             goto end_program;
         }
 
-        storj_api = malloc(sizeof(storj_api_t));
+        cli_api = malloc(sizeof(cli_api_t));
 
-        if (!storj_api) {
+        if (!cli_api) {
             status = 1;
             goto end_program;
         }
-        memset(storj_api, 0x00, sizeof(*storj_api));
+        memset(cli_api, 0x00, sizeof(*cli_api));
 
-        storj_api->env = env;
+        cli_api->env = env;
 
         #ifdef debug_enable
         printf("command = %s; command_index = %d\n", command, command_index);
@@ -1115,11 +1115,11 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            memcpy(storj_api->bucket_id, bucket_id, strlen(bucket_id));
-            memcpy(storj_api->file_id, file_id, strlen(file_id));
-            storj_api->dst_file = path;
+            memcpy(cli_api->bucket_id, bucket_id, strlen(bucket_id));
+            memcpy(cli_api->file_id, file_id, strlen(file_id));
+            cli_api->dst_file = path;
 
-            if (download_file(env, bucket_id, file_id, path, storj_api)) {
+            if (download_file(env, bucket_id, file_id, path, cli_api)) {
                 status = 1;
                 goto end_program;
             }
@@ -1133,10 +1133,10 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            memcpy(storj_api->bucket_id, bucket_id, strlen(bucket_id));
-            storj_api->dst_file = path;
+            memcpy(cli_api->bucket_id, bucket_id, strlen(bucket_id));
+            cli_api->dst_file = path;
 
-            if (upload_file(env, bucket_id, path, storj_api)) {
+            if (upload_file(env, bucket_id, path, cli_api)) {
                 status = 1;
                 goto end_program;
             }
@@ -1149,7 +1149,7 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            storj_bridge_list_files(env, bucket_id, storj_api, list_files_callback);
+            storj_bridge_list_files(env, bucket_id, cli_api, list_files_callback);
         } else if ((strcmp(command, "add-bucket") == 0) || (strcmp(command, "mkbkt") == 0x00)) {
             char *bucket_name = argv[command_index + 1];
 
@@ -1171,7 +1171,7 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            storj_bridge_delete_bucket(env, bucket_id, storj_api,
+            storj_bridge_delete_bucket(env, bucket_id, cli_api,
                                        delete_bucket_callback);
 
         } else if (strcmp(command, "remove-file") == 0) {
@@ -1184,7 +1184,7 @@ int main(int argc, char **argv)
                 goto end_program;
             }
             storj_bridge_delete_file(env, bucket_id, file_id,
-                                     storj_api, delete_file_callback);
+                                     cli_api, delete_file_callback);
 
         } else if (strcmp(command, "list-buckets") == 0) {
             storj_bridge_get_buckets(env, NULL, get_buckets_callback);
@@ -1198,7 +1198,7 @@ int main(int argc, char **argv)
                 goto end_program;
             }
             storj_bridge_list_mirrors(env, bucket_id, file_id,
-                                      storj_api, list_mirrors_callback);
+                                      cli_api, list_mirrors_callback);
         } else if (strcmp(command, "cp") == 0) {
             #define UPLOAD_CMD          0x00
             #define DOWNLOAD_CMD        0x01
@@ -1289,18 +1289,18 @@ int main(int argc, char **argv)
                         int num_of_tokens = validate_cmd_tokenize(bucket_name, token);
 
                         /* set the bucket name from which file(s) to be downloaded */
-                        storj_api->bucket_name = token[1];
+                        cli_api->bucket_name = token[1];
 
                         /* initialize the local folder to copy the downloaded file into */
-                        storj_api->file_path = local_file_path;
+                        cli_api->file_path = local_file_path;
 
                         /* initialize the filename to be downloaded as */
-                        storj_api->dst_file = dst_file_name;
+                        cli_api->dst_file = dst_file_name;
 
                         if ((argc == 0x04) || (argc == 0x05)) { /* handle non recursive operations */
                             if ((token[2] == NULL) || (strcmp(token[2], "*") == 0x00)) {
                                 if (check_file_path(local_file_path) == CLI_VALID_DIR) {
-                                    storj_download_files(storj_api);
+                                    cli_download_files(cli_api);
                                 } else {
                                     printf("[%s][%d] Invalid '%s' dst directory !!!!!\n", 
                                             __FUNCTION__, __LINE__, local_file_path);
@@ -1308,24 +1308,24 @@ int main(int argc, char **argv)
                                 }
                             } else if (token[2] != NULL) {
                                 /* set the file to be downloaded */
-                                storj_api->file_name = token[2];
+                                cli_api->file_name = token[2];
 
                                 if ((check_file_path(local_file_path) == CLI_VALID_DIR) || (strcmp(dst_file_name, ".") == 0x00)) {
                                     memset(temp_buff, 0x00, sizeof(temp_buff));
                                     strcat(temp_buff, local_file_path);
                                     strcat(temp_buff, "/");
                                     strcat(temp_buff, token[2]);
-                                    storj_api->dst_file = temp_buff;
+                                    cli_api->dst_file = temp_buff;
                                 } else if (strlen(dst_file_name) > 0x00) {
-                                    storj_api->dst_file = local_file_path;
+                                    cli_api->dst_file = local_file_path;
                                 } else {
                                     printf("[%s][%d] Invalid '%s' dst directory !!!!!\n",
                                             __FUNCTION__, __LINE__, local_file_path);
                                     goto end_program;
                                 }
                                 printf("[%s][%d]file %s downloaded from bucketname = %s as file %s\n",
-                                       __FUNCTION__, __LINE__, storj_api->file_name, storj_api->bucket_name, storj_api->dst_file);
-                                storj_download_file(storj_api);
+                                       __FUNCTION__, __LINE__, cli_api->file_name, cli_api->bucket_name, cli_api->dst_file);
+                                cli_download_file(cli_api);
                             } else {
                                 printf("[%s][%d] Invalid '%s' dst directory !!!!!\n", 
                                         __FUNCTION__, __LINE__, local_file_path);
@@ -1356,7 +1356,7 @@ int main(int argc, char **argv)
                 /* Handle the src argument */
                 /* single file to copy, make sure the files exits */
                 if ((argc == 0x05) && (check_file_path(local_file_path) == CLI_VALID_REGULAR_FILE)) {
-                    storj_api->file_name = local_file_path;
+                    cli_api->file_name = local_file_path;
 
                     /* Handle the dst argument (storj://<bucket-name>/<file-name> */
                     /* token[0]-> storj:; token[1]->bucket_name; token[2]->upload_file_name */
@@ -1367,19 +1367,19 @@ int main(int argc, char **argv)
                     if ((num_of_tokens == 0x02) || (num_of_tokens == 0x03)) {
                         char *dst_file_name = NULL;
 
-                        storj_api->bucket_name = token[1];
+                        cli_api->bucket_name = token[1];
                         dst_file_name = (char *)get_filename_separator(local_file_path);
 
                         if ((token[2] == NULL) || (strcmp(dst_file_name, token[2]) == 0x00) ||
                             (strcmp(token[2], ".") == 0x00)) {
                             /* use the src list buff as temp memory to hold the dst filename */
-                            memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
-                            strcpy(storj_api->src_list, dst_file_name);
-                            storj_api->dst_file = storj_api->src_list; 
+                            memset(cli_api->src_list, 0x00, sizeof(cli_api->src_list));
+                            strcpy(cli_api->src_list, dst_file_name);
+                            cli_api->dst_file = cli_api->src_list;
                         } else {
-                            storj_api->dst_file = token[2];
+                            cli_api->dst_file = token[2];
                         }
-                        storj_upload_file(storj_api);
+                        cli_upload_file(cli_api);
                     } else {
                         printf("[%s][%d] Valid dst filename missing !!!!!\n", __FUNCTION__, __LINE__);
                         goto end_program;
@@ -1387,7 +1387,7 @@ int main(int argc, char **argv)
                 } 
                 else {
                     /* directory is being used, store it in file_path */
-                    storj_api->file_path = local_file_path;
+                    cli_api->file_path = local_file_path;
 
                     /* Handle wild character options for files selection */
                     if(check_file_path(local_file_path) != CLI_VALID_DIR) {
@@ -1404,9 +1404,9 @@ int main(int argc, char **argv)
                             }
 
                             /* check the directory and create the path to upload list file */
-                            memset(storj_api->src_list, 0x00, sizeof(storj_api->src_list));
-                            memcpy(storj_api->src_list, upload_list_file, sizeof(pwd_path));
-                            storj_api->dst_file = storj_api->src_list;
+                            memset(cli_api->src_list, 0x00, sizeof(cli_api->src_list));
+                            memcpy(cli_api->src_list, upload_list_file, sizeof(pwd_path));
+                            cli_api->dst_file = cli_api->src_list;
                         } else {
                             printf("[%s][%d] Upload list file generation error!!! \n",
                                    __FUNCTION__, __LINE__);
@@ -1422,7 +1422,7 @@ int main(int argc, char **argv)
 
                         FILE *file = NULL;
                         /* create the file and add the list of files to be uploaded */
-                        if ((file = fopen(storj_api->src_list, "w")) != NULL) {
+                        if ((file = fopen(cli_api->src_list, "w")) != NULL) {
                             if ((strcmp(argv[1],"-r") == 0x00) || (strcmp(argv[1],"-R") == 0x00)) {
                                 fprintf(file, "%s\n", local_file_path);
                             }
@@ -1436,16 +1436,16 @@ int main(int argc, char **argv)
                         }
                         fclose(file);
 
-                        storj_api->file_path = temp_buff;
+                        cli_api->file_path = temp_buff;
                     } else {
                         /* its a valid directory so let the list of files to be uploaded be handled in
                            verify upload file () */
-                        storj_api->dst_file = NULL;
+                        cli_api->dst_file = NULL;
 
-                        memcpy(upload_file_path, storj_api->file_path, strlen(storj_api->file_path));
+                        memcpy(upload_file_path, cli_api->file_path, strlen(cli_api->file_path));
                         if (upload_file_path[(strlen(upload_file_path) - 1)] != '/') {
                             strcat(upload_file_path, "/");
-                            storj_api->file_path = upload_file_path;
+                            cli_api->file_path = upload_file_path;
                         }
                     }
 
@@ -1457,11 +1457,11 @@ int main(int argc, char **argv)
                     if ((num_of_tokens > 0x00) && ((num_of_tokens >= 0x02) || (num_of_tokens <= 0x03))) {
                         char *dst_file_name = NULL;
 
-                        storj_api->bucket_name = token[1];
+                        cli_api->bucket_name = token[1];
 
                         if ((token[2] == NULL) || 
                             (strcmp(token[2], ".") == 0x00)) {
-                            storj_upload_files(storj_api);
+                            cli_upload_files(cli_api);
                         } else {
                             printf("[%s][%d] storj://<bucket-name>; storj://<bucket-name>/ storj://<bucket-name>/. !!!!!\n", __FUNCTION__, __LINE__);
                             goto end_program;
@@ -1475,30 +1475,30 @@ int main(int argc, char **argv)
         }
        else if (strcmp(command, "upload-files") == 0) {
             /* get the corresponding bucket id from the bucket name */
-            storj_api->bucket_name = argv[command_index + 1];
-            storj_api->file_path = argv[command_index + 2];
-            storj_api->dst_file = NULL;
+            cli_api->bucket_name = argv[command_index + 1];
+            cli_api->file_path = argv[command_index + 2];
+            cli_api->dst_file = NULL;
 
-            if (!storj_api->bucket_name || !storj_api->file_name) {
+            if (!cli_api->bucket_name || !cli_api->file_name) {
                 printf("Missing arguments: <bucket-name> <path>\n");
                 status = 1;
                 goto end_program;
             }
 
-            storj_upload_files(storj_api);
+            cli_upload_files(cli_api);
         }
         else if (strcmp(command, "download-files") == 0) {
             /* get the corresponding bucket id from the bucket name */
-            storj_api->bucket_name = argv[command_index + 1];
-            storj_api->file_path = argv[command_index + 2];
+            cli_api->bucket_name = argv[command_index + 1];
+            cli_api->file_path = argv[command_index + 2];
 
-            if (!storj_api->bucket_name || !storj_api->file_path) {
+            if (!cli_api->bucket_name || !cli_api->file_path) {
                 printf("Missing arguments: <bucket-name> <path>\n");
                 status = 1;
                 goto end_program;
             }
 
-            storj_download_files(storj_api);
+            cli_download_files(cli_api);
         }
         else if (strcmp(command, "mkbkt") == 0x00) {
             char *bucket_name = argv[command_index + 1];
@@ -1512,48 +1512,48 @@ int main(int argc, char **argv)
             storj_bridge_create_bucket(env, bucket_name,
                                        NULL, create_bucket_callback);
         } else if (strcmp(command, "rm") == 0) {
-            storj_api->bucket_name = argv[command_index + 1];
-            storj_api->file_name = argv[command_index + 2];
+            cli_api->bucket_name = argv[command_index + 1];
+            cli_api->file_name = argv[command_index + 2];
 
-            if (storj_api->file_name != NULL) {
-                if (!storj_api->bucket_name|| !storj_api->file_name) {
+            if (cli_api->file_name != NULL) {
+                if (!cli_api->bucket_name|| !cli_api->file_name) {
                     printf("Missing arguments, expected: <bucket-name> <file-name>\n");
                     status = 1;
                     goto end_program;
                 }
 
-                storj_remove_file(storj_api);
+                cli_remove_file(cli_api);
             }
             else {
-                storj_remove_bucket(storj_api);
+                cli_remove_bucket(cli_api);
             }
         }
         else if (strcmp(command, "ls") == 0x00) {
             if (argv[command_index + 1] != NULL) {
                 /* bucket-name , used to list files */
-                storj_api->bucket_name = argv[command_index + 1];
+                cli_api->bucket_name = argv[command_index + 1];
 
-                storj_list_files(storj_api);
+                cli_list_files(cli_api);
             }
             else {
-                storj_list_buckets(storj_api);
+                cli_list_buckets(cli_api);
             }
         }
         else if (strcmp(command, "get-bucket-id") == 0) {
-            storj_api->bucket_name = argv[command_index + 1];
-            cli_get_bucket_id(storj_api);
+            cli_api->bucket_name = argv[command_index + 1];
+            cli_get_bucket_id(cli_api);
         }
         else if (strcmp(command, "lm") == 0) {
-            storj_api->bucket_name = argv[command_index + 1];
-            storj_api->file_name = argv[command_index + 2];
+            cli_api->bucket_name = argv[command_index + 1];
+            cli_api->file_name = argv[command_index + 2];
 
-            if (!storj_api->bucket_name|| !storj_api->file_name) {
+            if (!cli_api->bucket_name|| !cli_api->file_name) {
                 printf("Missing arguments, expected: <bucket-name> <file-name>\n");
                 status = 1;
                 goto end_program;
             }
 
-            storj_list_mirrors(storj_api);
+            cli_list_mirrors(cli_api);
         } else
         {
             printf("'%s' is not a storj command. See 'storj --help'\n\n",
@@ -1588,8 +1588,8 @@ end_program:
     if (mnemonic) {
         free(mnemonic);
     }
-    if(storj_api){
-        free(storj_api);
+    if(cli_api){
+        free(cli_api);
     }
 
     return status;
