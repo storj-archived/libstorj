@@ -72,6 +72,12 @@ void get_buckets_callback(uv_work_t *work_req, int status);
 void get_bucket_id_callback(uv_work_t *work_req, int status);
 
 /**
+ * @brief Callback function returning the file id for a given
+ *        file name
+ */
+void get_file_id_callback(uv_work_t *work_req, int status);
+
+/**
  * @brief Storj api state machine function 
  */
 void queue_next_cmd_req(cli_api_t *cli_api);

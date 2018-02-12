@@ -747,6 +747,35 @@ cleanup:
     free(work_req);
 }
 
+void get_file_id_callback(uv_work_t *work_req, int status)
+{
+    int ret_status = 0x00;
+    assert(status == 0);
+    get_file_id_request_t *req = work_req->data;
+    cli_api_t *cli_api = req->handle;
+
+    cli_api->last_cmd_req = cli_api->curr_cmd_req;
+    cli_api->rcvd_cmd_resp = "get-file-id-resp";
+
+    if (req->status_code == 401) {
+        printf("Invalid user credentials.\n");
+        goto cleanup;
+    } else if (req->status_code != 200 && req->status_code != 304) {
+        printf("Request failed with status code: %i\n", req->status_code);
+        goto cleanup;
+    }
+
+    /* store the bucket id */
+    memset(cli_api->file_id, 0x00, sizeof(cli_api->file_id));
+    strcpy(cli_api->file_id, (char *)req->file_id);
+    printf("ID: %s \tName: %s\n", req->file_id, req->file_name);
+
+    queue_next_cmd_req(cli_api);
+
+    cleanup:
+    free(req);
+    free(work_req);
+}
 
 void list_files_callback(uv_work_t *work_req, int status)
 {
@@ -832,6 +861,15 @@ void queue_next_cmd_req(cli_api_t *cli_api)
     if(cli_api->excp_cmd_resp != NULL) {
         if (strcmp(cli_api->excp_cmd_resp, cli_api->rcvd_cmd_resp) == 0x00) {
             if ((cli_api->next_cmd_req != NULL) &&
+                (strcmp(cli_api->next_cmd_req, "get-file-id-req") == 0x00)) {
+                cli_api->curr_cmd_req  = cli_api->next_cmd_req;
+                cli_api->next_cmd_req  = cli_api->final_cmd_req;
+                cli_api->final_cmd_req = NULL;
+                cli_api->excp_cmd_resp = "get-file-id-resp";
+
+                storj_bridge_get_file_id(cli_api->env, cli_api->bucket_id,
+                                        cli_api->file_name, cli_api, get_file_id_callback);
+            } else if ((cli_api->next_cmd_req != NULL) &&
                 (strcmp(cli_api->next_cmd_req, "list-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
@@ -1016,7 +1054,6 @@ void queue_next_cmd_req(cli_api_t *cli_api)
     }
 }
 
-
 CLI_API int cli_list_buckets(cli_api_t *cli_api)
 {
     cli_api->last_cmd_req  = NULL;
@@ -1043,6 +1080,16 @@ CLI_API int cli_get_bucket_id(cli_api_t *cli_api)
     return storj_bridge_get_bucket_id(cli_api->env, cli_api->bucket_name, cli_api, get_bucket_id_callback);
 }
 
+CLI_API int cli_get_file_id(cli_api_t *cli_api)
+{
+    int ret = 0x00;
+    ret = cli_get_bucket_id(cli_api);
+    cli_api->next_cmd_req  = "get-file-id-req";
+    cli_api->final_cmd_req = NULL;
+
+    return ret;
+}
+
 CLI_API int cli_list_files(cli_api_t *cli_api)
 {
     int ret = 0x00;
@@ -1066,7 +1113,7 @@ CLI_API int cli_remove_bucket(cli_api_t *cli_api)
 CLI_API int cli_remove_file(cli_api_t *cli_api)
 {
     int ret = 0x00;
-    ret = cli_list_files(cli_api);
+    ret = cli_get_file_id(cli_api);
     cli_api->final_cmd_req  = "remove-file-req";
 
     return ret;
@@ -1075,7 +1122,7 @@ CLI_API int cli_remove_file(cli_api_t *cli_api)
 CLI_API int cli_list_mirrors(cli_api_t *cli_api)
 {
     int ret = 0x00;
-    ret = cli_list_files(cli_api);
+    ret = cli_get_file_id(cli_api);
     cli_api->final_cmd_req  = "list-mirrors-req";
 
     return ret;
@@ -1104,7 +1151,7 @@ CLI_API int cli_upload_files(cli_api_t *cli_api)
 CLI_API int cli_download_file(cli_api_t *cli_api)
 {
     int ret = 0x00;
-    ret = cli_list_files(cli_api);
+    ret = cli_get_file_id(cli_api);
     cli_api->final_cmd_req  = "download-file-req";
 
     return ret;
