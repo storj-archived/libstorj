@@ -15,16 +15,6 @@ extern "C" {
 
 #include "storj.h"
 
-#if defined(_WIN32) && defined(STORJDLL)
-#if defined(DLL_EXPORT)
-    #define CLI_API __declspec(dllexport)
-  #else
-    #define CLI_API __declspec(dllimport)
-  #endif
-#else
-#define CLI_API
-#endif
-
 #define CLI_NO_SUCH_FILE_OR_DIR   0x00
 #define CLI_VALID_REGULAR_FILE    0x01
 #define CLI_VALID_DIR             0x02
@@ -89,7 +79,7 @@ void queue_next_cmd_req(cli_api_t *cli_api);
  *       info
  * @return A non-zero error value on failure and 0 on success.
  */
-CLI_API int cli_list_buckets(cli_api_t *cli_api);
+int cli_list_buckets(cli_api_t *cli_api);
 
 /**
  * @brief Function returns the corresponding bucket's id for a 
@@ -99,7 +89,7 @@ CLI_API int cli_list_buckets(cli_api_t *cli_api);
  *       info
  * @return A non-zero error value on failure and 0 on success.
  */
-CLI_API int cli_get_bucket_id(cli_api_t *cli_api);
+int cli_get_bucket_id(cli_api_t *cli_api);
 
 /**
  * @brief Function to list files in a given bucket name
@@ -108,7 +98,7 @@ CLI_API int cli_get_bucket_id(cli_api_t *cli_api);
  *       info
  * @return A non-zero error value on failure and 0 on success.
  */
-CLI_API int cli_list_files(cli_api_t *cli_api);
+int cli_list_files(cli_api_t *cli_api);
 
 /**
  * @brief Function to remove a given bucket name 
@@ -117,7 +107,7 @@ CLI_API int cli_list_files(cli_api_t *cli_api);
  *       info
  * @return A non-zero error value on failure and 0 on success.
  */
-CLI_API int cli_remove_bucket(cli_api_t *cli_api);
+int cli_remove_bucket(cli_api_t *cli_api);
 
 /**
  * @brief Function to remove a file from a given bucket name 
@@ -126,7 +116,7 @@ CLI_API int cli_remove_bucket(cli_api_t *cli_api);
  *       info
  * @return A non-zero error value on failure and 0 on success.
  */
-CLI_API int cli_remove_file(cli_api_t *cli_api);
+int cli_remove_file(cli_api_t *cli_api);
 
 /**
  * @brief Function to return the node IDs for a given file for a
@@ -136,7 +126,7 @@ CLI_API int cli_remove_file(cli_api_t *cli_api);
  *       info
  * @return A non-zero error value on failure and 0 on success.
  */
-CLI_API int cli_list_mirrors(cli_api_t *cli_api);
+int cli_list_mirrors(cli_api_t *cli_api);
 
 /**
  * @brief Function to upload a local file into a given bucket 
@@ -146,7 +136,7 @@ CLI_API int cli_list_mirrors(cli_api_t *cli_api);
  *       info
  * @return A non-zero error value on failure and 0 on success.
  */
-CLI_API int cli_upload_file(cli_api_t *cli_api);
+int cli_upload_file(cli_api_t *cli_api);
 
 /**
  * @brief Function to upload local files into a given bucket 
@@ -156,7 +146,7 @@ CLI_API int cli_upload_file(cli_api_t *cli_api);
  *       info
  * @return A non-zero error value on failure and 0 on success.
  */
-CLI_API int cli_upload_files(cli_api_t *cli_api);
+int cli_upload_files(cli_api_t *cli_api);
 
 /**
  * @brief Function to download a file from a given bucket to a 
@@ -166,7 +156,7 @@ CLI_API int cli_upload_files(cli_api_t *cli_api);
  *       info
  * @return A non-zero error value on failure and 0 on success.
  */
-CLI_API int cli_download_file(cli_api_t *cli_api);
+int cli_download_file(cli_api_t *cli_api);
 
 /**
  * @brief Function to download files from a given bucket to a 
@@ -176,7 +166,7 @@ CLI_API int cli_download_file(cli_api_t *cli_api);
  *       info
  * @return A non-zero error value on failure and 0 on success.
  */
-CLI_API int cli_download_files(cli_api_t *cli_api);
+int cli_download_files(cli_api_t *cli_api);
 
 #ifdef __cplusplus
 }

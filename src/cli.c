@@ -37,40 +37,41 @@ extern int errno;
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
     "setting up users profiles:\n"                                      \
-    "=========================\n"                                       \
     "  register                  setup a new storj bridge user\n"       \
     "  import-keys               import existing user\n"                \
     "  export-keys               export bridge user, password and "     \
     "encryption keys\n\n"                                               \
     "working with buckets and files:\n"                                 \
-    "==============================\n"                                  \
     "  list-buckets\n"                                                  \
-    "  ls (lists the available buckets)\n"                              \
     "  list-files <bucket-id>\n"                                        \
+    "  remove-file <bucket-id> <file-id>\n"                             \
+    "  remove-bucket <bucket-id>\n"                                     \
+    "  add-bucket <name> \n"                                            \
+    "  list-mirrors <bucket-id> <file-id>\n\n"                          \
+    "uploading files:\n"                                                \
+    "  upload-file <bucket-id> <path>\n\n"                              \
+    "downloading files:\n"                                              \
+    "  download-file <bucket-id> <file-id> <path>\n\n"                  \
+    "bridge api information:\n"                                         \
+    "  get-info\n\n"                                                    \
+    "Linux style CLI command support \n"                                \
+    "===============================\n"                                 \
+    "working with buckets and files:\n"                                 \
+    "  ls (lists the available buckets)\n"                              \
     "  ls <bucket-name> (lists the files in a bucket)\n"                \
     "  get-bucket-id <bucket-name>\n"                                   \
-    "  remove-file <bucket-id> <file-id>\n"                             \
     "  rm <bucket-name> <file-name> (to remove a file from a bucket)\n" \
-    "  remove-bucket <bucket-id>\n"                                     \
     "  rm <bucket-name> (to remove a bucket)\n"                         \
-    "  add-bucket <name> \n"                                            \
     "  mkbkt <bucket-name> \n"                                          \
-    "  list-mirrors <bucket-id> <file-id>\n"                            \
     "  lm <bucket-name> <file-name>\n\n"                                \
     "uploading files:\n"                                                \
-    "===============\n"                                                 \
-    "  upload-file <bucket-id> <path>\n"                                \
     "  cp [-rR] <path-to-local-file-name> "                             \
     "storj://<bucketname>/<file-name>\n"                                \
     "  (e.g. storj cp -[rR] /some-dir/* storj://bucketname/.)\n\n"      \
     "downloading files:\n"                                              \
-    "=================\n"                                               \
-    "  download-file <bucket-id> <file-id> <path>\n"                \
     "  cp [-rR] storj://<bucketname>/<file-name> "                      \
     "<path-to-local-file-name>\n"                                       \
     "  (e.g. storj cp -[rR] storj://bucketname/ /some-dir/.)\n\n"       \
-    "bridge api information\n"                                          \
-    "  get-info\n\n"                                                    \
     "options:\n"                                                        \
     "  -h, --help                output usage information\n"            \
     "  -v, --version             output the version number\n"           \
@@ -94,14 +95,12 @@ static int check_file_path(char *file_path)
 {
     struct stat sb;
 
-    if (stat(file_path, &sb) == -1)
-    {
+    if (stat(file_path, &sb) == -1) {
         perror("stat");
         return CLI_NO_SUCH_FILE_OR_DIR;
     }
 
-    switch (sb.st_mode & S_IFMT)
-    {
+    switch (sb.st_mode & S_IFMT) {
         case S_IFBLK:
             printf("block device\n");
             break;
@@ -169,23 +168,18 @@ static int validate_cmd_tokenize(char *cmd_str, char *str_token[])
     int i = 0x00;   /* num of tokens */
 
     int ret = strpos(cmd_str, sub_str);
-    if( ret == -1)
-    {
+    if( ret == -1) {
         printf("Invalid Command Entry (%d), \ntry ... storj://<bucket_name>/<file_name>\n", ret);
     }
 
-    if (ret == 0x00)
-    {
+    if (ret == 0x00) {
         /* start tokenizing */
         str_token[0] = strtok(cmd_str, "/");
-        while (str_token[i] != NULL)
-        {
+        while (str_token[i] != NULL) {
             i++;
             str_token[i] = strtok(NULL, "/");
         }
-    }
-    else
-    {
+    } else {
         i = ret;
     }
 

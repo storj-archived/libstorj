@@ -1054,7 +1054,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
     }
 }
 
-CLI_API int cli_list_buckets(cli_api_t *cli_api)
+int cli_list_buckets(cli_api_t *cli_api)
 {
     cli_api->last_cmd_req  = NULL;
     cli_api->curr_cmd_req  = "get-bucket-id-req";
@@ -1066,7 +1066,7 @@ CLI_API int cli_list_buckets(cli_api_t *cli_api)
     return storj_bridge_get_buckets(cli_api->env, cli_api, get_buckets_callback);
 }
 
-CLI_API int cli_get_bucket_id(cli_api_t *cli_api)
+int cli_get_bucket_id(cli_api_t *cli_api)
 {
     int ret = -1;
     cli_api->last_cmd_req  = NULL;
@@ -1080,7 +1080,7 @@ CLI_API int cli_get_bucket_id(cli_api_t *cli_api)
     return storj_bridge_get_bucket_id(cli_api->env, cli_api->bucket_name, cli_api, get_bucket_id_callback);
 }
 
-CLI_API int cli_get_file_id(cli_api_t *cli_api)
+int cli_get_file_id(cli_api_t *cli_api)
 {
     int ret = 0x00;
     ret = cli_get_bucket_id(cli_api);
@@ -1090,7 +1090,7 @@ CLI_API int cli_get_file_id(cli_api_t *cli_api)
     return ret;
 }
 
-CLI_API int cli_list_files(cli_api_t *cli_api)
+int cli_list_files(cli_api_t *cli_api)
 {
     int ret = 0x00;
     ret = cli_get_bucket_id(cli_api);
@@ -1100,7 +1100,7 @@ CLI_API int cli_list_files(cli_api_t *cli_api)
     return ret;
 }
 
-CLI_API int cli_remove_bucket(cli_api_t *cli_api)
+int cli_remove_bucket(cli_api_t *cli_api)
 {
     int ret = 0x00;
     ret = cli_get_bucket_id(cli_api);
@@ -1110,7 +1110,7 @@ CLI_API int cli_remove_bucket(cli_api_t *cli_api)
     return ret;
 }
 
-CLI_API int cli_remove_file(cli_api_t *cli_api)
+int cli_remove_file(cli_api_t *cli_api)
 {
     int ret = 0x00;
     ret = cli_get_file_id(cli_api);
@@ -1119,7 +1119,7 @@ CLI_API int cli_remove_file(cli_api_t *cli_api)
     return ret;
 }
 
-CLI_API int cli_list_mirrors(cli_api_t *cli_api)
+int cli_list_mirrors(cli_api_t *cli_api)
 {
     int ret = 0x00;
     ret = cli_get_file_id(cli_api);
@@ -1128,7 +1128,7 @@ CLI_API int cli_list_mirrors(cli_api_t *cli_api)
     return ret;
 }
 
-CLI_API int cli_upload_file(cli_api_t *cli_api)
+int cli_upload_file(cli_api_t *cli_api)
 {
     int ret = 0x00;
     ret = cli_get_bucket_id(cli_api);
@@ -1138,7 +1138,7 @@ CLI_API int cli_upload_file(cli_api_t *cli_api)
     return ret;
 }
 
-CLI_API int cli_upload_files(cli_api_t *cli_api)
+int cli_upload_files(cli_api_t *cli_api)
 {
     int ret = 0x00;
     ret = cli_get_bucket_id(cli_api);
@@ -1148,7 +1148,7 @@ CLI_API int cli_upload_files(cli_api_t *cli_api)
     return ret;
 }
 
-CLI_API int cli_download_file(cli_api_t *cli_api)
+int cli_download_file(cli_api_t *cli_api)
 {
     int ret = 0x00;
     ret = cli_get_file_id(cli_api);
@@ -1157,7 +1157,7 @@ CLI_API int cli_download_file(cli_api_t *cli_api)
     return ret;
 }
 
-CLI_API int cli_download_files(cli_api_t *cli_api)
+int cli_download_files(cli_api_t *cli_api)
 {
     int ret = 0x00;
     ret = cli_list_files(cli_api);
