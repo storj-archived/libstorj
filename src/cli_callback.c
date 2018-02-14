@@ -28,30 +28,29 @@ static void get_input(char *line)
 /* inserts into subject[] at position pos */
 void append(char subject[], const char insert[], int pos)
 {
-    char buf[256] = { }; 
+    char buf[256] = { };
 
     /* copy at most first pos characters */
-    strncpy(buf, subject, pos); 
+    strncpy(buf, subject, pos);
     int len = strlen(buf);
 
     /* copy all of insert[] at the end */
-    strcpy(buf + len, insert); 
+    strcpy(buf + len, insert);
 
     /* increase the length by length of insert[] */
-    len += strlen(insert);  
+    len += strlen(insert);
 
     /* copy the rest */
-    strcpy(buf + len, subject + pos); 
+    strcpy(buf + len, subject + pos);
 
     /* copy it back to subject */
-    strcpy(subject, buf);  
+    strcpy(subject, buf);
 }
 
 char* replace_char(char* str, char find, char replace)
 {
     char *current_pos = strchr(str, find);
-    while (current_pos)
-    {
+    while (current_pos) {
         *current_pos = replace;
         append(current_pos, "_", 0);
         current_pos = strchr(current_pos, find);
@@ -71,14 +70,13 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
     char * start;
     cli_api_t *cli_api = handle;
 
-    if((dp = opendir(dir)) == NULL) {
+    if ((dp = opendir(dir)) == NULL) {
         fprintf(stderr,"cannot open directory: %s\n", dir);
         return;
     }
 
     int ret = chdir(dir);
-    while((entry = readdir(dp)) != NULL)
-    {
+    while ((entry = readdir(dp)) != NULL) {
         lstat(entry->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             /* Found a directory, but ignore . and .. */
@@ -111,8 +109,7 @@ static int file_exists(void *handle)
         return CLI_NO_SUCH_FILE_OR_DIR;
     }
 
-    switch (sb.st_mode & S_IFMT)
-    {
+    switch (sb.st_mode & S_IFMT) {
         case S_IFBLK:
             printf("block device\n");
             break;
@@ -120,7 +117,7 @@ static int file_exists(void *handle)
             printf("character device\n");
             break;
         case S_IFDIR:
-            if((src_fd = fopen(cli_api->src_list, "w")) == NULL) {
+            if ((src_fd = fopen(cli_api->src_list, "w")) == NULL) {
                 return CLI_UPLOAD_FILE_LOG_ERR;
             }
             printdir(cli_api->file_path, 0, src_fd, handle);
@@ -199,11 +196,10 @@ static void file_progress(double progress,
 
     printf("\r[");
     int pos = bar_width * progress;
-    for (int i = 0; i < bar_width; ++i) 
-    {
+    for (int i = 0; i < bar_width; ++i) {
         if (i < pos) {
             printf("=");
-        } 
+        }
         else if (i == pos) {
             printf(">");
         } else {
@@ -316,7 +312,7 @@ static void upload_files_complete(int status, storj_file_meta_t *file, void *han
 
     printf("\n");
     if (status != 0) {
-        printf("[%s][%d]Upload failure: %s\n", 
+        printf("[%s][%d]Upload failure: %s\n",
                __FUNCTION__, __LINE__, storj_strerror(status));
     } else {
         printf("Upload Success! File ID: %s\n", file->id);
@@ -436,7 +432,7 @@ static void verify_upload_files(void *handle)
     cli_api->src_fd = fopen(cli_api->src_list, "r");
 
     if (!cli_api->src_fd) {
-        printf("[%s][%d]Invalid file path: %s\n", 
+        printf("[%s][%d]Invalid file path: %s\n",
                 __FUNCTION__, __LINE__, cli_api->src_list);
         exit(0);
     } else {
@@ -448,13 +444,12 @@ static void verify_upload_files(void *handle)
         memset(line, 0x00, sizeof(line));
 
         /* read a line from a file */
-        while (fgets(line[i], sizeof(line), cli_api->src_fd) != NULL)
-        {
+        while (fgets(line[i], sizeof(line), cli_api->src_fd) != NULL) {
             if (i <= MAX_UPLOAD_FILES) {
                 i++;
             } else {
                 i = (i - 1);
-                printf("[%s][%d] Upload files limit set to %d \n", 
+                printf("[%s][%d] Upload files limit set to %d \n",
                        __FUNCTION__, __LINE__, (MAX_UPLOAD_FILES));
                 break;
             }
@@ -515,10 +510,9 @@ static int download_file(storj_env_t *env, char *bucket_id,
         char user_input[BUFSIZ];
         memset(user_input, '\0', BUFSIZ);
 
-        if(access(path, F_OK) != -1 ) {
+        if (access(path, F_OK) != -1 ) {
             printf("Warning: File already exists at path [%s].\n", path);
-            while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0)
-            {
+            while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0) {
                 memset(user_input, '\0', BUFSIZ);
                 printf("Would you like to overwrite [%s]: [y/n] ", path);
                 get_input(user_input);
@@ -669,17 +663,12 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
     cli_api->last_cmd_req = cli_api->curr_cmd_req;
     cli_api->rcvd_cmd_resp = "remove-bucket-resp";
 
-    if (req->status_code == 200 || req->status_code == 204)
-    {
+    if (req->status_code == 200 || req->status_code == 204) {
         printf("Bucket was successfully removed.\n");
-    } 
-    else if (req->status_code == 401)
-    {
+    } else if (req->status_code == 401) {
         printf("Invalid user credentials.\n");
         goto cleanup;
-    } 
-    else
-    {
+    } else {
         printf("Failed to destroy bucket. (%i)\n", req->status_code);
         goto cleanup;
     }
@@ -858,7 +847,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
            cli_api->curr_cmd_req, cli_api->next_cmd_req);
     #endif
 
-    if(cli_api->excp_cmd_resp != NULL) {
+    if (cli_api->excp_cmd_resp != NULL) {
         if (strcmp(cli_api->excp_cmd_resp, cli_api->rcvd_cmd_resp) == 0x00) {
             if ((cli_api->next_cmd_req != NULL) &&
                 (strcmp(cli_api->next_cmd_req, "get-file-id-req") == 0x00)) {
@@ -942,12 +931,12 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 memset(line, 0x00, sizeof(line));
 
                 if (file != NULL) {
-                   while((fgets(line[i],sizeof(line), file)!= NULL)) {/* read a line from a file */ 
+                    while ((fgets(line[i],sizeof(line), file)!= NULL)) {/* read a line from a file */
                         temp = strrchr(line[i], '\n');
-                        if(temp) *temp = '\0';
+                        if (temp) *temp = '\0';
                         cli_api->src_file = line[i];
                         i++;
-                        if(i >= cli_api->xfer_count) {
+                        if (i >= cli_api->xfer_count) {
                             break;
                         }
                     }
@@ -956,7 +945,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
 
                 if (cli_api->xfer_count <= cli_api->total_files) {
                     /* is it the last file ? */
-                    if(cli_api->xfer_count == cli_api->total_files) {
+                    if (cli_api->xfer_count == cli_api->total_files) {
                         cli_api->next_cmd_req  = cli_api->final_cmd_req;
                         cli_api->final_cmd_req = NULL;
                     }
@@ -993,9 +982,9 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                     memset(token, 0x00, sizeof(token));
                     memset(temp_path, 0x00, sizeof(temp_path));
                     memset(line, 0x00, sizeof(line));
-                    while((fgets(line[i],sizeof(line), file)!= NULL)) {/* read a line from a file */ 
+                    while ((fgets(line[i],sizeof(line), file)!= NULL)) {/* read a line from a file */
                         temp = strrchr(line[i], '\n');
-                        if(temp) *temp = '\0';
+                        if (temp) *temp = '\0';
                         i++;
                         if (i >= cli_api->xfer_count) {
                             break;
@@ -1010,9 +999,9 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                         token[tk_idx] = strtok(NULL, ":");
                     }
 
-                    if(cli_api->xfer_count <= cli_api->total_files) {
+                    if (cli_api->xfer_count <= cli_api->total_files) {
                         /* is it the last file ? */
-                        if(cli_api->xfer_count == cli_api->total_files) {
+                        if (cli_api->xfer_count == cli_api->total_files) {
                             cli_api->next_cmd_req  = cli_api->final_cmd_req;
                             cli_api->final_cmd_req = NULL;
                         }
@@ -1165,4 +1154,3 @@ int cli_download_files(cli_api_t *cli_api)
 
     return ret;
 }
-
