@@ -36,57 +36,51 @@ extern int errno;
 
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
-    "setting up users profiles:\n"                                      \
-    "  register                  setup a new storj bridge user\n"       \
-    "  import-keys               import existing user\n"                \
-    "  export-keys               export bridge user, password and "     \
+    "setting up user profiles:\n"                                       \
+    "  register                      setup a new storj bridge user\n"   \
+    "  import-keys                   import existing user\n"            \
+    "  export-keys                   export bridge user, password and " \
     "encryption keys\n\n"                                               \
+    "unix style commands:\n"                                            \
+    "  ls                            lists the available buckets\n"     \
+    "  ls <bucket-name>              lists the files in a bucket\n"     \
+    "  cp [-rR] <path> <uri>         upload files to a bucket "         \
+    "(e.g. storj cp -[rR] /<some-dir>/* storj://<bucket-name>/)\n"      \
+    "  cp [-rR] <uri> <path>         download files from a bucket "     \
+    "(e.g. storj cp -[rR] storj://<bucket-name>/ /<some-dir>/)\n"       \
+    "  mkbkt <bucket-name>           make a bucket\n"                   \
+    "  rm <bucket-name> <file-name>  remove a file from a bucket\n"     \
+    "  rm <bucket-name>              remove a bucket\n"                 \
+    "  lm <bucket-name> <file-name>  list mirrors\n\n"                  \
     "working with buckets and files:\n"                                 \
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
     "  remove-file <bucket-id> <file-id>\n"                             \
     "  remove-bucket <bucket-id>\n"                                     \
     "  add-bucket <name> \n"                                            \
-    "  list-mirrors <bucket-id> <file-id>\n\n"                          \
+    "  list-mirrors <bucket-id> <file-id>\n"                            \
+    "  get-bucket-id <bucket-name>\n\n"                                 \
     "uploading files:\n"                                                \
     "  upload-file <bucket-id> <path>\n\n"                              \
     "downloading files:\n"                                              \
     "  download-file <bucket-id> <file-id> <path>\n\n"                  \
     "bridge api information:\n"                                         \
     "  get-info\n\n"                                                    \
-    "Linux style CLI command support \n"                                \
-    "===============================\n"                                 \
-    "working with buckets and files:\n"                                 \
-    "  ls (lists the available buckets)\n"                              \
-    "  ls <bucket-name> (lists the files in a bucket)\n"                \
-    "  get-bucket-id <bucket-name>\n"                                   \
-    "  rm <bucket-name> <file-name> (to remove a file from a bucket)\n" \
-    "  rm <bucket-name> (to remove a bucket)\n"                         \
-    "  mkbkt <bucket-name> \n"                                          \
-    "  lm <bucket-name> <file-name>\n\n"                                \
-    "uploading files:\n"                                                \
-    "  cp [-rR] <path-to-local-file-name> "                             \
-    "storj://<bucketname>/<file-name>\n"                                \
-    "  (e.g. storj cp -[rR] /some-dir/* storj://bucketname/.)\n\n"      \
-    "downloading files:\n"                                              \
-    "  cp [-rR] storj://<bucketname>/<file-name> "                      \
-    "<path-to-local-file-name>\n"                                       \
-    "  (e.g. storj cp -[rR] storj://bucketname/ /some-dir/.)\n\n"       \
     "options:\n"                                                        \
-    "  -h, --help                output usage information\n"            \
-    "  -v, --version             output the version number\n"           \
-    "  -u, --url <url>           set the base url for the api\n"        \
-    "  -p, --proxy <url>         set the socks proxy "                  \
+    "  -h, --help                    output usage information\n"        \
+    "  -v, --version                 output the version number\n"       \
+    "  -u, --url <url>               set the base url for the api\n"    \
+    "  -p, --proxy <url>             set the socks proxy "              \
     "(e.g. <[protocol://][user:password@]proxyhost[:port]>)\n"          \
-    "  -l, --log <level>         set the log level (default 0)\n"       \
-    "  -d, --debug               set the debug log level\n\n"           \
+    "  -l, --log <level>             set the log level (default 0)\n"   \
+    "  -d, --debug                   set the debug log level\n\n"       \
     "environment variables:\n"                                          \
-    "  STORJ_KEYPASS             imported user settings passphrase\n"   \
-    "  STORJ_BRIDGE              the bridge host "                      \
+    "  STORJ_KEYPASS                 imported user settings passphrase\n" \
+    "  STORJ_BRIDGE                  the bridge host "                  \
     "(e.g. https://api.storj.io)\n"                                     \
-    "  STORJ_BRIDGE_USER         bridge username\n"                     \
-    "  STORJ_BRIDGE_PASS         bridge password\n"                     \
-    "  STORJ_ENCRYPTION_KEY      file encryption key\n\n"
+    "  STORJ_BRIDGE_USER             bridge username\n"                 \
+    "  STORJ_BRIDGE_PASS             bridge password\n"                 \
+    "  STORJ_ENCRYPTION_KEY          file encryption key\n\n"
 
 
 #define CLI_VERSION "libstorj-2.0.0-beta2"
