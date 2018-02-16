@@ -1089,6 +1089,22 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
                                     const char *password,
                                     void *handle,
                                     uv_after_work_cb cb);
+/**
+ * @brief Serialize download state struct to JSON
+ *
+ * @param[in] state Download state struct
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_download_state_serialize(storj_download_state_t *state);
+
+/**
+ * @brief De-serialize JSON to download state struct
+ *
+ * @param[in] state Download state struct
+ * @param[in] file_path Path to the json file to read download state info from
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_download_state_deserialize(storj_download_state_t *state, char *file_path);
 
 static inline char separator()
 {

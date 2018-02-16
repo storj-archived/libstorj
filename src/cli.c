@@ -1533,7 +1533,17 @@ int main(int argc, char **argv)
             }
 
             cli_list_mirrors(cli_api);
-        } else {
+        } else if (strcmp(command, "deser") == 0x00) {
+            storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+            if (!state) {
+                status = 1;
+                goto end_program;
+            }
+            state->env = cli_api->env;
+            state->log = cli_api->env->log;
+
+            storj_download_state_deserialize(state, "/tmp/file.txt.json");
+        }else {
             printf("'%s' is not a storj command. See 'storj --help'\n\n",
                    command);
             status = 1;
