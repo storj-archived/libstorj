@@ -1075,6 +1075,26 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
                                                             storj_finished_download_cb finished_cb);
 
 /**
+ * @brief Resume the download of a file
+ *
+ * @param[in] state A pointer to the the download state
+ * @param[in] bucket_id Character array of bucket id
+ * @param[in] file_id Character array of file id
+ * @param[in] destination File descriptor of the destination
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] progress_cb Function called with progress updates
+ * @param[in] finished_cb Function called when download finished
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
+                                                           const char *bucket_id,
+                                                           const char *file_id,
+                                                           FILE *destination,
+                                                           void *handle,
+                                                           storj_progress_cb progress_cb,
+                                                           storj_finished_download_cb finished_cb);
+
+/**
  * @brief Register a user
  *
  * @param[in] env The storj environment struct

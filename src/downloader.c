@@ -808,6 +808,8 @@ static void queue_request_shards(storj_download_state_t *state)
 
     int i = 0;
 
+    //printf("[%s][%s][%d] am here ... total shareds = %d, resolving shards = %d\n",
+     //      __FILE__, __FUNCTION__, __LINE__, state->total_shards, state->resolving_shards);
     while (state->resolving_shards < state->download_max_concurrency &&
            i < state->total_pointers) {
 
@@ -1817,6 +1819,7 @@ static void queue_next_work(storj_download_state_t *state)
     if (state->info) {
         queue_request_shards(state);
 
+        //printf("\n\n\n[%s][%s][%d] am here ... \n", __FILE__, __FUNCTION__, __LINE__);
         if (state->rs) {
             if (can_recover_shards(state)) {
                 queue_recover_shards(state);
@@ -1919,6 +1922,79 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
 
     // start download
     queue_next_work(state);
+
+    return state;
+}
+
+STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
+                                                           const char *bucket_id,
+                                                           const char *file_id,
+                                                           FILE *destination,
+                                                           void *handle,
+                                                           storj_progress_cb progress_cb,
+                                                           storj_finished_download_cb finished_cb)
+{
+    storj_download_state_t *resume_state = handle;
+
+    // setup download state
+    resume_state->file_id = file_id;
+    resume_state->bucket_id = bucket_id;
+    resume_state->destination = destination;
+    resume_state->progress_cb = progress_cb;
+    resume_state->finished_cb = finished_cb;
+    resume_state->decrypt_key = NULL;
+    resume_state->decrypt_ctr = NULL;
+    resume_state->error_status = STORJ_TRANSFER_OK;
+    resume_state->download_max_concurrency = STORJ_DOWNLOAD_CONCURRENCY;
+    resume_state->pointers_completed = false;
+
+    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+    if (!state) {
+        return NULL;
+    }
+    // setup download state
+    state->total_bytes = 0;
+    state->info = NULL;
+    state->requesting_info = false;
+    state->info_fail_count = 0;
+    state->env = env;
+    state->file_id = file_id;
+    state->bucket_id = bucket_id;
+    state->destination = destination;
+    state->progress_cb = progress_cb;
+    state->finished_cb = finished_cb;
+    state->finished = false;
+    state->total_shards = 0;
+    state->download_max_concurrency = STORJ_DOWNLOAD_CONCURRENCY;
+    state->completed_shards = 0;
+    state->resolving_shards = 0;
+    state->total_pointers = 0;
+    state->total_parity_pointers = 0;
+    state->rs = false;
+    state->recovering_shards = false;
+    state->truncated = true;
+    state->pointers = NULL;
+    state->pointers_completed = false;
+    state->pointer_fail_count = 0;
+    state->requesting_pointers = false;
+    state->error_status = STORJ_TRANSFER_OK;
+    state->writing = false;
+    state->shard_size = 0;
+    state->excluded_farmer_ids = NULL;
+    state->hmac = NULL;
+    state->pending_work_count = 0;
+    state->canceled = false;
+    state->log = env->log;
+    state->handle = handle;
+    state->decrypt_key = NULL;
+    state->decrypt_ctr = NULL;
+
+    /* To open up the bridge */
+    queue_request_pointers(state);
+
+    // start download
+    queue_next_work(resume_state);
+    printf("[%s][%s][%d] am here ... \n", __FILE__, __FUNCTION__, __LINE__);
 
     return state;
 }

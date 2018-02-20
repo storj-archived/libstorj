@@ -468,7 +468,11 @@ static void verify_upload_files(void *handle)
 static void download_file_complete(int status, FILE *fd, void *handle)
 {
     cli_api_t *cli_api = handle;
-    cli_api->rcvd_cmd_resp = "download-file-resp";
+    if (cli_api->curr_cmd_req == "download-file-req") {
+        cli_api->rcvd_cmd_resp = "download-file-resp";
+    } else if (cli_api->curr_cmd_req == "download-file-resume-req") {
+        cli_api->rcvd_cmd_resp = "download-file-resume-resp";
+    }
 
     printf("\n");
     fclose(fd);
@@ -683,6 +687,100 @@ cleanup:
     free(req->path);
     free(req);
     free(work_req);
+}
+
+static void download_signal_handler1(uv_signal_t *req, int signum)
+{
+    storj_download_state_t *state = req->data;
+
+    /* convert the download state struct into JSON and write to a file */
+    storj_download_state_serialize(state);
+    storj_bridge_resolve_file_cancel(state);
+    if (uv_signal_stop(req)) {
+        printf("Unable to stop signal\n");
+    }
+    uv_close((uv_handle_t *)req, close_signal);
+}
+
+static int download_file_resume(storj_env_t *env, char *bucket_id,
+                         char *file_id, char *path, void *handle)
+{
+    /** @TODO [ASK] -> handle to see if the user wants to download fresh again or
+     * resume previously interrupted file
+     */
+    char temp_file[BUFSIZ] = {0x00};
+
+    FILE *fd = NULL;
+
+    if (path) {
+        char user_input[BUFSIZ];
+        memset(user_input, '\0', BUFSIZ);
+
+        if (access(path, F_OK) != -1 ) {
+            memcpy(temp_file, path, strlen(path));
+            strcat(temp_file, ".json");
+            if (access(temp_file, F_OK) != -1 ) {
+                printf("Warning: File already exists at path [%s].\n", path);
+                while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0) {
+                    memset(user_input, '\0', BUFSIZ);
+                    printf("Would you like to overwrite [%s]: [y/n] ", path);
+                    get_input(user_input);
+                }
+            }
+
+            if (strcmp(user_input, "n") == 0) {
+                printf("\nCanceled overwriting of [%s].\n", path);
+                cli_api_t *cli_api = handle;
+                cli_api->rcvd_cmd_resp = "download-file-resume-resp";
+                queue_next_cmd_req(cli_api);
+                return 1;
+            }
+
+            //unlink(path);
+        }
+
+        fd = fopen(path, "w+");
+    } else {
+        fd = stdout;
+    }
+
+    if (fd == NULL) {
+        // TODO send to stderr
+        printf("Unable to open %s: %s\n", path, strerror(errno));
+        return 1;
+    }
+
+#if 1 /* @TODO: uncomment this once determined we need to resume a file */
+    uv_signal_t *sig = malloc(sizeof(uv_signal_t));
+    uv_signal_init(env->loop, sig);
+    uv_signal_start(sig, download_signal_handler1, SIGINT);
+
+    storj_progress_cb progress_cb = (storj_progress_cb)noop;
+    if (path && env->log_options->level == 0) {
+        progress_cb = file_progress;
+    }
+
+#if 1
+    cli_api_t *cli_api = handle;
+    storj_download_state_t *state = cli_api->handle;
+    storj_download_state_deserialize(state, temp_file);
+#endif
+    storj_download_state_t *state1 = cli_api->handle;
+    printf("[%s][%s][%d] am here ...total pointers = %d , shards = %d\n",
+           __FILE__, __FUNCTION__, __LINE__, state1->total_pointers, state1->total_shards);
+    state = storj_bridge_resume_file(env, bucket_id,
+                                     file_id, fd, cli_api->handle,
+                                     progress_cb,
+                                     download_file_complete);
+    if (!state) {
+        return 1;
+    }
+    sig->data = state;
+
+    return state->error_status;
+#endif
+
+    return STORJ_TRANSFER_OK;
 }
 
 void get_buckets_callback(uv_work_t *work_req, int status)
@@ -969,6 +1067,18 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id,
                                 cli_api->dst_file, cli_api);
             } else if ((cli_api->next_cmd_req != NULL) &&
+                       (strcmp(cli_api->next_cmd_req, "download-file-resume-req") == 0x00)) {
+                cli_api->curr_cmd_req  = cli_api->next_cmd_req;
+                cli_api->next_cmd_req  = cli_api->final_cmd_req;
+                cli_api->final_cmd_req = NULL;
+                cli_api->excp_cmd_resp = "download-file-resume-resp";
+                download_file_resume(cli_api->env, cli_api->bucket_id, cli_api->file_id,
+                              cli_api->dst_file, cli_api);
+                storj_download_state_t *state1 = cli_api->handle;
+                printf("[%s][%s][%d] am here ...total pointers = %d , shards = %d\n",
+                       __FILE__, __FUNCTION__, __LINE__, state1->total_pointers, state1->total_shards);
+                }
+            else if ((cli_api->next_cmd_req != NULL) &&
                      (strcmp(cli_api->next_cmd_req, "download-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->excp_cmd_resp = "download-file-resp";
@@ -1154,6 +1264,15 @@ int cli_download_files(cli_api_t *cli_api)
     int ret = 0x00;
     ret = cli_list_files(cli_api);
     cli_api->final_cmd_req  = "download-files-req";
+
+    return ret;
+}
+
+int cli_download_file_resume(cli_api_t *cli_api)
+{
+    int ret = 0x00;
+    ret = cli_get_file_id(cli_api);
+    cli_api->final_cmd_req  = "download-file-resume-req";
 
     return ret;
 }

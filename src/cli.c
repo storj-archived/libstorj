@@ -1535,14 +1535,26 @@ int main(int argc, char **argv)
             cli_list_mirrors(cli_api);
         } else if (strcmp(command, "deser") == 0x00) {
             storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+            memset(state, 0x00, sizeof(storj_download_state_t));
             if (!state) {
                 status = 1;
                 goto end_program;
             }
             state->env = cli_api->env;
             state->log = cli_api->env->log;
+            cli_api->bucket_name = argv[command_index + 1];
+            cli_api->file_name = argv[command_index + 2];
+            cli_api->dst_file  = argv[command_index + 3];
 
-            storj_download_state_deserialize(state, "/tmp/file.txt.json");
+            cli_api->handle = state;
+            printf("[%s][%s][%d] am here ...before total pointers = %d , shards = %d\n",
+                   __FILE__, __FUNCTION__, __LINE__, state->total_pointers, state->total_shards);
+
+            cli_download_file_resume(cli_api);
+
+            storj_download_state_t *state1 = cli_api->handle;
+            printf("[%s][%s][%d] am here ...total pointers = %d , shards = %d\n",
+                   __FILE__, __FUNCTION__, __LINE__, state1->total_pointers, state1->total_shards);
         }else {
             printf("'%s' is not a storj command. See 'storj --help'\n\n",
                    command);
