@@ -1545,7 +1545,6 @@ int main(int argc, char **argv)
             cli_api->bucket_name = argv[command_index + 1];
             cli_api->file_name = argv[command_index + 2];
             cli_api->dst_file  = argv[command_index + 3];
-            printf("dst file = %s]\n", cli_api->dst_file);
             cli_api->handle = state;
             cli_download_file_resume(cli_api);
         }else {

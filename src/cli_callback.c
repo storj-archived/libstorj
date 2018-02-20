@@ -468,10 +468,12 @@ static void verify_upload_files(void *handle)
 static void download_file_complete(int status, FILE *fd, void *handle)
 {
     cli_api_t *cli_api = handle;
-    if (strcmp(cli_api->curr_cmd_req, "download-file-req") == 0x00) {
-        cli_api->rcvd_cmd_resp = "download-file-resp";
-    } else if (strcmp(cli_api->curr_cmd_req, "download-file-resume-req") == 0x00) {
-        cli_api->rcvd_cmd_resp = "download-file-resume-resp";
+    if (cli_api->curr_cmd_req != NULL) {
+        if (strcmp(cli_api->curr_cmd_req, "download-file-req") == 0x00) {
+            cli_api->rcvd_cmd_resp = "download-file-resp";
+        } else if (strcmp(cli_api->curr_cmd_req, "download-file-resume-req") == 0x00) {
+            cli_api->rcvd_cmd_resp = "download-file-resume-resp";
+        }
     }
 
     printf("\n");
@@ -490,9 +492,11 @@ static void download_file_complete(int status, FILE *fd, void *handle)
         }
     } else {
         char tempFile[256] = {0x00};
-        strcpy(tempFile, cli_api->dst_file);
+        memcpy(tempFile, cli_api->dst_file, strlen(cli_api->dst_file));
         strcat(tempFile, ".json");
-        unlink(tempFile);
+        if (access(tempFile, F_OK) != -1 ) {
+            unlink(tempFile);
+        }
         printf("Download Success!\n");
     }
 
