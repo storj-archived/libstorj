@@ -1884,7 +1884,6 @@ STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
             json_object_object_add(jptr, "hash",
                                    json_object_new_string(pointer->shard_hash));
         }
-        printf ("hash[%d]= %s\n", i, pointer->shard_hash);
         json_object_object_add(jptr, "index",
                                json_object_new_int(pointer->index));
         json_object_object_add(jptr, "status",
@@ -1895,7 +1894,6 @@ STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
                                json_object_new_boolean(pointer->parity));
         json_object_object_add(jptr, "downloaded_size",
                                json_object_new_int64(pointer->downloaded_size));
-
         if (state->pointers->farmer_id) {
             json_object_object_add(jfarmer, "nodeID",
                                    json_object_new_string(pointer->farmer_id));
@@ -1906,30 +1904,13 @@ STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
         }
         json_object_object_add(jfarmer, "port",
                                json_object_new_int(pointer->farmer_port));
-
         json_object_object_add(jptr, "farmer", jfarmer);
-
-        printf("json[%d]= %s\n", i, json_object_to_json_string(jptr));
         json_object_array_add(jptr_array, jptr);
 
         i++;
     }
 
-    #if 0
-    json_object *jarray;
-    int arraylen = 0x00;
-    i = 0x00;
-    arraylen = json_object_array_length(jptr_array);
-    printf("arraylen = %d\n", arraylen);
-    for (i = 0x00; i< arraylen; i++)
-    {
-        jarray = json_object_array_get_idx(jptr_array, i);
-        printf( " jarray [%d] = %s\n", i, json_object_to_json_string(jarray));
-    }
-    #endif
-
     json_object_object_add(body, "storj_pointer_t", jptr_array);
-    printf("status=%s\n", json_object_get_string(body));
 
     if (state->excluded_farmer_ids != NULL) {
         json_object_object_add(body, "excluded_farmer_ids",
@@ -2024,7 +2005,6 @@ static void set_pointer_from_json(storj_download_state_t *state,
     uint32_t port = 0;
     char *farmer_id = NULL;
 
-    /* TODO @ fix this - make this json access similar to dwnl.c */
     if (json_object_object_get_ex(json, "farmer", &farmer_value) &&
         json_object_is_type(farmer_value, json_type_object)) {
 
@@ -2060,7 +2040,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
     }
 
     // Check to see if we have a token for this shard, otherwise
-    // we will immediatly move this shard to POINTER_MISSING
+    // we will immediately move this shard to POINTER_MISSING
     // so that it can be retried and possibly recovered.
     if (address && token) {
         // reset the status
@@ -2136,12 +2116,10 @@ static void set_pointer_from_json(storj_download_state_t *state,
     if (!state->shard_size) {
         // TODO make sure all except last shard is the same size
         state->shard_size = size;
-        #if 0  /* TODO @ fix this - runtime error when enabled */
         state->log->debug(state->env->log_options,
                           state->handle,
                           "Shard size set to %" PRIu64,
                             state->shard_size);
-        #endif
     };
 }
 
@@ -2173,12 +2151,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
         state->total_shards = total_pointers;
 
         for (int i = 0; i < length; i++) {
-
-            // get the relative index
-            //int j = i + prev_total_pointers;
-
             struct json_object *json = json_object_array_get_idx(res, i);
-            printf("printing json =%s\n", json_object_get_string(json));
             set_pointer_from_json(state, &state->pointers[i], json, false);
 
             // Keep track of the number of data and parity pointers
@@ -2187,8 +2160,6 @@ static void append_pointers_to_state(storj_download_state_t *state,
                 state->total_parity_pointers += 1;
             }
         }
-        printf("[%s][%s][%d] am here ...total pointers = %d , shards = %d\n",
-               __FILE__, __FUNCTION__, __LINE__, state->total_pointers, state->total_shards);
     }
 }
 
@@ -2201,16 +2172,12 @@ STORJ_API int storj_download_state_deserialize(storj_download_state_t *state, ch
     struct json_object *jstorj_download_state_t;
     if (json_object_object_get_ex(jdwnld_obj, "storj_download_state_t", &jstorj_download_state_t))
     {
-        printf( "jdwnld_obj = %s\n", json_object_get_string(jstorj_download_state_t));
-
         /* setup download state */
         json_object_object_get_ex(jstorj_download_state_t, "file_id", &jdwnld_obj);
         state->file_id = json_object_get_string(jdwnld_obj);
-        printf( "state->file_id = %s \n", json_object_get_string(jdwnld_obj));
 
         json_object_object_get_ex(jstorj_download_state_t, "bucket_id", &jdwnld_obj);
         state->bucket_id = json_object_get_string(jdwnld_obj);
-        printf( "state->bucket_id = %s \n", json_object_get_string(jdwnld_obj));
 
         struct json_object *jstorj_pointer_t;
         json_object_object_get_ex(jstorj_download_state_t, "storj_pointer_t", &jstorj_pointer_t);

@@ -1931,10 +1931,11 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
                                                            const char *file_id,
                                                            FILE *destination,
                                                            void *handle,
+                                                           storj_download_state_t *dwn_state,
                                                            storj_progress_cb progress_cb,
                                                            storj_finished_download_cb finished_cb)
 {
-    storj_download_state_t *resume_state = handle;
+    storj_download_state_t *resume_state = dwn_state;
 
     // setup download state
     resume_state->file_id = file_id;
@@ -1994,7 +1995,6 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
 
     // start download
     queue_next_work(resume_state);
-    printf("[%s][%s][%d] am here ... \n", __FILE__, __FUNCTION__, __LINE__);
 
     return state;
 }

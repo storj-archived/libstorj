@@ -1091,6 +1091,7 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
                                                            const char *file_id,
                                                            FILE *destination,
                                                            void *handle,
+                                                           storj_download_state_t *state,
                                                            storj_progress_cb progress_cb,
                                                            storj_finished_download_cb finished_cb);
 
