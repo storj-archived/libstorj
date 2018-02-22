@@ -615,6 +615,9 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
     } else if (req->status_code == 401) {
         printf("Invalid user credentials.\n");
         goto clean_variables;
+    } else if (req->status_code == 403) {
+        printf("Forbidden, user not active.\n");
+        goto clean_variables;
     }
 
     if (req->status_code != 201) {
