@@ -1125,9 +1125,7 @@ static void determine_decryption_key_v0(storj_download_state_t *state)
 
 static void determine_decryption_key(storj_download_state_t *state)
 {
-    if (!state->env->encrypt_options ||
-        !state->env->encrypt_options->mnemonic) {
-
+    if (!state->env->encrypt_options) {
         state->decrypt_key = NULL;
         state->decrypt_ctr = NULL;
     } else {
