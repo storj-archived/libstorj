@@ -609,7 +609,8 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     create_bucket_request_t *req = work_req->data;
 
-    if (req->status_code == 409) {
+    // 409 is the conflict error, we still check 404 for backwards compat
+    if (req->status_code == 409 || req->status_code == 404) {
         printf("Cannot create bucket [%s]. Name already exists.\n", req->bucket->name);
         goto clean_variables;
     } else if (req->status_code == 401) {
