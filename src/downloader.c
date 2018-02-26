@@ -297,21 +297,13 @@ static void append_pointers_to_state(storj_download_state_t *state,
 
     if (length == 0) {
         storj_download_state_t *resume_state = state->handle;
-
         for (int i = 0x00; i < resume_state->total_pointers; i++) {
             for (int j = 0x00; j < state->total_pointers; j++) {
-                #if 1
-                if (strcmp(resume_state->pointers[i].shard_hash, state->pointers[j].shard_hash) == 0x00)
-                {
+                if (strcmp(resume_state->pointers[i].shard_hash, state->pointers[j].shard_hash) == 0x00) {
                     if (resume_state->pointers[i].status == POINTER_DOWNLOADED) {
                         state->pointers[j].status = resume_state->pointers[i].status;
                     }
-                    printf("[%s][%s][%d] resume state pointer state = %d\n",
-                           __FILE__, __FUNCTION__, __LINE__, resume_state->pointers[i].status);
-                    printf("[%s][%s][%d] state pointer state = %d\n",
-                           __FILE__, __FUNCTION__, __LINE__, state->pointers[j].status);
                 }
-                #endif
             }
         }
 
@@ -1952,7 +1944,6 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
                                                            const char *file_id,
                                                            FILE *destination,
                                                            void *handle,
-                                                           storj_download_state_t *dwn_state,
                                                            storj_progress_cb progress_cb,
                                                            storj_finished_download_cb finished_cb)
 {
@@ -1993,7 +1984,7 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
-    state->handle = dwn_state;
+    state->handle = handle;
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
 

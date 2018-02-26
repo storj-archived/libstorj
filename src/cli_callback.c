@@ -760,7 +760,7 @@ static int download_file_resume(storj_env_t *env, char *bucket_id,
     storj_download_state_t *state = cli_api->handle;
     storj_download_state_deserialize(state, temp_file);
     state = storj_bridge_resume_file(env, bucket_id,
-                                     file_id, fd, cli_api,
+                                     file_id, fd,
                                      cli_api->handle,
                                      progress_cb,
                                      download_file_complete);
