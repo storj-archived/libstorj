@@ -296,10 +296,39 @@ static void append_pointers_to_state(storj_download_state_t *state,
     int length = json_object_array_length(res);
 
     if (length == 0) {
+        storj_download_state_t *resume_state = state->handle;
+
+        for (int i = 0x00; i < resume_state->total_pointers; i++) {
+            for (int j = 0x00; j < state->total_pointers; j++) {
+                #if 0
+                printf("\n[%s][%s][%d] pointers comparision of resume[%d] & state[%d]\n",
+                       __FILE__, __FUNCTION__, __LINE__, i, j);
+                printf("resume_state->pointers[%d].hard_hash = %s \n", i,resume_state->pointers[i].shard_hash);
+                printf("state->pointers[%d].shard_hash = %s \n", j, state->pointers[j].shard_hash);
+                printf("[%s][%s][%d] resume state pointer state = %d\n",
+                       __FILE__, __FUNCTION__, __LINE__, resume_state->pointers[i].status);
+                #endif
+
+                #if 1
+                if (strcmp(resume_state->pointers[i].shard_hash, state->pointers[j].shard_hash) == 0x00)
+                {
+                    if (resume_state->pointers[i].status == POINTER_DOWNLOADED) {
+                        state->pointers[j].status = resume_state->pointers[i].status;
+                    }
+                    printf("[%s][%s][%d] resume state pointer state = %d\n",
+                           __FILE__, __FUNCTION__, __LINE__, resume_state->pointers[i].status);
+                    printf("[%s][%s][%d] state pointer state = %d\n",
+                           __FILE__, __FUNCTION__, __LINE__, state->pointers[j].status);
+                }
+                #endif
+            }
+        }
+
         state->log->debug(state->env->log_options,
                           state->handle,
                           "Finished requesting pointers");
         state->pointers_completed = true;
+        state->handle = NULL;
     } else if (length > 0) {
 
         int prev_total_pointers = state->total_pointers;
@@ -335,9 +364,9 @@ static void append_pointers_to_state(storj_download_state_t *state,
             }
         }
     }
-
 }
 
+static void queue_request_pointers(storj_download_state_t *state);
 static void after_request_pointers(uv_work_t *work, int status)
 {
     json_request_download_t *req = work->data;
@@ -382,7 +411,11 @@ static void after_request_pointers(uv_work_t *work, int status)
         append_pointers_to_state(state, req->response);
     }
 
-    queue_next_work(state);
+    if (state->handle == NULL) {
+        queue_next_work(state);
+    } else {
+        queue_request_pointers(state);
+    }
 
     if (req->response) {
         json_object_put(req->response);
@@ -808,8 +841,6 @@ static void queue_request_shards(storj_download_state_t *state)
 
     int i = 0;
 
-    //printf("[%s][%s][%d] am here ... total shareds = %d, resolving shards = %d\n",
-     //      __FILE__, __FUNCTION__, __LINE__, state->total_shards, state->resolving_shards);
     while (state->resolving_shards < state->download_max_concurrency &&
            i < state->total_pointers) {
 
@@ -1770,7 +1801,7 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished_cb(state->error_status,
                                state->destination,
                                state->handle);
-
+            printf("\n\n 1. am here ... \n\n") ;;
             free_download_state(state);
         }
 
@@ -1803,6 +1834,7 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished = true;
             state->finished_cb(state->error_status, state->destination, state->handle);
 
+            printf("\n\n 2. am here ... \n\n") ;;
             free_download_state(state);
             return;
         }
@@ -1819,7 +1851,6 @@ static void queue_next_work(storj_download_state_t *state)
     if (state->info) {
         queue_request_shards(state);
 
-        //printf("\n\n\n[%s][%s][%d] am here ... \n", __FILE__, __FUNCTION__, __LINE__);
         if (state->rs) {
             if (can_recover_shards(state)) {
                 queue_recover_shards(state);
@@ -1935,20 +1966,6 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
                                                            storj_progress_cb progress_cb,
                                                            storj_finished_download_cb finished_cb)
 {
-    storj_download_state_t *resume_state = dwn_state;
-
-    // setup download state
-    resume_state->file_id = file_id;
-    resume_state->bucket_id = bucket_id;
-    resume_state->destination = destination;
-    resume_state->progress_cb = progress_cb;
-    resume_state->finished_cb = finished_cb;
-    resume_state->decrypt_key = NULL;
-    resume_state->decrypt_ctr = NULL;
-    resume_state->error_status = STORJ_TRANSFER_OK;
-    resume_state->download_max_concurrency = STORJ_DOWNLOAD_CONCURRENCY;
-    resume_state->pointers_completed = false;
-
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
     if (!state) {
         return NULL;
@@ -1986,15 +2003,12 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
-    state->handle = handle;
+    state->handle = dwn_state;
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
 
     /* To open up the bridge */
     queue_request_pointers(state);
-
-    // start download
-    queue_next_work(resume_state);
 
     return state;
 }

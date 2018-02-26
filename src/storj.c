@@ -1979,6 +1979,13 @@ static void set_pointer_from_json(storj_download_state_t *state,
     }
     char *hash = (char *)json_object_get_string(hash_value);
 
+    struct json_object *status_value;
+    if (!json_object_object_get_ex(json, "status", &status_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    int *status = (char *)json_object_get_int(status_value);
+
     struct json_object *size_value;
     if (!json_object_object_get_ex(json, "size", &size_value)) {
         state->error_status = STORJ_BRIDGE_JSON_ERROR;
@@ -2059,6 +2066,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
     p->downloaded_size = 0;
     p->index = index;
     p->farmer_port = port;
+    p->status = status;
 
     if (is_replaced) {
         free(p->token);

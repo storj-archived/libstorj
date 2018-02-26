@@ -468,6 +468,7 @@ static void verify_upload_files(void *handle)
 static void download_file_complete(int status, FILE *fd, void *handle)
 {
     cli_api_t *cli_api = handle;
+#if 0
     if (cli_api->curr_cmd_req != NULL) {
         if (strcmp(cli_api->curr_cmd_req, "download-file-req") == 0x00) {
             cli_api->rcvd_cmd_resp = "download-file-resp";
@@ -475,7 +476,12 @@ static void download_file_complete(int status, FILE *fd, void *handle)
             cli_api->rcvd_cmd_resp = "download-file-resume-resp";
         }
     }
+#endif
 
+    printf("\n\n 470. am here ... curr cmd = %s  \n\n", handle);
+    printf("\n\n 470. am here ... curr cmd = %s  \n\n", cli_api->curr_cmd_req);
+
+    cli_api->rcvd_cmd_resp = "download-file-resume-resp";
     printf("\n");
     fclose(fd);
     if (status) {
@@ -1061,7 +1067,6 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 cli_api->excp_cmd_resp = "download-file-resume-resp";
                 download_file_resume(cli_api->env, cli_api->bucket_id, cli_api->file_id,
                               cli_api->dst_file, cli_api);
-                storj_download_state_t *state1 = cli_api->handle;
                 }
             else if ((cli_api->next_cmd_req != NULL) &&
                      (strcmp(cli_api->next_cmd_req, "download-files-req") == 0x00)) {
