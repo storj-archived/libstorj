@@ -26,6 +26,10 @@ storj_encrypt_options_t encrypt_options = {
     .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
 };
 
+storj_encrypt_options_t encrypt_options_null_mnemonic = {
+    .mnemonic = NULL
+};
+
 storj_http_options_t http_options = {
     .user_agent = "storj-test",
     .low_speed_limit = 0,
@@ -286,6 +290,18 @@ void check_resolve_file(int status, FILE *fd, void *handle)
         printf("Download failed: %s\n", storj_strerror(status));
     } else {
         pass("storj_bridge_resolve_file");
+    }
+}
+
+void check_resolve_file_null_mnemonic(int status, FILE *fd, void *handle)
+{
+    fclose(fd);
+    assert(handle == NULL);
+    if (status == STORJ_FILE_DECRYPTION_ERROR) {
+        pass("storj_bridge_resolve_file_null_mnemonic");
+    } else {
+        fail("storj_bridge_resolve_file_null_mnemonic");
+        printf("Status: %d\n", status);
     }
 }
 
@@ -635,12 +651,12 @@ int test_upload_cancel()
     return 0;
 }
 
-int test_download()
+int _test_download(storj_encrypt_options_t *encrypt_options, void *cb_finished)
 {
 
     // initialize event loop and environment
     storj_env_t *env = storj_init_env(&bridge_options,
-                                      &encrypt_options,
+                                      encrypt_options,
                                       &http_options,
                                       &log_options);
     assert(env != NULL);
@@ -660,7 +676,7 @@ int test_download()
                                                               download_fp,
                                                               NULL,
                                                               check_resolve_file_progress,
-                                                              check_resolve_file);
+                                                              cb_finished);
 
     if (!state || state->error_status != 0) {
         return 1;
@@ -675,6 +691,16 @@ int test_download()
     storj_destroy_env(env);
 
     return 0;
+}
+
+int test_download()
+{
+    return _test_download(&encrypt_options, check_resolve_file);
+}
+
+int test_download_null_mnemonic()
+{
+    return _test_download(&encrypt_options_null_mnemonic, check_resolve_file_null_mnemonic);
 }
 
 int test_download_cancel()
@@ -1652,6 +1678,7 @@ int main(void)
 
     printf("Test Suite: Downloads\n");
     test_download();
+    test_download_null_mnemonic();
     test_download_cancel();
     printf("\n");
 

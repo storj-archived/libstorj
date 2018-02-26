@@ -657,6 +657,9 @@ static void delete_file_callback(uv_work_t *work_req, int status)
     } else if (req->status_code == 401) {
         printf("Invalid user credentials.\n");
         goto cleanup;
+    } else if (req->status_code == 403) {
+        printf("Forbidden, user not active.\n");
+        goto cleanup;
     } else {
         printf("Failed to remove file from bucket. (%i)\n", req->status_code);
         goto cleanup;
@@ -684,6 +687,9 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
         printf("Bucket was successfully removed.\n");
     } else if (req->status_code == 401) {
         printf("Invalid user credentials.\n");
+        goto cleanup;
+    } else if (req->status_code == 403) {
+        printf("Forbidden, user not active.\n");
         goto cleanup;
     } else {
         printf("Failed to destroy bucket. (%i)\n", req->status_code);
@@ -779,6 +785,8 @@ void get_buckets_callback(uv_work_t *work_req, int status)
 
     if (req->status_code == 401) {
        printf("Invalid user credentials.\n");
+    } else if (req->status_code == 403) {
+       printf("Forbidden, user not active.\n");
     } else if (req->status_code != 200 && req->status_code != 304) {
         printf("Request failed with status code: %i\n", req->status_code);
     } else if (req->total_buckets == 0) {
@@ -809,6 +817,9 @@ void get_bucket_id_callback(uv_work_t *work_req, int status)
     if (req->status_code == 401) {
         printf("Invalid user credentials.\n");
         goto cleanup;
+    } else if (req->status_code == 403) {
+        printf("Forbidden, user not active.\n");
+        goto cleanup;
     } else if (req->status_code != 200 && req->status_code != 304) {
         printf("Request failed with status code: %i\n", req->status_code);
         goto cleanup;
@@ -838,6 +849,9 @@ void get_file_id_callback(uv_work_t *work_req, int status)
 
     if (req->status_code == 401) {
         printf("Invalid user credentials.\n");
+        goto cleanup;
+    } else if (req->status_code == 403) {
+        printf("Forbidden, user not active.\n");
         goto cleanup;
     } else if (req->status_code != 200 && req->status_code != 304) {
         printf("Request failed with status code: %i\n", req->status_code);
@@ -874,6 +888,9 @@ void list_files_callback(uv_work_t *work_req, int status)
         goto cleanup;
     } else if (req->status_code == 401) {
         printf("Invalid user credentials.\n");
+        goto cleanup;
+    } else if (req->status_code == 403) {
+        printf("Forbidden, user not active.\n");
         goto cleanup;
     } else if (req->status_code != 200) {
         printf("Request failed with status code: %i\n", req->status_code);

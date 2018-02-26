@@ -250,6 +250,8 @@ static void list_files_request_worker(uv_work_t *work)
     struct json_object *created;
     struct json_object *hmac;
     struct json_object *hmac_value;
+    struct json_object *erasure;
+    struct json_object *index;
 
     for (int i = 0; i < num_files; i++) {
         file = json_object_array_get_idx(req->response, i);
@@ -262,14 +264,16 @@ static void list_files_request_worker(uv_work_t *work)
         json_object_object_get_ex(file, "created", &created);
         json_object_object_get_ex(file, "hmac", &hmac);
         json_object_object_get_ex(hmac, "value", &hmac_value);
+        json_object_object_get_ex(file, "erasure", &erasure);
+        json_object_object_get_ex(file, "index", &index);
 
         storj_file_meta_t *file = &req->files[i];
 
         file->created = json_object_get_string(created);
         file->mimetype = json_object_get_string(mimetype);
         file->size = json_object_get_int64(size);
-        file->erasure = NULL;
-        file->index = NULL;
+        file->erasure = json_object_get_string(erasure);
+        file->index = json_object_get_string(index);
         file->hmac = json_object_get_string(hmac_value);
         file->id = json_object_get_string(id);
         file->bucket_id = json_object_get_string(bucket_id);
@@ -320,6 +324,8 @@ static void get_file_info_request_worker(uv_work_t *work)
     struct json_object *created;
     struct json_object *hmac;
     struct json_object *hmac_value;
+    struct json_object *erasure;
+    struct json_object *index;
 
     json_object_object_get_ex(req->response, "filename", &filename);
     json_object_object_get_ex(req->response, "mimetype", &mimetype);
@@ -329,13 +335,15 @@ static void get_file_info_request_worker(uv_work_t *work)
     json_object_object_get_ex(req->response, "created", &created);
     json_object_object_get_ex(req->response, "hmac", &hmac);
     json_object_object_get_ex(hmac, "value", &hmac_value);
+    json_object_object_get_ex(req->response, "erasure", &erasure);
+    json_object_object_get_ex(req->response, "index", &index);
 
     req->file = malloc(sizeof(storj_file_meta_t));
     req->file->created = json_object_get_string(created);
     req->file->mimetype = json_object_get_string(mimetype);
     req->file->size = json_object_get_int64(size);
-    req->file->erasure = NULL;
-    req->file->index = NULL;
+    req->file->erasure = json_object_get_string(erasure);
+    req->file->index = json_object_get_string(index);
     req->file->hmac = json_object_get_string(hmac_value);
     req->file->id = json_object_get_string(id);
     req->file->bucket_id = json_object_get_string(bucket_id);
