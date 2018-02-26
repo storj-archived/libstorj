@@ -467,8 +467,9 @@ static void verify_upload_files(void *handle)
 
 static void download_file_complete(int status, FILE *fd, void *handle)
 {
-    cli_api_t *cli_api = handle;
-#if 0
+    storj_download_state_t *state = handle;
+    cli_api_t *cli_api = state->handle;
+
     if (cli_api->curr_cmd_req != NULL) {
         if (strcmp(cli_api->curr_cmd_req, "download-file-req") == 0x00) {
             cli_api->rcvd_cmd_resp = "download-file-resp";
@@ -476,12 +477,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
             cli_api->rcvd_cmd_resp = "download-file-resume-resp";
         }
     }
-#endif
 
-    printf("\n\n 470. am here ... curr cmd = %s  \n\n", handle);
-    printf("\n\n 470. am here ... curr cmd = %s  \n\n", cli_api->curr_cmd_req);
-
-    cli_api->rcvd_cmd_resp = "download-file-resume-resp";
     printf("\n");
     fclose(fd);
     if (status) {

@@ -1546,6 +1546,7 @@ int main(int argc, char **argv)
             cli_api->file_name = argv[command_index + 2];
             cli_api->dst_file  = argv[command_index + 3];
             cli_api->handle = state;
+            state->handle = cli_api;
             cli_download_file_resume(cli_api);
         }else {
             printf("'%s' is not a storj command. See 'storj --help'\n\n",

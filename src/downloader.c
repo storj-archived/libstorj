@@ -300,15 +300,6 @@ static void append_pointers_to_state(storj_download_state_t *state,
 
         for (int i = 0x00; i < resume_state->total_pointers; i++) {
             for (int j = 0x00; j < state->total_pointers; j++) {
-                #if 0
-                printf("\n[%s][%s][%d] pointers comparision of resume[%d] & state[%d]\n",
-                       __FILE__, __FUNCTION__, __LINE__, i, j);
-                printf("resume_state->pointers[%d].hard_hash = %s \n", i,resume_state->pointers[i].shard_hash);
-                printf("state->pointers[%d].shard_hash = %s \n", j, state->pointers[j].shard_hash);
-                printf("[%s][%s][%d] resume state pointer state = %d\n",
-                       __FILE__, __FUNCTION__, __LINE__, resume_state->pointers[i].status);
-                #endif
-
                 #if 1
                 if (strcmp(resume_state->pointers[i].shard_hash, state->pointers[j].shard_hash) == 0x00)
                 {
@@ -328,7 +319,6 @@ static void append_pointers_to_state(storj_download_state_t *state,
                           state->handle,
                           "Finished requesting pointers");
         state->pointers_completed = true;
-        state->handle = NULL;
     } else if (length > 0) {
 
         int prev_total_pointers = state->total_pointers;
@@ -411,7 +401,7 @@ static void after_request_pointers(uv_work_t *work, int status)
         append_pointers_to_state(state, req->response);
     }
 
-    if (state->handle == NULL) {
+    if (state->pointers_completed == true) {
         queue_next_work(state);
     } else {
         queue_request_pointers(state);
