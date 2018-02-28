@@ -747,6 +747,51 @@ static void log_formatter_error(storj_log_options_t *options, void *handle,
     va_end(args);
 }
 
+static int get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_path)
+{
+    #define MAXLEN 200
+    char procpath[MAXLEN + 1] = {0x00};
+    int fd = -1;
+
+#ifdef __APPLE__
+    if (fcntl(fileno(file_descriptor), F_GETPATH, file_path) != -1) {
+        printf("\n3. download destination file path = %s\n", file_path);
+    } else {
+        printf("[%s][%s][%d] Invalid file path \n", __FILE__, __FUNCTION__, __LINE__);
+        return -1;
+    }
+#else
+    /*
+     * Get the low-level file descriptor of the open file
+     */
+    fd = fileno(file_descriptor);
+    if (fd < 0) {
+        printf("[%s][%s][%d] Invalid file descriptor \n", __FILE__, __FUNCTION__, __LINE__);
+        return -1;
+    }
+
+    /*
+     * Construct a string with the /proc path of the file
+     * descriptor (which is a symbolic link to the real
+     * file).
+     */
+    snprintf(procpath, MAXLEN, "/proc/self/fd/%d", fd);
+
+    /*
+     * Get the path the symlink is pointing to.
+     */
+    if (readlink(procpath, file_path, (size_t) MAXLEN) < 0) {
+        printf("[%s][%s][%d] Invalid file path \n", __FILE__, __FUNCTION__, __LINE__);
+        return -1;
+    }
+#endif
+
+    /* Output the full path of the temp-file opened by tmpfile() */
+    printf("The temp file is: %s\n", file_path);
+
+    return 0;
+}
+
 STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
                                  storj_encrypt_options_t *encrypt_options,
                                  storj_http_options_t *http_options,
@@ -1786,14 +1831,15 @@ typedef enum {
 
 STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
 {
-    char filePath[PATH_MAX];
-    if (fcntl(fileno(state->destination), F_GETPATH, filePath) != -1) {
+    char filePath[PATH_MAX] = {0x00};
+
+    if (get_filepath_from_filedescriptor(state->destination, filePath) == 0x00)
+    {
+        printf("1. download destination file path = %s\n", filePath);
         strcat(filePath,".json");
+        printf("2. download destination file path = %s\n", filePath);
         unlink(filePath);
-        printf("download destination file path = %s\n", filePath);
     } else {
-        printf("[%s][%d] Unable to create download json file \n",
-               __FUNCTION__, __LINE__);
         return -1;
     }
 
