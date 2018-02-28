@@ -1992,7 +1992,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
         state->error_status = STORJ_BRIDGE_JSON_ERROR;
         return;
     }
-    int *status = (char *)json_object_get_int(status_value);
+    int status = json_object_get_int(status_value);
 
     struct json_object *size_value;
     if (!json_object_object_get_ex(json, "size", &size_value)) {

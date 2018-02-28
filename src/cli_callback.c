@@ -471,10 +471,10 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     cli_api_t *cli_api = state->handle;
 
     if (cli_api->curr_cmd_req != NULL) {
-        if (strcmp(cli_api->curr_cmd_req, "download-file-req") == 0x00) {
-            cli_api->rcvd_cmd_resp = "download-file-resp";
-        } else if (strcmp(cli_api->curr_cmd_req, "download-file-resume-req") == 0x00) {
+        if (strcmp(cli_api->curr_cmd_req, "download-file-resume-req") == 0x00) {
             cli_api->rcvd_cmd_resp = "download-file-resume-resp";
+        } else {
+            cli_api->rcvd_cmd_resp = "download-file-resp";
         }
     }
 
@@ -566,10 +566,12 @@ static int download_file(storj_env_t *env, char *bucket_id,
         progress_cb = file_progress;
     }
 
-    storj_download_state_t *state = storj_bridge_resolve_file(env, bucket_id,
-                                                              file_id, fd, handle,
-                                                              progress_cb,
-                                                              download_file_complete);
+    cli_api_t *cli_api = handle;
+    storj_download_state_t *state = cli_api->handle;
+    state = storj_bridge_resolve_file(env, bucket_id,
+                                      file_id, fd, cli_api->handle,
+                                      progress_cb,
+                                      download_file_complete);
     if (!state) {
         return 1;
     }
@@ -1131,7 +1133,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                         strcat(temp_path, token[1]);
                         fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, temp_path);
                         cli_api->xfer_count++;
-
+                        cli_api->dst_file = strdup(temp_path);
                         download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id, temp_path, cli_api);
                     } else {
                         printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
