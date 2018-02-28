@@ -521,18 +521,39 @@ static void download_signal_handler(uv_signal_t *req, int signum)
 static int download_file(storj_env_t *env, char *bucket_id,
                          char *file_id, char *path, void *handle)
 {
+    cli_api_t *cli_api = handle;
+    storj_download_state_t *state = cli_api->handle;
     FILE *fd = NULL;
+    char temp_file[BUFSIZ] = {0x00};
 
     if (path) {
         char user_input[BUFSIZ];
         memset(user_input, '\0', BUFSIZ);
 
         if (access(path, F_OK) != -1 ) {
-            printf("Warning: File already exists at path [%s].\n", path);
-            while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0) {
-                memset(user_input, '\0', BUFSIZ);
-                printf("Would you like to overwrite [%s]: [y/n] ", path);
-                get_input(user_input);
+            memcpy(temp_file, path, strlen(path));
+            strcat(temp_file, ".json");
+            if (access(temp_file, F_OK) != -1) {
+                printf("Warning: Partially downloaded file already exists at path [%s].\n", path);
+                while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0) {
+                    memset(user_input, '\0', BUFSIZ);
+                    printf("Would you like to continue to download [%s]: [y/n] ", path);
+                    get_input(user_input);
+                }
+                if (strcmp(user_input, "y") == 0x00) {
+                    printf("deserialize %s \n", temp_file);
+                    storj_download_state_deserialize(state, temp_file);
+                }
+            } else {
+                printf("Warning: File already exists at path [%s].\n", path);
+                while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0) {
+                    memset(user_input, '\0', BUFSIZ);
+                    printf("Would you like to overwrite [%s]: [y/n] ", path);
+                    get_input(user_input);
+                }
+                if (strcmp(user_input, "y") == 0x00) {
+                    unlink(path);
+                }
             }
 
             if (strcmp(user_input, "n") == 0) {
@@ -543,7 +564,6 @@ static int download_file(storj_env_t *env, char *bucket_id,
                 return 1;
             }
 
-            unlink(path);
         }
 
         fd = fopen(path, "w+");
@@ -566,8 +586,6 @@ static int download_file(storj_env_t *env, char *bucket_id,
         progress_cb = file_progress;
     }
 
-    cli_api_t *cli_api = handle;
-    storj_download_state_t *state = cli_api->handle;
     state = storj_bridge_resolve_file(env, bucket_id,
                                       file_id, fd, cli_api->handle,
                                       progress_cb,
