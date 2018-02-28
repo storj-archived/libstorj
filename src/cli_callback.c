@@ -501,7 +501,6 @@ static void download_file_complete(int status, FILE *fd, void *handle)
         }
         printf("Download Success!\n");
     }
-    free(cli_api->dst_file);
     queue_next_cmd_req(cli_api);
 }
 
