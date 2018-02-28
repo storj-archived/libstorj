@@ -1781,7 +1781,6 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished_cb(state->error_status,
                                state->destination,
                                state->handle);
-            printf("\n\n 1. am here ... \n\n") ;;
             free_download_state(state);
         }
 
@@ -1814,7 +1813,6 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished = true;
             state->finished_cb(state->error_status, state->destination, state->handle);
 
-            printf("\n\n 2. am here ... \n\n") ;;
             free_download_state(state);
             return;
         }
