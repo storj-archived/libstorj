@@ -1996,8 +1996,11 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
         i++;
     }
 
+    //determine_decryption_key(state);
     printf("downloader.c state->pointers = 0x%X\n", state->pointers);
+    printf("downloader.c state->handle = 0x%X\n", state->handle);
     // start download
-    queue_next_work(state);
+    //queue_next_work(state);
+    queue_request_info(state);
     return state;
 }

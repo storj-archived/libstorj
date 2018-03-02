@@ -2228,14 +2228,33 @@ STORJ_API int storj_download_state_deserialize(storj_download_state_t *state, ch
     jdwnld_obj = json_object_from_file(file_path);
 
     struct json_object *jstorj_download_state_t;
-    if (json_object_object_get_ex(jdwnld_obj, "storj_download_state_t", &jstorj_download_state_t))
-    {
+    if (json_object_object_get_ex(jdwnld_obj, "storj_download_state_t", &jstorj_download_state_t)) {
         /* setup download state */
         json_object_object_get_ex(jstorj_download_state_t, "file_id", &jdwnld_obj);
         state->file_id = json_object_get_string(jdwnld_obj);
 
         json_object_object_get_ex(jstorj_download_state_t, "bucket_id", &jdwnld_obj);
         state->bucket_id = json_object_get_string(jdwnld_obj);
+
+        /* setup the storj_file_meta_t */
+        struct json_object *jstorj_file_meta_t;
+        if (json_object_object_get_ex(jstorj_download_state_t, "storj_file_meta_t", &jstorj_file_meta_t)) {
+            storj_file_meta_t *file = malloc(sizeof(storj_file_meta_t));
+            memset(file, 0x00, sizeof(storj_file_meta_t));
+            state->info = file;
+
+            /* get file hmac */
+            json_object_object_get_ex(jstorj_file_meta_t, "hmac", &jdwnld_obj);
+            state->info->hmac = strdup(json_object_get_string(jdwnld_obj));
+
+            /* get file index */
+            json_object_object_get_ex(jstorj_file_meta_t, "index", &jdwnld_obj);
+            state->info->index = strdup(json_object_get_string(jdwnld_obj));
+        } else {
+            printf("hello hello groot inside deserilalize \n");
+            return -1;
+        }
+
 
         struct json_object *jstorj_pointer_t;
         json_object_object_get_ex(jstorj_download_state_t, "storj_pointer_t", &jstorj_pointer_t);

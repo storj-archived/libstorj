@@ -470,13 +470,8 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     storj_download_state_t *state = handle;
     cli_api_t *cli_api = state->handle;
 
-    if (cli_api->curr_cmd_req != NULL) {
-        if (strcmp(cli_api->curr_cmd_req, "download-file-resume-req") == 0x00) {
-            cli_api->rcvd_cmd_resp = "download-file-resume-resp";
-        } else {
-            cli_api->rcvd_cmd_resp = "download-file-resp";
-        }
-    }
+    printf("cli_download.c cli_api= 0x%X\n", cli_api);
+    cli_api->rcvd_cmd_resp = "download-file-resp";
 
     printf("\n");
     fclose(fd);
@@ -495,6 +490,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     } else {
         char tempFile[256] = {0x00};
         memcpy(tempFile, cli_api->dst_file, strlen(cli_api->dst_file));
+        printf("cli_api->dst_file = %s\n", cli_api->dst_file);
         strcat(tempFile, ".json");
         if (access(tempFile, F_OK) != -1 ) {
             unlink(tempFile);
@@ -524,6 +520,7 @@ static int download_file(storj_env_t *env, char *bucket_id,
     storj_download_state_t *state = cli_api->handle;
     FILE *fd = NULL;
     char temp_file[BUFSIZ] = {0x00};
+    bool dwn_resume = false;
 
     if (path) {
         char user_input[BUFSIZ];
@@ -542,6 +539,7 @@ static int download_file(storj_env_t *env, char *bucket_id,
                 if (strcmp(user_input, "y") == 0x00) {
                     printf("deserialize %s \n", temp_file);
                     storj_download_state_deserialize(state, temp_file);
+                    dwn_resume = true;
                 }
             } else {
                 printf("Warning: File already exists at path [%s].\n", path);
@@ -585,10 +583,21 @@ static int download_file(storj_env_t *env, char *bucket_id,
         progress_cb = file_progress;
     }
 
-    state = storj_bridge_resolve_file(env, bucket_id,
-                                      file_id, fd, cli_api->handle,
-                                      progress_cb,
-                                      download_file_complete);
+    if (dwn_resume == true) {
+        printf("\n***** AM RESUMING DOWNLOAD *****\n");
+        state = storj_bridge_resume_file(env, bucket_id,
+                                         file_id, fd,
+                                         cli_api->handle,
+                                         progress_cb,
+                                         download_file_complete);
+    } else {
+        printf("\n***** FRESH DOWNLOAD *****\n");
+        state = storj_bridge_resolve_file(env, bucket_id,
+                                          file_id, fd, cli_api->handle,
+                                          progress_cb,
+                                          download_file_complete);
+    }
+
     if (!state) {
         return 1;
     }
@@ -730,6 +739,8 @@ static int download_file_resume(storj_env_t *env, char *bucket_id,
     /** @TODO [ASK] -> handle to see if the user wants to download fresh again or
      * resume previously interrupted file
      */
+    cli_api_t *cli_api = handle;
+    storj_download_state_t *state = cli_api->handle;
     char temp_file[BUFSIZ] = {0x00};
 
     FILE *fd = NULL;
@@ -743,6 +754,7 @@ static int download_file_resume(storj_env_t *env, char *bucket_id,
             strcat(temp_file, ".json");
             if (access(temp_file, F_OK) != -1 ) {
                 printf("Warning: File already exists at path [%s].\n", path);
+                storj_download_state_deserialize(state, temp_file);
                 while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0) {
                     memset(user_input, '\0', BUFSIZ);
                     printf("Would you like to overwrite [%s]: [y/n] ", path);
@@ -753,7 +765,7 @@ static int download_file_resume(storj_env_t *env, char *bucket_id,
             if (strcmp(user_input, "n") == 0) {
                 printf("\nCanceled overwriting of [%s].\n", path);
                 cli_api_t *cli_api = handle;
-                cli_api->rcvd_cmd_resp = "download-file-resume-resp";
+                cli_api->rcvd_cmd_resp = "download-file-resp";
                 queue_next_cmd_req(cli_api);
                 return 1;
             }
@@ -781,9 +793,6 @@ static int download_file_resume(storj_env_t *env, char *bucket_id,
         progress_cb = file_progress;
     }
 
-    cli_api_t *cli_api = handle;
-    storj_download_state_t *state = cli_api->handle;
-    storj_download_state_deserialize(state, temp_file);
     state = storj_bridge_resume_file(env, bucket_id,
                                      file_id, fd,
                                      cli_api->handle,
@@ -1294,7 +1303,7 @@ int cli_download_file_resume(cli_api_t *cli_api)
 {
     int ret = 0x00;
     ret = cli_get_file_id(cli_api);
-    cli_api->final_cmd_req  = "download-file-resume-req";
+    cli_api->final_cmd_req  = "download-file-req";
 
     return ret;
 }
