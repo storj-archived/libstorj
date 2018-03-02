@@ -755,7 +755,7 @@ static int get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_pa
 
 #ifdef __APPLE__
     if (fcntl(fileno(file_descriptor), F_GETPATH, file_path) != -1) {
-        printf("\n3. download destination file path = %s\n", file_path);
+        printf("\n *** IAM MacOS *** download destination file path = %s\n", file_path);
     } else {
         printf("[%s][%s][%d] Invalid file path \n", __FILE__, __FUNCTION__, __LINE__);
         return -1;
@@ -785,9 +785,6 @@ static int get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_pa
         return -1;
     }
 #endif
-
-    /* Output the full path of the temp-file opened by tmpfile() */
-    printf("The temp file is: %s\n", file_path);
 
     return 0;
 }
@@ -1835,9 +1832,7 @@ STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
 
     if (get_filepath_from_filedescriptor(state->destination, filePath) == 0x00)
     {
-        printf("1. download destination file path = %s\n", filePath);
         strcat(filePath,".json");
-        printf("2. download destination file path = %s\n", filePath);
         unlink(filePath);
     } else {
         return -1;
@@ -2203,6 +2198,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
         if (state->total_pointers > 0) {
             state->pointers = realloc(state->pointers,
                                       total_pointers * sizeof(storj_pointer_t));
+            printf("storj.c state->pointers = 0x%X\n", state->pointers);
         }
         if (!state->pointers) {
             state->error_status = STORJ_MEMORY_ERROR;
