@@ -296,17 +296,18 @@ static void append_pointers_to_state(storj_download_state_t *state,
     int length = json_object_array_length(res);
 
     if (length == 0) {
-        storj_download_state_t *resume_state = state->handle;
-        for (int i = 0x00; i < resume_state->total_pointers; i++) {
-            for (int j = 0x00; j < state->total_pointers; j++) {
-                if (strcmp(resume_state->pointers[i].shard_hash, state->pointers[j].shard_hash) == 0x00) {
-                    if (resume_state->pointers[i].status == POINTER_DOWNLOADED) {
-                        state->pointers[j].status = resume_state->pointers[i].status;
+#if 0
+            storj_download_state_t *resume_state = state->handle;
+            for (int i = 0x00; i < resume_state->total_pointers; i++) {
+                for (int j = 0x00; j < state->total_pointers; j++) {
+                    if (strcmp(resume_state->pointers[i].shard_hash, state->pointers[j].shard_hash) == 0x00) {
+                        if (resume_state->pointers[i].status == POINTER_DOWNLOADED) {
+                            state->pointers[j].status = resume_state->pointers[i].status;
+                        }
                     }
                 }
             }
-        }
-
+#endif
         state->log->debug(state->env->log_options,
                           state->handle,
                           "Finished requesting pointers");
