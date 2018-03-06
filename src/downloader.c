@@ -1514,6 +1514,8 @@ static void recover_shards(uv_work_t *work)
     uint64_t bytes_decrypted = 0;
     size_t len = AES_BLOCK_SIZE * 8;
 
+    printf("[%s][%s][%d] am in ... \n", __FILE__, __FUNCTION__ , __LINE__);
+
     // Make sure that the file is the correct size before recovering
     // shards in case that the last shard is the one being recovered.
 #ifdef _WIN32
@@ -1672,6 +1674,7 @@ finish:
     }
 #endif
 
+    printf("[%s][%s][%d] am out ... \n", __FILE__, __FUNCTION__ , __LINE__);
 }
 
 static void queue_recover_shards(storj_download_state_t *state)
@@ -1832,6 +1835,7 @@ static void queue_next_work(storj_download_state_t *state)
 
         if (state->rs) {
             if (can_recover_shards(state)) {
+                printf("[%s][%s][%d] returned true\n", __FILE__, __FUNCTION__, __LINE__);
                 queue_recover_shards(state);
             } else {
                 state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
@@ -1873,6 +1877,7 @@ STORJ_API int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
     for (int i = 0; i < state->total_pointers; i++) {
         storj_pointer_t *pointer = &state->pointers[i];
         if (pointer->status == POINTER_BEING_DOWNLOADED) {
+            pointer->status = POINTER_CREATED;
             uv_cancel((uv_req_t *)pointer->work);
         }
     }
@@ -1888,6 +1893,7 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
                                                             storj_progress_cb progress_cb,
                                                             storj_finished_download_cb finished_cb)
 {
+    storj_download_state_t *state_cli = handle;
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
     if (!state) {
         return NULL;
@@ -1926,7 +1932,7 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
-    state->handle = handle;
+    state->handle = state_cli->handle;
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
 
@@ -1981,10 +1987,11 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
     //state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
-    state->handle = handle;
+    state->handle = state->handle;
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
 
+#if 0
     int i = 0x00;
     while (state->resolving_shards < state->download_max_concurrency &&
            i < state->total_pointers) {
@@ -1995,6 +2002,7 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
         }
         i++;
     }
+#endif
 
     //determine_decryption_key(state);
     printf("downloader.c state->pointers = 0x%X\n", state->pointers);
