@@ -1930,7 +1930,11 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
-    state->handle = state_cli->handle;
+    if(handle == NULL) {
+        state->handle = NULL;
+    } else {
+        state->handle = state_cli->handle;
+    }
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
 

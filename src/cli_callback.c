@@ -469,36 +469,42 @@ static void download_file_complete(int status, FILE *fd, void *handle)
 {
     //storj_download_state_t *state = handle;
     //cli_api_t *cli_api = state->handle;
-    cli_api_t *cli_api = handle;
+    if(handle != NULL) {
+        cli_api_t *cli_api = handle;
 
-    printf("cli_download.c cli_api= 0x%X\n", cli_api);
-    cli_api->rcvd_cmd_resp = "download-file-resp";
+        printf("cli_download.c cli_api= 0x%X\n", cli_api);
+        cli_api->rcvd_cmd_resp = "download-file-resp";
 
-    printf("\n");
-    fclose(fd);
-    if (status) {
-        // TODO send to stderr
-        switch(status) {
-            case STORJ_FILE_DECRYPTION_ERROR:
-                printf("Unable to properly decrypt file, please check " \
+        printf("\n");
+        fclose(fd);
+        if (status) {
+            // TODO send to stderr
+            switch (status) {
+                case STORJ_FILE_DECRYPTION_ERROR:
+                    printf("Unable to properly decrypt file, please check " \
                        "that the correct encryption key was " \
                        "imported correctly.\n\n");
-                break;
-            default:
-                printf("[%s][%d]Download failure: %s\n",
-                       __FUNCTION__, __LINE__, storj_strerror(status));
+                    break;
+                default:
+                    printf("[%s][%d]Download failure: %s\n",
+                           __FUNCTION__, __LINE__, storj_strerror(status));
+            }
+        } else {
+            char tempFile[256] = {0x00};
+            memcpy(tempFile, cli_api->dst_file, strlen(cli_api->dst_file));
+            printf("cli_api->dst_file = %s\n", cli_api->dst_file);
+            strcat(tempFile, ".json");
+            if (access(tempFile, F_OK) != -1) {
+                unlink(tempFile);
+            }
+            printf("Download Success!\n");
         }
-    } else {
-        char tempFile[256] = {0x00};
-        memcpy(tempFile, cli_api->dst_file, strlen(cli_api->dst_file));
-        printf("cli_api->dst_file = %s\n", cli_api->dst_file);
-        strcat(tempFile, ".json");
-        if (access(tempFile, F_OK) != -1 ) {
-            unlink(tempFile);
-        }
+        queue_next_cmd_req(cli_api);
+    }
+    else
+    {
         printf("Download Success!\n");
     }
-    queue_next_cmd_req(cli_api);
 }
 
 static void download_signal_handler(uv_signal_t *req, int signum)
