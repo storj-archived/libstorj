@@ -1095,6 +1095,22 @@ int main(int argc, char **argv)
         #endif
 
         if (strcmp(command, "download-file") == 0) {
+            storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+            memset(state, 0x00, sizeof(storj_download_state_t));
+            if (!state) {
+                status = 1;
+                goto end_program;
+            }
+            state->env = cli_api->env;
+            state->log = cli_api->env->log;
+            cli_api->bucket_name = argv[command_index + 1];
+            cli_api->file_name = argv[command_index + 2];
+            cli_api->dst_file  = argv[command_index + 3];
+            cli_api->handle = state;
+            state->handle = cli_api;
+            cli_download_file_resume(cli_api);
+
+            #if 0
             char *bucket_id = argv[command_index + 1];
             char *file_id = argv[command_index + 2];
             char *path = argv[command_index + 3];
@@ -1113,6 +1129,7 @@ int main(int argc, char **argv)
                 status = 1;
                 goto end_program;
             }
+            #endif
         } else if (strcmp(command, "upload-file") == 0) {
             char *bucket_id = argv[command_index + 1];
             char *path = argv[command_index + 2];

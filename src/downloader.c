@@ -393,11 +393,7 @@ static void after_request_pointers(uv_work_t *work, int status)
         append_pointers_to_state(state, req->response);
     }
 
-    if (state->pointers_completed == true) {
-        queue_next_work(state);
-    } else {
-        queue_request_pointers(state);
-    }
+    queue_next_work(state);
 
     if (req->response) {
         json_object_put(req->response);
@@ -1482,6 +1478,8 @@ static void after_recover_shards(uv_work_t *work, int status)
         // Recovery was successful and the pointers have been finished
         for (int i = 0; i < state->total_pointers; i++) {
             state->pointers[i].status = POINTER_FINISHED;
+            printf("[%s][%s][%d] pointer[%d] status = %d\n",
+                   __FILE__, __FUNCTION__, __LINE__, i, state->pointers[i].status);
             state->completed_shards += 1;
         }
     }

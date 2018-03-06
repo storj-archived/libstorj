@@ -582,6 +582,11 @@ static int download_file(storj_env_t *env, char *bucket_id,
         printf("Unable to open %s: %s\n", path, strerror(errno));
         return 1;
     }
+    else
+    {
+        printf("***\n [%s][%s][%d]the file descriptor value = %d\n",
+               __FILE__, __FUNCTION__, __LINE__, fileno(fd));
+    }
 
     uv_signal_t *sig = malloc(sizeof(uv_signal_t));
     uv_signal_init(env->loop, sig);
