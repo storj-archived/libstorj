@@ -549,6 +549,9 @@ int fetch_json(storj_http_options_t *http_options,
         curl_easy_setopt(curl, CURLOPT_HTTPGET, 1);
     } else if (0 == strcmp(method, "DELETE")) {
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+    } else if (0 == strcmp(method, "PATCH")) {
+        curl_easy_setopt(curl, CURLOPT_POST, 1);
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
     } else {
         return 1;
     }

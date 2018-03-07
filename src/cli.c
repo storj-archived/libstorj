@@ -34,53 +34,57 @@ extern int errno;
 #endif
 
 
-#define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
-    "These are common Storj commands for various situations:\n\n"       \
-    "setting up user profiles:\n"                                       \
-    "  register                      setup a new storj bridge user\n"   \
-    "  import-keys                   import existing user\n"            \
-    "  export-keys                   export bridge user, password and " \
-    "encryption keys\n\n"                                               \
-    "unix style commands:\n"                                            \
-    "  ls                            lists the available buckets\n"     \
-    "  ls <bucket-name>              lists the files in a bucket\n"     \
-    "  cp [-rR] <path> <uri>         upload files to a bucket "         \
-    "(e.g. storj cp -[rR] /<some-dir>/* storj://<bucket-name>/)\n"      \
-    "  cp [-rR] <uri> <path>         download files from a bucket "     \
-    "(e.g. storj cp -[rR] storj://<bucket-name>/ /<some-dir>/)\n"       \
-    "  mkbkt <bucket-name>           make a bucket\n"                   \
-    "  rm <bucket-name> <file-name>  remove a file from a bucket\n"     \
-    "  rm <bucket-name>              remove a bucket\n"                 \
-    "  lm <bucket-name> <file-name>  list mirrors\n\n"                  \
-    "working with buckets and files:\n"                                 \
-    "  list-buckets\n"                                                  \
-    "  list-files <bucket-id>\n"                                        \
-    "  remove-file <bucket-id> <file-id>\n"                             \
-    "  remove-bucket <bucket-id>\n"                                     \
-    "  add-bucket <name> \n"                                            \
-    "  list-mirrors <bucket-id> <file-id>\n"                            \
-    "  get-bucket-id <bucket-name>\n\n"                                 \
-    "uploading files:\n"                                                \
-    "  upload-file <bucket-id> <path>\n\n"                              \
-    "downloading files:\n"                                              \
-    "  download-file <bucket-id> <file-id> <path>\n\n"                  \
-    "bridge api information:\n"                                         \
-    "  get-info\n\n"                                                    \
-    "options:\n"                                                        \
-    "  -h, --help                    output usage information\n"        \
-    "  -v, --version                 output the version number\n"       \
-    "  -u, --url <url>               set the base url for the api\n"    \
-    "  -p, --proxy <url>             set the socks proxy "              \
-    "(e.g. <[protocol://][user:password@]proxyhost[:port]>)\n"          \
-    "  -l, --log <level>             set the log level (default 0)\n"   \
-    "  -d, --debug                   set the debug log level\n\n"       \
-    "environment variables:\n"                                          \
-    "  STORJ_KEYPASS                 imported user settings passphrase\n" \
-    "  STORJ_BRIDGE                  the bridge host "                  \
-    "(e.g. https://api.storj.io)\n"                                     \
-    "  STORJ_BRIDGE_USER             bridge username\n"                 \
-    "  STORJ_BRIDGE_PASS             bridge password\n"                 \
-    "  STORJ_ENCRYPTION_KEY          file encryption key\n\n"
+#define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"                 \
+    "These are common Storj commands for various situations:\n\n"                   \
+    "setting up user profiles:\n"                                                   \
+    "  register                                 setup a new storj bridge user\n"    \
+    "  import-keys                              import existing user\n"             \
+    "  export-keys                              export bridge user, password and "  \
+    "encryption keys\n\n"                                                           \
+    "unix style commands:\n"                                                        \
+    "  ls                                       lists the available buckets\n"      \
+    "  ls <bucket-name>                         lists the files in a bucket\n"      \
+    "  cp [-rR] <path> <uri>                    upload files to a bucket "          \
+    "(e.g. storj cp -[rR] /<some-dir>/* storj://<bucket-name>/)\n"                  \
+    "  cp [-rR] <uri> <path>                    download files from a bucket "      \
+    "(e.g. storj cp -[rR] storj://<bucket-name>/ /<some-dir>/)\n"                   \
+    "  mkbkt <bucket-name>                      make a bucket\n"                    \
+    "  rm <bucket-name>                         remove a bucket\n"                  \
+    "  rm <bucket-name> <file-name>             remove a file from a bucket\n"      \
+    "  mv <bucket-name> <new-name>              rename a bucket\n"                  \
+    "  mv <bucket-name> <file-name> <new-name>  rename a file in a bucket\n"        \
+    "  lm <bucket-name> <file-name>             list mirrors\n\n"                   \
+    "working with buckets and files:\n"                                             \
+    "  list-buckets\n"                                                              \
+    "  list-files <bucket-id>\n"                                                    \
+    "  add-bucket <name> \n"                                                        \
+    "  remove-bucket <bucket-id>\n"                                                 \
+    "  remove-file <bucket-id> <file-id>\n"                                         \
+    "  rename-bucket <bucket-id> <new-bucket-name> \n"                              \
+    "  rename-file <bucket-id> <file-id> <new-file-name> \n"                        \
+    "  list-mirrors <bucket-id> <file-id>\n"                                        \
+    "  get-bucket-id <bucket-name>\n\n"                                             \
+    "uploading files:\n"                                                            \
+    "  upload-file <bucket-id> <path>\n\n"                                          \
+    "downloading files:\n"                                                          \
+    "  download-file <bucket-id> <file-id> <path>\n\n"                              \
+    "bridge api information:\n"                                                     \
+    "  get-info\n\n"                                                                \
+    "options:\n"                                                                    \
+    "  -h, --help                               output usage information\n"         \
+    "  -v, --version                            output the version number\n"        \
+    "  -u, --url <url>                          set the base url for the api\n"     \
+    "  -p, --proxy <url>                        set the socks proxy "               \
+    "(e.g. <[protocol://][user:password@]proxyhost[:port]>)\n"                      \
+    "  -l, --log <level>                        set the log level (default 0)\n"    \
+    "  -d, --debug                              set the debug log level\n\n"        \
+    "environment variables:\n"                                                      \
+    "  STORJ_KEYPASS                            imported user settings passphrase\n"\
+    "  STORJ_BRIDGE                             the bridge host "                   \
+    "(e.g. https://api.storj.io)\n"                                                 \
+    "  STORJ_BRIDGE_USER                        bridge username\n"                  \
+    "  STORJ_BRIDGE_PASS                        bridge password\n"                  \
+    "  STORJ_ENCRYPTION_KEY                     file encryption key\n\n"
 
 
 #define CLI_VERSION "libstorj-2.0.0-beta2"
@@ -1163,6 +1167,18 @@ int main(int argc, char **argv)
             storj_bridge_delete_bucket(env, bucket_id, cli_api,
                                        delete_bucket_callback);
 
+        } else if (strcmp(command, "rename-bucket") == 0) {
+            char *bucket_id = argv[command_index + 1];
+            char *new_bucket_name = argv[command_index + 2];
+
+            if (!bucket_id || !new_bucket_name) {
+                printf("Missing arguments, expected: <bucket-id> <new-bucket-name>\n");
+                status = 1;
+                goto end_program;
+            }
+
+            storj_bridge_rename_bucket(env, bucket_id, new_bucket_name,
+                                       cli_api, rename_bucket_callback);
         } else if (strcmp(command, "remove-file") == 0) {
             char *bucket_id = argv[command_index + 1];
             char *file_id = argv[command_index + 2];
@@ -1174,7 +1190,19 @@ int main(int argc, char **argv)
             }
             storj_bridge_delete_file(env, bucket_id, file_id,
                                      cli_api, delete_file_callback);
+        } else if (strcmp(command, "rename-file") == 0) {
+            char *bucket_id = argv[command_index + 1];
+            char *file_id = argv[command_index + 2];
+            char *new_file_name = argv[command_index + 3];
 
+            if (!bucket_id || !file_id || !new_file_name) {
+                printf("Missing arguments, expected: <bucket-id> <file-id> <new-file-name>\n");
+                status = 1;
+                goto end_program;
+            }
+
+            storj_bridge_rename_file(env, bucket_id, file_id, new_file_name,
+                                     cli_api, rename_file_callback);
         } else if (strcmp(command, "list-buckets") == 0) {
             storj_bridge_get_buckets(env, NULL, get_buckets_callback);
         } else if (strcmp(command, "list-mirrors") == 0) {
@@ -1511,6 +1539,30 @@ int main(int argc, char **argv)
             }
             else {
                 cli_remove_bucket(cli_api);
+            }
+        } else if (strcmp(command, "mv") == 0) {
+            cli_api->bucket_name = argv[command_index + 1];
+            if (argc == 3) {
+                cli_api->file_name = NULL;
+                cli_api->new_name = NULL;
+            } else if (argc == 4) {
+                cli_api->file_name = NULL;
+                cli_api->new_name = argv[command_index + 2];
+            } else {
+                cli_api->file_name = argv[command_index + 2];
+                cli_api->new_name = argv[command_index + 3];
+            }
+
+            if (!cli_api->bucket_name || !cli_api->new_name) {
+                printf("Missing arguments, expected: <bucket-name> <new-name>\n");
+                status = 1;
+                goto end_program;
+            }
+
+            if (cli_api->file_name == NULL) {
+                cli_rename_bucket(cli_api);
+            } else {
+                cli_rename_file(cli_api);
             }
         } else if (strcmp(command, "ls") == 0x00) {
             if (argv[command_index + 1] != NULL) {

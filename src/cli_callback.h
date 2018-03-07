@@ -31,6 +31,7 @@ typedef struct cli_api {
     char bucket_id[256];
     char *file_name;
     char file_id[256];
+    char *new_name;
     char *file_path;     /**< local upload files directory path */
     FILE *src_fd;
     char src_list[256];      /**< file list ready to upload */

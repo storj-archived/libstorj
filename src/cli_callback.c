@@ -724,7 +724,10 @@ void get_bucket_id_callback(uv_work_t *work_req, int status)
     cli_api->last_cmd_req = cli_api->curr_cmd_req;
     cli_api->rcvd_cmd_resp = "get-bucket-id-resp";
 
-    if (req->status_code == 401) {
+    if (req->status_code == 404) {
+        printf("Bucket name [%s] does not exist.\n", req->bucket_name);
+        goto cleanup;
+    } else if (req->status_code == 401) {
         printf("Invalid user credentials.\n");
         goto cleanup;
     } else if (req->status_code == 403) {
@@ -757,7 +760,10 @@ void get_file_id_callback(uv_work_t *work_req, int status)
     cli_api->last_cmd_req = cli_api->curr_cmd_req;
     cli_api->rcvd_cmd_resp = "get-file-id-resp";
 
-    if (req->status_code == 401) {
+    if (req->status_code == 404) {
+        printf("File name [%s] does not exist.\n", req->file_name);
+        goto cleanup;
+    } else if (req->status_code == 401) {
         printf("Invalid user credentials.\n");
         goto cleanup;
     } else if (req->status_code == 403) {
@@ -775,7 +781,7 @@ void get_file_id_callback(uv_work_t *work_req, int status)
 
     queue_next_cmd_req(cli_api);
 
-    cleanup:
+cleanup:
     free(req);
     free(work_req);
 }
@@ -851,6 +857,85 @@ void list_files_callback(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+static void rename_bucket_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    rename_bucket_request_t *req = work_req->data;
+
+    cli_api_t *cli_api = req->handle;
+    cli_api->last_cmd_req = cli_api->curr_cmd_req;
+    cli_api->rcvd_cmd_resp = "rename-bucket-resp";
+
+    if (req->status_code == 409) {
+        printf("Cannot rename bucket [%s]. Name already exists.\n", req->bucket->name);
+        goto clean_variables;
+    } else if (req->status_code == 401) {
+        printf("Invalid user credentials.\n");
+        goto clean_variables;
+    } else if (req->status_code == 403) {
+        printf("Forbidden, user not active.\n");
+        goto clean_variables;
+    }
+
+    if (req->status_code != 200) {
+        printf("Failed to rename bucket. (%i)\n", req->status_code);
+        goto clean_variables;
+    }
+
+    if (req->bucket != NULL) {
+        printf("Bucket successfully renamed to %s\n", req->bucket->name);
+    } else {
+        printf("Failed to rename bucket.\n");
+    }
+
+clean_variables:
+    json_object_put(req->response);
+    free(req->bucket);
+    free(req);
+    free(work_req);
+}
+
+static void rename_file_callback(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    rename_file_request_t *req = work_req->data;
+
+    cli_api_t *cli_api = req->handle;
+    cli_api->last_cmd_req = cli_api->curr_cmd_req;
+    cli_api->rcvd_cmd_resp = "rename-file-resp";
+
+    if (req->status_code == 409) {
+        printf("Cannot rename file [%s]. Name already exists.\n", req->file->filename);
+        goto clean_variables;
+    } else if (req->status_code == 422) {
+        printf("Cannot rename file [%s]. Missing index.\n", req->file->filename);
+        goto clean_variables;
+    } else if (req->status_code == 401) {
+        printf("Invalid user credentials.\n");
+        goto clean_variables;
+    } else if (req->status_code == 403) {
+        printf("Forbidden, user not active.\n");
+        goto clean_variables;
+    }
+
+    if (req->status_code != 200) {
+        printf("Failed to rename file. (%i)\n", req->status_code);
+        goto clean_variables;
+    }
+
+    if (req->file != NULL) {
+        printf("File successfully renamed to: %s\n", req->file->filename);
+    } else {
+        printf("Failed to rename file.\n");
+    }
+
+clean_variables:
+    json_object_put(req->response);
+    free(req->file);
+    free(req);
+    free(work_req);
+}
+
 void queue_next_cmd_req(cli_api_t *cli_api)
 {
     void *handle = cli_api->handle;
@@ -906,6 +991,28 @@ void queue_next_cmd_req(cli_api_t *cli_api)
 
                 storj_bridge_delete_file(cli_api->env, cli_api->bucket_id, cli_api->file_id,
                                             cli_api, delete_file_callback);
+            } else if ((cli_api->next_cmd_req != NULL) &&
+                     (strcmp(cli_api->next_cmd_req, "rename-bucket-req") == 0x00)) {
+                cli_api->curr_cmd_req  = cli_api->next_cmd_req;
+                cli_api->next_cmd_req  = cli_api->final_cmd_req;
+                cli_api->final_cmd_req = NULL;
+                cli_api->excp_cmd_resp = "rename-bucket-resp";
+
+                storj_bridge_rename_bucket(cli_api->env, cli_api->bucket_id, cli_api->new_name,
+                                           cli_api, rename_bucket_callback);
+            } else if ((cli_api->next_cmd_req != NULL) &&
+                     (strcmp(cli_api->next_cmd_req, "rename-file-req") == 0x00)) {
+                printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
+                        __FUNCTION__, __LINE__, cli_api->file_name, cli_api->file_id,
+                        cli_api->bucket_name);
+
+                cli_api->curr_cmd_req  = cli_api->next_cmd_req;
+                cli_api->next_cmd_req  = cli_api->final_cmd_req;
+                cli_api->final_cmd_req = NULL;
+                cli_api->excp_cmd_resp = "rename-file-resp";
+
+                storj_bridge_rename_file(cli_api->env, cli_api->bucket_id, cli_api->file_id,
+                                         cli_api->new_name, cli_api, rename_file_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
                      (strcmp(cli_api->next_cmd_req, "list-mirrors-req") == 0x00)) {
                 printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
@@ -1121,6 +1228,25 @@ int cli_remove_file(cli_api_t *cli_api)
     int ret = 0x00;
     ret = cli_get_file_id(cli_api);
     cli_api->final_cmd_req  = "remove-file-req";
+
+    return ret;
+}
+
+int cli_rename_bucket(cli_api_t *cli_api)
+{
+    int ret = 0x00;
+    ret = cli_get_bucket_id(cli_api);
+    cli_api->next_cmd_req  = "rename-bucket-req";
+    cli_api->final_cmd_req = NULL;
+
+    return ret;
+}
+
+int cli_rename_file(cli_api_t *cli_api)
+{
+    int ret = 0x00;
+    ret = cli_get_file_id(cli_api);
+    cli_api->final_cmd_req  = "rename-file-req";
 
     return ret;
 }

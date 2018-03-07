@@ -219,6 +219,54 @@ cleanup:
     free(path);
 }
 
+static void rename_bucket_request_worker(uv_work_t *work)
+{
+    rename_bucket_request_t *req = work->data;
+
+    // Encrypt the new bucket name
+    char *encrypted_new_bucket_name;
+    if (encrypt_bucket_name(req->encrypt_options->mnemonic,
+                            req->new_bucket_name,
+                            &encrypted_new_bucket_name)) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    char *path = str_concat_many(2, "/buckets/", req->bucket_id);
+    if (!path) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    struct json_object *body = json_object_new_object();
+    json_object *name = json_object_new_string(encrypted_new_bucket_name);
+    json_object_object_add(body, "name", name);
+
+    req->error_code = fetch_json(req->http_options,
+                                 req->options, "PATCH", path, body,
+                                 true, &req->response, &req->status_code);
+
+    json_object_put(body);
+
+    if (req->response != NULL) {
+        req->bucket = malloc(sizeof(storj_bucket_meta_t));
+
+        struct json_object *created;
+
+        json_object_object_get_ex(req->response, "created", &created);
+
+        req->bucket->id = req->bucket_id;
+        req->bucket->name = req->new_bucket_name;
+        req->bucket->created = json_object_get_string(created);
+        req->bucket->decrypted = true;
+    }
+
+cleanup:
+
+    free(encrypted_new_bucket_name);
+    free(path);
+}
+
 static void list_files_request_worker(uv_work_t *work)
 {
     list_files_request_t *req = work->data;
@@ -420,6 +468,75 @@ cleanup:
 
     free(encrypted_file_name);
     free(escaped_encrypted_file_name);
+    free(path);
+}
+
+static void rename_file_request_worker(uv_work_t *work)
+{
+    rename_file_request_t *req = work->data;
+
+    // Encrypt the new file name
+    char *encrypted_new_file_name;
+    if (encrypt_file_name(req->encrypt_options->mnemonic,
+                          req->bucket_id,
+                          req->new_file_name,
+                          &encrypted_new_file_name)) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    char *path = str_concat_many(4, "/buckets/", req->bucket_id, "/files/", req->file_id);
+    if (!path) {
+        req->error_code = STORJ_MEMORY_ERROR;
+        goto cleanup;
+    }
+
+    struct json_object *body = json_object_new_object();
+    json_object *name = json_object_new_string(encrypted_new_file_name);
+    json_object_object_add(body, "filename", name);
+
+    req->error_code = fetch_json(req->http_options,
+                                 req->options, "PATCH", path, body,
+                                 true, &req->response, &req->status_code);
+
+    json_object_put(body);
+
+    if (req->response != NULL) {
+        req->file = malloc(sizeof(storj_file_meta_t));
+
+        struct json_object *mimetype;
+        struct json_object *size;
+        struct json_object *created;
+        struct json_object *hmac;
+        struct json_object *hmac_value;
+        struct json_object *erasure;
+        struct json_object *erasure_type;
+        struct json_object *index;
+
+        json_object_object_get_ex(req->response, "mimetype", &mimetype);
+        json_object_object_get_ex(req->response, "size", &size);
+        json_object_object_get_ex(req->response, "created", &created);
+        json_object_object_get_ex(req->response, "hmac", &hmac);
+        json_object_object_get_ex(hmac, "value", &hmac_value);
+        json_object_object_get_ex(req->response, "erasure", &erasure);
+        json_object_object_get_ex(erasure, "type", &erasure_type);
+        json_object_object_get_ex(req->response, "index", &index);
+
+        req->file->mimetype = json_object_get_string(mimetype);
+        req->file->size = json_object_get_int64(size);
+        req->file->created = json_object_get_string(created);
+        req->file->hmac = json_object_get_string(hmac_value);
+        req->file->erasure = json_object_get_string(erasure_type);
+        req->file->index = json_object_get_string(index);
+        req->file->id = req->file_id;
+        req->file->bucket_id = req->bucket_id;
+        req->file->filename = req->new_file_name;
+        req->file->decrypted = true;
+    }
+
+cleanup:
+
+    free(encrypted_new_file_name);
     free(path);
 }
 
@@ -639,6 +756,33 @@ static get_bucket_id_request_t *get_bucket_id_request_new(
     return req;
 }
 
+static rename_bucket_request_t *rename_bucket_request_new(
+        storj_http_options_t *http_options,
+        storj_bridge_options_t *options,
+        storj_encrypt_options_t *encrypt_options,
+        const char *bucket_id,
+        const char *new_bucket_name,
+        void *handle)
+{
+    rename_bucket_request_t *req = malloc(sizeof(rename_bucket_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->http_options = http_options;
+    req->options = options;
+    req->encrypt_options = encrypt_options;
+    req->bucket_id = bucket_id;
+    req->new_bucket_name = new_bucket_name;
+    req->response = NULL;
+    req->bucket = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
 static get_file_id_request_t *get_file_id_request_new(
         storj_http_options_t *http_options,
         storj_bridge_options_t *options,
@@ -659,6 +803,35 @@ static get_file_id_request_t *get_file_id_request_new(
     req->file_name = file_name;
     req->response = NULL;
     req->file_id = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
+static rename_file_request_t *rename_file_request_new(
+        storj_http_options_t *http_options,
+        storj_bridge_options_t *options,
+        storj_encrypt_options_t *encrypt_options,
+        const char *bucket_id,
+        const char *file_id,
+        const char *new_file_name,
+        void *handle)
+{
+    rename_file_request_t *req = malloc(sizeof(rename_file_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->http_options = http_options;
+    req->options = options;
+    req->encrypt_options = encrypt_options;
+    req->bucket_id = bucket_id;
+    req->file_id = file_id;
+    req->new_file_name = new_file_name;
+    req->response = NULL;
+    req->file = NULL;
     req->error_code = 0;
     req->status_code = 0;
     req->handle = handle;
@@ -1481,6 +1654,28 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, get_bucket_id_request_worker, cb);
 }
 
+STORJ_API int storj_bridge_rename_bucket(storj_env_t *env,
+                                         const char *id,
+                                         const char* new_name,
+                                         void *handle,
+                                         uv_after_work_cb cb)
+{
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    work->data = rename_bucket_request_new(env->http_options,
+                                           env->bridge_options,
+                                           env->encrypt_options,
+                                           id, new_name, handle);
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    return uv_queue_work(env->loop, (uv_work_t*) work, rename_bucket_request_worker, cb);
+}
+
 STORJ_API int storj_bridge_list_files(storj_env_t *env,
                             const char *id,
                             void *handle,
@@ -1718,6 +1913,32 @@ STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req)
     }
     free(req->file);
     free(req);
+}
+
+
+
+STORJ_API int storj_bridge_rename_file(storj_env_t *env,
+                                       const char *bucket_id,
+                                       const char *file_id,
+                                       const char* new_name,
+                                       void *handle,
+                                       uv_after_work_cb cb)
+{
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    work->data = rename_file_request_new(env->http_options,
+                                         env->bridge_options,
+                                         env->encrypt_options,
+                                         bucket_id, file_id,
+                                         new_name, handle);
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    return uv_queue_work(env->loop, (uv_work_t*) work, rename_file_request_worker, cb);
 }
 
 STORJ_API int storj_bridge_list_mirrors(storj_env_t *env,

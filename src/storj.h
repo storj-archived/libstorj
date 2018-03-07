@@ -298,6 +298,21 @@ typedef struct {
     void *handle;
 } get_bucket_id_request_t;
 
+/** @brief A structure for queueing rename bucket request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    const char *bucket_id;
+    const char *new_bucket_name;
+    struct json_object *response;
+    storj_bucket_meta_t *bucket;
+    int error_code;
+    int status_code;
+    void *handle;
+} rename_bucket_request_t;
+
 /** @brief A structure for that describes a bucket entry/file
  */
 typedef struct {
@@ -364,6 +379,22 @@ typedef struct {
     int status_code;
     void *handle;
 } get_file_id_request_t;
+
+/** @brief A structure for queueing rename file request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    const char *bucket_id;
+    const char *file_id;
+    const char *new_file_name;
+    struct json_object *response;
+    storj_file_meta_t *file;
+    int error_code;
+    int status_code;
+    void *handle;
+} rename_file_request_t;
 
 typedef enum {
     BUCKET_PUSH,
@@ -838,6 +869,22 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
                                          uv_after_work_cb cb);
 
 /**
+ * @brief Rename a bucket.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] id The bucket id
+ * @param[in] new_name The new bucket name
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_bridge_rename_bucket(storj_env_t *env,
+                                         const char *id,
+                                         const char* new_name,
+                                         void *handle,
+                                         uv_after_work_cb cb);
+
+/**
  * @brief Get a list of all files in a bucket.
  *
  * @param[in] env The storj environment struct
@@ -994,6 +1041,24 @@ STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req);
 STORJ_API int storj_bridge_get_file_id(storj_env_t *env,
                                        const char *bucket_id,
                                        const char *file_name,
+                                       void *handle,
+                                       uv_after_work_cb cb);
+
+/**
+ * @brief Rename a file.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] file_id The file id
+ * @param[in] new_name The new file name
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_bridge_rename_file(storj_env_t *env,
+                                       const char *bucket_id,
+                                       const char *file_id,
+                                       const char* new_name,
                                        void *handle,
                                        uv_after_work_cb cb);
 
