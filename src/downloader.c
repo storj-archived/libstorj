@@ -1780,6 +1780,10 @@ static void queue_next_work(storj_download_state_t *state)
     if (state->error_status != 0) {
         if (!state->finished && state->pending_work_count == 0) {
 
+            // persist state to disk so that we can resume
+            // the download at a later time
+            storj_download_state_serialize(state);
+
             state->finished = true;
             state->finished_cb(state->error_status,
                                state->destination,
@@ -1931,11 +1935,16 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
-    state->handle = state_cli->handle;
+    if (handle != NULL) {
+        state->handle = state_cli->handle;
+    } else {
+       state->handle = NULL;
+    }
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
     printf("[%s][%d] handle pointer  = 0x%X\n", __FUNCTION__, __LINE__, handle);
     printf("[%s][%d] state handle pointer  = 0x%X\n", __FUNCTION__, __LINE__, state->handle);
+    printf("[%s][%d] state destination = 0x%X\n", __FUNCTION__, __LINE__, state->destination);
     // start download
     queue_next_work(state);
 
