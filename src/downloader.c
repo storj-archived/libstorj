@@ -1931,14 +1931,11 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
-    if(handle == NULL) {
-        state->handle = NULL;
-    } else {
-        state->handle = state_cli->handle;
-    }
+    state->handle = state_cli->handle;
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
-
+    printf("[%s][%d] handle pointer  = 0x%X\n", __FUNCTION__, __LINE__, handle);
+    printf("[%s][%d] state handle pointer  = 0x%X\n", __FUNCTION__, __LINE__, state->handle);
     // start download
     queue_next_work(state);
 

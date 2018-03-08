@@ -273,7 +273,7 @@ void check_resolve_file_progress(double progress,
                                  uint64_t total_bytes,
                                  void *handle)
 {
-    assert(handle == NULL);
+    //assert(handle == NULL);
     if (progress == (double)1) {
         pass("storj_bridge_resolve_file (progress finished)");
     }
@@ -331,13 +331,17 @@ void check_resolve_file_cancel(int status, FILE *fd, void *handle)
 void check_resolve_file_cancel2(int status, FILE *fd, void *handle)
 {
     storj_download_state_t *state = handle;
+    //state->destination = fd;
+    printf("[%s][%d] state pointer  = 0x%X\n", __FUNCTION__, __LINE__, state);
+    printf("[%s][%d] fd = %d\n", __FUNCTION__, __LINE__, fileno(fd));
+    printf("[%s][%d] state->destination = %d\n", __FUNCTION__, __LINE__, fileno(state->destination));
     storj_download_state_serialize(state);
     fclose(fd);
     //assert(handle == NULL);
     if (status == STORJ_TRANSFER_CANCELED) {
-        pass("storj_bridge_resolve_file_cancel");
+        pass("storj_bridge_resolve_file_cancel2");
     } else {
-        fail("storj_bridge_resolve_file_cancel");
+        fail("storj_bridge_resolve_file_cancel2");
     }
 }
 
@@ -809,11 +813,18 @@ int test_download_resume()
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
 
+    storj_download_state_t *state_test1 = malloc(sizeof(storj_download_state_t));
+    memset(state_test1, 0x00, sizeof(storj_download_state_t));
+    if (!state_test1) {
+        goto end_program;
+    }
+    printf("[%s][%d] state pointer  = 0x%X\n", __FUNCTION__, __LINE__, state_test1);
+    state_test1->destination = download_fp;
     storj_download_state_t *state = storj_bridge_resolve_file(env,
                                                               bucket_id,
                                                               file_id,
                                                               download_fp,
-                                                              NULL,
+                                                              state_test1,
                                                               check_resolve_file_progress,
                                                               check_resolve_file_cancel2);
 
@@ -847,12 +858,10 @@ int test_download_resume()
     state = malloc(sizeof(storj_download_state_t));
     memset(state, 0x00, sizeof(storj_download_state_t));
     if (!state) {
-        status = 1;
         goto end_program;
     }
 
     storj_download_state_deserialize(state, "/tmp/storj-test-download-resumexx.data.json");
-    //storj_download_state_deserialize(state, "largefile.txt.data.json");
     FILE *download_resumefp = fopen(download_file, "r+");
     state = storj_bridge_resume_file(env, bucket_id,
                                      file_id, download_resumefp,
