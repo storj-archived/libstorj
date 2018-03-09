@@ -44,6 +44,10 @@ extern "C" {
 #include <unistd.h>
 #endif
 
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define RESET "\x1B[0m"
+
 // File transfer success
 #define STORJ_TRANSFER_OK 0
 #define STORJ_TRANSFER_CANCELED 1

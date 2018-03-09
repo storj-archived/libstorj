@@ -280,13 +280,13 @@ static void set_pointer_from_json(storj_download_state_t *state,
 
     p->work = NULL;
 
-    printf("[%s][%s][%d] pointer[%d] size = %ul & state->shard_size = %ul\n",
-            __FILE__, __FUNCTION__, __LINE__, p->index, p->size, state->shard_size);
-    if ((0x00 == index) && (!state->shard_size)) {
+    if (!state->shard_size) {
         // TODO make sure all except last shard is the same size
         state->shard_size = size;
-        printf("[%s][%s][%d] pointer[%d] state->shard_size = %ul\n",
-               __FILE__, __FUNCTION__, __LINE__, p->index, state->shard_size);
+        if (0x00 != p->index) {
+            printf("[%s][%s][%d] "KRED"Invalid shard size (%ul)\n" RESET,
+                   __FILE__, __FUNCTION__, __LINE__, state->shard_size);
+        }
         state->log->debug(state->env->log_options,
                           state->handle,
                           "Shard size set to %" PRIu64,
