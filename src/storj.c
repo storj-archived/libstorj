@@ -2171,14 +2171,18 @@ static void set_pointer_from_json(storj_download_state_t *state,
 
     p->work = NULL;
 
-    if (!state->shard_size) {
+    printf("[%s][%s][%d] pointer[%d] size = %ul & state->shard_size = %ul\n",
+            __FILE__, __FUNCTION__, __LINE__, p->index, p->size, state->shard_size);
+    if ((0x00 == index) && (!state->shard_size)) {
         // TODO make sure all except last shard is the same size
         state->shard_size = size;
+        printf("[%s][%s][%d] pointer[%d] state->shard_size = %ul\n",
+               __FILE__, __FUNCTION__, __LINE__, p->index, state->shard_size);
         state->log->debug(state->env->log_options,
                           state->handle,
                           "Shard size set to %" PRIu64,
-                            state->shard_size);
-    };
+                          state->shard_size);
+    }
 }
 
 static void append_pointers_to_state(storj_download_state_t *state,
@@ -2236,6 +2240,9 @@ STORJ_API int storj_download_state_deserialize(storj_download_state_t *state, ch
 
         json_object_object_get_ex(jstorj_download_state_t, "bucket_id", &jdwnld_obj);
         state->bucket_id = json_object_get_string(jdwnld_obj);
+
+        json_object_object_get_ex(jstorj_download_state_t, "shard_size", &jdwnld_obj);
+        state->shard_size = json_object_get_int64(jdwnld_obj);
 
         /* setup the storj_file_meta_t */
         struct json_object *jstorj_file_meta_t;

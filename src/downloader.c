@@ -280,9 +280,13 @@ static void set_pointer_from_json(storj_download_state_t *state,
 
     p->work = NULL;
 
-    if (!state->shard_size) {
+    printf("[%s][%s][%d] pointer[%d] size = %ul & state->shard_size = %ul\n",
+            __FILE__, __FUNCTION__, __LINE__, p->index, p->size, state->shard_size);
+    if ((0x00 == index) && (!state->shard_size)) {
         // TODO make sure all except last shard is the same size
         state->shard_size = size;
+        printf("[%s][%s][%d] pointer[%d] state->shard_size = %ul\n",
+               __FILE__, __FUNCTION__, __LINE__, p->index, state->shard_size);
         state->log->debug(state->env->log_options,
                           state->handle,
                           "Shard size set to %" PRIu64,
@@ -296,18 +300,6 @@ static void append_pointers_to_state(storj_download_state_t *state,
     int length = json_object_array_length(res);
 
     if (length == 0) {
-#if 0
-            storj_download_state_t *resume_state = state->handle;
-            for (int i = 0x00; i < resume_state->total_pointers; i++) {
-                for (int j = 0x00; j < state->total_pointers; j++) {
-                    if (strcmp(resume_state->pointers[i].shard_hash, state->pointers[j].shard_hash) == 0x00) {
-                        if (resume_state->pointers[i].status == POINTER_DOWNLOADED) {
-                            state->pointers[j].status = resume_state->pointers[i].status;
-                        }
-                    }
-                }
-            }
-#endif
         state->log->debug(state->env->log_options,
                           state->handle,
                           "Finished requesting pointers");
@@ -1992,7 +1984,7 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
     //state->requesting_pointers = false;
     //state->error_status = STORJ_TRANSFER_OK;
     //state->writing = false;
-    state->shard_size = 0;
+    //state->shard_size = 0;
     state->excluded_farmer_ids = NULL;
     state->hmac = NULL;
     //state->pending_work_count = 0;
