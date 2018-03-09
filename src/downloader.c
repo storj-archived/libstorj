@@ -650,6 +650,12 @@ static void request_shard(uv_work_t *work)
     req->start = get_time_milliseconds();
 
     uint64_t file_position = req->pointer_index * req->state->shard_size;
+    printf("[%s][%s][%d] file_position = %d * %d = %d\n",
+           __FILE__, __FUNCTION__, __LINE__,  req->pointer_index, req->state->shard_size , file_position);
+
+    //uint64_t file_position = req->pointer_index * req->state->pointers[req->pointer_index].size;
+    //printf("[%s][%s][%d] file_position = %d * %d = %d\n",
+           //__FILE__, __FUNCTION__, __LINE__,  req->pointer_index, req->state->pointers[req->pointer_index].size , file_position);
 
     int error_status = fetch_shard(req->http_options,
                                    req->farmer_id,
@@ -1779,10 +1785,6 @@ static void queue_next_work(storj_download_state_t *state)
     // report any errors
     if (state->error_status != 0) {
         if (!state->finished && state->pending_work_count == 0) {
-
-            // persist state to disk so that we can resume
-            // the download at a later time
-            storj_download_state_serialize(state);
 
             state->finished = true;
             state->finished_cb(state->error_status,

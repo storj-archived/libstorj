@@ -1944,6 +1944,17 @@ STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
                                json_object_new_boolean(pointer->parity));
         json_object_object_add(jptr, "downloaded_size",
                                json_object_new_int64(pointer->downloaded_size));
+        if (state->pointers->farmer_id) {
+            json_object_object_add(jfarmer, "nodeID",
+                                   json_object_new_string(pointer->farmer_id));
+        }
+        if (state->pointers->farmer_address) {
+            json_object_object_add(jfarmer, "address",
+                                   json_object_new_string(pointer->farmer_address));
+        }
+        json_object_object_add(jfarmer, "port",
+                               json_object_new_int(pointer->farmer_port));
+        json_object_object_add(jptr, "farmer", jfarmer);
         json_object_array_add(jptr_array, jptr);
 
         i++;
