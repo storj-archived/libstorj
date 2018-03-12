@@ -1107,28 +1107,7 @@ int main(int argc, char **argv)
             cli_api->dst_file  = argv[command_index + 3];
             cli_api->handle = state;
             state->handle = cli_api;
-            cli_download_file_resume(cli_api);
-
-            #if 0
-            char *bucket_id = argv[command_index + 1];
-            char *file_id = argv[command_index + 2];
-            char *path = argv[command_index + 3];
-
-            if (!bucket_id || !file_id || !path) {
-                printf("Missing arguments: <bucket-id> <file-id> <path>\n");
-                status = 1;
-                goto end_program;
-            }
-
-            memcpy(cli_api->bucket_id, bucket_id, strlen(bucket_id));
-            memcpy(cli_api->file_id, file_id, strlen(file_id));
-            cli_api->dst_file = path;
-
-            if (download_file(env, bucket_id, file_id, path, cli_api)) {
-                status = 1;
-                goto end_program;
-            }
-            #endif
+            cli_download_file(cli_api);
         } else if (strcmp(command, "upload-file") == 0) {
             char *bucket_id = argv[command_index + 1];
             char *path = argv[command_index + 2];
@@ -1566,22 +1545,7 @@ int main(int argc, char **argv)
             }
 
             cli_list_mirrors(cli_api);
-        } else if (strcmp(command, "deser") == 0x00) {
-            storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
-            memset(state, 0x00, sizeof(storj_download_state_t));
-            if (!state) {
-                status = 1;
-                goto end_program;
-            }
-            state->env = cli_api->env;
-            state->log = cli_api->env->log;
-            cli_api->bucket_name = argv[command_index + 1];
-            cli_api->file_name = argv[command_index + 2];
-            cli_api->dst_file  = argv[command_index + 3];
-            cli_api->handle = state;
-            state->handle = cli_api;
-            cli_download_file_resume(cli_api);
-        }else {
+        } else {
             printf("'%s' is not a storj command. See 'storj --help'\n\n",
                    command);
             status = 1;

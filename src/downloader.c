@@ -284,7 +284,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
         // TODO make sure all except last shard is the same size
         state->shard_size = size;
         if (0x00 != p->index) {
-            printf("[%s][%s][%d] "KRED"Invalid shard size (%ul)\n" RESET,
+            printf("[%s][%s][%d] "KRED"Invalid shard size: %" PRIu64 "\n" RESET,
                    __FILE__, __FUNCTION__, __LINE__, state->shard_size);
         }
         state->log->debug(state->env->log_options,
@@ -642,12 +642,6 @@ static void request_shard(uv_work_t *work)
     req->start = get_time_milliseconds();
 
     uint64_t file_position = req->pointer_index * req->state->shard_size;
-    printf("[%s][%s][%d] file_position = %d * %d = %d\n",
-           __FILE__, __FUNCTION__, __LINE__,  req->pointer_index, req->state->shard_size , file_position);
-
-    //uint64_t file_position = req->pointer_index * req->state->pointers[req->pointer_index].size;
-    //printf("[%s][%s][%d] file_position = %d * %d = %d\n",
-           //__FILE__, __FUNCTION__, __LINE__,  req->pointer_index, req->state->pointers[req->pointer_index].size , file_position);
 
     int error_status = fetch_shard(req->http_options,
                                    req->farmer_id,
@@ -823,7 +817,6 @@ static void queue_request_shards(storj_download_state_t *state)
 
         storj_pointer_t *pointer = &state->pointers[i];
 
-        printf("\npointer[%d] index = %d status = %d\n", i, pointer->index, pointer->status);
         if (pointer->status == POINTER_CREATED) {
             shard_request_download_t *req = malloc(sizeof(shard_request_download_t));
             if (!req) {
@@ -1477,8 +1470,6 @@ static void after_recover_shards(uv_work_t *work, int status)
         // Recovery was successful and the pointers have been finished
         for (int i = 0; i < state->total_pointers; i++) {
             state->pointers[i].status = POINTER_FINISHED;
-            printf("[%s][%s][%d] pointer[%d] status = %d\n",
-                   __FILE__, __FUNCTION__, __LINE__, i, state->pointers[i].status);
             state->completed_shards += 1;
         }
     }
@@ -1510,8 +1501,6 @@ static void recover_shards(uv_work_t *work)
     struct aes256_ctx ctx;
     uint64_t bytes_decrypted = 0;
     size_t len = AES_BLOCK_SIZE * 8;
-
-    printf("[%s][%s][%d] am in ... \n", __FILE__, __FUNCTION__ , __LINE__);
 
     // Make sure that the file is the correct size before recovering
     // shards in case that the last shard is the one being recovered.
@@ -1671,7 +1660,6 @@ finish:
     }
 #endif
 
-    printf("[%s][%s][%d] am out ... \n", __FILE__, __FUNCTION__ , __LINE__);
 }
 
 static void queue_recover_shards(storj_download_state_t *state)
@@ -1832,7 +1820,6 @@ static void queue_next_work(storj_download_state_t *state)
 
         if (state->rs) {
             if (can_recover_shards(state)) {
-                printf("[%s][%s][%d] returned true\n", __FILE__, __FUNCTION__, __LINE__);
                 queue_recover_shards(state);
             } else {
                 state->error_status = STORJ_FILE_SHARD_MISSING_ERROR;
@@ -1936,9 +1923,7 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
     }
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
-    printf("[%s][%d] handle pointer  = 0x%X\n", __FUNCTION__, __LINE__, handle);
-    printf("[%s][%d] state handle pointer  = 0x%X\n", __FUNCTION__, __LINE__, state->handle);
-    printf("[%s][%d] state destination = 0x%X\n", __FUNCTION__, __LINE__, state->destination);
+
     // start download
     queue_next_work(state);
 
@@ -1957,61 +1942,20 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
     if (!state) {
         return NULL;
     }
-    // setup download state
-    //state->total_bytes = 0;
-    //state->info = NULL;
-    //state->requesting_info = false;
-    //state->info_fail_count = 0;
-    //state->env = env;
-    //state->file_id = file_id;
-    //state->bucket_id = bucket_id;
     state->destination = destination;
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
-    //state->finished = false;
-    //state->total_shards = 0;
     state->download_max_concurrency = STORJ_DOWNLOAD_CONCURRENCY;
-    //state->completed_shards = 0;
-    //state->resolving_shards = 0;
-    //state->total_pointers = 0;
-    //state->total_parity_pointers = 0;
-    //state->rs = false;
-    //state->recovering_shards = false;
-    //state->truncated = true;
-    //state->pointers = NULL;
-    //state->pointers_completed = false;
-    //state->pointer_fail_count = 0;
-    //state->requesting_pointers = false;
-    //state->error_status = STORJ_TRANSFER_OK;
-    //state->writing = false;
-    //state->shard_size = 0;
     state->excluded_farmer_ids = NULL;
     state->hmac = NULL;
-    //state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
     state->handle = state->handle;
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
 
-#if 0
-    int i = 0x00;
-    while (state->resolving_shards < state->download_max_concurrency &&
-           i < state->total_pointers) {
-        storj_pointer_t *pointer = &state->pointers[i];
-
-        if (pointer->status == POINTER_BEING_DOWNLOADED) {
-            pointer->status = POINTER_CREATED;
-        }
-        i++;
-    }
-#endif
-
-    //determine_decryption_key(state);
-    printf("downloader.c state->pointers = 0x%X\n", state->pointers);
-    printf("downloader.c state->handle = 0x%X\n", state->handle);
     // start download
-    //queue_next_work(state);
     queue_request_info(state);
+
     return state;
 }

@@ -759,12 +759,11 @@ static int get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_pa
 
 #ifdef __APPLE__
     if (fcntl(fileno(file_descriptor), F_GETPATH, file_path) != -1) {
-        printf("\n *** IAM MacOS *** download destination file path = %s\n", file_path);
     } else {
         printf("[%s][%s][%d] Invalid file path \n", __FILE__, __FUNCTION__, __LINE__);
         return -1;
     }
-#else
+#elif __linux__
     /*
      * Get the low-level file descriptor of the open file
      */
@@ -788,9 +787,15 @@ static int get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_pa
         printf("[%s][%s][%d] Invalid file path \n", __FILE__, __FUNCTION__, __LINE__);
         return -1;
     }
+#elif __WIN32__
+    printf("[%s][%s][%d] "KRED" TODO NEEDS IMPLEMENTATION \n" RESET, __FILE__, __FUNCTION__, __LINE__);
+    return -1;
+#else
+    printf("[%s][%s][%d] "KRED"Unknow OS\n" RESET, __FILE__, __FUNCTION__, __LINE__);
+    return -1;
 #endif
 
-    printf("\n download destination file path = %s\n", file_path);
+    printf("\n Downloaded Destination file path = %s\n", file_path);
     return 0;
 }
 
@@ -1813,24 +1818,6 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
-/** @brief Enumerable that defines that status of a pointer
- *
- * A pointer will begin as created, and move forward until an error
- * occurs, in which case it will start moving backwards from the error
- * state until it has been replaced and reset back to created. This process
- * can continue until success.
- */
-typedef enum {
-    POINTER_BEING_REPLACED = -3,
-    POINTER_ERROR_REPORTED = -2,
-    POINTER_ERROR = -1,
-    POINTER_CREATED = 0,
-    POINTER_BEING_DOWNLOADED = 1,
-    POINTER_DOWNLOADED = 2,
-    POINTER_MISSING = 3,
-    POINTER_FINISHED = 4
-} storj_pointer_status_t;
-
 STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
 {
     char filePath[PATH_MAX] = {0x00};
@@ -2105,14 +2092,14 @@ static void set_pointer_from_json(storj_download_state_t *state,
     // so that it can be retried and possibly recovered.
     if (address && token) {
         // reset the status
-        p->status = POINTER_CREATED;
+        p->status = 0x00; /* POINTER_CREATED */
     } else {
         state->log->warn(state->env->log_options,
                          state->handle,
                          "Missing shard %s at index %i",
                          hash,
                          index);
-        p->status = POINTER_MISSING;
+        p->status = 0x03; /* POINTER_MISSING */
     }
 
     p->size = size;
@@ -2179,7 +2166,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
         // TODO make sure all except last shard is the same size
         state->shard_size = size;
         if (0x00 != p->index) {
-            printf("[%s][%s][%d] "KRED"Invalid shard size (%ul)\n" RESET,
+            printf("[%s][%s][%d] "KRED"Invalid shard size: %" PRIu64 "\n" RESET,
                      __FILE__, __FUNCTION__, __LINE__, state->shard_size);
         }
         state->log->debug(state->env->log_options,
@@ -2194,12 +2181,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
 {
     int length = json_object_array_length(res);
 
-    if (length == 0) {
-        state->log->debug(state->env->log_options,
-                          state->handle,
-                          "Finished requesting pointers");
-        state->pointers_completed = true;
-    } else if (length > 0) {
+    if (length > 0) {
 
         state->total_pointers = length;
         int total_pointers = state->total_pointers;
@@ -2207,7 +2189,6 @@ static void append_pointers_to_state(storj_download_state_t *state,
         if (state->total_pointers > 0) {
             state->pointers = realloc(state->pointers,
                                       total_pointers * sizeof(storj_pointer_t));
-            printf("storj.c state->pointers = 0x%X\n", state->pointers);
         }
         if (!state->pointers) {
             state->error_status = STORJ_MEMORY_ERROR;
@@ -2263,10 +2244,10 @@ STORJ_API int storj_download_state_deserialize(storj_download_state_t *state, ch
             json_object_object_get_ex(jstorj_file_meta_t, "index", &jdwnld_obj);
             state->info->index = strdup(json_object_get_string(jdwnld_obj));
         } else {
-            printf("hello hello groot inside deserilalize \n");
+            printf("[%s][%s][%d] "KRED"Invalid json object\n" RESET,
+                              __FILE__, __FUNCTION__, __LINE__);
             return -1;
         }
-
 
         struct json_object *jstorj_pointer_t;
         json_object_object_get_ex(jstorj_download_state_t, "storj_pointer_t", &jstorj_pointer_t);
