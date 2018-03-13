@@ -169,6 +169,28 @@ void check_delete_bucket(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+void check_rename_bucket(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    rename_bucket_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(req->status_code == 200);
+
+    struct json_object* value;
+    int success = json_object_object_get_ex(req->response, "name", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* name = json_object_get_string(value);
+    assert(strcmp(name, "renamed") == 0);
+    pass("storj_bridge_rename_bucket");
+
+    json_object_put(req->response);
+    free(req->bucket);
+    free(req);
+    free(work_req);
+}
+
 void check_list_files(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -355,6 +377,28 @@ void check_store_file_cancel(int error_code, storj_file_meta_t *file, void *hand
     }
 
     storj_free_uploaded_file_info(file);
+}
+
+void check_rename_file(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    rename_file_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(req->status_code == 200);
+
+    struct json_object* value;
+    int success = json_object_object_get_ex(req->response, "filename", &value);
+    assert(success == 1);
+    assert(json_object_is_type(value, json_type_string) == 1);
+
+    const char* name = json_object_get_string(value);
+    assert(strcmp(name, "renamed-file.data") == 0);
+    pass("storj_bridge_rename_file");
+
+    json_object_put(req->response);
+    free(req->file);
+    free(req);
+    free(work_req);
 }
 
 void check_delete_file(uv_work_t *work_req, int status)
@@ -831,6 +875,11 @@ int test_api()
                                         check_create_bucket);
     assert(status == 0);
 
+    // rename a bucket
+    status = storj_bridge_rename_bucket(env, bucket_id, "renamed",
+                                        NULL, check_rename_bucket);
+    assert(status == 0);
+
     // delete a bucket
     // TODO check for successful status code, response has object
     status = storj_bridge_delete_bucket(env, bucket_id, NULL,
@@ -856,6 +905,15 @@ int test_api()
     assert(status == 0);
 
     char *file_id = "998960317b6725a3f8080c2b";
+
+    // rename a file in a bucket
+    status = storj_bridge_rename_file(env,
+                                      bucket_id,
+                                      file_id,
+                                      "renamed-file.data",
+                                      NULL,
+                                      check_rename_file);
+    assert(status == 0);
 
     // delete a file in a bucket
     status = storj_bridge_delete_file(env,

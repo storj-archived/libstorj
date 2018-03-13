@@ -39,6 +39,12 @@
     "id": "0f1810b4bb5b6472352ec486"
   },
   "deletebucket": null,
+  "renamebucket": {
+    "user": "user@sample.com",
+    "created": "2016-10-12T14:40:21.259Z",
+    "name": "renamed",
+    "id": "368be0816766b28fd5f43af5"
+  },
   "listfiles": [
     {
       "bucket": "0cf572e48da78e9af943a771",
@@ -59,6 +65,21 @@
   ],
   "createfile": {
     "id": "85fb0ed00de1196dc22e0f6d"
+  },
+  "renamefile": {
+    "bucket": "368be0816766b28fd5f43af5",
+    "mimetype": "video/ogg",
+    "filename": "renamed-file.data",
+    "frame": "2f2133b1d23e0bc4123f96de",
+    "size": 3193765382,
+    "id": "998960317b6725a3f8080c2b",
+    "hmac": {
+      "value": "78462f9056d9e997e3a74b778014b9e20b6404e19dbea3516991c3a6dc105384463df4123246634de5aaa2304da54f03c09d92d73c3febe1da56ca0478d85cc4",
+      "type": "sha512"
+    },
+    "erasure": {
+      "type": "reedsolomon"
+    }
   },
   "createbuckettoken": {
     "bucket": "845f106ddfc234054eee274a",

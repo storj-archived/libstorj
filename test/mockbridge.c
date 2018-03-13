@@ -232,6 +232,31 @@ int mock_bridge_server(void *cls,
                 status_code = MHD_HTTP_OK;
             }
         }
+    } else if (0 == strcmp(method, MHD_HTTP_METHOD_PATCH)) {
+        if (*ptr == NULL) {
+            // First callback call - headers received
+            // Remember that this first call has happened
+            *ptr = (int *) 1;
+            // Return MHD_YES to receive the next call with upload data
+            return MHD_YES;
+        } else if (*upload_data_size != 0) {
+            // Callback call with upload data
+            // Mark the upload data received in this call as processed
+            *upload_data_size = 0;
+            // Return MHD_YES to receive the next call
+            return MHD_YES;
+        } else {
+            // All upload data processed - now the response can be queued
+            if (check_auth(user, pass, &status_code, page)) {
+                if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5")) {
+                    page = get_response_string(responses, "renamebucket");
+                    status_code = MHD_HTTP_OK;
+                } else if (0 == strcmp(url, "/buckets/368be0816766b28fd5f43af5/files/998960317b6725a3f8080c2b")) {
+                    page = get_response_string(responses, "renamefile");
+                    status_code = MHD_HTTP_OK;
+                }
+            }
+        }
     }
 
     if (page) {
