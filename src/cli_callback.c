@@ -60,6 +60,49 @@ char* replace_char(char* str, char find, char replace)
 
 static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
 {
+#ifdef _WIN32
+    WIN32_FIND_DATA fdFile;
+    HANDLE hFind = NULL;
+
+    char sPath[2048];
+
+    //Specify a file mask. *.* = We want everything!
+    sprintf(sPath, "%s\\*.*", dir);
+
+    if((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE)
+    {
+        printf("Path not found: [%s]\n", dir);
+        return;
+    }
+
+    do
+    {
+        //Find first file will always return "."
+        //    and ".." as the first two directories.
+        if(strcmp(fdFile.cFileName, ".") != 0
+                && strcmp(fdFile.cFileName, "..") != 0)
+        {
+            //Build up our file path using the passed in
+            //  [sDir] and the file/foldername we just found:
+            sprintf(sPath, "%s\\%s", dir, fdFile.cFileName);
+
+            //Is the entity a File or Folder?
+            if(fdFile.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY)
+            {
+                printf("Directory: %s\n", sPath);
+                printdir(dir, 0, src_fd, handle);//Recursion, I love it!
+            }
+            else{
+                printf("File: %s\n", sPath);
+                /* write to src file */
+                fprintf(src_fd, "%s%s\n", "", sPath);
+            }
+        }
+    }
+    while(FindNextFile(hFind, &fdFile)); //Find the next file.
+
+    FindClose(hFind); //Always, Always, clean things up!
+#else
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
@@ -94,12 +137,12 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
     ret = chdir("..");
     closedir(dp);
     free(full_path);
+#endif
 }
 
 static int file_exists(void *handle)
 {
     struct stat sb;
-    gid_t  st_grpid;
     cli_api_t *cli_api = handle;
 
     FILE *src_fd, *dst_fd;
@@ -132,9 +175,6 @@ static int file_exists(void *handle)
             break;
         case S_IFREG:
             return CLI_VALID_REGULAR_FILE;
-            break;
-        case S_IFSOCK:
-            printf("socket\n");
             break;
         default:
             printf("unknown?\n");
