@@ -273,7 +273,7 @@ void check_resolve_file_progress(double progress,
                                  uint64_t total_bytes,
                                  void *handle)
 {
-    //assert(handle == NULL);
+    assert(handle == NULL);
     if (progress == (double)1) {
         pass("storj_bridge_resolve_file (progress finished)");
     }
@@ -290,18 +290,6 @@ void check_resolve_file(int status, FILE *fd, void *handle)
         printf("Download failed: %s\n", storj_strerror(status));
     } else {
         pass("storj_bridge_resolve_file");
-    }
-}
-
-void check_resume_file(int status, FILE *fd, void *handle)
-{
-    fclose(fd);
-    assert(handle == NULL);
-    if (status) {
-        fail("storj_bridge_resume_file");
-        printf("Download pass: %s\n", storj_strerror(status));
-    } else {
-        pass("storj_bridge_resume_file");
     }
 }
 
@@ -326,38 +314,6 @@ void check_resolve_file_cancel(int status, FILE *fd, void *handle)
     } else {
         fail("storj_bridge_resolve_file_cancel");
     }
-}
-
-void check_resolve_file_cancel2(int status, FILE *fd, void *handle)
-{
-    //fclose(fd);
-    //assert(handle == NULL);
-    if (status == STORJ_TRANSFER_CANCELED) {
-        pass("storj_bridge_resolve_file_cancel2");
-    } else {
-        fail("storj_bridge_resolve_file_cancel2");
-    }
-}
-
-void close_signal(uv_handle_t *handle)
-{
-    ((void)0);
-}
-
-void download_signal_handler(uv_signal_t *req, int signum)
-{
-    storj_download_state_t *state = req->data;
-
-    printf("[%s][%d] state pointer  = 0x%X\n", __FUNCTION__, __LINE__, state);
-    printf("[%s][%d] state->destination = %d\n", __FUNCTION__, __LINE__, fileno(state->destination));
-    /* convert the download state struct into JSON and write to a file */
-    storj_bridge_resolve_file_cancel(state);
-    storj_download_state_serialize(state);
-    printf("[%s][%s][%d] file closed \n", __FILE__, __FUNCTION__, __LINE__);
-    if (uv_signal_stop(req)) {
-        printf("Unable to stop signal\n");
-    }
-    uv_close((uv_handle_t *)req, close_signal);
 }
 
 void check_store_file_progress(double progress,
@@ -802,103 +758,6 @@ int test_download_cancel()
     } while (more == true);
 
 
-    free(download_file);
-    storj_destroy_env(env);
-
-    return 0;
-}
-
-int test_download_resume()
-{
-
-    // initialize event loop and environment
-    storj_env_t *env = storj_init_env(&bridge_options,
-                                      &encrypt_options,
-                                      &http_options,
-                                      &log_options);
-    assert(env != NULL);
-
-    // resolve file
-    char *download_file = calloc(strlen(folder) + 31 + 1, sizeof(char));
-    strcpy(download_file, folder);
-    strcat(download_file, "storj-test-download-resume.data");
-    //strcat(download_file, "largefile.txt.data");
-    FILE *download_fp = fopen(download_file, "w+");
-
-    char *bucket_id = "368be0816766b28fd5f43af5";
-    char *file_id = "998960317b6725a3f8080c2b";
-
-    //storj_download_state_t *state_test1 = malloc(sizeof(storj_download_state_t));
-    //memset(state_test1, 0x00, sizeof(storj_download_state_t));
-    //if (!state_test1) {
-    //    goto end_program;
-    //}
-    //printf("[%s][%d] state pointer  = 0x%X\n", __FUNCTION__, __LINE__, state_test1);
-    //state_test1->handle = state_test1;
-
-    //uv_signal_t *sig = malloc(sizeof(uv_signal_t));
-    //uv_signal_init(env->loop, sig);
-    //uv_signal_start(sig, download_signal_handler, SIGINT);
-
-    storj_download_state_t *state = storj_bridge_resolve_file(env,
-                                                              bucket_id,
-                                                              file_id,
-                                                              download_fp,
-                                                              NULL,
-                                                              check_resolve_file_progress,
-                                                              check_resolve_file_cancel2);
-
-    if (!state || state->error_status != 0) {
-        return 1;
-    }
-
-
-    // process the loop one at a time so that we can do other things while
-    // the loop is processing, such as cancel the download
-    int count = 0;
-    bool more;
-    int status = 0;
-    do {
-        more = uv_run(env->loop, UV_RUN_ONCE);
-        if (more == false) {
-            more = uv_loop_alive(env->loop);
-            if (uv_run(env->loop, UV_RUN_NOWAIT) != 0) {
-                more = true;
-            }
-        }
-
-        count++;
-
-        if (count == 100) {
-            //printf("[%s][%d] ready to raise CTRL+C\n", __FUNCTION__, __LINE__);
-            //uv_kill(getpid, SIGINT);
-            status = storj_bridge_resolve_file_cancel(state);
-            assert(status == 0);
-        }
-
-    } while (more == true);
-
-#if 1
-    state = malloc(sizeof(storj_download_state_t));
-    memset(state, 0x00, sizeof(storj_download_state_t));
-    if (!state) {
-        goto end_program;
-    }
-
-    storj_download_state_deserialize(state, "/tmp/storj-test-download-resume.data.json");
-    FILE *download_resumefp = fopen(download_file, "r+");
-    state = storj_bridge_resume_file(env, bucket_id,
-                                     file_id, download_resumefp,
-                                     state,
-                                     check_resolve_file_progress,
-                                     check_resume_file);
-
-    if (uv_run(env->loop, UV_RUN_DEFAULT)) {
-        return 1;
-    }
-#endif
-
-    end_program:
     free(download_file);
     storj_destroy_env(env);
 
@@ -1813,15 +1672,14 @@ int main(void)
     printf("\n");
 
     printf("Test Suite: Uploads\n");
-    //test_upload();
-    //test_upload_cancel();
+    test_upload();
+    test_upload_cancel();
     printf("\n");
 
     printf("Test Suite: Downloads\n");
-    //test_download();
-    //test_download_null_mnemonic();
-    //test_download_cancel();
-    test_download_resume();
+    test_download();
+    test_download_null_mnemonic();
+    test_download_cancel();
     printf("\n");
 
     printf("Test Suite: BIP39\n");

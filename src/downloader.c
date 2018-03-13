@@ -1860,9 +1860,12 @@ STORJ_API int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
     // status and exit when set to true
     for (int i = 0; i < state->total_pointers; i++) {
         storj_pointer_t *pointer = &state->pointers[i];
+        if (pointer->status == POINTER_BEING_DOWNLOADED) {
+            uv_cancel((uv_req_t *)pointer->work);
+        }
+
         if ((pointer->status != POINTER_DOWNLOADED) && (pointer->status != POINTER_FINISHED)) {
             pointer->status = POINTER_CREATED;
-            uv_cancel((uv_req_t *)pointer->work);
         }
     }
 
