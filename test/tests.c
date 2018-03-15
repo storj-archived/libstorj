@@ -865,7 +865,7 @@ int test_download_pause()
         if (count == 100) {
             int ret;
 
-            printf("***\n\n [%s][%s][%d] " KBLU " Going to raise CTRL+C (SIGINT) signal \n" RESET,
+            printf("[%s][%s][%d] " KBLU " Going to raise CTRL+C (SIGINT) signal \n" RESET,
                      __FILE__, __FUNCTION__, __LINE__);
             ret = raise(SIGINT);
 
@@ -1789,48 +1789,48 @@ int main(void)
     struct MHD_Daemon *f = start_farmer_server();
 
     printf("Test Suite: API\n");
-    //test_api();
-    //test_api_badauth();
-    //printf("\n");
+    test_api();
+    test_api_badauth();
+    printf("\n");
 
-    //printf("Test Suite: Uploads\n");
-    //test_upload();
-    //test_upload_cancel();
-    //printf("\n");
+    printf("Test Suite: Uploads\n");
+    test_upload();
+    test_upload_cancel();
+    printf("\n");
 
     printf("Test Suite: Downloads\n");
-    //test_download();
-    //test_download_null_mnemonic();
-    //test_download_cancel();
+    test_download();
+    test_download_null_mnemonic();
+    test_download_cancel();
     test_download_pause();
     printf("\n");
 
-    //printf("Test Suite: BIP39\n");
-    //test_mnemonic_check();
-    //test_mnemonic_generate();
-    //test_storj_mnemonic_generate();
-    //test_storj_mnemonic_generate_256();
-    //test_generate_seed();
-    //test_generate_seed_256();
-    //test_generate_seed_256_trezor();
-    //test_generate_seed_null_mnemonic();
-    //printf("\n");
+    printf("Test Suite: BIP39\n");
+    test_mnemonic_check();
+    test_mnemonic_generate();
+    test_storj_mnemonic_generate();
+    test_storj_mnemonic_generate_256();
+    test_generate_seed();
+    test_generate_seed_256();
+    test_generate_seed_256_trezor();
+    test_generate_seed_null_mnemonic();
+    printf("\n");
 
-    //printf("Test Suite: Crypto\n");
-    //test_generate_bucket_key();
-    //test_generate_file_key();
-    //test_increment_ctr_aes_iv();
-    //test_read_write_encrypted_file();
-    //test_meta_encryption();
-    //printf("\n");
+    printf("Test Suite: Crypto\n");
+    test_generate_bucket_key();
+    test_generate_file_key();
+    test_increment_ctr_aes_iv();
+    test_read_write_encrypted_file();
+    test_meta_encryption();
+    printf("\n");
 
-    //printf("Test Suite: Utils\n");
-    //test_str2hex();
-    //test_hex2str();
-    //test_get_time_milliseconds();
-    //test_determine_shard_size();
-    //test_memory_mapping();
-    //test_str_replace();
+    printf("Test Suite: Utils\n");
+    test_str2hex();
+    test_hex2str();
+    test_get_time_milliseconds();
+    test_determine_shard_size();
+    test_memory_mapping();
+    test_str_replace();
 
     int num_failed = tests_ran - test_status;
     printf(KGRN "\nPASSED: %i" RESET, test_status);
