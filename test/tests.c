@@ -281,6 +281,19 @@ void check_resolve_file_progress(double progress,
     // TODO check error case
 }
 
+void check_resume_file_progress(double progress,
+                                 uint64_t downloaded_bytes,
+                                 uint64_t total_bytes,
+                                 void *handle)
+{
+    //assert(handle != NULL);
+    if (progress == (double)1) {
+        pass("storj_bridge_resolve_file (progress finished)");
+    }
+
+    // TODO check error case
+}
+
 void check_resolve_file(int status, FILE *fd, void *handle)
 {
     fclose(fd);
@@ -313,6 +326,17 @@ void check_resolve_file_cancel(int status, FILE *fd, void *handle)
         pass("storj_bridge_resolve_file_cancel");
     } else {
         fail("storj_bridge_resolve_file_cancel");
+    }
+}
+
+void check_resolve_file_pause(int status, FILE *fd, void *handle)
+{
+    fclose(fd);
+    assert(handle == NULL);
+    if (status == STORJ_TRANSFER_CANCELED) {
+        pass("storj_bridge_resolve_file_pause");
+    } else {
+        fail("storj_bridge_resolve_file_pause");
     }
 }
 
@@ -756,6 +780,104 @@ int test_download_cancel()
         }
 
     } while (more == true);
+
+
+    free(download_file);
+    storj_destroy_env(env);
+
+    return 0;
+}
+
+static void close_signal(uv_handle_t *handle)
+{
+    ((void)0);
+}
+
+static void download_signal_handler(uv_signal_t *req, int signum)
+{
+    storj_download_state_t *state = req->data;
+    /* convert the download state struct into JSON and write to a file */
+    storj_bridge_resolve_file_cancel(state);
+    storj_download_state_serialize(state);
+    if (uv_signal_stop(req)) {
+        printf("Unable to stop signal\n");
+    }
+    uv_close((uv_handle_t *)req, close_signal);
+}
+
+int test_download_pause()
+{
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
+    assert(env != NULL);
+
+    // resolve file
+    char *download_file = calloc(strlen(folder) + 31 + 1, sizeof(char));
+    strcpy(download_file, folder);
+    strcat(download_file, "storj-test-download-resume.data");
+    FILE *download_fp = fopen(download_file, "w+");
+
+    char *bucket_id = "368be0816766b28fd5f43af5";
+    char *file_id = "998960317b6725a3f8080c2b";
+
+    uv_signal_t *sig = malloc(sizeof(uv_signal_t));
+    uv_signal_init(env->loop, sig);
+    uv_signal_start(sig, download_signal_handler, SIGINT);
+
+    storj_download_state_t *state_cb = malloc(sizeof(storj_download_state_t));
+    if (!state_cb) {
+        return -1;
+    }
+    memset(state_cb, 0x00, sizeof(storj_download_state_t));
+
+    storj_download_state_t *state = storj_bridge_resolve_file(env,
+                                                              bucket_id,
+                                                              file_id,
+                                                              download_fp,
+                                                              NULL,
+                                                              check_resume_file_progress,
+                                                              check_resolve_file_pause);
+    sig->data = state;
+
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
+
+    // process the loop one at a time so that we can do other things while
+    // the loop is processing, such as cancel the download
+    int count = 0;
+    bool more;
+    int status = 0;
+    do {
+        more = uv_run(env->loop, UV_RUN_ONCE);
+        if (more == false) {
+            more = uv_loop_alive(env->loop);
+            if (uv_run(env->loop, UV_RUN_NOWAIT) != 0) {
+                more = true;
+            }
+        }
+
+        count++;
+
+        if (count == 100) {
+            int ret;
+
+            printf("***\n\n [%s][%s][%d] " KBLU " Going to raise CTRL+C (SIGINT) signal \n" RESET,
+                     __FILE__, __FUNCTION__, __LINE__);
+            ret = raise(SIGINT);
+
+            if( ret !=0 ) {
+                printf("Error: unable to raise SIGINT signal.\n");
+                exit(0);
+            }
+            assert(status == 0);
+        }
+
+    } while (more == true);
+
 
 
     free(download_file);
@@ -1667,47 +1789,48 @@ int main(void)
     struct MHD_Daemon *f = start_farmer_server();
 
     printf("Test Suite: API\n");
-    test_api();
-    test_api_badauth();
-    printf("\n");
+    //test_api();
+    //test_api_badauth();
+    //printf("\n");
 
-    printf("Test Suite: Uploads\n");
-    test_upload();
-    test_upload_cancel();
-    printf("\n");
+    //printf("Test Suite: Uploads\n");
+    //test_upload();
+    //test_upload_cancel();
+    //printf("\n");
 
     printf("Test Suite: Downloads\n");
-    test_download();
-    test_download_null_mnemonic();
-    test_download_cancel();
+    //test_download();
+    //test_download_null_mnemonic();
+    //test_download_cancel();
+    test_download_pause();
     printf("\n");
 
-    printf("Test Suite: BIP39\n");
-    test_mnemonic_check();
-    test_mnemonic_generate();
-    test_storj_mnemonic_generate();
-    test_storj_mnemonic_generate_256();
-    test_generate_seed();
-    test_generate_seed_256();
-    test_generate_seed_256_trezor();
-    test_generate_seed_null_mnemonic();
-    printf("\n");
+    //printf("Test Suite: BIP39\n");
+    //test_mnemonic_check();
+    //test_mnemonic_generate();
+    //test_storj_mnemonic_generate();
+    //test_storj_mnemonic_generate_256();
+    //test_generate_seed();
+    //test_generate_seed_256();
+    //test_generate_seed_256_trezor();
+    //test_generate_seed_null_mnemonic();
+    //printf("\n");
 
-    printf("Test Suite: Crypto\n");
-    test_generate_bucket_key();
-    test_generate_file_key();
-    test_increment_ctr_aes_iv();
-    test_read_write_encrypted_file();
-    test_meta_encryption();
-    printf("\n");
+    //printf("Test Suite: Crypto\n");
+    //test_generate_bucket_key();
+    //test_generate_file_key();
+    //test_increment_ctr_aes_iv();
+    //test_read_write_encrypted_file();
+    //test_meta_encryption();
+    //printf("\n");
 
-    printf("Test Suite: Utils\n");
-    test_str2hex();
-    test_hex2str();
-    test_get_time_milliseconds();
-    test_determine_shard_size();
-    test_memory_mapping();
-    test_str_replace();
+    //printf("Test Suite: Utils\n");
+    //test_str2hex();
+    //test_hex2str();
+    //test_get_time_milliseconds();
+    //test_determine_shard_size();
+    //test_memory_mapping();
+    //test_str_replace();
 
     int num_failed = tests_ran - test_status;
     printf(KGRN "\nPASSED: %i" RESET, test_status);

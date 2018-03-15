@@ -341,7 +341,6 @@ static void append_pointers_to_state(storj_download_state_t *state,
     }
 }
 
-static void queue_request_pointers(storj_download_state_t *state);
 static void after_request_pointers(uv_work_t *work, int status)
 {
     json_request_download_t *req = work->data;

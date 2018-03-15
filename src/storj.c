@@ -795,7 +795,7 @@ static int get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_pa
     return -1;
 #endif
 
-    printf("\n Downloaded Destination file path = %s\n", file_path);
+    printf("\n [%s][%s][%d] "KGRN" Destination file path = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, file_path);
     return 0;
 }
 
@@ -1935,11 +1935,11 @@ STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
                                json_object_new_boolean(pointer->parity));
         json_object_object_add(jptr, "downloaded_size",
                                json_object_new_int64(pointer->downloaded_size));
-        if (state->pointers->farmer_id) {
+        if (pointer->farmer_id) {
             json_object_object_add(jfarmer, "nodeID",
                                    json_object_new_string(pointer->farmer_id));
         }
-        if (state->pointers->farmer_address) {
+        if (pointer->farmer_address) {
             json_object_object_add(jfarmer, "address",
                                    json_object_new_string(pointer->farmer_address));
         }
