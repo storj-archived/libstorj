@@ -2240,9 +2240,12 @@ STORJ_API int storj_download_state_deserialize(storj_download_state_t *state, ch
             json_object_object_get_ex(jstorj_file_meta_t, "hmac", &jdwnld_obj);
             state->info->hmac = strdup(json_object_get_string(jdwnld_obj));
 
+#if 0
             /* get file index */
             json_object_object_get_ex(jstorj_file_meta_t, "index", &jdwnld_obj);
+            printf(" am here index = %s\n ", json_object_get_string(jdwnld_obj));
             state->info->index = strdup(json_object_get_string(jdwnld_obj));
+#endif
         } else {
             printf("[%s][%s][%d] "KRED"Invalid json object\n" RESET,
                               __FILE__, __FUNCTION__, __LINE__);
