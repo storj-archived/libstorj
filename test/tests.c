@@ -334,9 +334,14 @@ void check_resolve_file_pause(int status, FILE *fd, void *handle)
     fclose(fd);
     assert(handle == NULL);
     if (status == STORJ_TRANSFER_CANCELED) {
-        pass("storj_bridge_resolve_file_pause");
-    } else {
-        fail("storj_bridge_resolve_file_pause");
+        char *download_file = calloc(strlen(folder) + 36 + 1, sizeof(char));
+        strcpy(download_file, folder);
+        strcat(download_file, "storj-test-download-resume.data.json");
+        if(access(download_file, F_OK) != -1) {
+            pass("storj_bridge_resolve_file_pause");
+        } else {
+            fail("storj_bridge_resolve_file_pause");
+        }
     }
 }
 
