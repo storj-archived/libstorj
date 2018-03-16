@@ -747,12 +747,8 @@ static void after_request_shard(uv_work_t *work, int status)
     storj_pointer_t *pointer = &req->state->pointers[req->pointer_index];
 
     if(req->pointer_index < req->state->total_pointers) {
-        printf(KRED"index = %d, start = %d, end = %d"RESET"\n",
-               req->pointer_index, req->start, req->end);
         pointer->report->start = req->start;
         pointer->report->end = req->end;
-        printf(KRED"pointer index = %d, start = %d, end = %d"RESET"\n",
-               req->pointer_index, pointer->report->start, pointer->report->end);
         if (req->error_status) {
 
             req->state->log->warn(req->state->env->log_options,
