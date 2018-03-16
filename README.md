@@ -1,6 +1,7 @@
 libstorj
 =======
 
+[![Storj.io](https://storj.io/img/storj-badge.svg)](https://storj.io)
 [![Build Status](https://travis-ci.org/Storj/libstorj.svg?branch=master)](https://travis-ci.org/Storj/libstorj)
 
 Asynchronous multi-platform C library and CLI for encrypted file transfer on the Storj network.
