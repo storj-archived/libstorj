@@ -29,6 +29,7 @@ docs
 libstorj.pc
 libtool
 src/main
+src/shard_size
 src/storj
 src/storj.dSYM/
 src/storj.exe
