@@ -329,18 +329,16 @@ void check_resolve_file_cancel(int status, FILE *fd, void *handle)
     }
 }
 
-int test_download_pause();
 void check_resolve_file_pause(int status, FILE *fd, void *handle)
 {
     fclose(fd);
     assert(handle == NULL);
     if (status == STORJ_TRANSFER_CANCELED) {
-        char *download_file = calloc(strlen(folder) + 36 + 1, sizeof(char));
+        char *download_file = calloc(strlen(folder) + 38 + 1, sizeof(char));
         strcpy(download_file, folder);
-        strcat(download_file, "storj-test-download-resume.data.json");
+        strcat(download_file, "storj-test-download-pausNres.data.json");
         if(access(download_file, F_OK) != -1) {
             pass("storj_bridge_resolve_file_pause");
-            test_download_pause();
         } else {
             fail("storj_bridge_resolve_file_pause");
         }
@@ -814,8 +812,6 @@ static void download_signal_handler(uv_signal_t *req, int signum)
 
 int test_download_pause()
 {
-    char temp_file[BUFSIZ] = {0x00};
-    bool dwn_resume = false;
 
     // initialize event loop and environment
     storj_env_t *env = storj_init_env(&bridge_options,
@@ -825,31 +821,11 @@ int test_download_pause()
     assert(env != NULL);
 
     // resolve file
-    char *download_file = calloc(strlen(folder) + 31 + 1, sizeof(char));
+    char *download_file = calloc(strlen(folder) + 33 + 1, sizeof(char));
     strcpy(download_file, folder);
-    strcat(download_file, "storj-test-download-resume.data");
-
-    FILE *download_fp = NULL;
-    memcpy(temp_file, download_file, strlen(download_file));
-    strcat(temp_file, ".json");
-
-    storj_download_state_t *state_cb = malloc(sizeof(storj_download_state_t));
-    assert(state_cb != NULL);
-    memset(state_cb, 0x00, sizeof(storj_download_state_t));
-    state_cb->env = env;
-
-    if (access(temp_file, F_OK) != -1) {
-        printf(KBLU"Warning: Partially downloaded file already exists at path [%s]"RESET "\n", download_file);
-        storj_download_state_deserialize(state_cb, temp_file);
-        printf("am here tests.c .. = %s \n", temp_file);
-        dwn_resume = true;
-        download_fp = fopen(download_file, "r+");
-        assert(download_fp != NULL);
-    }
-    else {
-        unlink(download_file);
-        download_fp = fopen(download_file, "w+");
-    }
+    strcat(download_file, "storj-test-download-pausNres.data");
+    unlink(download_file);
+    FILE *download_fp = fopen(download_file, "w+");
 
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
@@ -858,26 +834,13 @@ int test_download_pause()
     uv_signal_init(env->loop, sig);
     uv_signal_start(sig, download_signal_handler, SIGINT);
 
-    storj_download_state_t *state;
-    if (dwn_resume == true) {
-        state = storj_bridge_resume_file(env, bucket_id,
-                                         file_id,
-                                         download_fp,
-                                         state_cb,
-                                         check_resume_file_progress,
-                                         check_resolve_file_pause);
-        printf("am here resume \n");
-    } else {
-        state = storj_bridge_resolve_file(env,
-                                          bucket_id,
-                                          file_id,
-                                          download_fp,
-                                          NULL,
-                                          check_resume_file_progress,
-                                          check_resolve_file_pause);
-
-        printf("am here refresh \n");
-    }
+    storj_download_state_t *state = storj_bridge_resolve_file(env,
+                                                              bucket_id,
+                                                              file_id,
+                                                              download_fp,
+                                                              NULL,
+                                                              check_resume_file_progress,
+                                                              check_resolve_file_pause);
     sig->data = state;
 
     if (!state || state->error_status != 0) {
@@ -901,10 +864,8 @@ int test_download_pause()
         count++;
 
         printf("am here hello hello count= %d more = %d\n", count, more);
-        if ((dwn_resume == false) && (count == 100)) {
-            count = 0x00;
+        if (count == 100) {
             int ret;
-
             printf("[%s][%s][%d] " KBLU " Going to raise CTRL+C (SIGINT) signal \n" RESET,
                      __FILE__, __FUNCTION__, __LINE__);
             ret = raise(SIGINT);
@@ -913,15 +874,8 @@ int test_download_pause()
                 printf("Error: unable to raise SIGINT signal.\n");
                 exit(0);
             }
-            assert(status == 0);
-        } else {
-            printf("running for ever\n");
-            uv_run(env->loop, UV_RUN_DEFAULT);
         }
-
     } while (more == true);
-
-
 
     printf("crap crap\n");
     free(download_file);
