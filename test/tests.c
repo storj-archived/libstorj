@@ -345,6 +345,18 @@ void check_resolve_file_pause(int status, FILE *fd, void *handle)
     }
 }
 
+void check_resolve_file_resume(int status, FILE *fd, void *handle)
+{
+    fclose(fd);
+    //assert(handle != NULL);
+    if (status) {
+        fail("storj_bridge_resolve_file_resume");
+        printf("Download failed: %s\n", storj_strerror(status));
+    } else {
+        pass("storj_bridge_resolve_file_resume");
+    }
+}
+
 void check_store_file_progress(double progress,
                                uint64_t uploaded_bytes,
                                uint64_t total_bytes,
@@ -863,7 +875,6 @@ int test_download_pause()
 
         count++;
 
-        printf("am here hello hello count= %d more = %d\n", count, more);
         if (count == 100) {
             int ret;
             printf("[%s][%s][%d] " KBLU " Going to raise CTRL+C (SIGINT) signal \n" RESET,
@@ -877,7 +888,83 @@ int test_download_pause()
         }
     } while (more == true);
 
-    printf("crap crap\n");
+    free(download_file);
+    storj_destroy_env(env);
+
+    return 0;
+}
+
+
+int test_download_resume()
+{
+    char temp_file[BUFSIZ] = {0x00};
+    bool dwn_resume = false;
+
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
+    assert(env != NULL);
+
+    // resolve file
+    char *download_file = calloc(strlen(folder) + 33 + 1, sizeof(char));
+    strcpy(download_file, folder);
+    strcat(download_file, "storj-test-download-pausNres.data");
+
+    FILE *download_fp = NULL;
+    memcpy(temp_file, download_file, strlen(download_file));
+    strcat(temp_file, ".json");
+
+    storj_download_state_t *state_cb = malloc(sizeof(storj_download_state_t));
+    assert(state_cb != NULL);
+    memset(state_cb, 0x00, sizeof(storj_download_state_t));
+    state_cb->env = env;
+
+    if (access(temp_file, F_OK) != -1) {
+        printf(KBLU"Warning: Partially downloaded file already exists at path [%s]"RESET "\n", download_file);
+        storj_download_state_deserialize(state_cb, temp_file);
+        printf("am here tests.c .. = %s \n", temp_file);
+        dwn_resume = true;
+        download_fp = fopen(download_file, "r+");
+        assert(download_fp != NULL);
+    }
+    else {
+        printf("[%s][%s][%d] " KRED " Something Wrong !!!!!!! \n" RESET,
+                            __FILE__, __FUNCTION__, __LINE__);
+        return 1;
+    }
+
+    char *bucket_id = "368be0816766b28fd5f43af5";
+    char *file_id = "998960317b6725a3f8080c2b";
+
+    storj_download_state_t *state = storj_bridge_resume_file(env, bucket_id,
+                                                             file_id,
+                                                             download_fp,
+                                                             state_cb,
+                                                             check_resume_file_progress,
+                                                             check_resolve_file_resume);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
+
+    // process the loop one at a time so that we can do other things while
+    // the loop is processing, such as cancel the download
+    int count = 0;
+    bool more;
+    int status = 0;
+    do {
+        more = uv_run(env->loop, UV_RUN_ONCE);
+        if (more == false) {
+            more = uv_loop_alive(env->loop);
+            if (uv_run(env->loop, UV_RUN_NOWAIT) != 0) {
+                more = true;
+            }
+        }
+
+        count++;
+    } while (more == true);
+
     free(download_file);
     storj_destroy_env(env);
 
@@ -1786,49 +1873,50 @@ int main(void)
     // spin up test farmer server
     struct MHD_Daemon *f = start_farmer_server();
 
-//    printf("Test Suite: API\n");
-//    test_api();
-//    test_api_badauth();
-//    printf("\n");
-//
-//    printf("Test Suite: Uploads\n");
-//    test_upload();
-//    test_upload_cancel();
-//    printf("\n");
-//
-    printf("Test Suite: Downloads\n");
-//    test_download();
-//    test_download_null_mnemonic();
-//    test_download_cancel();
-    test_download_pause();
+    printf("Test Suite: API\n");
+    test_api();
+    test_api_badauth();
     printf("\n");
 
-//    printf("Test Suite: BIP39\n");
-//    test_mnemonic_check();
-//    test_mnemonic_generate();
-//    test_storj_mnemonic_generate();
-//    test_storj_mnemonic_generate_256();
-//    test_generate_seed();
-//    test_generate_seed_256();
-//    test_generate_seed_256_trezor();
-//    test_generate_seed_null_mnemonic();
-//    printf("\n");
-//
-//    printf("Test Suite: Crypto\n");
-//    test_generate_bucket_key();
-//    test_generate_file_key();
-//    test_increment_ctr_aes_iv();
-//    test_read_write_encrypted_file();
-//    test_meta_encryption();
-//    printf("\n");
-//
-//    printf("Test Suite: Utils\n");
-//    test_str2hex();
-//    test_hex2str();
-//    test_get_time_milliseconds();
-//    test_determine_shard_size();
-//    test_memory_mapping();
-//    test_str_replace();
+    printf("Test Suite: Uploads\n");
+    test_upload();
+    test_upload_cancel();
+    printf("\n");
+
+    printf("Test Suite: Downloads\n");
+    test_download();
+    test_download_null_mnemonic();
+    test_download_cancel();
+    test_download_pause();
+    //test_download_resume();
+    printf("\n");
+
+    printf("Test Suite: BIP39\n");
+    test_mnemonic_check();
+    test_mnemonic_generate();
+    test_storj_mnemonic_generate();
+    test_storj_mnemonic_generate_256();
+    test_generate_seed();
+    test_generate_seed_256();
+    test_generate_seed_256_trezor();
+    test_generate_seed_null_mnemonic();
+    printf("\n");
+
+    printf("Test Suite: Crypto\n");
+    test_generate_bucket_key();
+    test_generate_file_key();
+    test_increment_ctr_aes_iv();
+    test_read_write_encrypted_file();
+    test_meta_encryption();
+    printf("\n");
+
+    printf("Test Suite: Utils\n");
+    test_str2hex();
+    test_hex2str();
+    test_get_time_milliseconds();
+    test_determine_shard_size();
+    test_memory_mapping();
+    test_str_replace();
 
     int num_failed = tests_ran - test_status;
     printf(KGRN "\nPASSED: %i" RESET, test_status);
