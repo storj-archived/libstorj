@@ -746,46 +746,50 @@ static void after_request_shard(uv_work_t *work, int status)
     // update the pointer status
     storj_pointer_t *pointer = &req->state->pointers[req->pointer_index];
 
-    pointer->report->start = req->start;
-    pointer->report->end = req->end;
+    if(req->pointer_index < req->state->total_pointers) {
+        printf(KRED"index = %d, start = %d, end = %d"RESET"\n",
+               req->pointer_index, req->start, req->end);
+        pointer->report->start = req->start;
+        pointer->report->end = req->end;
+        printf(KRED"pointer index = %d, start = %d, end = %d"RESET"\n",
+               req->pointer_index, pointer->report->start, pointer->report->end);
+        if (req->error_status) {
 
-    if (req->error_status) {
+            req->state->log->warn(req->state->env->log_options,
+                                  req->state->handle,
+                                  "Error downloading shard: %s, reason: %s",
+                                  req->shard_hash,
+                                  storj_strerror(req->error_status));
 
-        req->state->log->warn(req->state->env->log_options,
-                              req->state->handle,
-                              "Error downloading shard: %s, reason: %s",
-                              req->shard_hash,
-                              storj_strerror(req->error_status));
+            pointer->status = POINTER_ERROR;
 
-        pointer->status = POINTER_ERROR;
+            switch (req->error_status) {
+                case STORJ_FARMER_INTEGRITY_ERROR:
+                    pointer->report->code = STORJ_REPORT_FAILURE;
+                    pointer->report->message = STORJ_REPORT_FAILED_INTEGRITY;
+                default:
+                    pointer->report->code = STORJ_REPORT_FAILURE;
+                    pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
+            }
 
-        switch(req->error_status) {
-            case STORJ_FARMER_INTEGRITY_ERROR:
-                pointer->report->code = STORJ_REPORT_FAILURE;
-                pointer->report->message = STORJ_REPORT_FAILED_INTEGRITY;
-            default:
-                pointer->report->code = STORJ_REPORT_FAILURE;
-                pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
+        } else {
+
+            req->state->log->info(req->state->env->log_options,
+                                  req->state->handle,
+                                  "Finished downloading shard: %s",
+                                  req->shard_hash);
+
+            pointer->report->code = STORJ_REPORT_SUCCESS;
+            pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
+            pointer->status = POINTER_DOWNLOADED;
+
+            // Make sure the downloaded size is updated
+            pointer->downloaded_size = pointer->size;
+
+            report_progress(req->state);
+
         }
-
-    } else {
-
-        req->state->log->info(req->state->env->log_options,
-                              req->state->handle,
-                              "Finished downloading shard: %s",
-                              req->shard_hash);
-
-        pointer->report->code = STORJ_REPORT_SUCCESS;
-        pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
-        pointer->status = POINTER_DOWNLOADED;
-
-        // Make sure the downloaded size is updated
-        pointer->downloaded_size = pointer->size;
-
-        report_progress(req->state);
-
     }
-
     queue_next_work(req->state);
 
     // close the async progress handle
@@ -1948,6 +1952,7 @@ STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
     state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
     state->download_max_concurrency = STORJ_DOWNLOAD_CONCURRENCY;
+    state->error_status = STORJ_TRANSFER_OK;
     state->excluded_farmer_ids = NULL;
     state->hmac = NULL;
     state->canceled = false;
