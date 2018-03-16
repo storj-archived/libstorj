@@ -1914,40 +1914,40 @@ STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
         struct json_object *jptr = json_object_new_object();
         struct json_object *jfarmer = json_object_new_object();
         storj_pointer_t *pointer = &state->pointers[i];
-
-        json_object_object_add(jptr, "replace_count",
-                               json_object_new_int(pointer->replace_count));
         if (pointer->token) {
             json_object_object_add(jptr, "token",
                                    json_object_new_string(pointer->token));
-        }
-        if (pointer->shard_hash) {
-            json_object_object_add(jptr, "hash",
-                                   json_object_new_string(pointer->shard_hash));
-        }
-        json_object_object_add(jptr, "index",
-                               json_object_new_int(pointer->index));
-        json_object_object_add(jptr, "status",
-                               json_object_new_int(pointer->status));
-        json_object_object_add(jptr, "size",
-                               json_object_new_int64(pointer->size));
-        json_object_object_add(jptr, "parity",
-                               json_object_new_boolean(pointer->parity));
-        json_object_object_add(jptr, "downloaded_size",
-                               json_object_new_int64(pointer->downloaded_size));
-        if (pointer->farmer_id) {
-            json_object_object_add(jfarmer, "nodeID",
-                                   json_object_new_string(pointer->farmer_id));
-        }
-        if (pointer->farmer_address) {
-            json_object_object_add(jfarmer, "address",
-                                   json_object_new_string(pointer->farmer_address));
-        }
-        json_object_object_add(jfarmer, "port",
-                               json_object_new_int(pointer->farmer_port));
-        json_object_object_add(jptr, "farmer", jfarmer);
-        json_object_array_add(jptr_array, jptr);
+            json_object_object_add(jptr, "replace_count",
+                                   json_object_new_int(pointer->replace_count));
 
+            if (pointer->shard_hash) {
+                json_object_object_add(jptr, "hash",
+                                       json_object_new_string(pointer->shard_hash));
+            }
+            json_object_object_add(jptr, "index",
+                                   json_object_new_int(pointer->index));
+            json_object_object_add(jptr, "status",
+                                   json_object_new_int(pointer->status));
+            json_object_object_add(jptr, "size",
+                                   json_object_new_int64(pointer->size));
+            json_object_object_add(jptr, "parity",
+                                   json_object_new_boolean(pointer->parity));
+            json_object_object_add(jptr, "downloaded_size",
+                                   json_object_new_int64(pointer->downloaded_size));
+            if (pointer->farmer_id) {
+                json_object_object_add(jfarmer, "nodeID",
+                                       json_object_new_string(pointer->farmer_id));
+            }
+            if (pointer->farmer_address) {
+                json_object_object_add(jfarmer, "address",
+                                       json_object_new_string(pointer->farmer_address));
+            }
+            json_object_object_add(jfarmer, "port",
+                                   json_object_new_int(pointer->farmer_port));
+            json_object_object_add(jptr, "farmer", jfarmer);
+            json_object_array_add(jptr_array, jptr);
+
+        }
         i++;
     }
 
@@ -2239,13 +2239,6 @@ STORJ_API int storj_download_state_deserialize(storj_download_state_t *state, ch
             /* get file hmac */
             json_object_object_get_ex(jstorj_file_meta_t, "hmac", &jdwnld_obj);
             state->info->hmac = strdup(json_object_get_string(jdwnld_obj));
-
-#if 0
-            /* get file index */
-            json_object_object_get_ex(jstorj_file_meta_t, "index", &jdwnld_obj);
-            printf(" am here index = %s\n ", json_object_get_string(jdwnld_obj));
-            state->info->index = strdup(json_object_get_string(jdwnld_obj));
-#endif
         } else {
             printf("[%s][%s][%d] "KRED"Invalid json object\n" RESET,
                               __FILE__, __FUNCTION__, __LINE__);
