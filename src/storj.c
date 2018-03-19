@@ -795,7 +795,6 @@ static int get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_pa
     return -1;
 #endif
 
-    printf("[%s][%s][%d] "KGRN" Destination file path = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, file_path);
     return 0;
 }
 

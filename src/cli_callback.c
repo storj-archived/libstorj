@@ -535,9 +535,6 @@ static void download_file_complete(int status, FILE *fd, void *handle)
         strcat(tempFile, ".json");
         if (access(tempFile, F_OK) != -1 ) {
             unlink(tempFile);
-        } else {
-            printf("[%s][%s][%d] "KBLU"No json download file exists \n" RESET,
-                   __FILE__, __FUNCTION__, __LINE__);
         }
         printf("Download Success!\n");
     }

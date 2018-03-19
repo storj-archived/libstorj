@@ -877,8 +877,7 @@ int test_download_pause()
 
         if (count == 100) {
             int ret;
-            printf("[%s][%s][%d] " KBLU " Going to raise CTRL+C (SIGINT) signal \n" RESET,
-                     __FILE__, __FUNCTION__, __LINE__);
+            printf(KBLU"Emulate CTRL+C (SIGINT) signal"RESET"\n");
             ret = raise(SIGINT);
 
             if( ret !=0 ) {
@@ -1888,7 +1887,6 @@ int main(void)
     test_download_null_mnemonic();
     test_download_cancel();
     test_download_pause();
-    //test_download_resume();
     printf("\n");
 
     printf("Test Suite: BIP39\n");
