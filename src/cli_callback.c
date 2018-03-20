@@ -513,36 +513,51 @@ static void verify_upload_files(void *handle)
 
 static void download_file_complete(int status, FILE *fd, void *handle)
 {
+    char filePath[PATH_MAX] = {0x00};
     cli_api_t *cli_api = handle;
     cli_api->rcvd_cmd_resp = "download-file-resp";
 
-    printf("\n");
-    fclose(fd);
-    if (status) {
-        // TODO send to stderr
-        switch(status) {
-            case STORJ_FILE_DECRYPTION_ERROR:
-                printf("Unable to properly decrypt file, please check " \
+    if (get_filepath_from_filedescriptor(fd, filePath) == 0x00)
+    {
+        printf("[%s][%s][%d] "KGRN" Destination file path = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, filePath);
+
+        printf("\n");
+        fclose(fd);
+        if (status) {
+            // TODO send to stderr
+            switch(status) {
+                case STORJ_FILE_DECRYPTION_ERROR:
+                    printf("Unable to properly decrypt file, please check " \
                        "that the correct encryption key was " \
                        "imported correctly.\n\n");
-                break;
-            default:
-                printf("[%s][%d]Download failure: %s\n",
-                       __FUNCTION__, __LINE__, storj_strerror(status));
+                    break;
+                default:
+                    printf("[%s][%d]Download failure: %s\n",
+                           __FUNCTION__, __LINE__, storj_strerror(status));
+            }
+        } else {
+            char tempFile[256] = {0x00};
+            memcpy(tempFile, filePath, strlen(filePath));
+            strcat(tempFile, ".json");
+            printf("[%s][%s][%d] "KGRN" checking .json file  = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, tempFile);
+            if (access(tempFile, F_OK) != -1 ) {
+                unlink(tempFile);
+            }
+            fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, filePath);
+            cli_api->xfer_count++;
+            printf("Download Success!\n");
         }
-    } else {
-        char tempFile[256] = {0x00};
-        memcpy(tempFile, cli_api->dst_file, strlen(cli_api->dst_file));
-        strcat(tempFile, ".json");
-        if (access(tempFile, F_OK) != -1 ) {
-            unlink(tempFile);
-        }
-        fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, cli_api->dst_file);
-        cli_api->xfer_count++;
-        printf("Download Success!\n");
-    }
 
-    //queue_next_cmd_req(cli_api);
+        if(cli_api->xfer_count > cli_api->total_files) {
+            cli_api->next_cmd_req  = cli_api->final_cmd_req;
+            cli_api->final_cmd_req = NULL;
+            queue_next_cmd_req(cli_api);
+        }
+    }
+    else
+    {
+        printf("[%s][%s][%d] "KRED" Invalid file descriptor \n" RESET, __FILE__, __FUNCTION__, __LINE__);
+    }
 }
 
 static void download_signal_handler(uv_signal_t *req, int signum)
@@ -643,7 +658,7 @@ static int download_file(storj_env_t *env, char *bucket_id,
                                           file_id, fd, cli_api->handle,
                                           progress_cb,
                                           download_file_complete);
-        printf(KYEL"Dowload started"RESET"\n");
+        printf(KYEL"Download started"RESET"\n");
     }
     cli_api->error_status = CLI_API_READY_TO_DWNLD;
 
@@ -1118,11 +1133,11 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                                     }
 
                                     if (cli_api->xfer_count <= cli_api->total_files) {
-                                        /* is it the last file ? */
-                                        if (cli_api->xfer_count == cli_api->total_files) {
-                                            cli_api->next_cmd_req  = cli_api->final_cmd_req;
-                                            cli_api->final_cmd_req = NULL;
-                                        }
+//                                        /* is it the last file ? */
+//                                        if (cli_api->xfer_count == cli_api->total_files) {
+//                                            cli_api->next_cmd_req  = cli_api->final_cmd_req;
+//                                            cli_api->final_cmd_req = NULL;
+//                                        }
 
                                         cli_api->file_id[i] = strdup(token[0]);
                                         printf("cli_api->file_id = %s\n", cli_api->file_id[i]);
@@ -1131,13 +1146,11 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                                             strcat(temp_path, "/");
                                         }
                                         strcat(temp_path, token[1]);
-                                        //fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, temp_path);
-                                        //cli_api->xfer_count++;
                                         cli_api->dst_file = strdup(temp_path);
                                         printf(KBLU" file id [%d] = %s; download path = %s"RESET"\n",i, cli_api->file_id[i], temp_path);
                                         cli_api->error_status = CLI_API_DWNLD_IN_PROGRESS;
-                                        download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[0], temp_path, cli_api);
-                                        sleep(5);
+                                        download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[i], temp_path, cli_api);
+                                        sleep(1);
                                     } else {
                                         printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
                                         exit(0);

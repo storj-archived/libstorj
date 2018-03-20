@@ -74,4 +74,5 @@ int unmap_file(uint8_t *map, uint64_t filesize);
 
 int map_file(int fd, uint64_t filesize, uint8_t **map, bool read_only);
 
+int get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_path);
 #endif /* STORJ_UTILS_H */

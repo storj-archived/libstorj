@@ -751,54 +751,6 @@ static void log_formatter_error(storj_log_options_t *options, void *handle,
     va_end(args);
 }
 
-static int get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_path)
-{
-    #define MAXLEN 200
-    char procpath[MAXLEN + 1] = {0x00};
-    int fd = -1;
-
-#ifdef __APPLE__
-    if (fcntl(fileno(file_descriptor), F_GETPATH, file_path) != -1) {
-    } else {
-        printf("[%s][%s][%d] Invalid file path \n", __FILE__, __FUNCTION__, __LINE__);
-        return -1;
-    }
-#elif __linux__
-    /*
-     * Get the low-level file descriptor of the open file
-     */
-    fd = fileno(file_descriptor);
-    if (fd < 0) {
-        printf("[%s][%s][%d] Invalid file descriptor \n", __FILE__, __FUNCTION__, __LINE__);
-        return -1;
-    }
-
-    /*
-     * Construct a string with the /proc path of the file
-     * descriptor (which is a symbolic link to the real
-     * file).
-     */
-    snprintf(procpath, MAXLEN, "/proc/self/fd/%d", fd);
-
-    /*
-     * Get the path the symlink is pointing to.
-     */
-    if (readlink(procpath, file_path, (size_t) MAXLEN) < 0) {
-        printf("[%s][%s][%d] Invalid file path \n", __FILE__, __FUNCTION__, __LINE__);
-        return -1;
-    }
-#elif __WIN32__
-    printf("[%s][%s][%d] "KRED" TODO NEEDS IMPLEMENTATION \n" RESET, __FILE__, __FUNCTION__, __LINE__);
-    return -1;
-#else
-    printf("[%s][%s][%d] "KRED"Unknow OS\n" RESET, __FILE__, __FUNCTION__, __LINE__);
-    return -1;
-#endif
-
-    printf("[%s][%s][%d] "KGRN" Destination file path = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, file_path);
-    return 0;
-}
-
 STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
                                  storj_encrypt_options_t *encrypt_options,
                                  storj_http_options_t *http_options,
