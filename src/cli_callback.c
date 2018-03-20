@@ -514,14 +514,12 @@ static void verify_upload_files(void *handle)
 static void download_file_complete(int status, FILE *fd, void *handle)
 {
     char filePath[PATH_MAX] = {0x00};
-    cli_api_t *cli_api = handle;
-    cli_api->rcvd_cmd_resp = "download-file-resp";
-
     if (get_filepath_from_filedescriptor(fd, filePath) == 0x00)
     {
-        printf("[%s][%s][%d] "KGRN" Destination file path = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, filePath);
-
-        printf("\n");
+        cli_api_t *cli_api = handle;
+        cli_api->rcvd_cmd_resp = "download-file-resp";
+        fprintf(stdout,"\n*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, filePath);
+        cli_api->xfer_count++;
         fclose(fd);
         if (status) {
             // TODO send to stderr
@@ -543,8 +541,6 @@ static void download_file_complete(int status, FILE *fd, void *handle)
             if (access(tempFile, F_OK) != -1 ) {
                 unlink(tempFile);
             }
-            fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, filePath);
-            cli_api->xfer_count++;
             printf("Download Success!\n");
         }
 
@@ -635,7 +631,7 @@ static int download_file(storj_env_t *env, char *bucket_id,
         // TODO send to stderr
         printf("***\n [%s][%s][%d] " KRED "Invalid path(%s)\n" RESET,
                __FILE__, __FUNCTION__, __LINE__, strerror(errno));
-        return 1;
+        exit(-1);
     }
 
     uv_signal_t *sig = malloc(sizeof(uv_signal_t));
@@ -970,12 +966,12 @@ void queue_next_cmd_req(cli_api_t *cli_api)
     void *handle = cli_api->handle;
 
     #ifdef debug_enable
-    printf("[%s][%d]start !!!! expt resp = %s; rcvd resp = %s \n",
-           __FUNCTION__, __LINE__,
-            cli_api->excp_cmd_resp, cli_api->rcvd_cmd_resp );
-    printf("[%s][%d]last cmd = %s; cur cmd = %s; next cmd = %s\n",
-           __FUNCTION__, __LINE__, cli_api->last_cmd_req,
-           cli_api->curr_cmd_req, cli_api->next_cmd_req);
+        printf("[%s][%d]start !!!! expt resp = %s; rcvd resp = %s \n",
+               __FUNCTION__, __LINE__,
+                cli_api->excp_cmd_resp, cli_api->rcvd_cmd_resp );
+        printf("[%s][%d]last cmd = %s; cur cmd = %s; next cmd = %s\n",
+               __FUNCTION__, __LINE__, cli_api->last_cmd_req,
+               cli_api->curr_cmd_req, cli_api->next_cmd_req);
     #endif
 
     if (cli_api->excp_cmd_resp != NULL) {
@@ -988,9 +984,9 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 cli_api->excp_cmd_resp = "get-file-id-resp";
 
                 storj_bridge_get_file_id(cli_api->env, cli_api->bucket_id,
-                                        cli_api->file_name, cli_api, get_file_id_callback);
+                                         cli_api->file_name, cli_api, get_file_id_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                (strcmp(cli_api->next_cmd_req, "list-files-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "list-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
@@ -999,7 +995,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 storj_bridge_list_files(cli_api->env, cli_api->bucket_id,
                                         cli_api, list_files_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "remove-bucket-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "remove-bucket-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
@@ -1008,10 +1004,10 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 storj_bridge_delete_bucket(cli_api->env, cli_api->bucket_id,
                                            cli_api, delete_bucket_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "remove-file-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "remove-file-req") == 0x00)) {
                 printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
-                        __FUNCTION__, __LINE__, cli_api->file_name, cli_api->file_id[0],
-                        cli_api->bucket_name);
+                       __FUNCTION__, __LINE__, cli_api->file_name, cli_api->file_id[0],
+                       cli_api->bucket_name);
 
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
@@ -1019,12 +1015,12 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 cli_api->excp_cmd_resp = "remove-file-resp";
 
                 storj_bridge_delete_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[0],
-                                            cli_api, delete_file_callback);
+                                         cli_api, delete_file_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "list-mirrors-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "list-mirrors-req") == 0x00)) {
                 printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
-                        __FUNCTION__, __LINE__, cli_api->file_name, cli_api->file_id[0],
-                        cli_api->bucket_name);
+                       __FUNCTION__, __LINE__, cli_api->file_name, cli_api->file_id[0],
+                       cli_api->bucket_name);
 
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
@@ -1032,9 +1028,9 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 cli_api->excp_cmd_resp = "list-mirrors-resp";
 
                 storj_bridge_list_mirrors(cli_api->env, cli_api->bucket_id, cli_api->file_id[0],
-                                            cli_api, list_mirrors_callback);
+                                          cli_api, list_mirrors_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "upload-file-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "upload-file-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
@@ -1042,7 +1038,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
 
                 upload_file(cli_api->env, cli_api->bucket_id, cli_api->file_name, cli_api);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "verify-upload-files-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "verify-upload-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
@@ -1050,7 +1046,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
 
                 verify_upload_files(cli_api);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "upload-files-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "upload-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->excp_cmd_resp = "upload-files-resp";
 
@@ -1088,16 +1084,16 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                     exit(0);
                 }
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "download-file-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "download-file-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
                 cli_api->excp_cmd_resp = "download-file-resp";
 
                 download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[0],
-                                cli_api->dst_file, cli_api);
+                              cli_api->dst_file, cli_api);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "download-files-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "download-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->excp_cmd_resp = "download-file-resp";
 
@@ -1116,8 +1112,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                     cli_api->error_status = CLI_API_READY_TO_DWNLD;
                     do {
                         printf(KBLU"DOWNLOAD STATUS = %d"RESET"\n", cli_api->error_status);
-                        switch(cli_api->error_status)
-                        {
+                        switch(cli_api->error_status) {
                             case CLI_API_READY_TO_DWNLD:
                                 /* setup next file to be downloaded */
                                 if (fgets(line[i],sizeof(line), file)!= NULL) {/* read a line from a file */
@@ -1132,29 +1127,19 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                                         token[tk_idx] = strtok(NULL, ":");
                                     }
 
-                                    if (cli_api->xfer_count <= cli_api->total_files) {
-//                                        /* is it the last file ? */
-//                                        if (cli_api->xfer_count == cli_api->total_files) {
-//                                            cli_api->next_cmd_req  = cli_api->final_cmd_req;
-//                                            cli_api->final_cmd_req = NULL;
-//                                        }
-
-                                        cli_api->file_id[i] = strdup(token[0]);
-                                        printf("cli_api->file_id = %s\n", cli_api->file_id[i]);
-                                        strcpy(temp_path, cli_api->file_path);
-                                        if (cli_api->file_path[(strlen(cli_api->file_path)-1)] != '/') {
-                                            strcat(temp_path, "/");
-                                        }
-                                        strcat(temp_path, token[1]);
-                                        cli_api->dst_file = strdup(temp_path);
-                                        printf(KBLU" file id [%d] = %s; download path = %s"RESET"\n",i, cli_api->file_id[i], temp_path);
-                                        cli_api->error_status = CLI_API_DWNLD_IN_PROGRESS;
-                                        download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[i], temp_path, cli_api);
-                                        sleep(1);
-                                    } else {
-                                        printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
-                                        exit(0);
+                                    cli_api->file_id[i] = strdup(token[0]);
+                                    printf("cli_api->file_id = %s\n", cli_api->file_id[i]);
+                                    strcpy(temp_path, cli_api->file_path);
+                                    if (cli_api->file_path[(strlen(cli_api->file_path)-1)] != '/') {
+                                        strcat(temp_path, "/");
                                     }
+                                    strcat(temp_path, token[1]);
+                                    cli_api->dst_file = strdup(temp_path);
+                                    printf(KBLU" file id [%d] = %s; download path = %s"RESET"\n",i, cli_api->file_id[i], temp_path);
+                                    cli_api->error_status = CLI_API_DWNLD_IN_PROGRESS;
+                                    download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[i], temp_path, cli_api);
+                                    //sleep(1);
+
                                     memset(token, 0x00, sizeof(token));
                                     memset(temp_path, 0x00, sizeof(temp_path));
                                     memset(line, 0x00, sizeof(line));
@@ -1163,31 +1148,29 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                                 } else {
                                     cli_api->error_status = CLI_API_DWNLD_DONE;
                                 }
-                            break;
+                                break;
 
                             case CLI_API_DWNLD_IN_PROGRESS:
                             default:
                                 /* wait until read to download status */
                                 break;
-
                         }
                     } while(cli_api->error_status != CLI_API_DWNLD_DONE);
                     fclose(file);
-               } else {
+                } else {
                     printf(KRED"[%s][%s][%d] Unable to open download list file"RESET"\n",
-                            __FILE__, __FUNCTION__, __LINE__);
+                           __FILE__, __FUNCTION__, __LINE__);
                 }
             } else {
                 #ifdef debug_enable
-                printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", __FUNCTION__, __LINE__);
+                    printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", __FUNCTION__, __LINE__);
                 #endif
-
                 exit(0);
             }
         } else {
             printf("[%s][%d]Oops !!!! expt resp = %s; rcvd resp = %s \n",
                    __FUNCTION__, __LINE__,
-                    cli_api->excp_cmd_resp, cli_api->rcvd_cmd_resp );
+                   cli_api->excp_cmd_resp, cli_api->rcvd_cmd_resp );
             printf("[%s][%d]last cmd = %s; cur cmd = %s; next cmd = %s\n",
                    __FUNCTION__, __LINE__, cli_api->last_cmd_req,
                    cli_api->curr_cmd_req, cli_api->next_cmd_req);
