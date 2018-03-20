@@ -1926,6 +1926,7 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
 
+    printf(KGRN"malloc download state pointer = 0x%X"RESET"\n", state);
     // start download
     queue_next_work(state);
 
