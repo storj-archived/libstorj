@@ -520,6 +520,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
         cli_api->rcvd_cmd_resp = "download-file-resp";
         fprintf(stdout,"\n*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, filePath);
         cli_api->xfer_count++;
+        printf(" am here .... inside dwnld complete \n");
         fclose(fd);
         if (status) {
             // TODO send to stderr
@@ -565,6 +566,7 @@ static void download_signal_handler(uv_signal_t *req, int signum)
     /* convert the download state struct into JSON and write to a file */
     storj_bridge_resolve_file_cancel(state);
     storj_download_state_serialize(state);
+    printf(" serialisation done .... inside handler \n");
     if (uv_signal_stop(req)) {
         printf("Unable to stop signal\n");
     }
@@ -575,10 +577,20 @@ static int download_file(storj_env_t *env, char *bucket_id,
                          char *file_id, char *path, void *handle)
 {
     cli_api_t *cli_api = handle;
-    storj_download_state_t *state = NULL; //cli_api->handle;
     FILE *fd = NULL;
     char temp_file[BUFSIZ] = {0x00};
     bool dwn_resume = false;
+    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+    memset(state, 0x00, sizeof(storj_download_state_t));
+    if (!state) {
+        printf("***\n [%s][%s][%d] " KRED "Invalid download state pointer\n" RESET,
+               __FILE__, __FUNCTION__, __LINE__);
+        exit(-1);
+    }
+    cli_api->handle = state;
+    state->env = cli_api->env;
+    state->log = cli_api->env->log;
+    state->handle = cli_api;
 
     if (path) {
         char user_input[BUFSIZ];
@@ -595,16 +607,6 @@ static int download_file(storj_env_t *env, char *bucket_id,
                     get_input(user_input);
                 }
                 if (strcmp(user_input, "y") == 0x00) {
-                    state = malloc(sizeof(storj_download_state_t));
-                    memset(state, 0x00, sizeof(storj_download_state_t));
-                    if (!state) {
-                        printf("***\n [%s][%s][%d] " KRED "Invalid download state pointer\n" RESET,
-                               __FILE__, __FUNCTION__, __LINE__);
-                        exit(-1);
-                    }
-                    state->env = cli_api->env;
-                    state->log = cli_api->env->log;
-                    state->handle = cli_api;
                     printf(KBLU"[%s][%d]state = 0x%X"RESET"\n", __FUNCTION__, __LINE__, (uint32_t)state);
                     storj_download_state_deserialize(state, temp_file);
                     dwn_resume = true;
@@ -1153,7 +1155,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                                     printf(KBLU" file id [%d] = %s; download path = %s"RESET"\n",i, cli_api->file_id[i], temp_path);
                                     cli_api->error_status = CLI_API_DWNLD_IN_PROGRESS;
                                     download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[i], temp_path, cli_api);
-                                    sleep(1);
+                                    //sleep(1);
 
                                     memset(token, 0x00, sizeof(token));
                                     memset(temp_path, 0x00, sizeof(temp_path));
