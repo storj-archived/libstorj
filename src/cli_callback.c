@@ -632,8 +632,9 @@ static int download_file(storj_env_t *env, char *bucket_id,
                 printf("\nCanceled overwriting of [%s].\n", path);
                 cli_api_t *cli_api = handle;
                 cli_api->rcvd_cmd_resp = "download-file-resp";
-                queue_next_cmd_req(cli_api);
-                return 1;
+                cli_api->error_status = CLI_API_READY_TO_DWNLD;
+                //queue_next_cmd_req(cli_api);
+                return state->error_status;
             }
         } else {
             fd = fopen(path, "w+");
