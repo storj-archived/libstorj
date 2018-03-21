@@ -1771,6 +1771,7 @@ static void queue_next_work(storj_download_state_t *state)
             state->finished_cb(state->error_status,
                                state->destination,
                                state->handle);
+
             free_download_state(state);
         }
 
