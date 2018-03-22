@@ -520,7 +520,6 @@ static void download_file_complete(int status, FILE *fd, void *handle)
         cli_api->rcvd_cmd_resp = "download-file-resp";
         fprintf(stdout,"\n*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, filePath);
         cli_api->xfer_count++;
-        printf(" am here .... inside dwnld complete \n");
         fclose(fd);
         if (status) {
             // TODO send to stderr
@@ -539,7 +538,6 @@ static void download_file_complete(int status, FILE *fd, void *handle)
             char tempFile[256] = {0x00};
             memcpy(tempFile, filePath, strlen(filePath));
             strcat(tempFile, ".json");
-            printf("[%s][%s][%d] "KGRN" checking .json file  = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, tempFile);
             if (access(tempFile, F_OK) != -1 ) {
                 unlink(tempFile);
             }
@@ -561,12 +559,10 @@ static void download_file_complete(int status, FILE *fd, void *handle)
 static void download_signal_handler(uv_signal_t *req, int signum)
 {
     storj_download_state_t *state = req->data;
-    printf(KBLU"[%s][%d]state = 0x%X"RESET"\n", __FUNCTION__, __LINE__, (uint32_t)state);
 
     /* convert the download state struct into JSON and write to a file */
     storj_bridge_resolve_file_cancel(state);
     storj_download_state_serialize(state);
-    printf(" serialisation done .... inside handler \n");
     if (uv_signal_stop(req)) {
         printf("Unable to stop signal\n");
     }
@@ -666,13 +662,11 @@ static int download_file(storj_env_t *env, char *bucket_id,
                                          state,
                                          progress_cb,
                                          download_file_complete);
-        printf(KBLU"[%s][%d]state = 0x%X"RESET"\n", __FUNCTION__, __LINE__, (uint32_t)state);
     } else {
         state = storj_bridge_resolve_file(env, bucket_id,
                                           file_id, fd, state,
                                           progress_cb,
                                           download_file_complete);
-        printf(KYEL"Download started"RESET"\n");
     }
     cli_api->error_status = CLI_API_READY_TO_DWNLD;
 
@@ -894,9 +888,7 @@ void get_file_id_callback(uv_work_t *work_req, int status)
         goto cleanup;
     }
 
-    /* store the bucket id */
-    //memset(cli_api->file_id, 0x00, sizeof(cli_api->file_id));
-    //strcpy(cli_api->file_id, (char *)req->file_id);
+    /* store the file id */
     cli_api->file_id[0] = strdup((char *)req->file_id);
     printf("ID: %s \tName: %s\n", req->file_id, req->file_name);
 
@@ -952,8 +944,6 @@ void list_files_callback(uv_work_t *work_req, int status)
         if ((cli_api->file_name != NULL) &&
             (strcmp(cli_api->file_name, file->filename)) == 0x00) {
             /* store the file id */
-            //memset(cli_api->file_id, 0x00, sizeof(cli_api->file_id));
-            //strcpy(cli_api->file_id, (char *)file->id);
             cli_api->file_id[0] = strdup((char *)file->id);
         }
 
@@ -1129,7 +1119,6 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                     memset(line, 0x00, sizeof(line));
                     cli_api->error_status = CLI_API_READY_TO_DWNLD;
                     do {
-                        printf(KBLU"DOWNLOAD STATUS = %d"RESET"\n", cli_api->error_status);
                         switch(cli_api->error_status) {
                             case CLI_API_READY_TO_DWNLD:
                                 /* setup next file to be downloaded */
@@ -1138,7 +1127,6 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                                     if (temp) *temp = '\0';
 
                                     /* start tokenizing */
-                                    printf(KGRN"Tokening line = %s"RESET"\n", line[i]);
                                     token[0] = strtok(line[i], ":");
                                     while (token[tk_idx] != NULL) {
                                         tk_idx++;
@@ -1146,17 +1134,14 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                                     }
 
                                     cli_api->file_id[i] = strdup(token[0]);
-                                    printf("cli_api->file_id = %s\n", cli_api->file_id[i]);
                                     strcpy(temp_path, cli_api->file_path);
                                     if (cli_api->file_path[(strlen(cli_api->file_path)-1)] != '/') {
                                         strcat(temp_path, "/");
                                     }
                                     strcat(temp_path, token[1]);
                                     cli_api->dst_file = strdup(temp_path);
-                                    printf(KBLU" file id [%d] = %s; download path = %s"RESET"\n",i, cli_api->file_id[i], temp_path);
                                     cli_api->error_status = CLI_API_DWNLD_IN_PROGRESS;
                                     download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[i], temp_path, cli_api);
-                                    //sleep(1);
 
                                     memset(token, 0x00, sizeof(token));
                                     memset(temp_path, 0x00, sizeof(temp_path));
@@ -1175,7 +1160,6 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                         }
                     } while(cli_api->error_status != CLI_API_DWNLD_DONE);
                     fclose(file);
-                    printf(KBLU"************** Download request done  = %d *********************"RESET"\n", cli_api->error_status);
                 } else {
                     printf(KRED"[%s][%s][%d] Unable to open download list file"RESET"\n",
                            __FILE__, __FUNCTION__, __LINE__);

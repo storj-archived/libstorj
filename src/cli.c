@@ -1197,19 +1197,6 @@ int main(int argc, char **argv)
             memset(modified_src_path, 0x00, sizeof(modified_src_path));
             char *upload_file_path = modified_src_path;
 
-            /* start download pause and resume */
-            storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
-            memset(state, 0x00, sizeof(storj_download_state_t));
-            if (!state) {
-                status = 1;
-                goto end_program;
-            }
-            state->env = cli_api->env;
-            state->log = cli_api->env->log;
-            state->handle = cli_api;
-            cli_api->handle = state;
-            /* end download pause and resume */
-
             /* cp command wrt to upload-file */
             if (local_file_path == NULL) {/*  without -r[R] */
                 /* hold the local path */

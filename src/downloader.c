@@ -1360,8 +1360,6 @@ static void queue_request_info(storj_download_state_t *state)
 
     work->data = req;
 
-    printf(KCYN"queue_request_info:[%d] dwnld state = ox%x,bucket_id=%s; file_id=%s"RESET"\n",
-                __LINE__, (uint32_t)state, state->bucket_id, state->file_id);
     state->pending_work_count++;
     int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                request_info,
@@ -1929,7 +1927,6 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
 
-    printf(KGRN"malloc download state pointer = 0x%X"RESET"\n", (uint32_t)state);
     // start download
     queue_next_work(state);
 
