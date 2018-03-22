@@ -1102,7 +1102,7 @@ int main(int argc, char **argv)
             cli_api->bucket_name = argv[command_index + 1];
             cli_api->file_name = argv[command_index + 2];
             cli_api->dst_file  = argv[command_index + 3];
-            cli_api->handle = state;
+            cli_api->handle[0] = state;
             state->handle = cli_api;
             cli_download_file(cli_api);
         } else if (strcmp(command, "upload-file") == 0) {

@@ -56,7 +56,7 @@ typedef struct cli_api {
     char *rcvd_cmd_resp; /**< received cmd response */
     int  error_status;   /**< status */
     storj_log_levels_t *log;
-    void *handle;
+    void *handle[256];
 } cli_api_t;
 
 /**

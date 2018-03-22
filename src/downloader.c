@@ -725,7 +725,7 @@ static void report_progress(storj_download_state_t *state)
     state->progress_cb(total_progress,
                        downloaded_bytes,
                        total_bytes,
-                       state->handle);
+                       state->destination);
 }
 
 static void after_request_shard(uv_work_t *work, int status)

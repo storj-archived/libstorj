@@ -226,29 +226,32 @@ static void file_progress(double progress,
                           uint64_t total_bytes,
                           void *handle)
 {
-    int bar_width = 70;
-
     if (progress == 0 && downloaded_bytes == 0) {
         printf("Preparing File...");
         fflush(stdout);
         return;
     }
 
-    printf("\r[");
-    int pos = bar_width * progress;
-    for (int i = 0; i < bar_width; ++i) {
-        if (i < pos) {
-            printf("=");
-        }
-        else if (i == pos) {
-            printf(">");
-        } else {
-            printf(" ");
-        }
-    }
-    printf("] %.*f%%", 2, progress * 100);
+    char filePath[PATH_MAX] = {0x00};
+    int bar_width = 70;
 
-    fflush(stdout);
+    if (get_filepath_from_filedescriptor((FILE *)handle, filePath) == 0x00) {
+        printf(KGRN"    File %s "KBLU, filePath);
+        printf("\r[");
+        int pos = bar_width * progress;
+        for (int i = 0; i < bar_width; ++i) {
+            if (i < pos) {
+                printf("=");
+            } else if (i == pos) {
+                printf(">");
+            } else {
+                printf(" ");
+            }
+        }
+        printf("] %.*f%%" RESET, 2, progress * 100);
+
+        fflush(stdout);
+    }
 }
 
 static void upload_file_complete(int status, storj_file_meta_t *file, void *handle)
@@ -570,23 +573,13 @@ static void download_signal_handler(uv_signal_t *req, int signum)
 }
 
 static int download_file(storj_env_t *env, char *bucket_id,
-                         char *file_id, char *path, void *handle)
+                         char *file_id, char *path, void *handle, int handle_index)
 {
     cli_api_t *cli_api = handle;
     FILE *fd = NULL;
     char temp_file[BUFSIZ] = {0x00};
     bool dwn_resume = false;
-    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
-    memset(state, 0x00, sizeof(storj_download_state_t));
-    if (!state) {
-        printf("***\n [%s][%s][%d] " KRED "Invalid download state pointer\n" RESET,
-               __FILE__, __FUNCTION__, __LINE__);
-        exit(-1);
-    }
-    cli_api->handle = state;
-    state->env = cli_api->env;
-    state->log = cli_api->env->log;
-    state->handle = cli_api;
+    storj_download_state_t *state = NULL;
 
     if (path) {
         char user_input[BUFSIZ];
@@ -603,7 +596,19 @@ static int download_file(storj_env_t *env, char *bucket_id,
                     get_input(user_input);
                 }
                 if (strcmp(user_input, "y") == 0x00) {
+                    state = malloc(sizeof(storj_download_state_t));
+                    memset(state, 0x00, sizeof(storj_download_state_t));
+                    if (!state) {
+                        printf("***\n [%s][%s][%d] " KRED "Invalid download state pointer\n" RESET,
+                               __FILE__, __FUNCTION__, __LINE__);
+                        exit(-1);
+                    }
+                    cli_api->handle[handle_index] = state;
+                    state->env = cli_api->env;
+                    state->log = cli_api->env->log;
+                    state->handle = cli_api;
                     printf(KBLU"[%s][%d]state = 0x%X"RESET"\n", __FUNCTION__, __LINE__, (uint32_t)state);
+
                     storj_download_state_deserialize(state, temp_file);
                     dwn_resume = true;
                     fd = fopen(path, "r+");
@@ -629,7 +634,6 @@ static int download_file(storj_env_t *env, char *bucket_id,
                 cli_api_t *cli_api = handle;
                 cli_api->rcvd_cmd_resp = "download-file-resp";
                 cli_api->error_status = CLI_API_READY_TO_DWNLD;
-                //queue_next_cmd_req(cli_api);
                 return state->error_status;
             }
         } else {
@@ -667,6 +671,8 @@ static int download_file(storj_env_t *env, char *bucket_id,
                                           file_id, fd, state,
                                           progress_cb,
                                           download_file_complete);
+        cli_api->handle[handle_index] = state;
+        state->handle = cli_api;
     }
     cli_api->error_status = CLI_API_READY_TO_DWNLD;
 
@@ -1099,7 +1105,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 cli_api->excp_cmd_resp = "download-file-resp";
 
                 download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[0],
-                              cli_api->dst_file, cli_api);
+                              cli_api->dst_file, cli_api, 0x00);
             } else if ((cli_api->next_cmd_req != NULL) &&
                        (strcmp(cli_api->next_cmd_req, "download-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
@@ -1141,7 +1147,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                                     strcat(temp_path, token[1]);
                                     cli_api->dst_file = strdup(temp_path);
                                     cli_api->error_status = CLI_API_DWNLD_IN_PROGRESS;
-                                    download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[i], temp_path, cli_api);
+                                    download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[i], temp_path, cli_api, i);
 
                                     memset(token, 0x00, sizeof(token));
                                     memset(temp_path, 0x00, sizeof(temp_path));
