@@ -1115,7 +1115,6 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            //memcpy(cli_api->bucket_id, bucket_id, strlen(bucket_id));
             cli_api->bucket_id = strdup(bucket_id);
             cli_api->dst_file = path;
 
@@ -1355,8 +1354,6 @@ int main(int argc, char **argv)
                         if ((token[2] == NULL) || (strcmp(dst_file_name, token[2]) == 0x00) ||
                             (strcmp(token[2], ".") == 0x00)) {
                             /* use the src list buff as temp memory to hold the dst filename */
-                            //memset(cli_api->src_list, 0x00, sizeof(cli_api->src_list));
-                            //strcpy(cli_api->src_list, dst_file_name);
                             cli_api->src_list = strdup(dst_file_name);
                             cli_api->dst_file = cli_api->src_list;
                         } else {
@@ -1387,8 +1384,6 @@ int main(int argc, char **argv)
                             }
 
                             /* check the directory and create the path to upload list file */
-                            //memset(cli_api->src_list, 0x00, sizeof(cli_api->src_list));
-                            //memcpy(cli_api->src_list, upload_list_file, sizeof(pwd_path));
                             cli_api->src_list = strdup(upload_list_file);
                             cli_api->dst_file = cli_api->src_list;
                         } else {
