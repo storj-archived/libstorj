@@ -607,7 +607,6 @@ static int download_file(storj_env_t *env, char *bucket_id,
                     state->env = cli_api->env;
                     state->log = cli_api->env->log;
                     state->handle = cli_api;
-                    printf(KBLU"[%s][%d]state = 0x%X"RESET"\n", __FUNCTION__, __LINE__, (uint32_t)state);
 
                     storj_download_state_deserialize(state, temp_file);
                     dwn_resume = true;
@@ -660,7 +659,6 @@ static int download_file(storj_env_t *env, char *bucket_id,
     }
 
     if (dwn_resume == true) {
-        printf(KBLU"[%s][%d]state = 0x%X"RESET"\n", __FUNCTION__, __LINE__, (uint32_t)state);
         state = storj_bridge_resume_file(env, bucket_id,
                                          file_id, fd,
                                          state,
