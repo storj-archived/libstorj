@@ -510,11 +510,9 @@ static void verify_upload_files(void *handle)
 
 static void download_file_complete(int status, FILE *fd, void *handle)
 {
-#ifdef __WIN32__
     cli_api_t *cli_api = handle;
     cli_api->rcvd_cmd_resp = "download-file-resp";
-
-    printf("\n");
+    cli_api->xfer_count++;
     fclose(fd);
     if (status) {
         // TODO send to stderr
@@ -529,53 +527,28 @@ static void download_file_complete(int status, FILE *fd, void *handle)
                        __FUNCTION__, __LINE__, storj_strerror(status));
         }
     } else {
-        printf("Download Success!\n");
-    }
-
-    queue_next_cmd_req(cli_api);
-#else
-    char filePath[PATH_MAX] = {0x00};
-    if (get_filepath_from_filedescriptor(fd, filePath) == 0x00)
-    {
-        cli_api_t *cli_api = handle;
-        cli_api->rcvd_cmd_resp = "download-file-resp";
-        fprintf(stdout,"\n*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, filePath);
-        cli_api->xfer_count++;
-        fclose(fd);
-        if (status) {
-            // TODO send to stderr
-            switch(status) {
-                case STORJ_FILE_DECRYPTION_ERROR:
-                    printf("Unable to properly decrypt file, please check " \
-                       "that the correct encryption key was " \
-                       "imported correctly.\n\n");
-                    break;
-                default:
-                    printf("[%s][%d]Download failure: %s\n",
-                           __FUNCTION__, __LINE__, storj_strerror(status));
+        storj_download_state_t *state = NULL;
+        for (int i = 0x00; i < cli_api->total_files; i++) {
+            state = cli_api->handle[i] ;
+            if (state->destination == fd)
+            {
+                char *tempFile = NULL;
+                tempFile = strdup(state->file_name);
+                strcat(tempFile, ".json");
+                if (access(tempFile, F_OK) != -1 ) {
+                    unlink(tempFile);
+                }
+                printf("Download Success!\n");
+                break;
             }
-            unlink("/tmp/dwnld_list.txt");
-        } else {
-            char tempFile[256] = {0x00};
-            memcpy(tempFile, filePath, strlen(filePath));
-            strcat(tempFile, ".json");
-            if (access(tempFile, F_OK) != -1 ) {
-                unlink(tempFile);
-            }
-            printf("Download Success!\n");
-        }
-
-        if(cli_api->xfer_count > cli_api->total_files) {
-            cli_api->next_cmd_req  = cli_api->final_cmd_req;
-            cli_api->final_cmd_req = NULL;
-            queue_next_cmd_req(cli_api);
         }
     }
-    else
-    {
-        printf("[%s][%s][%d] "KRED" Invalid file descriptor \n" RESET, __FILE__, __FUNCTION__, __LINE__);
+
+    if(cli_api->xfer_count > cli_api->total_files) {
+        cli_api->next_cmd_req  = cli_api->final_cmd_req;
+        cli_api->final_cmd_req = NULL;
+        queue_next_cmd_req(cli_api);
     }
-#endif
 }
 
 static void download_signal_handler(uv_signal_t *req, int signum)
@@ -688,9 +661,10 @@ static int download_file(storj_env_t *env, char *bucket_id,
                                           file_id, fd, state,
                                           progress_cb,
                                           download_file_complete);
-        cli_api->handle[handle_index] = state;
-        state->handle = cli_api;
     }
+    cli_api->handle[handle_index] = state;
+    state->handle = cli_api;
+    state->file_name = cli_api->dst_file;
     cli_api->error_status = CLI_API_READY_TO_DWNLD;
 
     if (!state) {
@@ -1164,6 +1138,8 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                                     strcat(temp_path, token[1]);
                                     cli_api->dst_file = strdup(temp_path);
                                     cli_api->error_status = CLI_API_DWNLD_IN_PROGRESS;
+                                    fprintf(stdout,"\n*****  File id ["KBLU"%s]"RESET" downloading file"KGRN" [%d:%d]"RESET" to: %s *****\n",
+                                            cli_api->file_id[i], (i+1), cli_api->total_files, cli_api->dst_file);
                                     download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[i], temp_path, cli_api, i);
 
                                     memset(token, 0x00, sizeof(token));

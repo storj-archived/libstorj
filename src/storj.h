@@ -474,6 +474,7 @@ typedef struct {
     uint32_t info_fail_count;
     storj_env_t *env;
     const char *file_id;
+    const char *file_name;
     const char *bucket_id;
     FILE *destination;
     storj_progress_cb progress_cb;
@@ -1120,6 +1121,17 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
                                     const char *password,
                                     void *handle,
                                     uv_after_work_cb cb);
+
+/**
+ * @brief Funtion returns the filename for the file descriptor
+ *
+ * @param[in] file_descriptor The donwloading file's file desc
+ * @param[in] file_path The file path of the file descriptor
+ * @param[in] handle The handle containg the fd and file name
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_path, void *handle);
+
 /**
  * @brief Serialize download state struct to JSON
  *

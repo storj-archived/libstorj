@@ -14,7 +14,6 @@ extern "C" {
 #endif
 
 #include "storj.h"
-#include "utils.h"
 
 #define CLI_NO_SUCH_FILE_OR_DIR   0x00
 #define CLI_VALID_REGULAR_FILE    0x01
