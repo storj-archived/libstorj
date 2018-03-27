@@ -2021,12 +2021,11 @@ STORJ_API int storj_get_filepath_from_filedescriptor(FILE *file_descriptor, char
         return -1;
     }
 #elif __WIN32__
-    printf("[%s][%s][%d] "KRED" TODO NEEDS IMPLEMENTATION \n" RESET, __FILE__, __FUNCTION__, __LINE__);
-    return -1;
-#else
     storj_download_state_t *state = handle;
-    file_path = strdup(state->file_name);
-    printf("[%s][%s][%d] "KRED"windows os file name = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, file_path);
+    strcpy(file_path, state->file_name);
+#else
+    printf("[%s][%s][%d] "KRED"Unknown OS = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__);
+    return -1;
 #endif
 
     printf("[%s][%s][%d] "KGRN" Destination file path = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, file_path);
