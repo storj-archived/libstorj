@@ -113,9 +113,11 @@ static int check_file_path(char *file_path)
         case S_IFREG:
             return CLI_VALID_REGULAR_FILE;
             break;
+#ifdef S_IFSOCK
         case S_IFSOCK:
             printf("socket\n");
             break;
+#endif
         default:
             printf("unknown?\n");
             break;
