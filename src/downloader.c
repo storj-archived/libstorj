@@ -339,6 +339,7 @@ static void append_pointers_to_state(storj_download_state_t *state,
             }
         }
     }
+
 }
 
 static void after_request_pointers(uv_work_t *work, int status)
@@ -725,7 +726,7 @@ static void report_progress(storj_download_state_t *state)
     state->progress_cb(total_progress,
                        downloaded_bytes,
                        total_bytes,
-                       state->destination);
+                       state->handle);
 }
 
 static void after_request_shard(uv_work_t *work, int status)
@@ -786,6 +787,7 @@ static void after_request_shard(uv_work_t *work, int status)
 
         }
     }
+
     queue_next_work(req->state);
 
     // close the async progress handle

@@ -226,32 +226,29 @@ static void file_progress(double progress,
                           uint64_t total_bytes,
                           void *handle)
 {
+    int bar_width = 70;
+
     if (progress == 0 && downloaded_bytes == 0) {
         printf("Preparing File...");
         fflush(stdout);
         return;
     }
 
-    char filePath[PATH_MAX] = {0x00};
-    int bar_width = 70;
-
-    if (get_filepath_from_filedescriptor((FILE *)handle, filePath) == 0x00) {
-        printf(KGRN"    File %s "KBLU, filePath);
-        printf("\r[");
-        int pos = bar_width * progress;
-        for (int i = 0; i < bar_width; ++i) {
-            if (i < pos) {
-                printf("=");
-            } else if (i == pos) {
-                printf(">");
-            } else {
-                printf(" ");
-            }
+    printf("\r[");
+    int pos = bar_width * progress;
+    for (int i = 0; i < bar_width; ++i) {
+        if (i < pos) {
+            printf("=");
         }
-        printf("] %.*f%%" RESET, 2, progress * 100);
-
-        fflush(stdout);
+        else if (i == pos) {
+            printf(">");
+        } else {
+            printf(" ");
+        }
     }
+    printf("] %.*f%%", 2, progress * 100);
+
+    fflush(stdout);
 }
 
 static void upload_file_complete(int status, storj_file_meta_t *file, void *handle)
@@ -462,8 +459,6 @@ static void verify_upload_files(void *handle)
             }
 
             /* check the directory and create the path to upload list file */
-            //memset(cli_api->src_list, 0x00, sizeof(cli_api->src_list));
-            //memcpy(cli_api->src_list, upload_list_file, sizeof(pwd_path));
             cli_api->src_list = strdup(upload_list_file);
             cli_api->dst_file = cli_api->src_list;
         } else {
@@ -471,7 +466,6 @@ static void verify_upload_files(void *handle)
                    __FILE__, __FUNCTION__, __LINE__);
             return;
         }
-
 
         /* create a upload list file src_list.txt */
         int file_attr = file_exists(handle);
@@ -516,6 +510,30 @@ static void verify_upload_files(void *handle)
 
 static void download_file_complete(int status, FILE *fd, void *handle)
 {
+#ifdef __WIN32__
+    cli_api_t *cli_api = handle;
+    cli_api->rcvd_cmd_resp = "download-file-resp";
+
+    printf("\n");
+    fclose(fd);
+    if (status) {
+        // TODO send to stderr
+        switch(status) {
+            case STORJ_FILE_DECRYPTION_ERROR:
+                printf("Unable to properly decrypt file, please check " \
+                       "that the correct encryption key was " \
+                       "imported correctly.\n\n");
+                break;
+            default:
+                printf("[%s][%d]Download failure: %s\n",
+                       __FUNCTION__, __LINE__, storj_strerror(status));
+        }
+    } else {
+        printf("Download Success!\n");
+    }
+
+    queue_next_cmd_req(cli_api);
+#else
     char filePath[PATH_MAX] = {0x00};
     if (get_filepath_from_filedescriptor(fd, filePath) == 0x00)
     {
@@ -557,6 +575,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     {
         printf("[%s][%s][%d] "KRED" Invalid file descriptor \n" RESET, __FILE__, __FUNCTION__, __LINE__);
     }
+#endif
 }
 
 static void download_signal_handler(uv_signal_t *req, int signum)
