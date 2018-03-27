@@ -1,4 +1,5 @@
 #include "cli_callback.h"
+#include <dirent.h>
 
 //#define debug_enable
 
@@ -63,12 +64,6 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
-    int spaces = depth*4;
-    char tmp_dir[800] = {};
-    char *full_path = NULL;
-    char *s;
-    char * start;
-    cli_api_t *cli_api = handle;
 
     if ((dp = opendir(dir)) == NULL) {
         fprintf(stderr,"cannot open directory: %s\n", dir);
@@ -77,7 +72,7 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
 
     int ret = chdir(dir);
     while ((entry = readdir(dp)) != NULL) {
-        lstat(entry->d_name, &statbuf);
+        stat(entry->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             /* Found a directory, but ignore . and .. */
             if (strcmp(".", entry->d_name) == 0 ||
@@ -86,20 +81,17 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
             /* Recurse at a new indent level */
             printdir(entry->d_name, depth + 1, src_fd, handle);
         } else {
-            full_path = realpath(entry->d_name, NULL);
             /* write to src file */
-            fprintf(src_fd, "%s%s\n", "", full_path);
+            fprintf(src_fd, "%s%s\n", "", entry->d_name);
         }
     }
     ret = chdir("..");
     closedir(dp);
-    free(full_path);
 }
 
 static int file_exists(void *handle)
 {
     struct stat sb;
-    gid_t  st_grpid;
     cli_api_t *cli_api = handle;
 
     FILE *src_fd, *dst_fd;
@@ -133,9 +125,11 @@ static int file_exists(void *handle)
         case S_IFREG:
             return CLI_VALID_REGULAR_FILE;
             break;
+#ifdef S_IFSOCK
         case S_IFSOCK:
             printf("socket\n");
             break;
+#endif
         default:
             printf("unknown?\n");
             break;
