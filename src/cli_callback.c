@@ -513,6 +513,7 @@ static void download_file_complete(int status, FILE *fd, void *handle)
 #ifdef __WIN32__
     cli_api_t *cli_api = handle;
     cli_api->rcvd_cmd_resp = "download-file-resp";
+    cli_api->xfer_count++;
 
     printf("\n");
     fclose(fd);
@@ -531,8 +532,11 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     } else {
         printf("Download Success!\n");
     }
-
-    queue_next_cmd_req(cli_api);
+    if(cli_api->xfer_count > cli_api->total_files) {
+        cli_api->next_cmd_req  = cli_api->final_cmd_req;
+        cli_api->final_cmd_req = NULL;
+        queue_next_cmd_req(cli_api);
+    }
 #else
     char filePath[PATH_MAX] = {0x00};
     if (storj_get_filepath_from_filedescriptor(fd, filePath, handle) == 0x00)

@@ -2022,6 +2022,7 @@ STORJ_API int storj_get_filepath_from_filedescriptor(FILE *file_descriptor, char
     }
 #elif __WIN32__
     storj_download_state_t *state = handle;
+    //strcpy(file_path,state->file_name);
     file_path = strdup(state->file_name);
     printf("[%s][%s][%d] "KRED"windows os file name = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, file_path);
 #else
@@ -2035,7 +2036,8 @@ STORJ_API int storj_get_filepath_from_filedescriptor(FILE *file_descriptor, char
 
 STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
 {
-    char filePath[PATH_MAX] = {0x00};
+    //char filePath[PATH_MAX] = {0x00};
+    char *filePath;
 
     if (storj_get_filepath_from_filedescriptor(state->destination, filePath, (void *)state) == 0x00)
     {
