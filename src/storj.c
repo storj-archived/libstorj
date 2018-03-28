@@ -1984,11 +1984,66 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 }
 
+STORJ_API int storj_get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_path, void *handle)
+{
+#define MAXLEN 200
+    char procpath[MAXLEN + 1] = {0x00};
+    int fd = -1;
+
+#ifdef __APPLE__
+    if (fcntl(fileno(file_descriptor), F_GETPATH, file_path) != -1) {
+    } else {
+        printf("[%s][%s][%d] Invalid file path \n", __FILE__, __FUNCTION__, __LINE__);
+        return -1;
+    }
+#elif __linux__
+    /*
+     * Get the low-level file descriptor of the open file
+     */
+    fd = fileno(file_descriptor);
+    if (fd < 0) {
+        printf("[%s][%s][%d] Invalid file descriptor \n", __FILE__, __FUNCTION__, __LINE__);
+        return -1;
+    }
+
+    /*
+     * Construct a string with the /proc path of the file
+     * descriptor (which is a symbolic link to the real
+     * file).
+     */
+    snprintf(procpath, MAXLEN, "/proc/self/fd/%d", fd);
+
+    /*
+     * Get the path the symlink is pointing to.
+     */
+    if (readlink(procpath, file_path, (size_t) MAXLEN) < 0) {
+        printf("[%s][%s][%d] Invalid file path \n", __FILE__, __FUNCTION__, __LINE__);
+        return -1;
+    }
+#elif __WIN32__
+    printf("[%s][%s][%d] "KRED" TODO NEEDS IMPLEMENTATION \n" RESET, __FILE__, __FUNCTION__, __LINE__);
+    return -1;
+#else
+    storj_download_state_t *state = handle;
+    file_path = strdup(state->file_name);
+    printf("[%s][%s][%d] "KRED"windows os file name = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, file_path);
+#endif
+
+    printf("[%s][%s][%d] "KGRN" Destination file path = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, file_path);
+    return 0;
+}
+
 STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
 {
     char filePath[PATH_MAX] = {0x00};
-    strcpy(filePath, state->file_name);
-    strcat(filePath,".json");
+
+    if (storj_get_filepath_from_filedescriptor(state->destination, filePath, (void *)state) == 0x00)
+    {
+        strcat(filePath,".json");
+        unlink(filePath);
+    } else {
+        return -1;
+    }
 
     /* create a json object for the download_state struct */
     struct json_object *body = json_object_new_object();

@@ -283,10 +283,6 @@ static void set_pointer_from_json(storj_download_state_t *state,
     if (!state->shard_size) {
         // TODO make sure all except last shard is the same size
         state->shard_size = size;
-        if (0x00 != p->index) {
-            printf("[%s][%s][%d] "KRED"Invalid shard size: %" PRIu64 "\n" RESET,
-                   __FILE__, __FUNCTION__, __LINE__, state->shard_size);
-        }
         state->log->debug(state->env->log_options,
                           state->handle,
                           "Shard size set to %" PRIu64,
@@ -747,45 +743,44 @@ static void after_request_shard(uv_work_t *work, int status)
     // update the pointer status
     storj_pointer_t *pointer = &req->state->pointers[req->pointer_index];
 
-    if(req->pointer_index < req->state->total_pointers) {
-        pointer->report->start = req->start;
-        pointer->report->end = req->end;
-        if (req->error_status) {
+    pointer->report->start = req->start;
+    pointer->report->end = req->end;
 
-            req->state->log->warn(req->state->env->log_options,
-                                  req->state->handle,
-                                  "Error downloading shard: %s, reason: %s",
-                                  req->shard_hash,
-                                  storj_strerror(req->error_status));
+    if (req->error_status) {
 
-            pointer->status = POINTER_ERROR;
+        req->state->log->warn(req->state->env->log_options,
+                              req->state->handle,
+                              "Error downloading shard: %s, reason: %s",
+                              req->shard_hash,
+                              storj_strerror(req->error_status));
 
-            switch (req->error_status) {
-                case STORJ_FARMER_INTEGRITY_ERROR:
-                    pointer->report->code = STORJ_REPORT_FAILURE;
-                    pointer->report->message = STORJ_REPORT_FAILED_INTEGRITY;
-                default:
-                    pointer->report->code = STORJ_REPORT_FAILURE;
-                    pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
-            }
+        pointer->status = POINTER_ERROR;
 
-        } else {
-
-            req->state->log->info(req->state->env->log_options,
-                                  req->state->handle,
-                                  "Finished downloading shard: %s",
-                                  req->shard_hash);
-
-            pointer->report->code = STORJ_REPORT_SUCCESS;
-            pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
-            pointer->status = POINTER_DOWNLOADED;
-
-            // Make sure the downloaded size is updated
-            pointer->downloaded_size = pointer->size;
-
-            report_progress(req->state);
-
+        switch(req->error_status) {
+            case STORJ_FARMER_INTEGRITY_ERROR:
+                pointer->report->code = STORJ_REPORT_FAILURE;
+                pointer->report->message = STORJ_REPORT_FAILED_INTEGRITY;
+            default:
+                pointer->report->code = STORJ_REPORT_FAILURE;
+                pointer->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
         }
+
+    } else {
+
+        req->state->log->info(req->state->env->log_options,
+                              req->state->handle,
+                              "Finished downloading shard: %s",
+                              req->shard_hash);
+
+        pointer->report->code = STORJ_REPORT_SUCCESS;
+        pointer->report->message = STORJ_REPORT_SHARD_DOWNLOADED;
+        pointer->status = POINTER_DOWNLOADED;
+
+        // Make sure the downloaded size is updated
+        pointer->downloaded_size = pointer->size;
+
+        report_progress(req->state);
+
     }
 
     queue_next_work(req->state);
