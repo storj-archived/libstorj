@@ -80,6 +80,54 @@ char *str_concat_many(int count, ...)
     return combined;
 }
 
+char *str_replace(char *search, char *replace, char *subject) {
+    char *result;       // the return string
+    char *ins;          // the next insert point
+    char *tmp;          // varies
+    size_t len_search;  // length of search (the string to remove)
+    size_t len_replace; // length of replace (the string to replace search with)
+    size_t len_front;   // distance between search and end of last replace
+    int count;          // number of replacements
+
+    // sanity checks and initialization
+    if (!subject || !search)
+        return NULL;
+    len_search = strlen(search);
+    if (len_search == 0)
+        return NULL; // empty search causes infinite loop during count
+    if (!replace)
+        replace = "";
+    len_replace = strlen(replace);
+
+    // count the number of replacements needed
+    ins = subject;
+    tmp = strstr(ins, search);
+    for (count = 0; tmp != NULL; ++count) {
+        ins = tmp + len_search;
+        tmp = strstr(ins, search);
+    }
+
+    tmp = result = malloc(strlen(subject) + (len_replace - len_search) * count + 1);
+
+    if (!result)
+        return NULL;
+
+    // first time through the loop, all the variable are set correctly
+    // from here on,
+    //    tmp points to the end of the result string
+    //    ins points to the next occurrence of search in subject
+    //    orig points to the remainder of subject after "end of search"
+    while (count--) {
+        ins = strstr(subject, search);
+        len_front = ins - subject;
+        tmp = strncpy(tmp, subject, len_front) + len_front;
+        tmp = strcpy(tmp, replace) + len_replace;
+        subject += len_front + len_search; // move to next "end of search"
+    }
+    strcpy(tmp, subject);
+    return result;
+}
+
 void random_buffer(uint8_t *buf, size_t len)
 {
     static FILE *frand = NULL;

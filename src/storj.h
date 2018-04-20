@@ -267,6 +267,37 @@ typedef struct {
     void *handle;
 } get_buckets_request_t;
 
+/** @brief A structure for queueing get bucket request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
+    struct json_object *response;
+    storj_bucket_meta_t *bucket;
+    int error_code;
+    int status_code;
+    void *handle;
+} get_bucket_request_t;
+
+/** @brief A structure for queueing get bucket id request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    const char *bucket_name;
+    struct json_object *response;
+    const char *bucket_id;
+    int error_code;
+    int status_code;
+    void *handle;
+} get_bucket_id_request_t;
+
 /** @brief A structure for that describes a bucket entry/file
  */
 typedef struct {
@@ -277,6 +308,7 @@ typedef struct {
     uint64_t size;
     const char *hmac;
     const char *id;
+    const char *bucket_id;
     bool decrypted;
     const char *index;
 } storj_file_meta_t;
@@ -299,6 +331,39 @@ typedef struct {
     int status_code;
     void *handle;
 } list_files_request_t;
+
+/** @brief A structure for queueing get file info request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    const char *bucket_id;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
+    struct json_object *response;
+    storj_file_meta_t *file;
+    int error_code;
+    int status_code;
+    void *handle;
+} get_file_info_request_t;
+
+/** @brief A structure for queueing get file id request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    const char *bucket_id;
+    const char *file_name;
+    struct json_object *response;
+    const char *file_id;
+    int error_code;
+    int status_code;
+    void *handle;
+} get_file_id_request_t;
 
 typedef enum {
     BUCKET_PUSH,
@@ -337,7 +402,7 @@ typedef void (*storj_finished_download_cb)(int status, FILE *fd, void *handle);
 
 /** @brief A function signature for an upload complete callback
  */
-typedef void (*storj_finished_upload_cb)(int error_status, char *file_id, void *handle);
+typedef void (*storj_finished_upload_cb)(int error_status, storj_file_meta_t *file, void *handle);
 
 /** @brief A structure that represents a pointer to a shard
  *
@@ -465,7 +530,7 @@ typedef struct {
     uint32_t shard_concurrency;
     const char *index;
     const char *file_name;
-    char *file_id;
+    storj_file_meta_t *info;
     const char *encrypted_file_name;
     FILE *original_file;
     uint64_t file_size;
@@ -739,7 +804,7 @@ STORJ_API int storj_bridge_delete_bucket(storj_env_t *env,
  * @brief Get a info of specific bucket.
  *
  * @param[in] env The storj environment struct
- * @param[in] bucket_id The bucket id
+ * @param[in] id The bucket id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -748,6 +813,27 @@ STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
                                       const char *id,
                                       void *handle,
                                       uv_after_work_cb cb);
+
+/**
+ * @brief Will free all structs for get bucket request
+ *
+ * @param[in] req - The work request from storj_bridge_get_bucket callback
+ */
+STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req);
+
+/**
+ * @brief Get the bucket id by name.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] name The bucket name
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
+                                         const char *name,
+                                         void *handle,
+                                         uv_after_work_cb cb);
 
 /**
  * @brief Get a list of all files in a bucket.
@@ -875,7 +961,7 @@ STORJ_API int storj_bridge_delete_frame(storj_env_t *env,
  *
  * @param[in] env The storj environment struct
  * @param[in] bucket_id The bucket id
- * @param[in] file_id The bucket id
+ * @param[in] file_id The file id
  * @param[in] handle A pointer that will be available in the callback
  * @param[in] cb A function called with response when complete
  * @return A non-zero error value on failure and 0 on success.
@@ -885,6 +971,29 @@ STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
                                          const char *file_id,
                                          void *handle,
                                          uv_after_work_cb cb);
+
+/**
+ * @brief Will free all structs for get file info request
+ *
+ * @param[in] req - The work request from storj_bridge_get_file_info callback
+ */
+STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req);
+
+/**
+ * @brief Get the file id by name.
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] bucket_id The bucket id
+ * @param[in] file_name The file name
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_bridge_get_file_id(storj_env_t *env,
+                                       const char *bucket_id,
+                                       const char *file_name,
+                                       void *handle,
+                                       uv_after_work_cb cb);
 
 /**
  * @brief Get mirror data for a file
@@ -921,13 +1030,18 @@ STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state);
  * @param[in] finished_cb Function called when download finished
  * @return A non-zero error value on failure and 0 on success.
  */
-STORJ_API int storj_bridge_store_file(storj_env_t *env,
-                                      storj_upload_state_t *state,
-                                      storj_upload_opts_t *opts,
-                                      void *handle,
-                                      storj_progress_cb progress_cb,
-                                      storj_finished_upload_cb finished_cb);
+STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
+                                                        storj_upload_opts_t *opts,
+                                                        void *handle,
+                                                        storj_progress_cb progress_cb,
+                                                        storj_finished_upload_cb finished_cb);
 
+/**
+ * @brief Will free the file info struct passed to the upload finished callback
+ *
+ * @param[in] file - The storj_file_meta_t struct from storj_finished_upload_cb callback
+ */
+STORJ_API void storj_free_uploaded_file_info(storj_file_meta_t *file);
 
 /**
  * @brief Will cancel a download
@@ -950,14 +1064,13 @@ STORJ_API int storj_bridge_resolve_file_cancel(storj_download_state_t *state);
  * @param[in] finished_cb Function called when download finished
  * @return A non-zero error value on failure and 0 on success.
  */
-STORJ_API int storj_bridge_resolve_file(storj_env_t *env,
-                                        storj_download_state_t *state,
-                                        const char *bucket_id,
-                                        const char *file_id,
-                                        FILE *destination,
-                                        void *handle,
-                                        storj_progress_cb progress_cb,
-                                        storj_finished_download_cb finished_cb);
+STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
+                                                            const char *bucket_id,
+                                                            const char *file_id,
+                                                            FILE *destination,
+                                                            void *handle,
+                                                            storj_progress_cb progress_cb,
+                                                            storj_finished_download_cb finished_cb);
 
 /**
  * @brief Register a user

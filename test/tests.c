@@ -26,6 +26,10 @@ storj_encrypt_options_t encrypt_options = {
     .mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
 };
 
+storj_encrypt_options_t encrypt_options_null_mnemonic = {
+    .mnemonic = NULL
+};
+
 storj_http_options_t http_options = {
     .user_agent = "storj-test",
     .low_speed_limit = 0,
@@ -81,6 +85,35 @@ void check_get_buckets(uv_work_t *work_req, int status)
     pass("storj_bridge_get_buckets");
 
     storj_free_get_buckets_request(req);
+    free(work_req);
+}
+
+void check_get_bucket(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_bucket_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(req->bucket);
+    assert(strcmp(req->bucket->name, "test") == 0);
+    assert(req->bucket->decrypted);
+
+    pass("storj_bridge_get_bucket");
+
+    storj_free_get_bucket_request(req);
+    free(work_req);
+}
+
+void check_get_bucket_id(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_bucket_id_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(strcmp(req->bucket_id, "368be0816766b28fd5f43af5") == 0);
+
+    pass("storj_bridge_get_bucket_id");
+
+    json_object_put(req->response);
+    free(req);
     free(work_req);
 }
 
@@ -173,6 +206,20 @@ void check_list_files_badauth(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+void check_get_file_id(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_file_id_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(strcmp(req->file_id, "998960317b6725a3f8080c2b") == 0);
+
+    pass("storj_bridge_get_file_id");
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
 void check_bucket_tokens(uv_work_t *work_req, int status)
 {
     assert(status == 0);
@@ -246,6 +293,18 @@ void check_resolve_file(int status, FILE *fd, void *handle)
     }
 }
 
+void check_resolve_file_null_mnemonic(int status, FILE *fd, void *handle)
+{
+    fclose(fd);
+    assert(handle == NULL);
+    if (status == STORJ_FILE_DECRYPTION_ERROR) {
+        pass("storj_bridge_resolve_file_null_mnemonic");
+    } else {
+        fail("storj_bridge_resolve_file_null_mnemonic");
+        printf("Status: %d\n", status);
+    }
+}
+
 void check_resolve_file_cancel(int status, FILE *fd, void *handle)
 {
     fclose(fd);
@@ -268,11 +327,11 @@ void check_store_file_progress(double progress,
     }
 }
 
-void check_store_file(int error_code, char *file_id, void *handle)
+void check_store_file(int error_code, storj_file_meta_t *file, void *handle)
 {
     assert(handle == NULL);
     if (error_code == 0) {
-        if (strcmp(file_id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
+        if (file && strcmp(file->id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
             pass("storj_bridge_store_file");
         } else {
             fail("storj_bridge_store_file(0)");
@@ -282,10 +341,10 @@ void check_store_file(int error_code, char *file_id, void *handle)
         printf("\t\tERROR:   %s\n", storj_strerror(error_code));
     }
 
-    free(file_id);
+    storj_free_uploaded_file_info(file);
 }
 
-void check_store_file_cancel(int error_code, char *file_id, void *handle)
+void check_store_file_cancel(int error_code, storj_file_meta_t *file, void *handle)
 {
     assert(handle == NULL);
     if (error_code == STORJ_TRANSFER_CANCELED) {
@@ -295,7 +354,7 @@ void check_store_file_cancel(int error_code, char *file_id, void *handle)
         printf("\t\tERROR:   %s\n", storj_strerror(error_code));
     }
 
-    free(file_id);
+    storj_free_uploaded_file_info(file);
 }
 
 void check_delete_file(uv_work_t *work_req, int status)
@@ -397,22 +456,15 @@ void check_delete_frame(uv_work_t *work_req, int status)
 void check_file_info(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    get_file_info_request_t *req = work_req->data;
     assert(req->handle == NULL);
+    assert(req->file);
+    assert(strcmp(req->file->filename, "storj-test-download.data") == 0);
+    assert(strcmp(req->file->mimetype, "video/ogg") == 0);
 
-    struct json_object *value;
-    int success = json_object_object_get_ex(req->response, "mimetype", &value);
-    assert(success == 1);
-    assert(json_object_is_type(value, json_type_string) == 1);
-
-    const char* mimetype = json_object_get_string(value);
-
-    assert(strcmp(mimetype, "video/ogg") == 0);
     pass("storj_bridge_get_file_info");
 
-    json_object_put(req->response);
-    free(req->path);
-    free(req);
+    storj_free_get_file_info_request(req);
     free(work_req);
 }
 
@@ -514,18 +566,16 @@ int test_upload()
         .rs = true
     };
 
-    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
-
-    int status = storj_bridge_store_file(env,
-                                         state,
-                                         &upload_opts,
-                                         NULL,
-                                         check_store_file_progress,
-                                         check_store_file);
-    assert(status == 0);
+    storj_upload_state_t *state = storj_bridge_store_file(env,
+                                                          &upload_opts,
+                                                          NULL,
+                                                          check_store_file_progress,
+                                                          check_store_file);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
     // run all queued events
-
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return 1;
     }
@@ -563,21 +613,20 @@ int test_upload_cancel()
         .fd = fopen(file, "r")
     };
 
-    storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
-
-    int status = storj_bridge_store_file(env,
-                                         state,
-                                         &upload_opts,
-                                         NULL,
-                                         check_store_file_progress,
-                                         check_store_file_cancel);
-    assert(status == 0);
-
+    storj_upload_state_t *state = storj_bridge_store_file(env,
+                                                          &upload_opts,
+                                                          NULL,
+                                                          check_store_file_progress,
+                                                          check_store_file_cancel);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
     // process the loop one at a time so that we can do other things while
     // the loop is processing, such as cancel the download
     int count = 0;
     bool more;
+    int status = 0;
     do {
         more = uv_run(env->loop, UV_RUN_ONCE);
         if (more == false) {
@@ -602,12 +651,12 @@ int test_upload_cancel()
     return 0;
 }
 
-int test_download()
+int _test_download(storj_encrypt_options_t *encrypt_options, void *cb_finished)
 {
 
     // initialize event loop and environment
     storj_env_t *env = storj_init_env(&bridge_options,
-                                      &encrypt_options,
+                                      encrypt_options,
                                       &http_options,
                                       &log_options);
     assert(env != NULL);
@@ -621,20 +670,19 @@ int test_download()
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
 
-    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+    storj_download_state_t *state = storj_bridge_resolve_file(env,
+                                                              bucket_id,
+                                                              file_id,
+                                                              download_fp,
+                                                              NULL,
+                                                              check_resolve_file_progress,
+                                                              cb_finished);
 
-    int status = storj_bridge_resolve_file(env,
-                                           state,
-                                           bucket_id,
-                                           file_id,
-                                           download_fp,
-                                           NULL,
-                                           check_resolve_file_progress,
-                                           check_resolve_file);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
     free(download_file);
-
-    assert(status == 0);
 
     if (uv_run(env->loop, UV_RUN_DEFAULT)) {
         return 1;
@@ -643,6 +691,16 @@ int test_download()
     storj_destroy_env(env);
 
     return 0;
+}
+
+int test_download()
+{
+    return _test_download(&encrypt_options, check_resolve_file);
+}
+
+int test_download_null_mnemonic()
+{
+    return _test_download(&encrypt_options_null_mnemonic, check_resolve_file_null_mnemonic);
 }
 
 int test_download_cancel()
@@ -664,23 +722,23 @@ int test_download_cancel()
     char *bucket_id = "368be0816766b28fd5f43af5";
     char *file_id = "998960317b6725a3f8080c2b";
 
-    storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+    storj_download_state_t *state = storj_bridge_resolve_file(env,
+                                                              bucket_id,
+                                                              file_id,
+                                                              download_fp,
+                                                              NULL,
+                                                              check_resolve_file_progress,
+                                                              check_resolve_file_cancel);
 
-    int status = storj_bridge_resolve_file(env,
-                                           state,
-                                           bucket_id,
-                                           file_id,
-                                           download_fp,
-                                           NULL,
-                                           check_resolve_file_progress,
-                                           check_resolve_file_cancel);
-
-    assert(status == 0);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
 
     // process the loop one at a time so that we can do other things while
     // the loop is processing, such as cancel the download
     int count = 0;
     bool more;
+    int status = 0;
     do {
         more = uv_run(env->loop, UV_RUN_ONCE);
         if (more == false) {
@@ -758,12 +816,20 @@ int test_api()
     status = storj_bridge_get_buckets(env, NULL, check_get_buckets);
     assert(status == 0);
 
+    char *bucket_id = "368be0816766b28fd5f43af5";
+
+    // get bucket
+    status = storj_bridge_get_bucket(env, bucket_id, NULL, check_get_bucket);
+    assert(status == 0);
+
+    // get bucket id
+    status = storj_bridge_get_bucket_id(env, "test", NULL, check_get_bucket_id);
+    assert(status == 0);
+
     // create a new bucket with a name
     status = storj_bridge_create_bucket(env, "backups", NULL,
                                         check_create_bucket);
     assert(status == 0);
-
-    char *bucket_id = "368be0816766b28fd5f43af5";
 
     // delete a bucket
     // TODO check for successful status code, response has object
@@ -774,6 +840,11 @@ int test_api()
     // list files in a bucket
     status = storj_bridge_list_files(env, bucket_id, NULL,
                                      check_list_files);
+    assert(status == 0);
+
+    // get file id
+    status = storj_bridge_get_file_id(env, bucket_id, "storj-test-download.data",
+                                      NULL, check_get_file_id);
     assert(status == 0);
 
     // create bucket tokens
@@ -1087,6 +1158,31 @@ int test_generate_seed_256_trezor()
 
     free(seed);
     pass("test_generate_seed_256_trezor");
+
+    return 0;
+}
+
+int test_generate_seed_null_mnemonic()
+{
+    char *mnemonic = NULL;
+    char *seed = calloc(128 + 1, sizeof(char));
+    char *expected_seed = "4ed8d4b17698ddeaa1f1559f152f87b5d472f725ca86d341bd0276f1b61197e21dd5a391f9f5ed7340ff4d4513aab9cce44f9497a5e7ed85fd818876b6eb402e";
+
+    mnemonic_to_seed(mnemonic, "", &seed);
+    seed[128] = '\0';
+
+    int check = memcmp(seed, expected_seed, 128);
+    if (check != 0) {
+        fail("test_generate_seed");
+        printf("\t\texpected seed: %s\n", expected_seed);
+        printf("\t\tactual seed:   %s\n", seed);
+
+        free(seed);
+        return 1;
+    }
+
+    free(seed);
+    pass("test_generate_seed_null_mnemonic");
 
     return 0;
 }
@@ -1509,6 +1605,34 @@ int test_memory_mapping()
     return 0;
 }
 
+int test_str_replace()
+{
+    char *subject = "g9qacwq2AE1+5nzL/HYyYdY9WoIr+1ueOuVEx6/IzzZKK9sULoKDDdYvhOpavHH2P3xQNw==";
+
+    char *result = str_replace("/", "%2F", subject);
+    if (!result) {
+        fail("test_str_replace");
+        return 0;
+    }
+
+    char *expected = "g9qacwq2AE1+5nzL%2FHYyYdY9WoIr+1ueOuVEx6%2FIzzZKK9sULoKDDdYvhOpavHH2P3xQNw==";
+
+    int failed = 0;
+    if (strcmp(expected, result) != 0) {
+        failed = 1;
+    }
+
+    if (failed) {
+        fail("test_str_replace");
+    } else {
+        pass("test_str_replace");
+    }
+
+    free(result);
+
+    return 0;
+}
+
 // Test Bridge Server
 struct MHD_Daemon *start_test_server()
 {
@@ -1554,6 +1678,7 @@ int main(void)
 
     printf("Test Suite: Downloads\n");
     test_download();
+    test_download_null_mnemonic();
     test_download_cancel();
     printf("\n");
 
@@ -1565,6 +1690,7 @@ int main(void)
     test_generate_seed();
     test_generate_seed_256();
     test_generate_seed_256_trezor();
+    test_generate_seed_null_mnemonic();
     printf("\n");
 
     printf("Test Suite: Crypto\n");
@@ -1581,6 +1707,7 @@ int main(void)
     test_get_time_milliseconds();
     test_determine_shard_size();
     test_memory_mapping();
+    test_str_replace();
 
     int num_failed = tests_ran - test_status;
     printf(KGRN "\nPASSED: %i" RESET, test_status);
