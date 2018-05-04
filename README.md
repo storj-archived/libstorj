@@ -1,8 +1,8 @@
 libstorj
 =======
 
-[![Storj.io](https://storj.io/img/storj-badge.svg)](https://storj.io)
-[![Build Status](https://travis-ci.org/Storj/libstorj.svg?branch=master)](https://travis-ci.org/Storj/libstorj)
+[![storj.io](https://storj.io/img/storj-badge.svg)](https://storj.io)
+[![Build Status](https://travis-ci.org/storj/libstorj.svg?branch=master)](https://travis-ci.org/storj/libstorj)
 [![GitHub version](https://badge.fury.io/gh/storj%2Flibstorj.svg)](https://badge.fury.io/gh/storj%2Flibstorj)
 [![Chat on rocket.chat](https://img.shields.io/badge/chat-rocket.chat-red.svg)](https://community.storj.io/channel/dev)
 
