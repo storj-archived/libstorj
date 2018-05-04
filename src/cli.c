@@ -83,7 +83,7 @@ extern int errno;
     "  STORJ_ENCRYPTION_KEY          file encryption key\n\n"
 
 
-#define CLI_VERSION "libstorj-2.0.0-beta2"
+#define CLI_VERSION "libstorj-2.0.0-beta3"
 
 static int check_file_path(char *file_path)
 {
