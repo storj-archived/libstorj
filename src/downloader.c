@@ -3,9 +3,7 @@
 static void free_exchange_report(storj_exchange_report_t *report)
 {
     free(report->data_hash);
-    free(report->reporter_id);
-    free(report->farmer_id);
-    free(report->client_id);
+    free(report->token);
     free(report);
 }
 
@@ -260,14 +258,11 @@ static void set_pointer_from_json(storj_download_state_t *state,
         return;
     }
 
-    const char *client_id = state->env->bridge_options->user;
-    p->report->reporter_id = strdup(client_id);
-    p->report->client_id = strdup(client_id);
     p->report->data_hash = strdup(hash);
-    if (farmer_id) {
-        p->report->farmer_id = strdup(farmer_id);
+    if (token) {
+        p->report->token = strdup(token);
     } else {
-        p->report->farmer_id = NULL;
+        p->report->token = NULL;
     }
     p->report->send_status = 0; // not sent
     p->report->send_count = 0;
@@ -494,7 +489,7 @@ static void queue_request_pointers(storj_download_state_t *state)
             state->log->debug(state->env->log_options,
                               state->handle,
                               "Adding farmer_id %s to excluded list",
-                              pointer->report->farmer_id);
+                              pointer->farmer_id);
 
             if (!state->excluded_farmer_ids) {
                 state->excluded_farmer_ids = calloc(42, sizeof(char));
@@ -502,7 +497,7 @@ static void queue_request_pointers(storj_download_state_t *state)
                     state->error_status = STORJ_MEMORY_ERROR;
                     return;
                 }
-                strcat(state->excluded_farmer_ids, pointer->report->farmer_id);
+                strcat(state->excluded_farmer_ids, pointer->farmer_id);
             } else {
                 state->excluded_farmer_ids =
                     realloc(state->excluded_farmer_ids,
@@ -512,7 +507,7 @@ static void queue_request_pointers(storj_download_state_t *state)
                     return;
                 }
                 strcat(state->excluded_farmer_ids, ",");
-                strcat(state->excluded_farmer_ids, pointer->report->farmer_id);
+                strcat(state->excluded_farmer_ids, pointer->farmer_id);
             }
 
             json_request_replace_pointer_t *req =
@@ -894,14 +889,8 @@ static void send_exchange_report(uv_work_t *work)
     json_object_object_add(body, "dataHash",
                            json_object_new_string(req->report->data_hash));
 
-    json_object_object_add(body, "reporterId",
-                           json_object_new_string(req->report->reporter_id));
-
-    json_object_object_add(body, "farmerId",
-                           json_object_new_string(req->report->farmer_id));
-
-    json_object_object_add(body, "clientId",
-                           json_object_new_string(req->report->client_id));
+    json_object_object_add(body, "token",
+                           json_object_new_string(req->report->token));
 
     json_object_object_add(body, "exchangeStart",
                            json_object_new_int64(req->report->start));
