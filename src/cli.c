@@ -63,7 +63,7 @@ extern int errno;
     "uploading files:\n"                                                \
     "  upload-file <bucket-id> <path>\n\n"                              \
     "downloading files:\n"                                              \
-    "  download-file <bucket-id> <file-id> <path>\n\n"                  \
+    "  download-file <bucket-id> <file-id> <directory path/ new file name>\n\n"                  \
     "bridge api information:\n"                                         \
     "  get-info\n\n"                                                    \
     "options:\n"                                                        \
