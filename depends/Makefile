@@ -110,8 +110,7 @@ endef
 
 define extract_toolchain_file_build
 	mkdir -p "$(TOOLCHAIN_BUILD_DIR)"; \
-	tar xfv "$(DOWNLOAD_DIR)$($(1)_file_name)" -C "$(TOOLCHAIN_BUILD_DIR)" --strip-components=1; \
-	rm -f $(TOOLCHAIN_BUILD_DIR)lib/libc++abi.so
+	tar xfv "$(DOWNLOAD_DIR)$($(1)_file_name)" -C "$(TOOLCHAIN_BUILD_DIR)" --strip-components=1
 endef
 
 ifeq ($(host_os), darwin)
@@ -122,7 +121,7 @@ define build_darwin_toolchain
 	$(foreach package,cctools,$(call extract_toolchain_file,$(package));)
 	cd "$(TOOLCHAIN_SOURCE_DIR)cctools/cctools" && \
 	if test -f "./autogen.sh"; then ./autogen.sh; fi && \
-	PATH="$(TOOLCHAIN_BUILD_DIR)bin:${PATH}" CC=clang CXX=clang++ ./configure --prefix="$(TOOLCHAIN_BUILD_DIR)" --target="x86_64-apple-darwin11" || exit && \
+	./configure --prefix="$(TOOLCHAIN_BUILD_DIR)" --target="x86_64-apple-darwin11" || exit && \
 	make || exit && \
 	make install || exit && \
 	cd "$(CURDIR)"
