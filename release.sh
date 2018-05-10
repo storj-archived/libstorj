@@ -7,7 +7,7 @@
 
 set -e
 
-basename="libstorj-2.0.0-beta2"
+basename="libstorj-2.0.0-beta3"
 
 releases=(arm-linux-gnueabihf
           i686-pc-linux-gnu
@@ -29,27 +29,43 @@ for i in "${!releases[@]}"; do
 
     printf "Starting %s (%s)...\n" $release $short
 
+    echo "Copying dependencies..."
+    dep_src_dir="./depends/build/${release}"
+    dep_dir="./release/${release}/depends"
+    if [ -d "${dep_src_dir}" ]; then
+        mkdir -p $dep_dir
+        cp -vR $dep_src_dir/* $dep_dir
+        rm -rf $dep_dir/bin
+        rm -rf $dep_dir/share
+    else
+        echo "Skipping copying ${dep_src_dir} to ${dep_dir}, source directory does not exist."
+    fi
+
     echo "Copying documents..."
     rel_dir="release/${release}"
     cp -v "README.md" "${rel_dir}/"
     cp -v "LICENSE" "${rel_dir}/"
 
     echo "Preparing directory..."
-    new_dir="release/${release}/${basename}"
+    pkg_dir="release/packages"
+    mkdir -p "${pkg_dir}"
+    new_dir="${pkg_dir}/${release}/${basename}"
     mkdir -p "${new_dir}"
-    mv -v $rel_dir/[^$basename]* $new_dir/
+    cp -vR $rel_dir/* $new_dir/
 
     echo "Packaging..."
-    mkdir -p "release/packages"
-    pushd $rel_dir
+    pushd $pkg_dir/$release
     if [[ "$release" =~ "w64" ]]; then
         zip -r $basename-$short.zip $basename
-        mv $basename-$short.zip ../packages/
+        mv $basename-$short.zip ..
     else
         tar -cvzf $basename-$short.tar.gz $basename
-        mv $basename-$short.tar.gz ../packages/
+        mv $basename-$short.tar.gz ..
     fi
     popd
+
+    echo "Cleaning up..."
+    rm -rfv $pkg_dir/$release
 
     printf "\n\n"
 done
