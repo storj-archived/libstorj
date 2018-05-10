@@ -897,14 +897,7 @@ static void set_pointer_from_json(storj_download_state_t *state,
 
 
     const char *client_id = state->env->bridge_options->user;
-    p->report->reporter_id = strdup(client_id);
-    p->report->client_id = strdup(client_id);
     p->report->data_hash = strdup(hash);
-    if (farmer_id) {
-        p->report->farmer_id = strdup(farmer_id);
-    } else {
-        p->report->farmer_id = NULL;
-    }
     p->report->send_status = 0; // not sent
     p->report->send_count = 0;
 

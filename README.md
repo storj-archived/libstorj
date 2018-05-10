@@ -1,7 +1,10 @@
 libstorj
 =======
 
-[![Build Status](https://travis-ci.org/Storj/libstorj.svg?branch=master)](https://travis-ci.org/Storj/libstorj)
+[![storj.io](https://storj.io/img/storj-badge.svg)](https://storj.io)
+[![Build Status](https://travis-ci.org/storj/libstorj.svg?branch=master)](https://travis-ci.org/storj/libstorj)
+[![GitHub version](https://badge.fury.io/gh/storj%2Flibstorj.svg)](https://badge.fury.io/gh/storj%2Flibstorj)
+[![Chat on rocket.chat](https://img.shields.io/badge/chat-rocket.chat-red.svg)](https://community.storj.io/channel/dev)
 
 Asynchronous multi-platform C library and CLI for encrypted file transfer on the Storj network.
 
@@ -190,6 +193,8 @@ rm -rf 5.hfs MacOSX10.11.sdk
 ```
 
 You may also need to symlink `/System/Library/Frameworks/Security.framework` to `/path/to/MacOSX10.11.sdk/System/Library/Frameworks/Security.framework` to have `darwinssl` be enabled during the build.
+
+A build of clang+llvm is downloaded for Ubuntu 16.04 and extracted, a port of cctools compiled with gcc and installed alongside, and the dependencies are build using that toolchain.
 
 ```
 cd ./depends
