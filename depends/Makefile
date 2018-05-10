@@ -36,13 +36,14 @@ endif
 # mac build
 DARWIN_SDK_PATH ?= "$(CURDIR)/MacOSX10.11.sdk"
 DARWIN_CFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH) -mmacosx-version-min=10.8 -mlinker-version=253.9 -pipe -I$(PREFIX_DIR)include"
+DARWIN_CXXFLAGS = "-target $(HOST) -isysroot $(DARWIN_SDK_PATH) -mmacosx-version-min=10.8 -mlinker-version=253.9 -pipe -I$(PREFIX_DIR)include"
 DARWIN_LDFLAGS="-L$(TOOLCHAIN_BUILD_DIR)lib -L$(DARWIN_SDK_PATH)/usr/lib -L$(PREFIX_DIR)lib -Wl,-syslibroot $(DARWIN_SDK_PATH)"
 
 build_SHA256SUM = sha256sum -c
 
 build_env=
 ifeq ($(host_os), darwin)
-build_env=PATH="$(TOOLCHAIN_BUILD_DIR)bin:${PATH}" CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS) LDFLAGS=$(DARWIN_LDFLAGS)
+build_env=PATH="$(TOOLCHAIN_BUILD_DIR)bin:${PATH}" CC=clang CXX=clang++ CFLAGS=$(DARWIN_CFLAGS) CXXFLAGS=$(DARWIN_CXXFLAGS) LDFLAGS=$(DARWIN_LDFLAGS)
 endif
 ifeq ($(HOST), i686-pc-linux-gnu)
 build_env=CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32
