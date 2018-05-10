@@ -194,6 +194,8 @@ rm -rf 5.hfs MacOSX10.11.sdk
 
 You may also need to symlink `/System/Library/Frameworks/Security.framework` to `/path/to/MacOSX10.11.sdk/System/Library/Frameworks/Security.framework` to have `darwinssl` be enabled during the build.
 
+A build of clang+llvm is downloaded for Ubuntu 16.04 and extracted, a port of cctools compiled with gcc and installed alongside, and the dependencies are build using that toolchain.
+
 ```
 cd ./depends
 make HOST="x86_64-apple-darwin11" DARWIN_SDK_PATH="/path/to/MacOSX10.11.sdk"
