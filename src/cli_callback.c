@@ -557,7 +557,6 @@ static void download_file_complete(int status, FILE *fd, void *handle)
                     printf("[%s][%d]Download failure: %s\n",
                            __FUNCTION__, __LINE__, storj_strerror(status));
             }
-            unlink("/tmp/dwnld_list.txt");
         } else {
             char tempFile[256] = {0x00};
             memcpy(tempFile, filePath, strlen(filePath));
