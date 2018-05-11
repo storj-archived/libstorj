@@ -1263,6 +1263,23 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                             i++;
                             if ((begin = ++end) >= buf_end){
                                 cli_api->error_status = CLI_API_DWNLD_DONE;
+                                  /* remove the mapped shared memory segment from the address space of the process */
+                                if (munmap(shm_base, SIZE) == -1) {
+                                    printf("cons: Unmap failed: %s\n", strerror(errno));
+                                    exit(1);
+                                }
+
+                                /* close the shared memory segment as if it was a file */
+                                if (close(shm_fd) == -1) {
+                                    printf("cons: Close failed: %s\n", strerror(errno));
+                                    exit(1);
+                                }
+
+                                /* remove the shared memory segment from the file system */
+                                if (shm_unlink(name) == -1) {
+                                    printf("cons: Error removing %s: %s\n", name, strerror(errno));
+                                    exit(1);
+                                }
                             }
                             break;
 
