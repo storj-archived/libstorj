@@ -1,5 +1,11 @@
 #include "cli_callback.h"
 #include <dirent.h>
+#include <fcntl.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <errno.h>
 
 //#define debug_enable
 
@@ -952,14 +958,36 @@ void list_files_callback(uv_work_t *work_req, int status)
         goto cleanup;
     }
 
+    const char *name = "/tmp/dwnld_list.txt";	// file name
+    const int SIZE = 4096;		// file size
+    int dwnld_list_fd;		// file descriptor, from shm_open()
+    char *shm_base;	// base address, from mmap()
+    char *ptr;		// shm_base is fixed, ptr is movable
 
-    FILE *dwnld_list_fd = stdout;
-    if ((dwnld_list_fd = fopen("/tmp/dwnld_list.txt", "w")) == NULL) {
-        printf("[%s][%d] Unable to create download list file\n",
-               __FUNCTION__, __LINE__);
-        goto cleanup;
+    /* create the shared memory segment as if it was a file */
+    dwnld_list_fd = shm_open(name, O_CREAT | O_RDWR, 0666);
+    if (dwnld_list_fd == -1) {
+        printf("prod: Shared memory failed: %s\n", strerror(errno));
+        exit(1);
     }
 
+    /* configure the size of the shared memory segment */
+    ftruncate(dwnld_list_fd, SIZE);
+
+    /* map the shared memory segment to the address space of the process */
+    shm_base = mmap(0, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dwnld_list_fd, 0);
+    if (shm_base == MAP_FAILED) {
+        printf("prod: Map failed: %s\n", strerror(errno));
+        // close and shm_unlink?
+        exit(1);
+    }
+    ptr = shm_base;
+    /**
+    * Write to the mapped shared memory region.
+    *
+    * We increment the value of ptr after each write, but we
+    * are ignoring the possibility that sprintf() fails.
+    */
     for (int i = 0; i < req->total_files; i++) {
         storj_file_meta_t *file = &req->files[i];
 
@@ -977,16 +1005,29 @@ void list_files_callback(uv_work_t *work_req, int status)
                file->created,
                file->filename);
 
-        fprintf(dwnld_list_fd, "%s:%s\n",file->id, file->filename);
+        ptr += sprintf(ptr, "%s:%s\n",file->id, file->filename);
     }
 
     cli_api->total_files = req->total_files;
-    cli_api->xfer_count = 0x01;
-    fclose(dwnld_list_fd);
+    cli_api->xfer_count = ptr - shm_base;//0x01;
+    int total_size = ptr - shm_base;
+    /* read from the mapped shared memory segment */
+    printf("%s", shm_base);
+    printf("total_file size =%d\n", total_size);
+    /* remove the mapped memory segment from the address space of the process */
+    if (munmap(shm_base, SIZE) == -1) {
+        printf("prod: Unmap failed: %s\n", strerror(errno));
+        exit(1);
+    }
+
+    /* close the shared memory segment as if it was a file */
+    if (close(dwnld_list_fd) == -1) {
+        printf("prod: Close failed: %s\n", strerror(errno));
+        exit(1);
+    }
     queue_next_cmd_req(cli_api);
 
   cleanup:
-
     storj_free_list_files_request(req);
     free(work_req);
 }
@@ -1126,68 +1167,114 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                        (strcmp(cli_api->next_cmd_req, "download-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->excp_cmd_resp = "download-file-resp";
+                
+                const char *name = "/tmp/dwnld_list.txt";	// file name
+                const int SIZE = 4096;		// file size
 
-                FILE *file = stdout;
+                int shm_fd;		// file descriptor, from shm_open()
+                char *shm_base;	// base address, from mmap()
 
-                if ((file = fopen("/tmp/dwnld_list.txt", "r")) != NULL) {
-                    char line[256][256];
-                    char *temp;
-                    char temp_path[1024];
-                    int i = 0x00;
-                    char *token[10];
-                    int tk_idx= 0x00;
-                    memset(token, 0x00, sizeof(token));
-                    memset(temp_path, 0x00, sizeof(temp_path));
-                    memset(line, 0x00, sizeof(line));
-                    cli_api->error_status = CLI_API_READY_TO_DWNLD;
-                    do {
-                        switch(cli_api->error_status) {
-                            case CLI_API_READY_TO_DWNLD:
-                                /* setup next file to be downloaded */
-                                if (fgets(line[i],sizeof(line), file)!= NULL) {/* read a line from a file */
-                                    temp = strrchr(line[i], '\n');
-                                    if (temp) *temp = '\0';
-
-                                    /* start tokenizing */
-                                    token[0] = strtok(line[i], ":");
-                                    while (token[tk_idx] != NULL) {
-                                        tk_idx++;
-                                        token[tk_idx] = strtok(NULL, ":");
-                                    }
-
-                                    cli_api->file_id[i] = strdup(token[0]);
-                                    strcpy(temp_path, cli_api->file_path);
-                                    if (cli_api->file_path[(strlen(cli_api->file_path)-1)] != '/') {
-                                        strcat(temp_path, "/");
-                                    }
-                                    strcat(temp_path, token[1]);
-                                    cli_api->dst_file = strdup(temp_path);
-                                    cli_api->error_status = CLI_API_DWNLD_IN_PROGRESS;
-                                    fprintf(stdout,"\n*****  File id ["KBLU"%s]"RESET" downloading file"KGRN" [%d:%d]"RESET" to: %s *****\n",
-                                            cli_api->file_id[i], (i+1), cli_api->total_files, cli_api->dst_file);
-                                    download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[i], temp_path, cli_api, i);
-
-                                    memset(token, 0x00, sizeof(token));
-                                    memset(temp_path, 0x00, sizeof(temp_path));
-                                    memset(line, 0x00, sizeof(line));
-                                    tk_idx = 0x00;
-                                    i++;
-                                } else {
-                                    cli_api->error_status = CLI_API_DWNLD_DONE;
-                                }
-                                break;
-
-                            case CLI_API_DWNLD_IN_PROGRESS:
-                            default:
-                                /* wait until read to download status */
-                                break;
-                        }
-                    } while(cli_api->error_status != CLI_API_DWNLD_DONE);
-                    fclose(file);
-                } else {
-                    printf(KRED"[%s][%s][%d] Unable to open download list file"RESET"\n",
-                           __FILE__, __FUNCTION__, __LINE__);
+                /* open the shared memory segment as if it was a file */
+                shm_fd = shm_open(name, O_RDONLY, 0666);
+                if (shm_fd == -1) {
+                    printf("cons: Shared memory failed: %s\n", strerror(errno));
+                    exit(1);
                 }
+
+                /* map the shared memory segment to the address space of the process */
+                shm_base = mmap(0, SIZE, PROT_READ, MAP_SHARED, shm_fd, 0);
+                if (shm_base == MAP_FAILED) {
+                    printf("cons: Map failed: %s\n", strerror(errno));
+                    // close and unlink?
+                    exit(1);
+                }
+
+                /* read from the mapped shared memory segment */
+                char *buf, *buf_end;
+                buf = shm_base;
+                char *begin, *end, c;
+                char temp_file[256];
+                memset(temp_file, 0x00, sizeof(temp_file));
+                char *ptr = temp_file;
+
+                buf_end = buf + cli_api->xfer_count;
+                printf("xfercount = %d\n", cli_api->xfer_count);
+                printf(" beginning size buf_end = 0X%x\n", buf_end);
+                cli_api->xfer_count = 0x01;
+                begin = end = buf;
+                printf(" beginning size buf_end = 0X%x, buf= 0X%x, begin = 0X%x, end = 0X%x\n", buf_end, buf, begin, end);
+                char line[256][256];
+                char *temp;
+                char temp_path[1024];
+                int i = 0x00;
+                int x = 0x00;
+                char *token[10];
+                int tk_idx= 0x00;
+                memset(token, 0x00, sizeof(token));
+                memset(temp_path, 0x00, sizeof(temp_path));
+                memset(line, 0x00, sizeof(line));
+                cli_api->error_status = CLI_API_READY_TO_DWNLD;
+                do {
+                    printf(" error_status = %d\n", cli_api->error_status);
+                    switch(cli_api->error_status) {
+                        case CLI_API_READY_TO_DWNLD:
+                            /* setup next file to be downloaded */
+                            while (1) {
+                                //printf("I am here %d", x++);
+                                printf("buf_end = 0X%x, buf= 0X%x, begin = 0X%x, end = 0X%x\n", buf_end, buf, begin, end);
+                                if (!(*end == '\n')) {
+                                    if (end <= buf_end) {
+                                        *ptr++ = *end++;
+                                        continue;
+                                    }
+                                } else {
+                                    *(ptr++) = '\n';
+                                    break; 
+                                }
+                            }
+                            memcpy(line[i], temp_file, sizeof(temp_file));
+                            temp = strrchr(line[i], '\n');
+                            if (temp) *temp = '\0';
+
+                            /* start tokenizing */
+                            token[0] = strtok(line[i], ":");
+                            while (token[tk_idx] != NULL) {
+                                tk_idx++;
+                                token[tk_idx] = strtok(NULL, ":");
+                            }
+
+                            cli_api->file_id[i] = strdup(token[0]);
+                            strcpy(temp_path, cli_api->file_path);
+                            if (cli_api->file_path[(strlen(cli_api->file_path)-1)] != '/') {
+                                strcat(temp_path, "/");
+                            }
+                            strcat(temp_path, token[1]);
+                            cli_api->dst_file = strdup(temp_path);
+                            cli_api->error_status = CLI_API_DWNLD_IN_PROGRESS;
+                            fprintf(stdout,"\n*****  File id ["KBLU"%s]"RESET" downloading file"KGRN" [%d:%d]"RESET" to: %s *****\n",
+                                    cli_api->file_id[i], (i+1), cli_api->total_files, cli_api->dst_file);
+                            download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[i], temp_path, cli_api, i);
+
+                            memset(token, 0x00, sizeof(token));
+                            memset(temp_path, 0x00, sizeof(temp_path));
+                            memset(line, 0x00, sizeof(line));
+                            memset(temp_file, 0x00, sizeof(temp_file));
+                            ptr = temp_file;
+                            tk_idx = 0x00;
+                            i++;
+                            if ((begin = ++end) >= buf_end){
+                                printf("DONE error_status = %d\n", cli_api->error_status);
+                                cli_api->error_status = CLI_API_DWNLD_DONE;
+                                printf("end ... buf_end = 0X%x, buf= 0X%x, begin = 0X%x, end = 0X%x\n", buf_end, buf, begin, end);
+                            }
+                            break;
+
+                        case CLI_API_DWNLD_IN_PROGRESS:
+                        default:
+                            /* wait until read to download status */
+                            break;
+                    }
+                } while(cli_api->error_status != CLI_API_DWNLD_DONE);
             } else {
                 #ifdef debug_enable
                     printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", __FUNCTION__, __LINE__);
