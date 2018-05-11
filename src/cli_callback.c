@@ -1197,12 +1197,13 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 memset(temp_file, 0x00, sizeof(temp_file));
                 char *ptr = temp_file;
 
+                /* used xfer_count to pass the total size of the 
+                   downloaded file list */
                 buf_end = buf + cli_api->xfer_count;
-                printf("xfercount = %d\n", cli_api->xfer_count);
-                printf(" beginning size buf_end = 0X%x\n", buf_end);
+
+                /* reset the count back to 0x01 */
                 cli_api->xfer_count = 0x01;
                 begin = end = buf;
-                printf(" beginning size buf_end = 0X%x, buf= 0X%x, begin = 0X%x, end = 0X%x\n", buf_end, buf, begin, end);
                 char line[256][256];
                 char *temp;
                 char temp_path[1024];
@@ -1220,8 +1221,6 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                         case CLI_API_READY_TO_DWNLD:
                             /* setup next file to be downloaded */
                             while (1) {
-                                //printf("I am here %d", x++);
-                                printf("buf_end = 0X%x, buf= 0X%x, begin = 0X%x, end = 0X%x\n", buf_end, buf, begin, end);
                                 if (!(*end == '\n')) {
                                     if (end <= buf_end) {
                                         *ptr++ = *end++;
@@ -1263,9 +1262,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                             tk_idx = 0x00;
                             i++;
                             if ((begin = ++end) >= buf_end){
-                                printf("DONE error_status = %d\n", cli_api->error_status);
                                 cli_api->error_status = CLI_API_DWNLD_DONE;
-                                printf("end ... buf_end = 0X%x, buf= 0X%x, begin = 0X%x, end = 0X%x\n", buf_end, buf, begin, end);
                             }
                             break;
 
