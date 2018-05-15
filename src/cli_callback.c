@@ -453,7 +453,7 @@ static void verify_upload_files(void *handle)
     }
 
     cli_api->total_files = total_src_files;
-    cli_api->xfer_count = 0x01;
+    cli_api->xfer_count = 0;
 
     cli_api->rcvd_cmd_resp = "verify-upload-files-resp";
     queue_next_cmd_req(cli_api);
@@ -829,7 +829,7 @@ void list_files_callback(uv_work_t *work_req, int status)
 
 
     cli_api->total_files = req->total_files;
-    cli_api->xfer_count = 0x01;
+    cli_api->xfer_count = 0;
     queue_next_cmd_req(cli_api);
 
   cleanup:
@@ -947,9 +947,9 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 }
                 fclose(file);
 
-                if (cli_api->xfer_count <= cli_api->total_files) {
+                if (cli_api->xfer_count < cli_api->total_files) {
                     /* is it the last file ? */
-                    if (cli_api->xfer_count == cli_api->total_files) {
+                    if (cli_api->xfer_count == cli_api->total_files - 1) {
                         cli_api->next_cmd_req  = cli_api->final_cmd_req;
                         cli_api->final_cmd_req = NULL;
                     }
@@ -978,10 +978,10 @@ void queue_next_cmd_req(cli_api_t *cli_api)
 
                 if (cli_api->xfer_count < cli_api->total_files) {
 
-                    storj_file_meta_t *file = &cli_api->files[cli_api->xfer_count - 1];
+                    storj_file_meta_t *file = &cli_api->files[cli_api->xfer_count];
 
                     /* is it the last file ? */
-                    if (cli_api->xfer_count == cli_api->total_files) {
+                    if (cli_api->xfer_count == cli_api->total_files - 1) {
                         cli_api->next_cmd_req  = cli_api->final_cmd_req;
                         cli_api->final_cmd_req = NULL;
                     }
