@@ -21,6 +21,11 @@ extern "C" {
 #define CLI_UNKNOWN_FILE_ATTR     0x03
 #define CLI_UPLOAD_FILE_LOG_ERR   0x04
 
+#define CLI_API_STATUS_OK         0x00
+#define CLI_API_READY_TO_DWNLD    0x01
+#define CLI_API_DWNLD_IN_PROGRESS 0x02
+#define CLI_API_DWNLD_DONE        0x03
+
 /**
  * @brief A Structure for passing the User's Application info to
  *        Storj API.
@@ -28,12 +33,15 @@ extern "C" {
 typedef struct cli_api {
     storj_env_t *env;
     char *bucket_name;
-    char bucket_id[256];
+    //char bucket_id[256];
+    char *bucket_id;
     char *file_name;
-    char file_id[256];
+    //char file_id[256];
+    char *file_id[256];
     char *file_path;     /**< local upload files directory path */
     FILE *src_fd;
-    char src_list[256];      /**< file list ready to upload */
+    //char src_list[256];      /**< file list ready to upload */
+    char *src_list;      /**< file list ready to upload */
     char *src_file;      /**< next file ready to upload */
     FILE *dst_fd;
     char *dst_file;      /**< next file ready to upload */
@@ -45,9 +53,9 @@ typedef struct cli_api {
     char *final_cmd_req; /**< final command in the seq */
     char *excp_cmd_resp; /**< expected cmd response */
     char *rcvd_cmd_resp; /**< received cmd response */
-    int  error_status;   /**< command response/error status */
+    int  error_status;   /**< status */
     storj_log_levels_t *log;
-    void *handle;
+    void *handle[256];
 } cli_api_t;
 
 /**

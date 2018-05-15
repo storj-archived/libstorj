@@ -1849,6 +1849,10 @@ STORJ_API int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
         if (pointer->status == POINTER_BEING_DOWNLOADED) {
             uv_cancel((uv_req_t *)pointer->work);
         }
+
+        if ((pointer->status != POINTER_DOWNLOADED) && (pointer->status != POINTER_FINISHED)) {
+            pointer->status = POINTER_CREATED;
+        }
     }
 
     return 0;
@@ -1862,6 +1866,7 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
                                                             storj_progress_cb progress_cb,
                                                             storj_finished_download_cb finished_cb)
 {
+    storj_download_state_t *state_cli = handle;
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
     if (!state) {
         return NULL;
@@ -1900,12 +1905,47 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
     state->pending_work_count = 0;
     state->canceled = false;
     state->log = env->log;
-    state->handle = handle;
+    if (handle != NULL) {
+        state->handle = state_cli->handle;
+    } else {
+       state->handle = NULL;
+    }
     state->decrypt_key = NULL;
     state->decrypt_ctr = NULL;
 
     // start download
     queue_next_work(state);
+
+    return state;
+}
+
+STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
+                                                           const char *bucket_id,
+                                                           const char *file_id,
+                                                           FILE *destination,
+                                                           void *handle,
+                                                           storj_progress_cb progress_cb,
+                                                           storj_finished_download_cb finished_cb)
+{
+    storj_download_state_t *state = handle;
+    if (!state) {
+        return NULL;
+    }
+    state->destination = destination;
+    state->progress_cb = progress_cb;
+    state->finished_cb = finished_cb;
+    state->download_max_concurrency = STORJ_DOWNLOAD_CONCURRENCY;
+    state->error_status = STORJ_TRANSFER_OK;
+    state->excluded_farmer_ids = NULL;
+    state->hmac = NULL;
+    state->canceled = false;
+    state->log = env->log;
+    state->handle = state->handle;
+    state->decrypt_key = NULL;
+    state->decrypt_ctr = NULL;
+
+    // start download
+    queue_request_info(state);
 
     return state;
 }

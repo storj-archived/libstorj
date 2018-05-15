@@ -113,11 +113,6 @@ static int check_file_path(char *file_path)
         case S_IFREG:
             return CLI_VALID_REGULAR_FILE;
             break;
-#ifdef S_IFSOCK
-        case S_IFSOCK:
-            printf("socket\n");
-            break;
-#endif
         default:
             printf("unknown?\n");
             break;
@@ -1096,24 +1091,20 @@ int main(int argc, char **argv)
         #endif
 
         if (strcmp(command, "download-file") == 0) {
-            char *bucket_id = argv[command_index + 1];
-            char *file_id = argv[command_index + 2];
-            char *path = argv[command_index + 3];
-
-            if (!bucket_id || !file_id || !path) {
-                printf("Missing arguments: <bucket-id> <file-id> <path>\n");
+            storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
+            memset(state, 0x00, sizeof(storj_download_state_t));
+            if (!state) {
                 status = 1;
                 goto end_program;
             }
-
-            memcpy(cli_api->bucket_id, bucket_id, strlen(bucket_id));
-            memcpy(cli_api->file_id, file_id, strlen(file_id));
-            cli_api->dst_file = path;
-
-            if (download_file(env, bucket_id, file_id, path, cli_api)) {
-                status = 1;
-                goto end_program;
-            }
+            state->env = cli_api->env;
+            state->log = cli_api->env->log;
+            cli_api->bucket_name = argv[command_index + 1];
+            cli_api->file_name = argv[command_index + 2];
+            cli_api->dst_file  = argv[command_index + 3];
+            cli_api->handle[0] = state;
+            state->handle = cli_api;
+            cli_download_file(cli_api);
         } else if (strcmp(command, "upload-file") == 0) {
             char *bucket_id = argv[command_index + 1];
             char *path = argv[command_index + 2];
@@ -1124,7 +1115,7 @@ int main(int argc, char **argv)
                 goto end_program;
             }
 
-            memcpy(cli_api->bucket_id, bucket_id, strlen(bucket_id));
+            cli_api->bucket_id = strdup(bucket_id);
             cli_api->dst_file = path;
 
             if (upload_file(env, bucket_id, path, cli_api)) {
@@ -1363,8 +1354,7 @@ int main(int argc, char **argv)
                         if ((token[2] == NULL) || (strcmp(dst_file_name, token[2]) == 0x00) ||
                             (strcmp(token[2], ".") == 0x00)) {
                             /* use the src list buff as temp memory to hold the dst filename */
-                            memset(cli_api->src_list, 0x00, sizeof(cli_api->src_list));
-                            strcpy(cli_api->src_list, dst_file_name);
+                            cli_api->src_list = strdup(dst_file_name);
                             cli_api->dst_file = cli_api->src_list;
                         } else {
                             cli_api->dst_file = token[2];
@@ -1394,8 +1384,7 @@ int main(int argc, char **argv)
                             }
 
                             /* check the directory and create the path to upload list file */
-                            memset(cli_api->src_list, 0x00, sizeof(cli_api->src_list));
-                            memcpy(cli_api->src_list, upload_list_file, sizeof(pwd_path));
+                            cli_api->src_list = strdup(upload_list_file);
                             cli_api->dst_file = cli_api->src_list;
                         } else {
                             printf("[%s][%d] Upload list file generation error!!! \n",

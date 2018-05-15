@@ -37,12 +37,23 @@ extern "C" {
 
 #ifdef _WIN32
 #include <time.h>
+#include <dirent.h>
 #endif
 
 #ifndef _WIN32
 #include <sys/mman.h>
 #include <unistd.h>
 #endif
+
+#define KNRM  "\x1B[0m"
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define KYEL  "\x1B[33m"
+#define KBLU  "\x1B[34m"
+#define KMAG  "\x1B[35m"
+#define KCYN  "\x1B[36m"
+#define KWHT  "\x1B[37m"
+#define RESET "\x1B[0m"
 
 // File transfer success
 #define STORJ_TRANSFER_OK 0
@@ -461,6 +472,7 @@ typedef struct {
     uint32_t info_fail_count;
     storj_env_t *env;
     const char *file_id;
+    const char *file_name;
     const char *bucket_id;
     FILE *destination;
     storj_progress_cb progress_cb;
@@ -1073,6 +1085,26 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
                                                             storj_finished_download_cb finished_cb);
 
 /**
+ * @brief Resume the download of a file
+ *
+ * @param[in] state A pointer to the the download state
+ * @param[in] bucket_id Character array of bucket id
+ * @param[in] file_id Character array of file id
+ * @param[in] destination File descriptor of the destination
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] progress_cb Function called with progress updates
+ * @param[in] finished_cb Function called when download finished
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API storj_download_state_t *storj_bridge_resume_file(storj_env_t *env,
+                                                           const char *bucket_id,
+                                                           const char *file_id,
+                                                           FILE *destination,
+                                                           void *handle,
+                                                           storj_progress_cb progress_cb,
+                                                           storj_finished_download_cb finished_cb);
+
+/**
  * @brief Register a user
  *
  * @param[in] env The storj environment struct
@@ -1087,6 +1119,33 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
                                     const char *password,
                                     void *handle,
                                     uv_after_work_cb cb);
+
+/**
+ * @brief Funtion returns the filename for the file descriptor
+ *
+ * @param[in] file_descriptor The donwloading file's file desc
+ * @param[in] file_path The file path of the file descriptor
+ * @param[in] handle The handle containg the fd and file name
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_path, void *handle);
+
+/**
+ * @brief Serialize download state struct to JSON
+ *
+ * @param[in] state Download state struct
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_download_state_serialize(storj_download_state_t *state);
+
+/**
+ * @brief De-serialize JSON to download state struct
+ *
+ * @param[in] state Download state struct
+ * @param[in] file_path Path to the json file to read download state info from
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_download_state_deserialize(storj_download_state_t *state, char *file_path);
 
 static inline char separator()
 {

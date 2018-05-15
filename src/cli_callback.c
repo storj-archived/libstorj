@@ -1,5 +1,11 @@
 #include "cli_callback.h"
 #include <dirent.h>
+#include <fcntl.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <errno.h>
 
 //#define debug_enable
 
@@ -61,6 +67,49 @@ char* replace_char(char* str, char find, char replace)
 
 static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
 {
+#ifdef _WIN32
+    WIN32_FIND_DATA fdFile;
+    HANDLE hFind = NULL;
+
+    char sPath[2048];
+
+    //Specify a file mask. *.* = We want everything!
+    sprintf(sPath, "%s\\*.*", dir);
+
+    if((hFind = FindFirstFile(sPath, &fdFile)) == INVALID_HANDLE_VALUE)
+    {
+        printf("Path not found: [%s]\n", dir);
+        return;
+    }
+
+    do
+    {
+        //Find first file will always return "."
+        //    and ".." as the first two directories.
+        if(strcmp(fdFile.cFileName, ".") != 0
+                && strcmp(fdFile.cFileName, "..") != 0)
+        {
+            //Build up our file path using the passed in
+            //  [sDir] and the file/foldername we just found:
+            sprintf(sPath, "%s\\%s", dir, fdFile.cFileName);
+
+            //Is the entity a File or Folder?
+            if(fdFile.dwFileAttributes &FILE_ATTRIBUTE_DIRECTORY)
+            {
+                printf("Directory: %s\n", sPath);
+                printdir(dir, 0, src_fd, handle);//Recursion, I love it!
+            }
+            else{
+                printf("File: %s\n", sPath);
+                /* write to src file */
+                fprintf(src_fd, "%s%s\n", "", sPath);
+            }
+        }
+    }
+    while(FindNextFile(hFind, &fdFile)); //Find the next file.
+
+    FindClose(hFind); //Always, Always, clean things up!
+#else
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
@@ -87,6 +136,7 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
     }
     ret = chdir("..");
     closedir(dp);
+#endif
 }
 
 static int file_exists(void *handle)
@@ -125,11 +175,6 @@ static int file_exists(void *handle)
         case S_IFREG:
             return CLI_VALID_REGULAR_FILE;
             break;
-#ifdef S_IFSOCK
-        case S_IFSOCK:
-            printf("socket\n");
-            break;
-#endif
         default:
             printf("unknown?\n");
             break;
@@ -413,9 +458,12 @@ static void verify_upload_files(void *handle)
             }
 
             /* check the directory and create the path to upload list file */
-            memset(cli_api->src_list, 0x00, sizeof(cli_api->src_list));
-            memcpy(cli_api->src_list, upload_list_file, sizeof(pwd_path));
+            cli_api->src_list = strdup(upload_list_file);
             cli_api->dst_file = cli_api->src_list;
+        } else {
+            printf("[%s][%s][%d] "KRED"TMPDIR environment variable not set\n" RESET,
+                   __FILE__, __FUNCTION__, __LINE__);
+            return;
         }
 
         /* create a upload list file src_list.txt */
@@ -461,8 +509,10 @@ static void verify_upload_files(void *handle)
 
 static void download_file_complete(int status, FILE *fd, void *handle)
 {
+#ifdef __WIN32__
     cli_api_t *cli_api = handle;
     cli_api->rcvd_cmd_resp = "download-file-resp";
+    cli_api->xfer_count++;
 
     printf("\n");
     fclose(fd);
@@ -481,14 +531,62 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     } else {
         printf("Download Success!\n");
     }
+    if(cli_api->xfer_count > cli_api->total_files) {
+        cli_api->next_cmd_req  = cli_api->final_cmd_req;
+        cli_api->final_cmd_req = NULL;
+        queue_next_cmd_req(cli_api);
+    }
+#else
+    char filePath[PATH_MAX] = {0x00};
+    if (storj_get_filepath_from_filedescriptor(fd, filePath, handle) == 0x00)
+    {
+        cli_api_t *cli_api = handle;
+        cli_api->rcvd_cmd_resp = "download-file-resp";
+        fprintf(stdout,"\n*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, filePath);
+        cli_api->xfer_count++;
+        fclose(fd);
+        if (status) {
+            // TODO send to stderr
+            switch(status) {
+                case STORJ_FILE_DECRYPTION_ERROR:
+                    printf("Unable to properly decrypt file, please check " \
+                       "that the correct encryption key was " \
+                       "imported correctly.\n\n");
+                    break;
+                default:
+                    printf("[%s][%d]Download failure: %s\n",
+                           __FUNCTION__, __LINE__, storj_strerror(status));
+            }
+        } else {
+            char tempFile[256] = {0x00};
+            memcpy(tempFile, filePath, strlen(filePath));
+            strcat(tempFile, ".json");
+            if (access(tempFile, F_OK) != -1 ) {
+                unlink(tempFile);
+            }
+            printf("Download Success!\n");
+        }
 
-    queue_next_cmd_req(cli_api);
+        if(cli_api->xfer_count > cli_api->total_files) {
+            cli_api->next_cmd_req  = cli_api->final_cmd_req;
+            cli_api->final_cmd_req = NULL;
+            queue_next_cmd_req(cli_api);
+        }
+    }
+    else
+    {
+        printf("[%s][%s][%d] "KRED" Invalid file descriptor \n" RESET, __FILE__, __FUNCTION__, __LINE__);
+    }
+#endif
 }
 
 static void download_signal_handler(uv_signal_t *req, int signum)
 {
     storj_download_state_t *state = req->data;
+
+    /* convert the download state struct into JSON and write to a file */
     storj_bridge_resolve_file_cancel(state);
+    storj_download_state_serialize(state);
     if (uv_signal_stop(req)) {
         printf("Unable to stop signal\n");
     }
@@ -496,42 +594,80 @@ static void download_signal_handler(uv_signal_t *req, int signum)
 }
 
 static int download_file(storj_env_t *env, char *bucket_id,
-                         char *file_id, char *path, void *handle)
+                         char *file_id, char *path, void *handle, int handle_index)
 {
+    cli_api_t *cli_api = handle;
     FILE *fd = NULL;
+    char temp_file[BUFSIZ] = {0x00};
+    bool dwn_resume = false;
+    storj_download_state_t *state = NULL;
 
     if (path) {
         char user_input[BUFSIZ];
         memset(user_input, '\0', BUFSIZ);
 
         if (access(path, F_OK) != -1 ) {
-            printf("Warning: File already exists at path [%s].\n", path);
-            while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0) {
-                memset(user_input, '\0', BUFSIZ);
-                printf("Would you like to overwrite [%s]: [y/n] ", path);
-                get_input(user_input);
+            memcpy(temp_file, path, strlen(path));
+            strcat(temp_file, ".json");
+            if (access(temp_file, F_OK) != -1) {
+                printf("Warning: Partially downloaded file already exists at path [%s].\n", path);
+                while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0) {
+                    memset(user_input, '\0', BUFSIZ);
+                    printf("Would you like to continue to download [%s]: [y/n] ", path);
+                    get_input(user_input);
+                }
+                if (strcmp(user_input, "y") == 0x00) {
+                    state = malloc(sizeof(storj_download_state_t));
+                    memset(state, 0x00, sizeof(storj_download_state_t));
+                    if (!state) {
+                        printf("***\n [%s][%s][%d] " KRED "Invalid download state pointer\n" RESET,
+                               __FILE__, __FUNCTION__, __LINE__);
+                        exit(-1);
+                    }
+                    cli_api->handle[handle_index] = state;
+                    state->env = cli_api->env;
+                    state->log = cli_api->env->log;
+                    state->handle = cli_api;
+
+                    storj_download_state_deserialize(state, temp_file);
+                    dwn_resume = true;
+                    fd = fopen(path, "r+");
+                    if (fd == NULL) {
+                       printf("[%s][%s][%d] File cannot be created!!! \n", __FILE__, __FUNCTION__, __LINE__);
+                    }
+                }
+            } else {
+                printf("Warning: File already exists at path [%s].\n", path);
+                while (strcmp(user_input, "y") != 0 && strcmp(user_input, "n") != 0) {
+                    memset(user_input, '\0', BUFSIZ);
+                    printf("Would you like to overwrite [%s]: [y/n] ", path);
+                    get_input(user_input);
+                }
+                if (strcmp(user_input, "y") == 0x00) {
+                    unlink(path);
+                    fd = fopen(path, "w+");
+                }
             }
 
             if (strcmp(user_input, "n") == 0) {
                 printf("\nCanceled overwriting of [%s].\n", path);
-                cli_api_t *cli_api = handle;
                 cli_api->rcvd_cmd_resp = "download-file-resp";
-                queue_next_cmd_req(cli_api);
-                return 1;
+                cli_api->xfer_count++;
+                cli_api->error_status = CLI_API_READY_TO_DWNLD;
+                return cli_api->error_status;
             }
-
-            unlink(path);
+        } else {
+            fd = fopen(path, "w+");
         }
-
-        fd = fopen(path, "w+");
     } else {
         fd = stdout;
     }
 
     if (fd == NULL) {
         // TODO send to stderr
-        printf("Unable to open %s: %s\n", path, strerror(errno));
-        return 1;
+        printf("***\n [%s][%s][%d] " KRED "Invalid path(%s)\n" RESET,
+               __FILE__, __FUNCTION__, __LINE__, strerror(errno));
+        exit(-1);
     }
 
     uv_signal_t *sig = malloc(sizeof(uv_signal_t));
@@ -543,13 +679,29 @@ static int download_file(storj_env_t *env, char *bucket_id,
         progress_cb = file_progress;
     }
 
-    storj_download_state_t *state = storj_bridge_resolve_file(env, bucket_id,
-                                                              file_id, fd, handle,
-                                                              progress_cb,
-                                                              download_file_complete);
+    if (dwn_resume == true) {
+        state = storj_bridge_resume_file(env, bucket_id,
+                                         file_id, fd,
+                                         state,
+                                         progress_cb,
+                                         download_file_complete);
+    } else {
+        state = storj_bridge_resolve_file(env, bucket_id,
+                                          file_id, fd, state,
+                                          progress_cb,
+                                          download_file_complete);
+    }
+
     if (!state) {
+        printf("***\n [%s][%s][%d] " KRED "Invalid download state pointer\n" RESET,
+                                      __FILE__, __FUNCTION__, __LINE__);
         return 1;
     }
+
+    cli_api->handle[handle_index] = state;
+    state->handle = cli_api;
+    state->file_name = cli_api->dst_file;
+    cli_api->error_status = CLI_API_READY_TO_DWNLD;
     sig->data = state;
 
     return state->error_status;
@@ -730,8 +882,9 @@ void get_bucket_id_callback(uv_work_t *work_req, int status)
     }
 
     /* store the bucket id */
-    memset(cli_api->bucket_id, 0x00, sizeof(cli_api->bucket_id));
-    strcpy(cli_api->bucket_id, (char *)req->bucket_id);
+    //memset(cli_api->bucket_id, 0x00, sizeof(cli_api->bucket_id));
+    //strcpy(cli_api->bucket_id, (char *)req->bucket_id);
+    cli_api->bucket_id = strdup((char *)req->bucket_id);
     printf("ID: %s \tName: %s\n", req->bucket_id, req->bucket_name);
 
     queue_next_cmd_req(cli_api);
@@ -762,9 +915,8 @@ void get_file_id_callback(uv_work_t *work_req, int status)
         goto cleanup;
     }
 
-    /* store the bucket id */
-    memset(cli_api->file_id, 0x00, sizeof(cli_api->file_id));
-    strcpy(cli_api->file_id, (char *)req->file_id);
+    /* store the file id */
+    cli_api->file_id[0] = strdup((char *)req->file_id);
     printf("ID: %s \tName: %s\n", req->file_id, req->file_name);
 
     queue_next_cmd_req(cli_api);
@@ -805,22 +957,43 @@ void list_files_callback(uv_work_t *work_req, int status)
         goto cleanup;
     }
 
+    const char *name = "/tmp/dwnld_list.txt";	// file name
+    const int SIZE = 4096;		// file size
+    int dwnld_list_fd;		// file descriptor, from shm_open()
+    char *shm_base;	// base address, from mmap()
+    char *ptr;		// shm_base is fixed, ptr is movable
 
-    FILE *dwnld_list_fd = stdout;
-    if ((dwnld_list_fd = fopen("/tmp/dwnld_list.txt", "w")) == NULL) {
-        printf("[%s][%d] Unable to create download list file\n",
-               __FUNCTION__, __LINE__);
-        goto cleanup;
+    /* create the shared memory segment as if it was a file */
+    dwnld_list_fd = shm_open(name, O_CREAT | O_RDWR, 0666);
+    if (dwnld_list_fd == -1) {
+        printf("prod: Shared memory failed: %s\n", strerror(errno));
+        exit(1);
     }
 
+    /* configure the size of the shared memory segment */
+    ftruncate(dwnld_list_fd, SIZE);
+
+    /* map the shared memory segment to the address space of the process */
+    shm_base = mmap(0, SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, dwnld_list_fd, 0);
+    if (shm_base == MAP_FAILED) {
+        printf("prod: Map failed: %s\n", strerror(errno));
+        // close and shm_unlink?
+        exit(1);
+    }
+    ptr = shm_base;
+    /**
+    * Write to the mapped shared memory region.
+    *
+    * We increment the value of ptr after each write, but we
+    * are ignoring the possibility that sprintf() fails.
+    */
     for (int i = 0; i < req->total_files; i++) {
         storj_file_meta_t *file = &req->files[i];
 
         if ((cli_api->file_name != NULL) &&
             (strcmp(cli_api->file_name, file->filename)) == 0x00) {
             /* store the file id */
-            memset(cli_api->file_id, 0x00, sizeof(cli_api->file_id));
-            strcpy(cli_api->file_id, (char *)file->id);
+            cli_api->file_id[0] = strdup((char *)file->id);
         }
 
         printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
@@ -831,16 +1004,29 @@ void list_files_callback(uv_work_t *work_req, int status)
                file->created,
                file->filename);
 
-        fprintf(dwnld_list_fd, "%s:%s\n",file->id, file->filename);
+        ptr += sprintf(ptr, "%s:%s\n",file->id, file->filename);
     }
 
     cli_api->total_files = req->total_files;
-    cli_api->xfer_count = 0x01;
-    fclose(dwnld_list_fd);
+    cli_api->xfer_count = ptr - shm_base;//0x01;
+    int total_size = ptr - shm_base;
+    /* read from the mapped shared memory segment */
+    printf("%s", shm_base);
+    printf("total_file size =%d\n", total_size);
+    /* remove the mapped memory segment from the address space of the process */
+    if (munmap(shm_base, SIZE) == -1) {
+        printf("prod: Unmap failed: %s\n", strerror(errno));
+        exit(1);
+    }
+
+    /* close the shared memory segment as if it was a file */
+    if (close(dwnld_list_fd) == -1) {
+        printf("prod: Close failed: %s\n", strerror(errno));
+        exit(1);
+    }
     queue_next_cmd_req(cli_api);
 
   cleanup:
-
     storj_free_list_files_request(req);
     free(work_req);
 }
@@ -850,12 +1036,12 @@ void queue_next_cmd_req(cli_api_t *cli_api)
     void *handle = cli_api->handle;
 
     #ifdef debug_enable
-    printf("[%s][%d]start !!!! expt resp = %s; rcvd resp = %s \n",
-           __FUNCTION__, __LINE__,
-            cli_api->excp_cmd_resp, cli_api->rcvd_cmd_resp );
-    printf("[%s][%d]last cmd = %s; cur cmd = %s; next cmd = %s\n",
-           __FUNCTION__, __LINE__, cli_api->last_cmd_req,
-           cli_api->curr_cmd_req, cli_api->next_cmd_req);
+        printf("[%s][%d]start !!!! expt resp = %s; rcvd resp = %s \n",
+               __FUNCTION__, __LINE__,
+                cli_api->excp_cmd_resp, cli_api->rcvd_cmd_resp );
+        printf("[%s][%d]last cmd = %s; cur cmd = %s; next cmd = %s\n",
+               __FUNCTION__, __LINE__, cli_api->last_cmd_req,
+               cli_api->curr_cmd_req, cli_api->next_cmd_req);
     #endif
 
     if (cli_api->excp_cmd_resp != NULL) {
@@ -868,9 +1054,9 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 cli_api->excp_cmd_resp = "get-file-id-resp";
 
                 storj_bridge_get_file_id(cli_api->env, cli_api->bucket_id,
-                                        cli_api->file_name, cli_api, get_file_id_callback);
+                                         cli_api->file_name, cli_api, get_file_id_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                (strcmp(cli_api->next_cmd_req, "list-files-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "list-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
@@ -879,7 +1065,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 storj_bridge_list_files(cli_api->env, cli_api->bucket_id,
                                         cli_api, list_files_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "remove-bucket-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "remove-bucket-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
@@ -888,33 +1074,33 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 storj_bridge_delete_bucket(cli_api->env, cli_api->bucket_id,
                                            cli_api, delete_bucket_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "remove-file-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "remove-file-req") == 0x00)) {
                 printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
-                        __FUNCTION__, __LINE__, cli_api->file_name, cli_api->file_id,
-                        cli_api->bucket_name);
+                       __FUNCTION__, __LINE__, cli_api->file_name, cli_api->file_id[0],
+                       cli_api->bucket_name);
 
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
                 cli_api->excp_cmd_resp = "remove-file-resp";
 
-                storj_bridge_delete_file(cli_api->env, cli_api->bucket_id, cli_api->file_id,
-                                            cli_api, delete_file_callback);
+                storj_bridge_delete_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[0],
+                                         cli_api, delete_file_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "list-mirrors-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "list-mirrors-req") == 0x00)) {
                 printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
-                        __FUNCTION__, __LINE__, cli_api->file_name, cli_api->file_id,
-                        cli_api->bucket_name);
+                       __FUNCTION__, __LINE__, cli_api->file_name, cli_api->file_id[0],
+                       cli_api->bucket_name);
 
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
                 cli_api->excp_cmd_resp = "list-mirrors-resp";
 
-                storj_bridge_list_mirrors(cli_api->env, cli_api->bucket_id, cli_api->file_id,
-                                            cli_api, list_mirrors_callback);
+                storj_bridge_list_mirrors(cli_api->env, cli_api->bucket_id, cli_api->file_id[0],
+                                          cli_api, list_mirrors_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "upload-file-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "upload-file-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
@@ -922,7 +1108,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
 
                 upload_file(cli_api->env, cli_api->bucket_id, cli_api->file_name, cli_api);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "verify-upload-files-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "verify-upload-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
@@ -930,7 +1116,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
 
                 verify_upload_files(cli_api);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "upload-files-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "upload-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->excp_cmd_resp = "upload-files-resp";
 
@@ -968,82 +1154,150 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                     exit(0);
                 }
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "download-file-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "download-file-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->next_cmd_req  = cli_api->final_cmd_req;
                 cli_api->final_cmd_req = NULL;
                 cli_api->excp_cmd_resp = "download-file-resp";
 
-                download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id,
-                                cli_api->dst_file, cli_api);
+                download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[0],
+                              cli_api->dst_file, cli_api, 0x00);
             } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "download-files-req") == 0x00)) {
+                       (strcmp(cli_api->next_cmd_req, "download-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
                 cli_api->excp_cmd_resp = "download-file-resp";
+                
+                const char *name = "/tmp/dwnld_list.txt";	// file name
+                const int SIZE = 4096;		// file size
 
-                FILE *file = stdout;
+                int shm_fd;		// file descriptor, from shm_open()
+                char *shm_base;	// base address, from mmap()
 
-                if ((file = fopen("/tmp/dwnld_list.txt", "r")) != NULL) {
-                    char line[256][256];
-                    char *temp;
-                    char temp_path[1024];
-                    int i = 0x00;
-                    char *token[10];
-                    int tk_idx= 0x00;
-                    memset(token, 0x00, sizeof(token));
-                    memset(temp_path, 0x00, sizeof(temp_path));
-                    memset(line, 0x00, sizeof(line));
-                    while ((fgets(line[i],sizeof(line), file)!= NULL)) {/* read a line from a file */
-                        temp = strrchr(line[i], '\n');
-                        if (temp) *temp = '\0';
-                        i++;
-                        if (i >= cli_api->xfer_count) {
+                /* open the shared memory segment as if it was a file */
+                shm_fd = shm_open(name, O_RDONLY, 0666);
+                if (shm_fd == -1) {
+                    printf("cons: Shared memory failed: %s\n", strerror(errno));
+                    exit(1);
+                }
+
+                /* map the shared memory segment to the address space of the process */
+                shm_base = mmap(0, SIZE, PROT_READ, MAP_SHARED, shm_fd, 0);
+                if (shm_base == MAP_FAILED) {
+                    printf("cons: Map failed: %s\n", strerror(errno));
+                    // close and unlink?
+                    exit(1);
+                }
+
+                /* read from the mapped shared memory segment */
+                char *buf, *buf_end;
+                buf = shm_base;
+                char *begin, *end, c;
+                char temp_file[256];
+                memset(temp_file, 0x00, sizeof(temp_file));
+                char *ptr = temp_file;
+
+                /* used xfer_count to pass the total size of the 
+                   downloaded file list */
+                buf_end = buf + cli_api->xfer_count;
+
+                /* reset the count back to 0x01 */
+                cli_api->xfer_count = 0x01;
+                begin = end = buf;
+                char line[256][256];
+                char *temp;
+                char temp_path[1024];
+                int i = 0x00;
+                int x = 0x00;
+                char *token[10];
+                int tk_idx= 0x00;
+                memset(token, 0x00, sizeof(token));
+                memset(temp_path, 0x00, sizeof(temp_path));
+                memset(line, 0x00, sizeof(line));
+                cli_api->error_status = CLI_API_READY_TO_DWNLD;
+                do {
+                    printf(" error_status = %d\n", cli_api->error_status);
+                    switch(cli_api->error_status) {
+                        case CLI_API_READY_TO_DWNLD:
+                            /* setup next file to be downloaded */
+                            while (1) {
+                                if (!(*end == '\n')) {
+                                    if (end <= buf_end) {
+                                        *ptr++ = *end++;
+                                        continue;
+                                    }
+                                } else {
+                                    *(ptr++) = '\n';
+                                    break; 
+                                }
+                            }
+                            memcpy(line[i], temp_file, sizeof(temp_file));
+                            temp = strrchr(line[i], '\n');
+                            if (temp) *temp = '\0';
+
+                            /* start tokenizing */
+                            token[0] = strtok(line[i], ":");
+                            while (token[tk_idx] != NULL) {
+                                tk_idx++;
+                                token[tk_idx] = strtok(NULL, ":");
+                            }
+
+                            cli_api->file_id[i] = strdup(token[0]);
+                            strcpy(temp_path, cli_api->file_path);
+                            if (cli_api->file_path[(strlen(cli_api->file_path)-1)] != '/') {
+                                strcat(temp_path, "/");
+                            }
+                            strcat(temp_path, token[1]);
+                            cli_api->dst_file = strdup(temp_path);
+                            cli_api->error_status = CLI_API_DWNLD_IN_PROGRESS;
+                            fprintf(stdout,"\n*****  File id ["KBLU"%s]"RESET" downloading file"KGRN" [%d:%d]"RESET" to: %s *****\n",
+                                    cli_api->file_id[i], (i+1), cli_api->total_files, cli_api->dst_file);
+                            download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id[i], temp_path, cli_api, i);
+
+                            memset(token, 0x00, sizeof(token));
+                            memset(temp_path, 0x00, sizeof(temp_path));
+                            memset(line, 0x00, sizeof(line));
+                            memset(temp_file, 0x00, sizeof(temp_file));
+                            ptr = temp_file;
+                            tk_idx = 0x00;
+                            i++;
+                            if ((begin = ++end) >= buf_end){
+                                cli_api->error_status = CLI_API_DWNLD_DONE;
+                                  /* remove the mapped shared memory segment from the address space of the process */
+                                if (munmap(shm_base, SIZE) == -1) {
+                                    printf("cons: Unmap failed: %s\n", strerror(errno));
+                                    exit(1);
+                                }
+
+                                /* close the shared memory segment as if it was a file */
+                                if (close(shm_fd) == -1) {
+                                    printf("cons: Close failed: %s\n", strerror(errno));
+                                    exit(1);
+                                }
+
+                                /* remove the shared memory segment from the file system */
+                                if (shm_unlink(name) == -1) {
+                                    printf("cons: Error removing %s: %s\n", name, strerror(errno));
+                                    exit(1);
+                                }
+                            }
                             break;
-                        }
+
+                        case CLI_API_DWNLD_IN_PROGRESS:
+                        default:
+                            /* wait until read to download status */
+                            break;
                     }
-                    fclose(file);
-
-                    /* start tokenizing */
-                    token[0] = strtok(line[i-1], ":");
-                    while (token[tk_idx] != NULL) {
-                        tk_idx++;
-                        token[tk_idx] = strtok(NULL, ":");
-                    }
-
-                    if (cli_api->xfer_count <= cli_api->total_files) {
-                        /* is it the last file ? */
-                        if (cli_api->xfer_count == cli_api->total_files) {
-                            cli_api->next_cmd_req  = cli_api->final_cmd_req;
-                            cli_api->final_cmd_req = NULL;
-                        }
-
-                        memset(cli_api->file_id, 0x00, sizeof(cli_api->file_id));
-                        strcpy(cli_api->file_id, token[0]);
-                        strcpy(temp_path, cli_api->file_path);
-                        if (cli_api->file_path[(strlen(cli_api->file_path)-1)] != '/') {
-                            strcat(temp_path, "/");
-                        }
-                        strcat(temp_path, token[1]);
-                        fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, temp_path);
-                        cli_api->xfer_count++;
-
-                        download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id, temp_path, cli_api);
-                    } else {
-                        printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
-                        exit(0);
-                    }
-               }
+                } while(cli_api->error_status != CLI_API_DWNLD_DONE);
             } else {
                 #ifdef debug_enable
-                printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", __FUNCTION__, __LINE__);
+                    printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", __FUNCTION__, __LINE__);
                 #endif
-
                 exit(0);
             }
         } else {
             printf("[%s][%d]Oops !!!! expt resp = %s; rcvd resp = %s \n",
                    __FUNCTION__, __LINE__,
-                    cli_api->excp_cmd_resp, cli_api->rcvd_cmd_resp );
+                   cli_api->excp_cmd_resp, cli_api->rcvd_cmd_resp );
             printf("[%s][%d]last cmd = %s; cur cmd = %s; next cmd = %s\n",
                    __FUNCTION__, __LINE__, cli_api->last_cmd_req,
                    cli_api->curr_cmd_req, cli_api->next_cmd_req);

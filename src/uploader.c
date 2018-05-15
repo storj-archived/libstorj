@@ -768,7 +768,7 @@ static void progress_put_shard(uv_async_t* async)
     state->progress_cb(total_progress,
                        uploaded_bytes,
                        total_bytes,
-                       state->handle);
+                       state->original_file);
 
 
 }
@@ -2389,7 +2389,7 @@ static void begin_work_queue(uv_work_t *work, int status)
     storj_upload_state_t *state = work->data;
 
     // Load progress bar
-    state->progress_cb(0, 0, 0, state->handle);
+    state->progress_cb(0, 0, 0, state->original_file);
 
     state->pending_work_count -= 1;
     queue_next_work(state);

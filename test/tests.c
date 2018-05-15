@@ -281,6 +281,19 @@ void check_resolve_file_progress(double progress,
     // TODO check error case
 }
 
+void check_resume_file_progress(double progress,
+                                 uint64_t downloaded_bytes,
+                                 uint64_t total_bytes,
+                                 void *handle)
+{
+    //assert(handle != NULL);
+    if (progress == (double)1) {
+        pass("storj_bridge_resolve_file (progress finished)");
+    }
+
+    // TODO check error case
+}
+
 void check_resolve_file(int status, FILE *fd, void *handle)
 {
     fclose(fd);
@@ -313,6 +326,34 @@ void check_resolve_file_cancel(int status, FILE *fd, void *handle)
         pass("storj_bridge_resolve_file_cancel");
     } else {
         fail("storj_bridge_resolve_file_cancel");
+    }
+}
+
+void check_resolve_file_pause(int status, FILE *fd, void *handle)
+{
+    fclose(fd);
+    assert(handle == NULL);
+    if (status == STORJ_TRANSFER_CANCELED) {
+        char *download_file = calloc(strlen(folder) + 38 + 1, sizeof(char));
+        strcpy(download_file, folder);
+        strcat(download_file, "storj-test-download-pausNres.data.json");
+        if(access(download_file, F_OK) != -1) {
+            pass("storj_bridge_resolve_file_pause");
+        } else {
+            fail("storj_bridge_resolve_file_pause");
+        }
+    }
+}
+
+void check_resolve_file_resume(int status, FILE *fd, void *handle)
+{
+    fclose(fd);
+    //assert(handle != NULL);
+    if (status) {
+        fail("storj_bridge_resolve_file_resume");
+        printf("Download failed: %s\n", storj_strerror(status));
+    } else {
+        pass("storj_bridge_resolve_file_resume");
     }
 }
 
@@ -757,6 +798,171 @@ int test_download_cancel()
 
     } while (more == true);
 
+
+    free(download_file);
+    storj_destroy_env(env);
+
+    return 0;
+}
+
+static void close_signal(uv_handle_t *handle)
+{
+    ((void)0);
+}
+
+static void download_signal_handler(uv_signal_t *req, int signum)
+{
+    storj_download_state_t *state = req->data;
+    /* convert the download state struct into JSON and write to a file */
+    storj_bridge_resolve_file_cancel(state);
+    storj_download_state_serialize(state);
+    if (uv_signal_stop(req)) {
+        printf("Unable to stop signal\n");
+    }
+    uv_close((uv_handle_t *)req, close_signal);
+}
+
+int test_download_pause()
+{
+
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
+    assert(env != NULL);
+
+    // resolve file
+    char *download_file = calloc(strlen(folder) + 33 + 1, sizeof(char));
+    strcpy(download_file, folder);
+    strcat(download_file, "storj-test-download-pausNres.data");
+    unlink(download_file);
+    FILE *download_fp = fopen(download_file, "w+");
+
+    char *bucket_id = "368be0816766b28fd5f43af5";
+    char *file_id = "998960317b6725a3f8080c2b";
+
+    uv_signal_t *sig = malloc(sizeof(uv_signal_t));
+    uv_signal_init(env->loop, sig);
+    uv_signal_start(sig, download_signal_handler, SIGINT);
+
+    storj_download_state_t *state = storj_bridge_resolve_file(env,
+                                                              bucket_id,
+                                                              file_id,
+                                                              download_fp,
+                                                              NULL,
+                                                              check_resume_file_progress,
+                                                              check_resolve_file_pause);
+    sig->data = state;
+
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
+
+    // process the loop one at a time so that we can do other things while
+    // the loop is processing, such as cancel the download
+    int count = 0;
+    bool more;
+    int status = 0;
+    do {
+        more = uv_run(env->loop, UV_RUN_ONCE);
+        if (more == false) {
+            more = uv_loop_alive(env->loop);
+            if (uv_run(env->loop, UV_RUN_NOWAIT) != 0) {
+                more = true;
+            }
+        }
+
+        count++;
+
+        if (count == 100) {
+            int ret;
+            printf(KBLU"Emulate CTRL+C (SIGINT) signal"RESET"\n");
+            ret = raise(SIGINT);
+
+            if( ret !=0 ) {
+                printf("Error: unable to raise SIGINT signal.\n");
+                exit(0);
+            }
+        }
+    } while (more == true);
+
+    free(download_file);
+    storj_destroy_env(env);
+
+    return 0;
+}
+
+
+int test_download_resume()
+{
+    char temp_file[BUFSIZ] = {0x00};
+    bool dwn_resume = false;
+
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
+    assert(env != NULL);
+
+    // resolve file
+    char *download_file = calloc(strlen(folder) + 33 + 1, sizeof(char));
+    strcpy(download_file, folder);
+    strcat(download_file, "storj-test-download-pausNres.data");
+
+    FILE *download_fp = NULL;
+    memcpy(temp_file, download_file, strlen(download_file));
+    strcat(temp_file, ".json");
+
+    storj_download_state_t *state_cb = malloc(sizeof(storj_download_state_t));
+    assert(state_cb != NULL);
+    memset(state_cb, 0x00, sizeof(storj_download_state_t));
+    state_cb->env = env;
+
+    if (access(temp_file, F_OK) != -1) {
+        printf(KBLU"Warning: Partially downloaded file already exists at path [%s]"RESET "\n", download_file);
+        storj_download_state_deserialize(state_cb, temp_file);
+        printf("am here tests.c .. = %s \n", temp_file);
+        dwn_resume = true;
+        download_fp = fopen(download_file, "r+");
+        assert(download_fp != NULL);
+    }
+    else {
+        printf("[%s][%s][%d] " KRED " Something Wrong !!!!!!! \n" RESET,
+                            __FILE__, __FUNCTION__, __LINE__);
+        return 1;
+    }
+
+    char *bucket_id = "368be0816766b28fd5f43af5";
+    char *file_id = "998960317b6725a3f8080c2b";
+
+    storj_download_state_t *state = storj_bridge_resume_file(env, bucket_id,
+                                                             file_id,
+                                                             download_fp,
+                                                             state_cb,
+                                                             check_resume_file_progress,
+                                                             check_resolve_file_resume);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
+
+    // process the loop one at a time so that we can do other things while
+    // the loop is processing, such as cancel the download
+    int count = 0;
+    bool more;
+    int status = 0;
+    do {
+        more = uv_run(env->loop, UV_RUN_ONCE);
+        if (more == false) {
+            more = uv_loop_alive(env->loop);
+            if (uv_run(env->loop, UV_RUN_NOWAIT) != 0) {
+                more = true;
+            }
+        }
+
+        count++;
+    } while (more == true);
 
     free(download_file);
     storj_destroy_env(env);
@@ -1680,6 +1886,7 @@ int main(void)
     test_download();
     test_download_null_mnemonic();
     test_download_cancel();
+    test_download_pause();
     printf("\n");
 
     printf("Test Suite: BIP39\n");

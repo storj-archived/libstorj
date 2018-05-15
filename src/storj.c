@@ -751,6 +751,213 @@ static void log_formatter_error(storj_log_options_t *options, void *handle,
     va_end(args);
 }
 
+static void set_pointer_from_json(storj_download_state_t *state,
+                                  storj_pointer_t *p,
+                                  struct json_object *json,
+                                  bool is_replaced)
+{
+    if (!json_object_is_type(json, json_type_object)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+
+    struct json_object *token_value;
+    char *token = NULL;
+    if (json_object_object_get_ex(json, "token", &token_value)) {
+        token = (char *)json_object_get_string(token_value);
+    }
+
+    struct json_object *hash_value;
+    if (!json_object_object_get_ex(json, "hash", &hash_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    char *hash = (char *)json_object_get_string(hash_value);
+
+    struct json_object *status_value;
+    if (!json_object_object_get_ex(json, "status", &status_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    int status = json_object_get_int(status_value);
+
+    struct json_object *size_value;
+    if (!json_object_object_get_ex(json, "size", &size_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    uint64_t size = json_object_get_int64(size_value);
+
+    struct json_object *parity_value;
+    bool parity = false;
+    if (json_object_object_get_ex(json, "parity", &parity_value)) {
+        parity = json_object_get_boolean(parity_value);
+    }
+
+    struct json_object *index_value;
+    if (!json_object_object_get_ex(json, "index", &index_value)) {
+        state->error_status = STORJ_BRIDGE_JSON_ERROR;
+        return;
+    }
+    uint32_t index = json_object_get_int(index_value);
+
+
+    struct json_object *farmer_value;
+    char *address = NULL;
+    uint32_t port = 0;
+    char *farmer_id = NULL;
+
+    if (json_object_object_get_ex(json, "farmer", &farmer_value) &&
+        json_object_is_type(farmer_value, json_type_object)) {
+
+        struct json_object *address_value;
+        if (!json_object_object_get_ex(farmer_value, "address",
+                                       &address_value)) {
+            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            return;
+        }
+        address = (char *)json_object_get_string(address_value);
+
+        struct json_object *port_value;
+        if (!json_object_object_get_ex(farmer_value, "port", &port_value)) {
+            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            return;
+        }
+        port = json_object_get_int(port_value);
+
+        struct json_object *farmer_id_value;
+        if (!json_object_object_get_ex(farmer_value, "nodeID",
+                                       &farmer_id_value)) {
+            state->error_status = STORJ_BRIDGE_JSON_ERROR;
+            return;
+        }
+        farmer_id = (char *)json_object_get_string(farmer_id_value);
+    }
+
+
+    if (is_replaced) {
+        p->replace_count += 1;
+    } else {
+        p->replace_count = 0;
+    }
+
+    // Check to see if we have a token for this shard, otherwise
+    // we will immediately move this shard to POINTER_MISSING
+    // so that it can be retried and possibly recovered.
+    if (address && token) {
+        // reset the status
+        p->status = 0x00; /* POINTER_CREATED */
+    } else {
+        state->log->warn(state->env->log_options,
+                         state->handle,
+                         "Missing shard %s at index %i",
+                         hash,
+                         index);
+        p->status = 0x03; /* POINTER_MISSING */
+    }
+
+    p->size = size;
+    p->parity = parity;
+    p->downloaded_size = 0;
+    p->index = index;
+    p->farmer_port = port;
+    p->status = status;
+
+    if (is_replaced) {
+        free(p->token);
+        free(p->shard_hash);
+        free(p->farmer_address);
+        free(p->farmer_id);
+    }
+    if (token) {
+        p->token = strdup(token);
+    } else {
+        p->token = NULL;
+    }
+    p->shard_hash = strdup(hash);
+    if (address) {
+        p->farmer_address = strdup(address);
+    } else {
+        p->farmer_address = NULL;
+    }
+    if (farmer_id) {
+        p->farmer_id = strdup(farmer_id);
+    } else {
+        p->farmer_id = NULL;
+    }
+
+    // setup exchange report values
+    p->report = malloc(
+            sizeof(storj_exchange_report_t));
+
+    if (!p->report) {
+        state->error_status = STORJ_MEMORY_ERROR;
+        return;
+    }
+
+
+    const char *client_id = state->env->bridge_options->user;
+    p->report->data_hash = strdup(hash);
+    p->report->send_status = 0; // not sent
+    p->report->send_count = 0;
+
+    // these values will be changed in after_request_shard
+    p->report->start = 0;
+    p->report->end = 0;
+    p->report->code = STORJ_REPORT_FAILURE;
+    p->report->message = STORJ_REPORT_DOWNLOAD_ERROR;
+
+    p->work = NULL;
+
+    if (!state->shard_size) {
+        // TODO make sure all except last shard is the same size
+        state->shard_size = size;
+        if (0x00 != p->index) {
+            printf("[%s][%s][%d] "KRED"Invalid shard size: %" PRIu64 "\n" RESET,
+                    __FILE__, __FUNCTION__, __LINE__, state->shard_size);
+        }
+        state->log->debug(state->env->log_options,
+                          state->handle,
+                          "Shard size set to %" PRIu64,
+                state->shard_size);
+    };
+}
+
+static void append_pointers_to_state(storj_download_state_t *state,
+                                     struct json_object *res)
+{
+    int length = json_object_array_length(res);
+
+    if (length > 0) {
+
+        state->total_pointers = length;
+        int total_pointers = state->total_pointers;
+
+        if (state->total_pointers > 0) {
+            state->pointers = realloc(state->pointers,
+                                      total_pointers * sizeof(storj_pointer_t));
+        }
+        if (!state->pointers) {
+            state->error_status = STORJ_MEMORY_ERROR;
+            return;
+        }
+
+        state->total_pointers = total_pointers;
+        state->total_shards = total_pointers;
+
+        for (int i = 0; i < length; i++) {
+            struct json_object *json = json_object_array_get_idx(res, i);
+            set_pointer_from_json(state, &state->pointers[i], json, false);
+
+            // Keep track of the number of data and parity pointers
+            storj_pointer_t *pointer = &state->pointers[i];
+            if (pointer->parity) {
+                state->total_parity_pointers += 1;
+            }
+        }
+    }
+}
+
 STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
                                  storj_encrypt_options_t *encrypt_options,
                                  storj_http_options_t *http_options,
@@ -1768,4 +1975,279 @@ STORJ_API int storj_bridge_register(storj_env_t *env,
         return STORJ_MEMORY_ERROR;
     }
     return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
+}
+
+STORJ_API int storj_get_filepath_from_filedescriptor(FILE *file_descriptor, char *file_path, void *handle)
+{
+#define MAXLEN 200
+    char procpath[MAXLEN + 1] = {0x00};
+    int fd = -1;
+
+#ifdef __APPLE__
+    if (fcntl(fileno(file_descriptor), F_GETPATH, file_path) != -1) {
+    } else {
+        printf("[%s][%s][%d] Invalid file path \n", __FILE__, __FUNCTION__, __LINE__);
+        return -1;
+    }
+#elif __linux__
+    /*
+     * Get the low-level file descriptor of the open file
+     */
+    fd = fileno(file_descriptor);
+    if (fd < 0) {
+        printf("[%s][%s][%d] Invalid file descriptor \n", __FILE__, __FUNCTION__, __LINE__);
+        return -1;
+    }
+
+    /*
+     * Construct a string with the /proc path of the file
+     * descriptor (which is a symbolic link to the real
+     * file).
+     */
+    snprintf(procpath, MAXLEN, "/proc/self/fd/%d", fd);
+
+    /*
+     * Get the path the symlink is pointing to.
+     */
+    if (readlink(procpath, file_path, (size_t) MAXLEN) < 0) {
+        printf("[%s][%s][%d] Invalid file path \n", __FILE__, __FUNCTION__, __LINE__);
+        return -1;
+    }
+#elif __WIN32__
+    storj_download_state_t *state = handle;
+    //strcpy(file_path,state->file_name);
+    file_path = strdup(state->file_name);
+    printf("[%s][%s][%d] "KRED"windows os file name = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, file_path);
+#else
+    printf("[%s][%s][%d] "KRED" Unknown OS \n" RESET, __FILE__, __FUNCTION__, __LINE__);
+    return -1;
+#endif
+
+    printf("[%s][%s][%d] "KGRN" Destination file path = %s\n" RESET, __FILE__, __FUNCTION__, __LINE__, file_path);
+    return 0;
+}
+
+STORJ_API int storj_download_state_serialize(storj_download_state_t *state)
+{
+    //char filePath[PATH_MAX] = {0x00};
+    char *filePath;
+
+    if (storj_get_filepath_from_filedescriptor(state->destination, filePath, (void *)state) == 0x00)
+    {
+        strcat(filePath,".json");
+        unlink(filePath);
+    } else {
+        return -1;
+    }
+
+    /* create a json object for the download_state struct */
+    struct json_object *body = json_object_new_object();
+    json_object_object_add(body, "total_bytes",
+                           json_object_new_int64(state->total_bytes));
+
+    /* add here storj_file_meta_t */
+    struct json_object *jfile_info = json_object_new_object();
+    if (state->info->created != NULL) {
+        json_object_object_add(jfile_info, "created",
+                               json_object_new_string(state->info->created));
+    }
+    if (state->info->filename != NULL) {
+        json_object_object_add(jfile_info, "filename",
+                               json_object_new_string(state->info->filename));
+    }
+    if (state->info->mimetype != NULL) {
+        json_object_object_add(jfile_info, "mimetype",
+                               json_object_new_string(state->info->mimetype));
+    }
+    if (state->info->erasure != NULL) {
+        json_object_object_add(jfile_info, "erasure",
+                               json_object_new_string(state->info->erasure));
+    }
+    json_object_object_add(jfile_info, "size",
+                           json_object_new_int64(state->info->size));
+    if (state->info->hmac != NULL) {
+        json_object_object_add(jfile_info, "hmac",
+                               json_object_new_string(state->info->hmac));
+    }
+    if (state->info->id != NULL) {
+        json_object_object_add(jfile_info, "id",
+                               json_object_new_string(state->info->id));
+    }
+    if (state->info->bucket_id != NULL) {
+        json_object_object_add(jfile_info, "bucket_id",
+                               json_object_new_string(state->info->bucket_id));
+    }
+    json_object_object_add(jfile_info, "decrypted",
+                           json_object_new_boolean(state->info->decrypted));
+    if (state->info->index != NULL) {
+        json_object_object_add(jfile_info, "index",
+                               json_object_new_string(state->info->index));
+    }
+    if (state->info->hmac != NULL) {
+        json_object_object_add(jfile_info, "hmac",
+                               json_object_new_string(state->info->hmac));
+    }
+    json_object_object_add(body, "storj_file_meta_t", jfile_info);
+
+    json_object_object_add(body, "requesting_info",
+                           json_object_new_boolean(state->requesting_info));
+    json_object_object_add(body, "info_fail_count",
+                           json_object_new_int(state->info_fail_count));
+    if (state->file_id != NULL) {
+        json_object_object_add(body, "file_id",
+                               json_object_new_string(state->file_id));
+    }
+    if (state->bucket_id != NULL) {
+        json_object_object_add(body, "bucket_id",
+                               json_object_new_string(state->bucket_id));
+    }
+    json_object_object_add(body, "finished",
+                           json_object_new_boolean(state->finished));
+    json_object_object_add(body, "canceled",
+                           json_object_new_boolean(state->canceled));
+    json_object_object_add(body, "shard_size",
+                           json_object_new_int64(state->shard_size));
+    json_object_object_add(body, "total_shards",
+                           json_object_new_int(state->total_shards));
+    json_object_object_add(body, "download_max_concurrency",
+                           json_object_new_int(state->download_max_concurrency));
+    json_object_object_add(body, "completed_shards",
+                           json_object_new_int(state->completed_shards));
+    json_object_object_add(body, "resolving_shards",
+                           json_object_new_int(state->recovering_shards));
+
+    /* create json array of shard pointers */
+    struct json_object *jptr_array = json_object_new_array();
+    int i = 0x00;
+    while (i < state->total_pointers) {
+
+        struct json_object *jptr = json_object_new_object();
+        struct json_object *jfarmer = json_object_new_object();
+        storj_pointer_t *pointer = &state->pointers[i];
+        if (pointer->token) {
+            json_object_object_add(jptr, "token",
+                                   json_object_new_string(pointer->token));
+            json_object_object_add(jptr, "replace_count",
+                                   json_object_new_int(pointer->replace_count));
+
+            if (pointer->shard_hash) {
+                json_object_object_add(jptr, "hash",
+                                       json_object_new_string(pointer->shard_hash));
+            }
+            json_object_object_add(jptr, "index",
+                                   json_object_new_int(pointer->index));
+            json_object_object_add(jptr, "status",
+                                   json_object_new_int(pointer->status));
+            json_object_object_add(jptr, "size",
+                                   json_object_new_int64(pointer->size));
+            json_object_object_add(jptr, "parity",
+                                   json_object_new_boolean(pointer->parity));
+            json_object_object_add(jptr, "downloaded_size",
+                                   json_object_new_int64(pointer->downloaded_size));
+            if (pointer->farmer_id) {
+                json_object_object_add(jfarmer, "nodeID",
+                                       json_object_new_string(pointer->farmer_id));
+            }
+            if (pointer->farmer_address) {
+                json_object_object_add(jfarmer, "address",
+                                       json_object_new_string(pointer->farmer_address));
+            }
+            json_object_object_add(jfarmer, "port",
+                                   json_object_new_int(pointer->farmer_port));
+            json_object_object_add(jptr, "farmer", jfarmer);
+            json_object_array_add(jptr_array, jptr);
+
+        }
+        i++;
+    }
+
+    json_object_object_add(body, "storj_pointer_t", jptr_array);
+
+    if (state->excluded_farmer_ids != NULL) {
+        json_object_object_add(body, "excluded_farmer_ids",
+                               json_object_new_string(state->excluded_farmer_ids));
+    }
+    json_object_object_add(body, "total_pointers",
+                           json_object_new_int64(state->total_pointers));
+    json_object_object_add(body, "rs",
+                           json_object_new_boolean(state->rs));
+    json_object_object_add(body, "recovering_shards",
+                           json_object_new_boolean(state->recovering_shards));
+    json_object_object_add(body, "truncated",
+                           json_object_new_boolean(state->truncated));
+    json_object_object_add(body, "pointers_completed",
+                           json_object_new_boolean(state->pointers_completed));
+    json_object_object_add(body, "pointer_fail_count",
+                           json_object_new_int(state->pointer_fail_count));
+    json_object_object_add(body, "requesting_pointers",
+                           json_object_new_boolean(state->requesting_pointers));
+    json_object_object_add(body, "error_status",
+                           json_object_new_int(state->error_status));
+    json_object_object_add(body, "writing",
+                           json_object_new_boolean(state->writing));
+    if (state->hmac != NULL) {
+        json_object_object_add(body, "hmac",
+                               json_object_new_string(state->hmac));
+    }
+    json_object_object_add(body, "pending_work_count",
+                           json_object_new_int64(state->pending_work_count));
+
+    json_object *jdwn = json_object_new_object();
+    json_object_object_add(jdwn, "storj_download_state_t", body);
+
+    FILE *fd = fopen(filePath, "w");
+    fprintf(fd, "%s", json_object_get_string(jdwn));
+    fclose(fd);
+
+    json_object_put(jdwn);
+    json_object_put(body);
+    json_object_put(jfile_info);
+    json_object_put(jptr_array);
+
+    return 0;
+}
+
+STORJ_API int storj_download_state_deserialize(storj_download_state_t *state, char *file_path)
+{
+    //FILE *fd = fopen(file_path, "r");
+    struct json_object *jdwnld_obj;
+    jdwnld_obj = json_object_from_file(file_path);
+
+    struct json_object *jstorj_download_state_t;
+    if (json_object_object_get_ex(jdwnld_obj, "storj_download_state_t", &jstorj_download_state_t)) {
+        /* setup download state */
+        json_object_object_get_ex(jstorj_download_state_t, "file_id", &jdwnld_obj);
+        state->file_id = json_object_get_string(jdwnld_obj);
+
+        json_object_object_get_ex(jstorj_download_state_t, "bucket_id", &jdwnld_obj);
+        state->bucket_id = json_object_get_string(jdwnld_obj);
+
+        json_object_object_get_ex(jstorj_download_state_t, "shard_size", &jdwnld_obj);
+        state->shard_size = json_object_get_int64(jdwnld_obj);
+
+        /* setup the storj_file_meta_t */
+        struct json_object *jstorj_file_meta_t;
+        if (json_object_object_get_ex(jstorj_download_state_t, "storj_file_meta_t", &jstorj_file_meta_t)) {
+            storj_file_meta_t *file = malloc(sizeof(storj_file_meta_t));
+            memset(file, 0x00, sizeof(storj_file_meta_t));
+            state->info = file;
+
+            /* get file hmac */
+            json_object_object_get_ex(jstorj_file_meta_t, "hmac", &jdwnld_obj);
+            state->info->hmac = strdup(json_object_get_string(jdwnld_obj));
+        } else {
+            printf("[%s][%s][%d] "KRED"Invalid json object\n" RESET,
+                              __FILE__, __FUNCTION__, __LINE__);
+            return -1;
+        }
+
+        struct json_object *jstorj_pointer_t;
+        json_object_object_get_ex(jstorj_download_state_t, "storj_pointer_t", &jstorj_pointer_t);
+
+        append_pointers_to_state(state, jstorj_pointer_t);
+
+        return 0;
+    } else {
+        return -1;
+    }
 }
