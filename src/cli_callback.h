@@ -27,6 +27,7 @@ extern "C" {
  */
 typedef struct cli_api {
     storj_env_t *env;
+    storj_file_meta_t *files;
     char *bucket_name;
     char bucket_id[256];
     char *file_name;
