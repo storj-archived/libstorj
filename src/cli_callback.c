@@ -453,7 +453,7 @@ static void verify_upload_files(void *handle)
     }
 
     cli_api->total_files = total_src_files;
-    cli_api->xfer_count = 0x01;
+    cli_api->xfer_count = 0;
 
     cli_api->rcvd_cmd_resp = "verify-upload-files-resp";
     queue_next_cmd_req(cli_api);
@@ -805,23 +805,18 @@ void list_files_callback(uv_work_t *work_req, int status)
         goto cleanup;
     }
 
-
-    FILE *dwnld_list_fd = stdout;
-    if ((dwnld_list_fd = fopen("/tmp/dwnld_list.txt", "w")) == NULL) {
-        printf("[%s][%d] Unable to create download list file\n",
-               __FUNCTION__, __LINE__);
-        goto cleanup;
-    }
+    cli_api->files = malloc(sizeof(storj_file_meta_t) * req->total_files);
 
     for (int i = 0; i < req->total_files; i++) {
+
         storj_file_meta_t *file = &req->files[i];
 
-        if ((cli_api->file_name != NULL) &&
-            (strcmp(cli_api->file_name, file->filename)) == 0x00) {
-            /* store the file id */
-            memset(cli_api->file_id, 0x00, sizeof(cli_api->file_id));
-            strcpy(cli_api->file_id, (char *)file->id);
-        }
+        cli_api->files[i].id = strdup(file->id);
+        cli_api->files[i].size = file->size;
+        cli_api->files[i].filename = strdup(file->id);
+        cli_api->files[i].decrypted = file->decrypted;
+        cli_api->files[i].mimetype = strdup(file->mimetype);
+        cli_api->files[i].created = strdup(file->created);
 
         printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
                file->id,
@@ -830,13 +825,11 @@ void list_files_callback(uv_work_t *work_req, int status)
                file->mimetype,
                file->created,
                file->filename);
-
-        fprintf(dwnld_list_fd, "%s:%s\n",file->id, file->filename);
     }
 
+
     cli_api->total_files = req->total_files;
-    cli_api->xfer_count = 0x01;
-    fclose(dwnld_list_fd);
+    cli_api->xfer_count = 0;
     queue_next_cmd_req(cli_api);
 
   cleanup:
@@ -954,9 +947,9 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 }
                 fclose(file);
 
-                if (cli_api->xfer_count <= cli_api->total_files) {
+                if (cli_api->xfer_count < cli_api->total_files) {
                     /* is it the last file ? */
-                    if (cli_api->xfer_count == cli_api->total_files) {
+                    if (cli_api->xfer_count == cli_api->total_files - 1) {
                         cli_api->next_cmd_req  = cli_api->final_cmd_req;
                         cli_api->final_cmd_req = NULL;
                     }
@@ -983,56 +976,36 @@ void queue_next_cmd_req(cli_api_t *cli_api)
 
                 FILE *file = stdout;
 
-                if ((file = fopen("/tmp/dwnld_list.txt", "r")) != NULL) {
-                    char line[256][256];
-                    char *temp;
+                if (cli_api->xfer_count < cli_api->total_files) {
+
+                    storj_file_meta_t *file = &cli_api->files[cli_api->xfer_count];
+
+                    /* is it the last file ? */
+                    if (cli_api->xfer_count == cli_api->total_files - 1) {
+                        cli_api->next_cmd_req  = cli_api->final_cmd_req;
+                        cli_api->final_cmd_req = NULL;
+                    }
+
+                    memset(cli_api->file_id, 0x00, sizeof(file->id));
+                    strcpy(cli_api->file_id, file->id);
+
                     char temp_path[1024];
-                    int i = 0x00;
-                    char *token[10];
-                    int tk_idx= 0x00;
-                    memset(token, 0x00, sizeof(token));
-                    memset(temp_path, 0x00, sizeof(temp_path));
-                    memset(line, 0x00, sizeof(line));
-                    while ((fgets(line[i],sizeof(line), file)!= NULL)) {/* read a line from a file */
-                        temp = strrchr(line[i], '\n');
-                        if (temp) *temp = '\0';
-                        i++;
-                        if (i >= cli_api->xfer_count) {
-                            break;
-                        }
+
+                    strcpy(temp_path, cli_api->file_path);
+                    if (cli_api->file_path[(strlen(cli_api->file_path)-1)] != '/') {
+                        strcat(temp_path, "/");
                     }
-                    fclose(file);
+                    strcat(temp_path, file->filename);
 
-                    /* start tokenizing */
-                    token[0] = strtok(line[i-1], ":");
-                    while (token[tk_idx] != NULL) {
-                        tk_idx++;
-                        token[tk_idx] = strtok(NULL, ":");
-                    }
+                    cli_api->xfer_count++;
+                    download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id, temp_path, cli_api);
 
-                    if (cli_api->xfer_count <= cli_api->total_files) {
-                        /* is it the last file ? */
-                        if (cli_api->xfer_count == cli_api->total_files) {
-                            cli_api->next_cmd_req  = cli_api->final_cmd_req;
-                            cli_api->final_cmd_req = NULL;
-                        }
+                    fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, temp_path);
+                } else {
+                    printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
+                    exit(0);
+                }
 
-                        memset(cli_api->file_id, 0x00, sizeof(cli_api->file_id));
-                        strcpy(cli_api->file_id, token[0]);
-                        strcpy(temp_path, cli_api->file_path);
-                        if (cli_api->file_path[(strlen(cli_api->file_path)-1)] != '/') {
-                            strcat(temp_path, "/");
-                        }
-                        strcat(temp_path, token[1]);
-                        fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, temp_path);
-                        cli_api->xfer_count++;
-
-                        download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id, temp_path, cli_api);
-                    } else {
-                        printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
-                        exit(0);
-                    }
-               }
             } else {
                 #ifdef debug_enable
                 printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", __FUNCTION__, __LINE__);
