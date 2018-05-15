@@ -805,15 +805,18 @@ void list_files_callback(uv_work_t *work_req, int status)
         goto cleanup;
     }
 
+    cli_api->files = malloc(sizeof(storj_file_meta_t) * req->total_files);
+
     for (int i = 0; i < req->total_files; i++) {
+
         storj_file_meta_t *file = &req->files[i];
 
-        if ((cli_api->file_name != NULL) &&
-            (strcmp(cli_api->file_name, file->filename)) == 0x00) {
-            /* store the file id */
-            memset(cli_api->file_id, 0x00, sizeof(cli_api->file_id));
-            strcpy(cli_api->file_id, (char *)file->id);
-        }
+        cli_api->files[i].id = strdup(file->id);
+        cli_api->files[i].size = file->size;
+        cli_api->files[i].filename = strdup(file->id);
+        cli_api->files[i].decrypted = file->decrypted;
+        cli_api->files[i].mimetype = strdup(file->mimetype);
+        cli_api->files[i].created = strdup(file->created);
 
         printf("ID: %s \tSize: %" PRIu64 " bytes \tDecrypted: %s \tType: %s \tCreated: %s \tName: %s\n",
                file->id,
@@ -824,7 +827,7 @@ void list_files_callback(uv_work_t *work_req, int status)
                file->filename);
     }
 
-    cli_api->files = req->files;
+
     cli_api->total_files = req->total_files;
     cli_api->xfer_count = 0x01;
     queue_next_cmd_req(cli_api);
@@ -973,9 +976,9 @@ void queue_next_cmd_req(cli_api_t *cli_api)
 
                 FILE *file = stdout;
 
-                for (int i = 0; i < cli_api->total_files; i++) {
+                if (cli_api->xfer_count < cli_api->total_files) {
 
-                    storj_file_meta_t *file = &cli_api->files[i];
+                    storj_file_meta_t *file = &cli_api->files[cli_api->xfer_count - 1];
 
                     /* is it the last file ? */
                     if (cli_api->xfer_count == cli_api->total_files) {
@@ -993,12 +996,16 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                         strcat(temp_path, "/");
                     }
                     strcat(temp_path, file->filename);
-                    fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, temp_path);
 
                     cli_api->xfer_count++;
-
                     download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id, temp_path, cli_api);
+
+                    fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, temp_path);
+                } else {
+                    printf("[%s][%d] Invalid xfer counts\n", __FUNCTION__, __LINE__);
+                    exit(0);
                 }
+
             } else {
                 #ifdef debug_enable
                 printf("[%s][%d] **** ALL CLEAN & DONE  *****\n", __FUNCTION__, __LINE__);
