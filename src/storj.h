@@ -379,7 +379,9 @@ static const char *BUCKET_OP[] = { "PUSH", "PULL" };
  */
 typedef struct {
     char *data_hash;
-    char *token;
+    char *reporter_id;
+    char *farmer_id;
+    char *client_id;
     uint64_t start;
     uint64_t end;
     unsigned int code;

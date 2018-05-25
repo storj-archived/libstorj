@@ -125,8 +125,11 @@ static storj_exchange_report_t *storj_exchange_report_new()
         return NULL;
     }
     report->data_hash = NULL;
-    report->token = NULL;
+    report->reporter_id = NULL;
+    report->farmer_id = NULL;
+    report->client_id = NULL;
     report->message = NULL;
+
     report->send_status = STORJ_REPORT_NOT_PREPARED; // not sent
     report->start = 0;
     report->end = 0;
@@ -845,7 +848,7 @@ static void queue_push_shard(storj_upload_state_t *state, int index)
 
     state->shard[index].progress = PUSHING_SHARD;
 
-    if (state->shard[index].report->token != NULL) {
+    if (state->shard[index].report->farmer_id != NULL) {
         free(state->shard[index].report);
         state->shard[index].report = storj_exchange_report_new();
     }
@@ -858,7 +861,9 @@ static void queue_push_shard(storj_upload_state_t *state, int index)
     // setup the exchange report
     storj_exchange_report_t *report = state->shard[index].report;
     report->data_hash = state->shard[index].meta->hash;
-    report->token = state->shard[index].pointer->token;
+    report->reporter_id = (char *)state->env->bridge_options->user;
+    report->farmer_id = state->shard[index].pointer->farmer_node_id;
+    report->client_id = (char *)state->env->bridge_options->user;
     report->pointer_index = index;
     report->start = 0;
     report->end = 0;
@@ -2030,8 +2035,14 @@ static void send_exchange_report(uv_work_t *work)
     json_object_object_add(body, "dataHash",
                            json_object_new_string(req->report->data_hash));
 
-    json_object_object_add(body, "token",
-                           json_object_new_string(req->report->token));
+    json_object_object_add(body, "reporterId",
+                           json_object_new_string(req->report->reporter_id));
+
+    json_object_object_add(body, "farmerId",
+                           json_object_new_string(req->report->farmer_id));
+
+    json_object_object_add(body, "clientId",
+                           json_object_new_string(req->report->client_id));
 
     json_object_object_add(body, "exchangeStart",
                            json_object_new_int64(req->report->start));
@@ -2054,8 +2065,6 @@ static void send_exchange_report(uv_work_t *work)
                                     "/reports/exchanges", body,
                                     true, &response, &status_code);
 
-    state->log->warn(state->env->log_options, state->handle,
-                     "Sent exchange report : %s", json_object_to_json_string(body));
 
     if (request_status) {
         state->log->warn(state->env->log_options, state->handle,

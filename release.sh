@@ -7,7 +7,7 @@
 
 set -e
 
-basename="libstorj-2.0.0-beta3"
+basename="libstorj-2.0.0-beta2"
 
 releases=(arm-linux-gnueabihf
           i686-pc-linux-gnu
