@@ -945,6 +945,7 @@ int main(int argc, char **argv)
         free(root_dir);
 
         // First, get auth from environment variables
+        printf("Try to get user....\r\n  %s",getenv("STORJ_BRIDGE_USER"));
         user = getenv("STORJ_BRIDGE_USER") ?
             strdup(getenv("STORJ_BRIDGE_USER")) : NULL;
 
