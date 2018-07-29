@@ -745,6 +745,8 @@ int main(int argc, char **argv)
     user_options_t user_options_global = {NULL, NULL, NULL, NULL, NULL};
 
     static struct option cmd_options[] = {
+        {"username", required_argument,  0, 'n'},
+		{"password", required_argument,  0, 'a'},
         {"url", required_argument,  0, 'u'},
         {"version", no_argument,  0, 'v'},
         {"proxy", required_argument,  0, 'p'},
@@ -752,7 +754,6 @@ int main(int argc, char **argv)
         {"debug", no_argument,  0, 'd'},
         {"help", no_argument,  0, 'h'},
         {"recursive", required_argument,  0, 'r'},
-		{"username", required_argument,  0, 'n'},
         {0, 0, 0, 0}
     };
     printf("Jens Testversion\r\n");
@@ -775,7 +776,7 @@ int main(int argc, char **argv)
 
     char *proxy = getenv("STORJ_PROXY");
 
-    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:r:R",
+    while ((c = getopt_long_only(argc, argv, "hdl:p:vVuna:r:R",
                                  cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
@@ -804,10 +805,13 @@ int main(int argc, char **argv)
                 exit(0);
                 break;
             case 'n':
-            	printf("%s\r\n",optarg);
             	user_options_global.user=strdup(optarg);
             	printf("Username = %s",user_options_global.user);
             	break;
+            case 'a':
+                user_options_global.pass=strdup(optarg);
+                printf("Password = %s",user_options_global.pass);
+                break;
             default:
                 exit(0);
                 break;
@@ -857,7 +861,7 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "import-keys") == 0) {
-        user_options_t user_options = {user_options_global.user, NULL, host, NULL, NULL};
+        user_options_t user_options = {user_options_global.user, user_options_global.pass, host, NULL, NULL};
         return import_keys(&user_options);
     }
 
@@ -898,8 +902,8 @@ int main(int argc, char **argv)
             .proto = proto,
             .host  = host,
             .port  = port,
-            .user  = NULL,
-            .pass  = NULL
+            .user  = user_options_global.user,
+            .pass  = user_options_global.pass
         };
 
         env = storj_init_env(&options, NULL, &http_options, &log_options);
@@ -914,8 +918,8 @@ int main(int argc, char **argv)
             .proto = proto,
             .host  = host,
             .port  = port,
-            .user  = NULL,
-            .pass  = NULL
+            .user  = user_options_global.user,
+            .pass  = user_options_global.pass
         };
 
         env = storj_init_env(&options, NULL, &http_options, &log_options);
