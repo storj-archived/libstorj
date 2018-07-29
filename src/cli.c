@@ -749,8 +749,8 @@ int main(int argc, char **argv)
 
     static struct option cmd_options[] = {
         {"username", required_argument,  0, 'n'},
-		{"password", required_argument,  0, 'a'},
-		{"key", required_argument,  0, 'k'},
+        {"password", required_argument,  0, 'a'},
+	{"key", required_argument,  0, 'k'},
         {"url", required_argument,  0, 'u'},
         {"version", no_argument,  0, 'v'},
         {"proxy", required_argument,  0, 'p'},
@@ -834,11 +834,9 @@ int main(int argc, char **argv)
 
     int command_index = optind;
 
-    printf("numbers optind %u",optind);
 
     char *command = argv[command_index];
 
-    printf("Command = %s \r\n",command);
 
     if (!command) {
         printf(HELP_TEXT);
@@ -876,7 +874,6 @@ int main(int argc, char **argv)
     if (strcmp(command, "export-keys") == 0) {
         return export_keys(host);
     }
-    printf("End of export-keys\r\n");
     // initialize event loop and environment
     storj_env_t *env = NULL;
 
