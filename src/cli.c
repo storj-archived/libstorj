@@ -21,6 +21,7 @@
 
 #define STORJ_THREADPOOL_SIZE "64"
 
+
 typedef struct {
     char *user;
     char *pass;
@@ -750,9 +751,10 @@ int main(int argc, char **argv)
         {"debug", no_argument,  0, 'd'},
         {"help", no_argument,  0, 'h'},
         {"recursive", required_argument,  0, 'r'},
+		{"username", required_argument,  0, 'n'},
         {0, 0, 0, 0}
     };
-
+    printf("Jens Testversion\r\n");
     int index = 0;
 
     // The default is usually 4 threads, we want to increase to the
@@ -800,6 +802,9 @@ int main(int argc, char **argv)
                 printf(HELP_TEXT);
                 exit(0);
                 break;
+            case 'n':
+            	printf("Username\r\n");
+
             default:
                 exit(0);
                 break;
