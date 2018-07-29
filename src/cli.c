@@ -76,8 +76,8 @@ extern int errno;
     "  -l, --log <level>             set the log level (default 0)\n"   \
     "  -d, --debug                   set the debug log level\n\n"       \
     "  -n, --username                set the storj username  \n"        \
-    "  -n, --password                set the storj password  \n"        \
-    "  -n, --key                     set the local encryption key  \n"  \
+    "  -a, --password                set the storj password  \n"        \
+    "  -k, --key                     set the local encryption key  \n"  \
     "environment variables:\n"                                          \
     "  STORJ_KEYPASS                 imported user settings passphrase\n" \
     "  STORJ_BRIDGE                  the bridge host "                  \
