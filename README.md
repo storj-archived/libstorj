@@ -1,3 +1,5 @@
+_**Notice**: Development on libstorj is currently on pause during our v3 rearchitecture. Please see https://github.com/storj/storj for ongoing v3 development._
+
 libstorj
 =======
 
@@ -5,8 +7,6 @@ libstorj
 [![Build Status](https://travis-ci.org/storj/libstorj.svg?branch=master)](https://travis-ci.org/storj/libstorj)
 [![GitHub version](https://badge.fury.io/gh/storj%2Flibstorj.svg)](https://badge.fury.io/gh/storj%2Flibstorj)
 [![Chat on rocket.chat](https://img.shields.io/badge/chat-rocket.chat-red.svg)](https://community.storj.io/channel/dev)
-
-_**Notice**: Development on libstorj is currently on pause during our v3 rearchitecture. Please see https://github.com/storj/storj for ongoing v3 development._
 
 Asynchronous multi-platform C library and CLI for encrypted file transfer on the Storj network.
 
