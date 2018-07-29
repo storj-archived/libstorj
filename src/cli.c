@@ -742,6 +742,7 @@ int main(int argc, char **argv)
 {
     int status = 0;
     char temp_buff[256] = {};
+    user_options_t user_options_global = {NULL, NULL, NULL, NULL, NULL};
 
     static struct option cmd_options[] = {
         {"url", required_argument,  0, 'u'},
@@ -774,7 +775,7 @@ int main(int argc, char **argv)
 
     char *proxy = getenv("STORJ_PROXY");
 
-    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:r:R:n",
+    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:r:R",
                                  cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
@@ -803,8 +804,9 @@ int main(int argc, char **argv)
                 exit(0);
                 break;
             case 'n':
-            	printf("Username\r\n");
-            	printf("%s",optarg);
+            	printf("%s\r\n",optarg);
+            	user_options_global.user=strdup(optarg);
+            	printf("Username = %s",user_options_global.user);
             	break;
             default:
                 exit(0);
@@ -855,14 +857,14 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "import-keys") == 0) {
-        user_options_t user_options = {NULL, NULL, host, NULL, NULL};
+        user_options_t user_options = {user_options_global.user, NULL, host, NULL, NULL};
         return import_keys(&user_options);
     }
 
     if (strcmp(command, "export-keys") == 0) {
         return export_keys(host);
     }
-
+    printf("End of export-keys\r\n");
     // initialize event loop and environment
     storj_env_t *env = NULL;
 
