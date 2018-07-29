@@ -64,7 +64,7 @@ extern int errno;
     "uploading files:\n"                                                \
     "  upload-file <bucket-id> <path>\n\n"                              \
     "downloading files:\n"                                              \
-    "  download-file <bucket-id> <file-id> <directory path/ new file name>\n\n"                  \
+    "  download-file <bucket-id> <file-id> <directory path/ new file name>\n\n"                \
     "bridge api information:\n"                                         \
     "  get-info\n\n"                                                    \
     "options:\n"                                                        \
@@ -75,6 +75,9 @@ extern int errno;
     "(e.g. <[protocol://][user:password@]proxyhost[:port]>)\n"          \
     "  -l, --log <level>             set the log level (default 0)\n"   \
     "  -d, --debug                   set the debug log level\n\n"       \
+    "  -n, --username                set the storj username  \n"        \
+    "  -n, --password                set the storj password  \n"        \
+    "  -n, --key                     set the local encryption key  \n"  \
     "environment variables:\n"                                          \
     "  STORJ_KEYPASS                 imported user settings passphrase\n" \
     "  STORJ_BRIDGE                  the bridge host "                  \
@@ -747,6 +750,7 @@ int main(int argc, char **argv)
     static struct option cmd_options[] = {
         {"username", required_argument,  0, 'n'},
 		{"password", required_argument,  0, 'a'},
+		{"key", required_argument,  0, 'k'},
         {"url", required_argument,  0, 'u'},
         {"version", no_argument,  0, 'v'},
         {"proxy", required_argument,  0, 'p'},
@@ -756,7 +760,7 @@ int main(int argc, char **argv)
         {"recursive", required_argument,  0, 'r'},
         {0, 0, 0, 0}
     };
-    printf("Jens Testversion\r\n");
+
     int index = 0;
 
     // The default is usually 4 threads, we want to increase to the
@@ -776,7 +780,7 @@ int main(int argc, char **argv)
 
     char *proxy = getenv("STORJ_PROXY");
 
-    while ((c = getopt_long_only(argc, argv, "hdl:p:vVuna:r:R",
+    while ((c = getopt_long_only(argc, argv, "hdl:p:vVunak:r:R",
                                  cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
@@ -811,6 +815,10 @@ int main(int argc, char **argv)
             case 'a':
                 user_options_global.pass=strdup(optarg);
                 printf("Password = %s",user_options_global.pass);
+                break;
+            case 'k':
+                user_options_global.key=strdup(optarg);
+                printf("Key = %s",user_options_global.key);
                 break;
             default:
                 exit(0);
@@ -861,7 +869,7 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "import-keys") == 0) {
-        user_options_t user_options = {user_options_global.user, user_options_global.pass, host, NULL, NULL};
+        user_options_t user_options = {user_options_global.user, user_options_global.pass, host, NULL, user_options_global.key};
         return import_keys(&user_options);
     }
 
@@ -989,8 +997,15 @@ int main(int argc, char **argv)
                 if (!key) {
                     return 1;
                 }
-                printf("Unlock passphrase: ");
-                get_password(key, '*');
+                printf("Unlock passphrase: \r\n");
+
+                if(user_options_global.key!=NULL){
+                    printf("Read passphrase from argv:\r\n");
+                    key=user_options_global.key;
+                }
+                else {
+                    get_password(key, '*');
+                }
                 printf("\n");
             }
             char *file_user = NULL;
