@@ -774,7 +774,7 @@ int main(int argc, char **argv)
 
     char *proxy = getenv("STORJ_PROXY");
 
-    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:r:R:",
+    while ((c = getopt_long_only(argc, argv, "hdl:p:vVu:r:R:n",
                                  cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
@@ -804,7 +804,8 @@ int main(int argc, char **argv)
                 break;
             case 'n':
             	printf("Username\r\n");
-
+            	printf("%s",optarg);
+            	break;
             default:
                 exit(0);
                 break;
@@ -819,7 +820,12 @@ int main(int argc, char **argv)
 
     int command_index = optind;
 
+    printf("numbers optind %u",optind);
+
     char *command = argv[command_index];
+
+    printf("Command = %s \r\n",command);
+
     if (!command) {
         printf(HELP_TEXT);
         return 0;
