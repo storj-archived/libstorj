@@ -17,6 +17,10 @@
 #include "storj.h"
 #include "cli_callback.c"
 
+#ifdef __linux__
+#include "sighandler.h"
+#endif
+
 //#define debug_enable
 
 #define STORJ_THREADPOOL_SIZE "64"
@@ -75,7 +79,7 @@ extern int errno;
     "(e.g. <[protocol://][user:password@]proxyhost[:port]>)\n"          \
     "  -l, --log <level>             set the log level (default 0)\n"   \
     "  -d, --debug                   set the debug log level\n\n"       \
-    "  -n, --username                set the storj username  \n"        \
+    "  -n, --email                   set the storj username  \n"        \
     "  -a, --password                set the storj password  \n"        \
     "  -k, --key                     set the local encryption key  \n"  \
     "environment variables:\n"                                          \
@@ -743,12 +747,13 @@ clear_variables:
 
 int main(int argc, char **argv)
 {
+    absturz();
     int status = 0;
     char temp_buff[256] = {};
     user_options_t user_options_global = {NULL, NULL, NULL, NULL, NULL};
 
     static struct option cmd_options[] = {
-        {"username", required_argument,  0, 'n'},
+        {"email", required_argument,  0, 'n'},
         {"password", required_argument,  0, 'a'},
         {"key", required_argument,  0, 'k'},
         {"url", required_argument,  0, 'u'},

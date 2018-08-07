@@ -10,8 +10,8 @@
  */
 void exitFunction(int x)
 {
-	printf("By By...\r\n");
-	exit(0);
+    printf("By By...\r\n");
+    exit(0);
 }
 
 /*
