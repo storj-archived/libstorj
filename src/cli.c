@@ -79,7 +79,7 @@ extern int errno;
     "(e.g. <[protocol://][user:password@]proxyhost[:port]>)\n"          \
     "  -l, --log <level>             set the log level (default 0)\n"   \
     "  -d, --debug                   set the debug log level\n\n"       \
-    "  -n, --email                   set the storj username  \n"        \
+    "  -e, --email                   set the storj username  \n"        \
     "  -a, --password                set the storj password  \n"        \
     "  -k, --key                     set the local encryption key  \n"  \
     "environment variables:\n"                                          \
@@ -747,13 +747,16 @@ clear_variables:
 
 int main(int argc, char **argv)
 {
-    absturz();
+#ifdef __linux__
+    init_signal_handling(0);
+#endif
+
     int status = 0;
     char temp_buff[256] = {};
     user_options_t user_options_global = {NULL, NULL, NULL, NULL, NULL};
 
     static struct option cmd_options[] = {
-        {"email", required_argument,  0, 'n'},
+        {"email", required_argument,  0, 'e'},
         {"password", required_argument,  0, 'a'},
         {"key", required_argument,  0, 'k'},
         {"url", required_argument,  0, 'u'},
@@ -785,7 +788,7 @@ int main(int argc, char **argv)
 
     char *proxy = getenv("STORJ_PROXY");
 
-    while ((c = getopt_long_only(argc, argv, "hdl:p:vVunak:r:R",
+    while ((c = getopt_long_only(argc, argv, "e:a:k:hdl:p:vVu:r:R",
                                  cmd_options, &index)) != -1) {
         switch (c) {
             case 'u':
@@ -813,7 +816,7 @@ int main(int argc, char **argv)
                 printf(HELP_TEXT);
                 exit(0);
                 break;
-            case 'n':
+            case 'e':
                 user_options_global.user=strdup(optarg);
                 printf("Username = %s",user_options_global.user);
                 break;

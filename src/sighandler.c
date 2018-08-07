@@ -5,14 +5,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-/*
- * This is an POSIX SIGNAL STRC+C
- */
-void exitFunction(int x)
-{
-    printf("By By...\r\n");
-    exit(0);
-}
 
 /*
  * This is an POSIX segmentation fault SIGNAL
@@ -39,16 +31,10 @@ void segsevFunction(int sig)
 int init_signal_handling(unsigned int sig)
 {
 
-	/*
-	 * This signal is STRG-C on console
-	 */
-	signal(SIGINT, exitFunction);
-
-	/*
+    /*
 	 * This signal is for segmentation fault
 	 */
-	signal(SIGSEGV, segsevFunction);
-	signal(SIGIO, segsevFunction);
+    signal(SIGSEGV, segsevFunction);
 
 	return 0;
 

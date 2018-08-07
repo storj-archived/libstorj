@@ -58,7 +58,8 @@ AC_ARG_ENABLE([debug],
 if test "x$enable_debug" = xyes; then
    CFLAGS="$CFLAGS -DDEBUG -g3 -O0"
 else
-   CFLAGS="$CFLAGS -O3"
+   CFLAGS="$CFLAGS -DDEBUG -g3 -O0"
+
 fi
 
 AC_OUTPUT
