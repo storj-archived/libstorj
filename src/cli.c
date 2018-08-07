@@ -750,7 +750,7 @@ int main(int argc, char **argv)
     static struct option cmd_options[] = {
         {"username", required_argument,  0, 'n'},
         {"password", required_argument,  0, 'a'},
-	{"key", required_argument,  0, 'k'},
+        {"key", required_argument,  0, 'k'},
         {"url", required_argument,  0, 'u'},
         {"version", no_argument,  0, 'v'},
         {"proxy", required_argument,  0, 'p'},
@@ -809,9 +809,9 @@ int main(int argc, char **argv)
                 exit(0);
                 break;
             case 'n':
-            	user_options_global.user=strdup(optarg);
-            	printf("Username = %s",user_options_global.user);
-            	break;
+                user_options_global.user=strdup(optarg);
+                printf("Username = %s",user_options_global.user);
+                break;
             case 'a':
                 user_options_global.pass=strdup(optarg);
                 printf("Password = %s",user_options_global.pass);
@@ -823,7 +823,6 @@ int main(int argc, char **argv)
             default:
                 exit(0);
                 break;
-
         }
     }
 
