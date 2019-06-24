@@ -136,11 +136,8 @@ typedef enum {
  * basic authentication to a Storj bridge.
  */
 typedef struct {
-    const char *proto;
-    const char *host;
-    int port;
-    const char *user;
-    const char *pass;
+    char *addr;
+    char *apikey;
 } storj_bridge_options_t;
 
 /** @brief File encryption options
@@ -149,7 +146,7 @@ typedef struct {
  * encryption and decryption.
  */
 typedef struct storj_encrypt_options {
-    const char *mnemonic;
+    uint8_t key[32];
 } storj_encrypt_options_t;
 
 
