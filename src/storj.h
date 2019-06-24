@@ -137,7 +137,9 @@ typedef enum {
  */
 typedef struct {
     char *addr;
+    // NB: apikey is project-specific.
     char *apikey;
+
 } storj_bridge_options_t;
 
 /** @brief File encryption options
@@ -200,7 +202,7 @@ typedef struct storj_log_levels {
 typedef struct storj_env {
     storj_bridge_options_t *bridge_options;
     storj_encrypt_options_t *encrypt_options;
-    storj_http_options_t *http_options;
+//    storj_http_options_t *http_options;
     storj_log_options_t *log_options;
     const char *tmp_path;
     uv_loop_t *loop;

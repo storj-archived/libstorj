@@ -762,93 +762,25 @@ STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
     if (!env) {
         return NULL;
     }
+
+    // TODO: populate env
+
+    // new uplink
+    // open project
+
     return env;
-//    return NULL;
 }
 
-//STORJ_API int storj_destroy_env(storj_env_t *env)
-//{
-//    int status = 0;
-//
-//    // free and destroy all bridge options
-//    free((char *)env->bridge_options->proto);
-//    free((char *)env->bridge_options->host);
-//    free((char *)env->bridge_options->user);
-//
-//    // zero out password before freeing
-//    if (env->bridge_options->pass) {
-//        unsigned int pass_len = strlen(env->bridge_options->pass);
-//        if (pass_len > 0) {
-//            memset_zero((char *)env->bridge_options->pass, pass_len);
-//        }
-//#ifdef _POSIX_MEMLOCK
-//        status = munlock(env->bridge_options->pass, pass_len);
-//#elif _WIN32
-//        if (!VirtualUnlock((char *)env->bridge_options->pass, pass_len)) {
-//            status = 1;
-//        }
-//#endif
-//
-//#ifdef _WIN32
-//        VirtualFree((char *)env->bridge_options, pass_len, MEM_RELEASE);
-//#else
-//        free((char *)env->bridge_options->pass);
-//#endif
-//
-//    }
-//
-//    free(env->bridge_options);
-//
-//    // free and destroy all encryption options
-//    if (env->encrypt_options && env->encrypt_options->mnemonic) {
-//        unsigned int mnemonic_len = strlen(env->encrypt_options->mnemonic);
-//
-//        // zero out file encryption mnemonic before freeing
-//        if (mnemonic_len > 0) {
-//            memset_zero((char *)env->encrypt_options->mnemonic, mnemonic_len);
-//        }
-//#ifdef _POSIX_MEMLOCK
-//        status = munlock(env->encrypt_options->mnemonic, mnemonic_len);
-//#elif _WIN32
-//        if (!VirtualUnlock((char *)env->encrypt_options->mnemonic, mnemonic_len)) {
-//            status = 1;
-//        }
-//#endif
-//
-//#ifdef _WIN32
-//        VirtualFree((char *)env->bridge_options, mnemonic_len, MEM_RELEASE);
-//#else
-//        free((char *)env->encrypt_options->mnemonic);
-//#endif
-//    }
-//
-//    if (env->tmp_path) {
-//        free((char *)env->tmp_path);
-//    }
-//
-//    free(env->encrypt_options);
-//
-//    // free all http options
-//    free((char *)env->http_options->user_agent);
-//    if (env->http_options->proxy_url) {
-//        free((char *)env->http_options->proxy_url);
-//    }
-//    if (env->http_options->cainfo_path) {
-//        free((char *)env->http_options->cainfo_path);
-//    }
-//    free(env->http_options);
-//
-//    // free the log levels
-//    free(env->log);
-//
-//    // free the environment
-//    free(env);
-//
-//    curl_global_cleanup();
-//
-//    return status;
-//}
-//
+STORJ_API int storj_destroy_env(storj_env_t *env)
+{
+    int status = 0;
+
+    // close project
+    // close uplink
+
+    return status;
+}
+
 //STORJ_API int storj_encrypt_auth(const char *passphrase,
 //                       const char *bridge_user,
 //                       const char *bridge_pass,
