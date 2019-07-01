@@ -64,24 +64,22 @@ void pass(char *msg)
 //    free(req);
 //    free(work_req);
 //}
-//
-//void check_get_buckets(uv_work_t *work_req, int status)
-//{
-//    assert(status == 0);
-//    get_buckets_request_t *req = work_req->data;
-//    assert(req->handle == NULL);
-//    assert(json_object_is_type(req->response, json_type_array) == 1);
-//
-//    struct json_object *bucket = json_object_array_get_idx(req->response, 0);
-//    struct json_object* value;
-//    int success = json_object_object_get_ex(bucket, "id", &value);
-//    assert(success == 1);
-//    pass("storj_bridge_get_buckets");
-//
-//    storj_free_get_buckets_request(req);
-//    free(work_req);
-//}
-//
+
+void check_get_buckets(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_buckets_request_t *req = work_req->data;
+
+//     TODO: add assertions
+//     assert req->total_buckets
+//     assert req->bukets is not NULL
+
+    pass("storj_bridge_get_buckets");
+
+    storj_free_get_buckets_request(req);
+    free(work_req);
+}
+
 //void check_get_bucket(uv_work_t *work_req, int status)
 //{
 //    assert(status == 0);
@@ -124,29 +122,23 @@ void pass(char *msg)
 //    storj_free_get_buckets_request(req);
 //    free(work_req);
 //}
-//
-//void check_create_bucket(uv_work_t *work_req, int status)
-//{
-//    assert(status == 0);
-//    create_bucket_request_t *req = work_req->data;
-//    assert(req->handle == NULL);
-//
-//    struct json_object* value;
-//    int success = json_object_object_get_ex(req->response, "name", &value);
-//    assert(success == 1);
-//    assert(json_object_is_type(value, json_type_string) == 1);
-//
-//    const char* name = json_object_get_string(value);
-//    assert(strcmp(name, "backups") == 0);
-//    pass("storj_bridge_create_bucket");
-//
-//    json_object_put(req->response);
-//    free((char *)req->encrypted_bucket_name);
-//    free(req->bucket);
-//    free(req);
-//    free(work_req);
-//}
-//
+
+void check_create_bucket(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    create_bucket_request_t *req = work_req->data;
+
+    assert(req->bucket != NULL);
+    assert(strcmp(req->bucket_name, "backups") == 0);
+    assert(strcmp(req->bucket->name, "backups") == 0);
+    assert(req->bucket->created != NULL);
+    pass("storj_bridge_create_bucket");
+
+    free(req->bucket);
+    free(req);
+    free(work_req);
+}
+
 //void check_delete_bucket(uv_work_t *work_req, int status)
 //{
 //    assert(status == 0);
@@ -802,23 +794,26 @@ int test_api()
         .key = { 0x00 }
     };
 
-    // initialize event loop and environment
+    // initialize environment
     storj_env_t *env = storj_init_env(&bridge_options,
                                       &encrypt_options,
                                       NULL,
                                       NULL);
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
     assert(env != NULL);
 
-//    int status;
-//
-//    // get general api info
-//    status = storj_bridge_get_info(env, NULL, check_bridge_get_info);
-//    assert(status == 0);
-//
+    int status;
+
+    // create a new bucket with a name
+    status = storj_bridge_create_bucket(env, "backups", NULL,
+                                        check_create_bucket);
+    assert(status == 0);
+
+
 //    // get buckets
 //    status = storj_bridge_get_buckets(env, NULL, check_get_buckets);
 //    assert(status == 0);
-//
+
 //    char *bucket_id = "368be0816766b28fd5f43af5";
 //
 //    // get bucket
@@ -827,11 +822,6 @@ int test_api()
 //
 //    // get bucket id
 //    status = storj_bridge_get_bucket_id(env, "test", NULL, check_get_bucket_id);
-//    assert(status == 0);
-//
-//    // create a new bucket with a name
-//    status = storj_bridge_create_bucket(env, "backups", NULL,
-//                                        check_create_bucket);
 //    assert(status == 0);
 //
 //    // delete a bucket

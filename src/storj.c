@@ -1,11 +1,12 @@
+#include <time.h>
 #include "storj.h"
 #include "http.h"
 #include "utils.h"
 #include "crypto.h"
-#include "uplink_definitions.h"
 
-//static inline void noop() {};
-//
+char *_storj_last_error = "";
+char **STORJ_LAST_ERROR = &_storj_last_error;
+
 //static void json_request_worker(uv_work_t *work)
 //{
 //    json_request_t *req = work->data;
@@ -17,112 +18,39 @@
 //
 //    req->status_code = status_code;
 //}
-//
-//static void create_bucket_request_worker(uv_work_t *work)
-//{
-//    create_bucket_request_t *req = work->data;
-//    int status_code = 0;
-//
-//    // Encrypt the bucket name
-//    if (encrypt_bucket_name(req->encrypt_options->mnemonic,
-//                            req->bucket_name,
-//                            (char **)&req->encrypted_bucket_name)) {
-//        req->error_code = STORJ_MEMORY_ERROR;
-//        return;
-//    }
-//
-//    struct json_object *body = json_object_new_object();
-//    json_object *name = json_object_new_string(req->encrypted_bucket_name);
-//    json_object_object_add(body, "name", name);
-//
-//    req->error_code = fetch_json(req->http_options,
-//                                 req->bridge_options, "POST", "/buckets", body,
-//                                 true, &req->response, &status_code);
-//
-//    json_object_put(body);
-//
-//    if (req->response != NULL) {
-//        req->bucket = malloc(sizeof(storj_bucket_meta_t));
-//
-//        struct json_object *id;
-//        struct json_object *created;
-//
-//        json_object_object_get_ex(req->response, "id", &id);
-//        json_object_object_get_ex(req->response, "created", &created);
-//
-//        req->bucket->id = json_object_get_string(id);
-//        req->bucket->name = req->bucket_name;
-//        req->bucket->created = json_object_get_string(created);
-//        req->bucket->decrypted = true;
-//    }
-//
-//    req->status_code = status_code;
-//}
-//
-//static void get_buckets_request_worker(uv_work_t *work)
-//{
-//    get_buckets_request_t *req = work->data;
-//    int status_code = 0;
-//
-//    req->error_code = fetch_json(req->http_options,
-//                                 req->options, req->method, req->path, req->body,
-//                                 req->auth, &req->response, &status_code);
-//
-//    req->status_code = status_code;
-//
-//    int num_buckets = 0;
-//    if (req->response != NULL &&
-//        json_object_is_type(req->response, json_type_array)) {
-//        num_buckets = json_object_array_length(req->response);
-//    }
-//
-//    if (num_buckets > 0) {
-//        req->buckets = malloc(sizeof(storj_bucket_meta_t) * num_buckets);
-//        req->total_buckets = num_buckets;
-//    }
-//
-//    struct json_object *bucket_item;
-//    struct json_object *name;
-//    struct json_object *created;
-//    struct json_object *id;
-//
-//    for (int i = 0; i < num_buckets; i++) {
-//        bucket_item = json_object_array_get_idx(req->response, i);
-//
-//        json_object_object_get_ex(bucket_item, "id", &id);
-//        json_object_object_get_ex(bucket_item, "name", &name);
-//        json_object_object_get_ex(bucket_item, "created", &created);
-//
-//        storj_bucket_meta_t *bucket = &req->buckets[i];
-//        bucket->id = json_object_get_string(id);
-//        bucket->decrypted = false;
-//        bucket->created = json_object_get_string(created);
-//        bucket->name = NULL;
-//
-//        // Attempt to decrypt the name, otherwise
-//        // we will default the name to the encrypted text.
-//        // The decrypted flag will be set to indicate the status
-//        // of decryption for alternative display.
-//        const char *encrypted_name = json_object_get_string(name);
-//        if (!encrypted_name) {
-//            continue;
-//        }
-//        char *decrypted_name;
-//        int error_status = decrypt_bucket_name(req->encrypt_options->mnemonic,
-//                                               encrypted_name,
-//                                               &decrypted_name);
-//        if (!error_status) {
-//            bucket->decrypted = true;
-//            bucket->name = decrypted_name;
-//        } else if (error_status == STORJ_META_DECRYPTION_ERROR){
-//            bucket->decrypted = false;
-//            bucket->name = strdup(encrypted_name);
-//        } else {
-//            req->error_code = STORJ_MEMORY_ERROR;
-//        }
-//    }
-//}
-//
+
+static void create_bucket_request_worker(uv_work_t *work)
+{
+    create_bucket_request_t *req = work->data;
+    int status_code = 0;
+
+    char *bucket_name = malloc(strlen(req->bucket_name));
+    strcpy(bucket_name, req->bucket_name);
+
+    BucketInfo *created_bucket;
+    *created_bucket = create_bucket(req->project_ref, bucket_name, NULL, STORJ_LAST_ERROR);
+    if (strcmp("", *STORJ_LAST_ERROR) != 0) {
+        req->error_code = 1;
+        req->status_code = 1;
+        return;
+    }
+    char created_str[32];
+    time_t created_time = (time_t)created_bucket->created;
+    strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
+
+    // NB: this field is unused; it only exists for backwards compatibility as it is
+    //  passed to `json_object_put` by api consumers.
+    //  (see: https://svn.filezilla-project.org/svn/FileZilla3/trunk/src/storj/fzstorj.cpp)
+    req->response = json_object_new_object();
+    req->status_code = status_code;
+
+    req->bucket = malloc(sizeof(storj_bucket_meta_t));
+    req->bucket->name = created_bucket->name;
+    req->bucket_name = created_bucket->name;
+    req->bucket->created = created_str;
+    req->bucket->decrypted = true;
+}
+
 //static void get_bucket_request_worker(uv_work_t *work)
 //{
 //    get_bucket_request_t *req = work->data;
@@ -423,13 +351,13 @@
 //    free(escaped_encrypted_file_name);
 //    free(path);
 //}
-//
-//static uv_work_t *uv_work_new()
-//{
-//    uv_work_t *work = malloc(sizeof(uv_work_t));
-//    return work;
-//}
-//
+
+static uv_work_t *uv_work_new()
+{
+    uv_work_t *work = malloc(sizeof(uv_work_t));
+    return work;
+}
+
 //static json_request_t *json_request_new(
 //    storj_http_options_t *http_options,
 //    storj_bridge_options_t *options,
@@ -525,33 +453,28 @@
 //
 //    return req;
 //}
-//
-//static create_bucket_request_t *create_bucket_request_new(
-//    storj_http_options_t *http_options,
-//    storj_bridge_options_t *bridge_options,
-//    storj_encrypt_options_t *encrypt_options,
-//    const char *bucket_name,
-//    void *handle)
-//{
-//    create_bucket_request_t *req = malloc(sizeof(create_bucket_request_t));
-//    if (!req) {
-//        return NULL;
-//    }
-//
-//    req->http_options = http_options;
-//    req->encrypt_options = encrypt_options;
-//    req->bridge_options = bridge_options;
-//    req->bucket_name = bucket_name;
-//    req->encrypted_bucket_name = NULL;
-//    req->response = NULL;
-//    req->bucket = NULL;
-//    req->error_code = 0;
-//    req->status_code = 0;
-//    req->handle = handle;
-//
-//    return req;
-//}
-//
+
+static create_bucket_request_t *create_bucket_request_new(
+    ProjectRef project_ref,
+    const char *bucket_name,
+    void *handle)
+{
+    create_bucket_request_t *req = malloc(sizeof(create_bucket_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->bucket_name = bucket_name;
+    req->project_ref = project_ref;
+    req->response = NULL;
+    req->bucket = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
 //static get_buckets_request_t *get_buckets_request_new(
 //    storj_http_options_t *http_options,
 //    storj_bridge_options_t *options,
@@ -752,200 +675,54 @@
 //    va_end(args);
 //}
 
-STORJ_API struct storj_env *storj_init_env(storj_bridge_options_t *options,
+STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
                                  storj_encrypt_options_t *encrypt_options,
                                  storj_http_options_t *http_options,
                                  storj_log_options_t *log_options)
 {
-    printf("hello from storj_init_env\n");
+    APIKeyRef apikey_ref = parse_api_key(bridge_options->apikey, STORJ_LAST_ERROR);
+    STORJ_RETURN_IF_LAST_ERROR(NULL);
+
+    UplinkConfig uplink_cfg = {{0}};
+    uplink_cfg.Volatile.tls.skip_peer_ca_whitelist = true;
+
+    UplinkRef uplink_ref = new_uplink(uplink_cfg, STORJ_LAST_ERROR);
+    STORJ_RETURN_IF_LAST_ERROR(NULL);
+
+    ProjectRef project_ref = open_project(uplink_ref, bridge_options->addr, apikey_ref, STORJ_LAST_ERROR);
+    STORJ_RETURN_IF_LAST_ERROR(NULL);
+
     storj_env_t *env = malloc(sizeof(storj_env_t));
-    if (!env) {
+    env->bridge_options = bridge_options;
+    env->encrypt_options = encrypt_options;
+    env->http_options = http_options;
+    env->log_options = log_options;
+    env->uplink_ref = uplink_ref;
+    env->project_ref = project_ref;
+
+    uv_loop_t *loop = uv_default_loop();
+    if (!loop) {
         return NULL;
     }
 
-    // TODO: populate env
-
-    // new uplink
-    // open project
+    // setup the uv event loop
+    env->loop = loop;
 
     return env;
 }
 
 STORJ_API int storj_destroy_env(storj_env_t *env)
 {
-    int status = 0;
+    close_project(env->project_ref, STORJ_LAST_ERROR);
+    STORJ_RETURN_IF_LAST_ERROR(1);
 
-    // close project
-    // close uplink
+    close_uplink(env->uplink_ref, STORJ_LAST_ERROR);
+    STORJ_RETURN_IF_LAST_ERROR(1);
 
-    return status;
+    return 0;
 }
 
-//STORJ_API int storj_encrypt_auth(const char *passphrase,
-//                       const char *bridge_user,
-//                       const char *bridge_pass,
-//                       const char *mnemonic,
-//                       char **buffer)
-//{
-//    char *pass_encrypted;
-//    int pass_length = strlen(bridge_pass);
-//
-//    if (encrypt_data(passphrase, bridge_user, bridge_pass,
-//                     &pass_encrypted)) {
-//        return 1;
-//    }
-//
-//    char *mnemonic_encrypted;
-//    int mnemonic_length = strlen(mnemonic);
-//
-//    if (encrypt_data(passphrase, bridge_user, mnemonic,
-//                     &mnemonic_encrypted)) {
-//        return 1;
-//    }
-//
-//    struct json_object *body = json_object_new_object();
-//    json_object *user_str = json_object_new_string(bridge_user);
-//
-//    json_object *pass_str = json_object_new_string(pass_encrypted);
-//    json_object *mnemonic_str = json_object_new_string(mnemonic_encrypted);
-//
-//    json_object_object_add(body, "user", user_str);
-//    json_object_object_add(body, "pass", pass_str);
-//    json_object_object_add(body, "mnemonic", mnemonic_str);
-//
-//    const char *body_str = json_object_to_json_string(body);
-//
-//    *buffer = calloc(strlen(body_str) + 1, sizeof(char));
-//    memcpy(*buffer, body_str, strlen(body_str) + 1);
-//
-//    json_object_put(body);
-//    free(mnemonic_encrypted);
-//    free(pass_encrypted);
-//
-//    return 0;
-//}
-//
-//STORJ_API int storj_encrypt_write_auth(const char *filepath,
-//                             const char *passphrase,
-//                             const char *bridge_user,
-//                             const char *bridge_pass,
-//                             const char *mnemonic)
-//{
-//    FILE *fp;
-//    fp = fopen(filepath, "w");
-//    if (fp == NULL) {
-//        return 1;
-//    }
-//
-//    char *buffer = NULL;
-//    if (storj_encrypt_auth(passphrase, bridge_user,
-//                           bridge_pass, mnemonic, &buffer)) {
-//        fclose(fp);
-//        return 1;
-//    }
-//
-//    fwrite(buffer, strlen(buffer), sizeof(char), fp);
-//    fwrite("\n", 1, sizeof(char), fp);
-//
-//    free(buffer);
-//    fclose(fp);
-//
-//    return 0;
-//}
-//
-//STORJ_API int storj_decrypt_auth(const char *buffer,
-//                       const char *passphrase,
-//                       char **bridge_user,
-//                       char **bridge_pass,
-//                       char **mnemonic)
-//{
-//    int status = 0;
-//
-//    json_object *body = json_tokener_parse(buffer);
-//
-//    struct json_object *user_value;
-//    if (!json_object_object_get_ex(body, "user", &user_value)) {
-//        status = 1;
-//        goto clean_up;
-//    }
-//
-//    *bridge_user = strdup((char *)json_object_get_string(user_value));
-//
-//    struct json_object *pass_value;
-//    if (!json_object_object_get_ex(body, "pass", &pass_value)) {
-//        status = 1;
-//        goto clean_up;
-//    }
-//    char *pass_enc = (char *)json_object_get_string(pass_value);
-//
-//    struct json_object *mnemonic_value;
-//    if (!json_object_object_get_ex(body, "mnemonic", &mnemonic_value)) {
-//        status = 1;
-//        goto clean_up;
-//    }
-//    char *mnemonic_enc = (char *)json_object_get_string(mnemonic_value);
-//
-//    if (decrypt_data(passphrase, *bridge_user, pass_enc, bridge_pass)) {
-//        status = 1;
-//        goto clean_up;
-//    }
-//
-//    if (decrypt_data(passphrase, *bridge_user, mnemonic_enc, mnemonic)) {
-//        status = 1;
-//        goto clean_up;
-//    }
-//
-//clean_up:
-//    json_object_put(body);
-//
-//    return status;
-//}
-//
-//STORJ_API int storj_decrypt_read_auth(const char *filepath,
-//                            const char *passphrase,
-//                            char **bridge_user,
-//                            char **bridge_pass,
-//                            char **mnemonic)
-//{
-//    FILE *fp;
-//    fp = fopen(filepath, "r");
-//    if (fp == NULL) {
-//        return 1;
-//    }
-//
-//    fseek(fp, 0, SEEK_END);
-//    int fsize = ftell(fp);
-//    fseek(fp, 0, SEEK_SET);
-//
-//    char *buffer = calloc(fsize + 1, sizeof(char));
-//    if (buffer == NULL) {
-//        return 1;
-//    }
-//
-//    int read_blocks = 0;
-//    while ((!feof(fp)) && (!ferror(fp))) {
-//        read_blocks = fread(buffer + read_blocks, 1, fsize, fp);
-//        if (read_blocks <= 0) {
-//            break;
-//        }
-//    }
-//
-//    int error = ferror(fp);
-//    fclose(fp);
-//
-//    if (error) {
-//        return error;
-//    }
-//
-//    int status = storj_decrypt_auth(buffer, passphrase, bridge_user,
-//                                    bridge_pass, mnemonic);
-//
-//    free(buffer);
-//
-//    return status;
-//
-//}
-//
+
 //STORJ_API uint64_t storj_util_timestamp()
 //{
 //    return get_time_milliseconds();
@@ -960,97 +737,20 @@ STORJ_API int storj_destroy_env(storj_env_t *env)
 //{
 //    return mnemonic_check(mnemonic);
 //}
-//
-//STORJ_API char *storj_strerror(int error_code)
-//{
-//    switch(error_code) {
-//        case STORJ_BRIDGE_REQUEST_ERROR:
-//            return "Bridge request error";
-//        case STORJ_BRIDGE_AUTH_ERROR:
-//            return "Bridge request authorization error";
-//        case STORJ_BRIDGE_TOKEN_ERROR:
-//            return "Bridge request token error";
-//        case STORJ_BRIDGE_POINTER_ERROR:
-//            return "Bridge request pointer error";
-//        case STORJ_BRIDGE_REPOINTER_ERROR:
-//            return "Bridge request replace pointer error";
-//        case STORJ_BRIDGE_TIMEOUT_ERROR:
-//            return "Bridge request timeout error";
-//        case STORJ_BRIDGE_INTERNAL_ERROR:
-//            return "Bridge request internal error";
-//        case STORJ_BRIDGE_RATE_ERROR:
-//            return "Bridge rate limit error";
-//        case STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR:
-//            return "Bucket is not found";
-//        case STORJ_BRIDGE_FILE_NOTFOUND_ERROR:
-//            return "File is not found";
-//        case STORJ_BRIDGE_BUCKET_FILE_EXISTS:
-//            return "File already exists";
-//        case STORJ_BRIDGE_OFFER_ERROR:
-//            return "Unable to receive storage offer";
-//        case STORJ_BRIDGE_JSON_ERROR:
-//            return "Unexpected JSON response";
-//        case STORJ_BRIDGE_FILEINFO_ERROR:
-//            return "Bridge file info error";
-//        case STORJ_FARMER_REQUEST_ERROR:
-//            return "Farmer request error";
-//        case STORJ_FARMER_EXHAUSTED_ERROR:
-//            return "Farmer exhausted error";
-//        case STORJ_FARMER_TIMEOUT_ERROR:
-//            return "Farmer request timeout error";
-//        case STORJ_FARMER_AUTH_ERROR:
-//            return "Farmer request authorization error";
-//        case STORJ_FARMER_INTEGRITY_ERROR:
-//            return "Farmer request integrity error";
-//        case STORJ_FILE_INTEGRITY_ERROR:
-//            return "File integrity error";
-//        case STORJ_FILE_READ_ERROR:
-//            return "File read error";
-//        case STORJ_FILE_WRITE_ERROR:
-//            return "File write error";
-//        case STORJ_BRIDGE_FRAME_ERROR:
-//            return "Bridge frame request error";
-//        case STORJ_FILE_ENCRYPTION_ERROR:
-//            return "File encryption error";
-//        case STORJ_FILE_SIZE_ERROR:
-//            return "File size error";
-//        case STORJ_FILE_DECRYPTION_ERROR:
-//            return "File decryption error";
-//        case STORJ_FILE_GENERATE_HMAC_ERROR:
-//            return "File hmac generation error";
-//        case STORJ_FILE_SHARD_MISSING_ERROR:
-//            return "File missing shard error";
-//        case STORJ_FILE_RECOVER_ERROR:
-//            return "File recover error";
-//        case STORJ_FILE_RESIZE_ERROR:
-//            return "File resize error";
-//        case STORJ_FILE_UNSUPPORTED_ERASURE:
-//            return "File unsupported erasure code error";
-//        case STORJ_FILE_PARITY_ERROR:
-//            return "File create parity error";
-//        case STORJ_META_ENCRYPTION_ERROR:
-//            return "Meta encryption error";
-//        case STORJ_META_DECRYPTION_ERROR:
-//            return "Meta decryption error";
-//        case STORJ_TRANSFER_CANCELED:
-//            return "File transfer canceled";
-//        case STORJ_MEMORY_ERROR:
-//            return "Memory error";
-//        case STORJ_MAPPING_ERROR:
-//            return "Memory mapped file error";
-//        case STORJ_UNMAPPING_ERROR:
-//            return "Memory mapped file unmap error";
-//        case STORJ_QUEUE_ERROR:
-//            return "Queue error";
-//        case STORJ_HEX_DECODE_ERROR:
-//            return "Unable to decode hex string";
-//        case STORJ_TRANSFER_OK:
-//            return "No errors";
-//        default:
-//            return "Unknown error";
-//    }
-//}
-//
+
+STORJ_API char *storj_strerror(int error_code)
+{
+    switch(error_code) {
+
+        case STORJ_LIBUPLINK_ERROR:
+            return *STORJ_LAST_ERROR;
+        case STORJ_MEMORY_ERROR:
+            return "Memory error";
+        default:
+            return "Unknown error";
+    }
+}
+
 //STORJ_API int storj_bridge_get_info(storj_env_t *env, void *handle, uv_after_work_cb cb)
 //{
 //    uv_work_t *work = json_request_work_new(env,"GET", "/", NULL,
@@ -1061,63 +761,89 @@ STORJ_API int storj_destroy_env(storj_env_t *env)
 //
 //    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 //}
-//
-//STORJ_API int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb)
-//{
-//    uv_work_t *work = uv_work_new();
-//    if (!work) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//    work->data = get_buckets_request_new(env->http_options,
-//                                         env->bridge_options,
-//                                         env->encrypt_options,
-//                                         "GET", "/buckets",
-//                                         NULL, true, handle);
-//    if (!work->data) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    return uv_queue_work(env->loop, (uv_work_t*) work,
-//                         get_buckets_request_worker, cb);
-//}
-//
-//STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req)
-//{
-//    if (req->response) {
-//        json_object_put(req->response);
-//    }
-//    if (req->buckets && req->total_buckets > 0) {
-//        for (int i = 0; i < req->total_buckets; i++) {
-//            free((char *)req->buckets[i].name);
-//        }
-//    }
-//    free(req->buckets);
-//    free(req);
-//}
-//
-//STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
-//                               const char *name,
-//                               void *handle,
-//                               uv_after_work_cb cb)
-//{
-//    uv_work_t *work = uv_work_new();
-//    if (!work) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    work->data = create_bucket_request_new(env->http_options,
-//                                           env->bridge_options,
-//                                           env->encrypt_options,
-//                                           name,
-//                                           handle);
-//    if (!work->data) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
+
+STORJ_API int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb)
+{
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    BucketList *bucket_list = malloc(sizeof(bucket_list));
+    *bucket_list = list_buckets(env->project_ref, NULL, STORJ_LAST_ERROR);
+    STORJ_RETURN_IF_LAST_ERROR(1);
+
+    work->data = bucket_list;
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    get_buckets_request_t *req = malloc(sizeof(get_buckets_request_t));
+    req->total_buckets = bucket_list->length;
+
+    BucketInfo bucket_item;
+    for (int i = 0; i < bucket_list->length; i++) {
+        bucket_item = bucket_list->items[i];
+
+        // TODO: json support?
+
+        // TODO: do we need to malloc `req->buckets[i]`?
+        storj_bucket_meta_t *bucket = &req->buckets[i];
+
+        char created_str[32];
+        time_t created_time = (time_t)bucket_item.created;
+        strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
+        bucket->created = created_str;
+        bucket->decrypted = true;
+
+        char *bucket_name = malloc(strlen(bucket_item.name));
+        strcpy(bucket_name, bucket_item.name);
+        bucket->name = bucket_name;
+    }
+
+    req->status_code = 0;
+    free_bucket_list(bucket_list);
+    cb(work, 0);
+
+    return 0;
+}
+
+STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req)
+{
+    if (req->response) {
+        json_object_put(req->response);
+    }
+    if (req->buckets && req->total_buckets > 0) {
+        for (int i = 0; i < req->total_buckets; i++) {
+            free((char *)req->buckets[i].name);
+        }
+    }
+    free(req->buckets);
+    free(req);
+}
+
+STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
+                               const char *name,
+                               void *handle,
+                               uv_after_work_cb cb)
+{
+    uv_work_t *work = uv_work_new(); if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+
+    work->data = create_bucket_request_new(env->project_ref,
+                                           name,
+                                           handle);
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    return 0;
 //    return uv_queue_work(env->loop, (uv_work_t*) work,
 //                         create_bucket_request_worker, cb);
-//}
-//
+}
+
 //STORJ_API int storj_bridge_delete_bucket(storj_env_t *env,
 //                               const char *id,
 //                               void *handle,

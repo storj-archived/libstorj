@@ -32,6 +32,7 @@ extern "C" {
 #include <string.h>
 #include <uv.h>
 #include <curl/curl.h>
+#include "uplink.h"
 
 #include <inttypes.h>
 
@@ -48,74 +49,23 @@ extern "C" {
 #define STORJ_TRANSFER_OK 0
 #define STORJ_TRANSFER_CANCELED 1
 
-// Bridge related errors 1000 to 1999
-#define STORJ_BRIDGE_REQUEST_ERROR 1000
-#define STORJ_BRIDGE_AUTH_ERROR 1001
-#define STORJ_BRIDGE_TOKEN_ERROR 1002
-#define STORJ_BRIDGE_TIMEOUT_ERROR 1003
-#define STORJ_BRIDGE_INTERNAL_ERROR 1004
-#define STORJ_BRIDGE_RATE_ERROR 1005
-#define STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR 1006
-#define STORJ_BRIDGE_FILE_NOTFOUND_ERROR 1007
-#define STORJ_BRIDGE_JSON_ERROR 1008
-#define STORJ_BRIDGE_FRAME_ERROR 1009
-#define STORJ_BRIDGE_POINTER_ERROR 1010
-#define STORJ_BRIDGE_REPOINTER_ERROR 1011
-#define STORJ_BRIDGE_FILEINFO_ERROR 1012
-#define STORJ_BRIDGE_BUCKET_FILE_EXISTS 1013
-#define STORJ_BRIDGE_OFFER_ERROR 1014
-
-// Farmer related errors 2000 to 2999
-#define STORJ_FARMER_REQUEST_ERROR 2000
-#define STORJ_FARMER_TIMEOUT_ERROR 2001
-#define STORJ_FARMER_AUTH_ERROR 2002
-#define STORJ_FARMER_EXHAUSTED_ERROR 2003
-#define STORJ_FARMER_INTEGRITY_ERROR 2004
-
-// File related errors 3000 to 3999
-#define STORJ_FILE_INTEGRITY_ERROR 3000
-#define STORJ_FILE_WRITE_ERROR 3001
-#define STORJ_FILE_ENCRYPTION_ERROR 3002
-#define STORJ_FILE_SIZE_ERROR 3003
-#define STORJ_FILE_DECRYPTION_ERROR 3004
-#define STORJ_FILE_GENERATE_HMAC_ERROR 3005
-#define STORJ_FILE_READ_ERROR 3006
-#define STORJ_FILE_SHARD_MISSING_ERROR 3007
-#define STORJ_FILE_RECOVER_ERROR 3008
-#define STORJ_FILE_RESIZE_ERROR 3009
-#define STORJ_FILE_UNSUPPORTED_ERASURE 3010
-#define STORJ_FILE_PARITY_ERROR 3011
+// Libuplink error (i.e. check STORJ_LAST_ERROR)
+#define STORJ_LIBUPLINK_ERROR 1000
 
 // Memory related errors
-#define STORJ_MEMORY_ERROR 4000
-#define STORJ_MAPPING_ERROR 4001
-#define STORJ_UNMAPPING_ERROR 4002
-
-// Queue related errors
-#define STORJ_QUEUE_ERROR 5000
-
-// Meta related errors 6000 to 6999
-#define STORJ_META_ENCRYPTION_ERROR 6000
-#define STORJ_META_DECRYPTION_ERROR 6001
-
-// Miscellaneous errors
-#define STORJ_HEX_DECODE_ERROR 7000
-
-// Exchange report codes
-#define STORJ_REPORT_SUCCESS 1000
-#define STORJ_REPORT_FAILURE 1100
-
-// Exchange report messages
-#define STORJ_REPORT_FAILED_INTEGRITY "FAILED_INTEGRITY"
-#define STORJ_REPORT_SHARD_DOWNLOADED "SHARD_DOWNLOADED"
-#define STORJ_REPORT_SHARD_UPLOADED "SHARD_UPLOADED"
-#define STORJ_REPORT_DOWNLOAD_ERROR "DOWNLOAD_ERROR"
-#define STORJ_REPORT_UPLOAD_ERROR "TRANSFER_FAILED"
+#define STORJ_MEMORY_ERROR 2000
 
 #define STORJ_SHARD_CHALLENGES 4
 #define STORJ_LOW_SPEED_LIMIT 30720L
 #define STORJ_LOW_SPEED_TIME 20L
 #define STORJ_HTTP_TIMEOUT 60L
+
+#define STORJ_RETURN_IF_LAST_ERROR(value) \
+if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
+    return value;\
+}\
+
+extern char **STORJ_LAST_ERROR;
 
 typedef struct {
   uint8_t *encryption_ctr;
@@ -200,11 +150,12 @@ typedef struct storj_log_levels {
  * and the event loop for queuing work.
  */
 typedef struct storj_env {
+    storj_http_options_t *http_options;
     storj_bridge_options_t *bridge_options;
     storj_encrypt_options_t *encrypt_options;
-//    storj_http_options_t *http_options;
     storj_log_options_t *log_options;
-    const char *tmp_path;
+    UplinkRef uplink_ref;
+    ProjectRef project_ref;
     uv_loop_t *loop;
     storj_log_levels_t *log;
 } storj_env_t;
@@ -236,11 +187,8 @@ typedef struct {
 /** @brief A structure for queueing create bucket request work
  */
 typedef struct {
-    storj_http_options_t *http_options;
-    storj_encrypt_options_t *encrypt_options;
-    storj_bridge_options_t *bridge_options;
+    ProjectRef project_ref;
     const char *bucket_name;
-    const char *encrypted_bucket_name;
     struct json_object *response;
     storj_bucket_meta_t *bucket;
     int error_code;
@@ -251,13 +199,7 @@ typedef struct {
 /** @brief A structure for queueing list buckets request work
  */
 typedef struct {
-    storj_http_options_t *http_options;
-    storj_encrypt_options_t *encrypt_options;
-    storj_bridge_options_t *options;
-    char *method;
-    char *path;
-    bool auth;
-    struct json_object *body;
+    ProjectRef project_ref;
     struct json_object *response;
     storj_bucket_meta_t *buckets;
     uint32_t total_buckets;
@@ -602,7 +544,7 @@ typedef struct {
  * @param[in] log_options - Logging settings
  * @return A null value on error, otherwise a storj_env pointer.
  */
-STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *options,
+STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
                                       storj_encrypt_options_t *encrypt_options,
                                       storj_http_options_t *http_options,
                                       storj_log_options_t *log_options);
