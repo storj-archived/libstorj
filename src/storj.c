@@ -9,8 +9,6 @@ char **STORJ_LAST_ERROR = &_storj_last_error;
 
 static void create_bucket_request_worker(uv_work_t *work)
 {
-    printf("create_bucket_request_worker\n");
-
     create_bucket_request_t *req = work->data;
     int status_code = 0;
 
@@ -44,26 +42,21 @@ static void create_bucket_request_worker(uv_work_t *work)
 
 static void get_buckets_request_worker(uv_work_t *work)
 {
-    printf("get_buckets_request_worker\n");
-
     get_buckets_request_t *req = work->data;
 
-    BucketList *bucket_list = malloc(sizeof(bucket_list));
-    printf("bucket list length: %d\n", bucket_list->length);
-    *bucket_list = list_buckets(req->project_ref, NULL, STORJ_LAST_ERROR);
+    BucketList bucket_list = list_buckets(req->project_ref, NULL, STORJ_LAST_ERROR);
     if (strcmp("", *STORJ_LAST_ERROR) != 0) {
         req->error_code = 1;
         req->status_code = 1;
         return;
     }
 
-    req->buckets = malloc(sizeof(storj_bucket_meta_t) * bucket_list->length);
+    req->buckets = malloc(sizeof(storj_bucket_meta_t) * bucket_list.length);
 
     BucketInfo bucket_item;
-    for (int i = 0; i < bucket_list->length; i++) {
-        bucket_item = bucket_list->items[i];
+    for (int i = 0; i < bucket_list.length; i++) {
+        bucket_item = bucket_list.items[i];
 
-        // TODO: do we need to malloc `req->buckets[i]`?
         storj_bucket_meta_t *bucket = &req->buckets[i];
 
         char created_str[32];
@@ -77,9 +70,7 @@ static void get_buckets_request_worker(uv_work_t *work)
         bucket->name = bucket_name;
     }
 
-    req->total_buckets = bucket_list->length;
-
-    free_bucket_list(bucket_list);
+    req->total_buckets = bucket_list.length;
 }
 
 //static void get_bucket_request_worker(uv_work_t *work)
@@ -490,8 +481,6 @@ static create_bucket_request_t *create_bucket_request_new(
     const char *bucket_name,
     void *handle)
 {
-    printf("create_bucket_request_new\n");
-
     create_bucket_request_t *req = malloc(sizeof(create_bucket_request_t));
     if (!req) {
         return NULL;
@@ -512,8 +501,6 @@ static get_buckets_request_t *get_buckets_request_new(
     ProjectRef project_ref,
     void *handle)
 {
-    printf("get_buckets_request_new\n");
-
     get_buckets_request_t *req = malloc(sizeof(get_buckets_request_t));
     if (!req) {
         return NULL;
@@ -760,8 +747,6 @@ STORJ_API char *storj_strerror(int error_code)
 
 STORJ_API int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb)
 {
-    printf("storj_bridge_get_buckets\n");
-
     uv_work_t *work = uv_work_new();
     if (!work) {
         return STORJ_MEMORY_ERROR;
@@ -795,8 +780,6 @@ STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
                                void *handle,
                                uv_after_work_cb cb)
 {
-    printf("storj_bridge_create_bucket\n");
-
     uv_work_t *work = uv_work_new(); if (!work) {
         return STORJ_MEMORY_ERROR;
     }

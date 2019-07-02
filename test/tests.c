@@ -3,8 +3,6 @@
 //char *folder;
 int tests_ran = 0;
 int test_status = 0;
-uv_mutex_t mutex;
-uv_cond_t cond;
 
 // setup bridge options to point to mock server
 //storj_bridge_options_t bridge_options = {
@@ -69,14 +67,12 @@ void pass(char *msg)
 
 void check_get_buckets(uv_work_t *work_req, int status)
 {
-    printf("check_get_buckets\n");
-
     assert(status == 0);
     get_buckets_request_t *req = work_req->data;
 
 //     TODO: add assertions
-//    assert(req->total_buckets == 1);
-//    assert(req->buckets != NULL);
+    assert(req->total_buckets == 1);
+    assert(req->buckets != NULL);
 
     pass("storj_bridge_get_buckets");
 
@@ -129,8 +125,6 @@ void check_get_buckets(uv_work_t *work_req, int status)
 
 void check_create_bucket(uv_work_t *work_req, int status)
 {
-    printf("check_create_bucket\n");
-
     assert(status == 0);
     create_bucket_request_t *req = work_req->data;
 
@@ -143,13 +137,6 @@ void check_create_bucket(uv_work_t *work_req, int status)
     free(req->bucket);
     free(req);
     free(work_req);
-
-//    printf("uv_mutex_lock\n");
-//    uv_mutex_lock(&mutex);
-    printf("uv_cond_broadcast\n");
-    uv_cond_signal(&cond);
-    printf("uv_mutex_unlock\n");
-    uv_mutex_unlock(&mutex);
 }
 
 //void check_delete_bucket(uv_work_t *work_req, int status)
@@ -818,46 +805,15 @@ int test_api()
     int status;
 
     // create a new bucket with a name
-    // NB: mutex is unlocked at the end of `check_create_bucket`
-    printf("uv_cond_init\n");
-    int cont_status = uv_cond_init(&cond);
-    printf("uv_mutex_init\n");
-    int mutex_status = uv_mutex_init(&mutex);
-    assert(mutex_status == 0);
-
-    printf("uv_mutex_lock\n");
-    uv_mutex_lock(&mutex);
     status = storj_bridge_create_bucket(env, "backups", NULL,
                                         check_create_bucket);
     assert(status == 0);
-//    assert(uv_run(env->loop, UV_RUN_DEFAULT) == 0);
-    uv_run(env->loop, UV_RUN_ONCE);
-
-//    printf("uv_mutex_lock\n");
-//    uv_mutex_lock(&mutex);
+    assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
 
     // get buckets
-//    printf("uv_cond_wait\n");
-//    uv_cond_wait(&cond, &mutex);
-//    printf("uv_mutex_lock\n");
-//    uv_mutex_lock(&mutex);
-    printf("uv_mutex_trylock\n");
-    int lock_status = uv_mutex_trylock(&mutex);
-    printf("uv_mutex_trylock status: %d\n", lock_status);
-    if (lock_status != 0) {
-        printf("uv_cond_wait\n");
-        uv_cond_wait(&cond, &mutex);
-    }
-    printf("uv_mutex_unlock\n");
-    uv_mutex_unlock(&mutex);
-//    assert(lock_status == 0);
-//    printf("uv_mutex_unlock\n");
-//    uv_mutex_unlock(&mutex);
-
     status = storj_bridge_get_buckets(env, NULL, check_get_buckets);
     assert(status == 0);
-    uv_run(env->loop, UV_RUN_ONCE);
-//    assert(uv_run(env->loop, UV_RUN_DEFAULT) == 0);
+    assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
 
 //    char *bucket_id = "368be0816766b28fd5f43af5";
 //
