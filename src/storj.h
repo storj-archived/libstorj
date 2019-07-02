@@ -211,15 +211,10 @@ typedef struct {
 /** @brief A structure for queueing get bucket request work
  */
 typedef struct {
-    storj_http_options_t *http_options;
-    storj_encrypt_options_t *encrypt_options;
-    storj_bridge_options_t *options;
-    char *method;
-    char *path;
-    bool auth;
-    struct json_object *body;
-    struct json_object *response;
+    ProjectRef project_ref;
+    char *bucket_name;
     storj_bucket_meta_t *bucket;
+    struct json_object *response;
     int error_code;
     int status_code;
     void *handle;

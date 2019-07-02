@@ -3,6 +3,7 @@
 //char *folder;
 int tests_ran = 0;
 int test_status = 0;
+char *test_bucket_name = "test-bucket";
 
 // setup bridge options to point to mock server
 //storj_bridge_options_t bridge_options = {
@@ -80,21 +81,22 @@ void check_get_buckets(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-//void check_get_bucket(uv_work_t *work_req, int status)
-//{
-//    assert(status == 0);
-//    get_bucket_request_t *req = work_req->data;
-//    assert(req->handle == NULL);
-//    assert(req->bucket);
-//    assert(strcmp(req->bucket->name, "test") == 0);
-//    assert(req->bucket->decrypted);
-//
-//    pass("storj_bridge_get_bucket");
-//
-//    storj_free_get_bucket_request(req);
-//    free(work_req);
-//}
-//
+void check_get_bucket(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_bucket_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    // TODO: better/more error handling assertions (i.e. status != req->status_code or req->error_code)
+    assert(req->bucket != NULL);
+    assert(strcmp(req->bucket->name, test_bucket_name) == 0);
+    assert(req->bucket->decrypted);
+
+    pass("storj_bridge_get_bucket");
+
+    storj_free_get_bucket_request(req);
+    free(work_req);
+}
+
 //void check_get_bucket_id(uv_work_t *work_req, int status)
 //{
 //    assert(status == 0);
@@ -129,8 +131,8 @@ void check_create_bucket(uv_work_t *work_req, int status)
     create_bucket_request_t *req = work_req->data;
 
     assert(req->bucket != NULL);
-    assert(strcmp(req->bucket_name, "backups") == 0);
-    assert(strcmp(req->bucket->name, "backups") == 0);
+    assert(strcmp(req->bucket_name, test_bucket_name) == 0);
+    assert(strcmp(req->bucket->name, test_bucket_name) == 0);
     assert(req->bucket->created != NULL);
     pass("storj_bridge_create_bucket");
 
@@ -805,7 +807,7 @@ int test_api()
     int status;
 
     // create a new bucket with a name
-    status = storj_bridge_create_bucket(env, "backups", NULL,
+    status = storj_bridge_create_bucket(env, test_bucket_name, NULL,
                                         check_create_bucket);
     assert(status == 0);
     assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
@@ -816,11 +818,12 @@ int test_api()
     assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
 
 //    char *bucket_id = "368be0816766b28fd5f43af5";
-//
-//    // get bucket
-//    status = storj_bridge_get_bucket(env, bucket_id, NULL, check_get_bucket);
-//    assert(status == 0);
-//
+
+    // get bucket
+    status = storj_bridge_get_bucket(env, test_bucket_name, NULL, check_get_bucket);
+    assert(status == 0);
+    assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
+
 //    // get bucket id
 //    status = storj_bridge_get_bucket_id(env, "test", NULL, check_get_bucket_id);
 //    assert(status == 0);

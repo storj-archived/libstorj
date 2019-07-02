@@ -73,58 +73,32 @@ static void get_buckets_request_worker(uv_work_t *work)
     req->total_buckets = bucket_list.length;
 }
 
-//static void get_bucket_request_worker(uv_work_t *work)
-//{
-//    get_bucket_request_t *req = work->data;
-//    int status_code = 0;
-//
-//    req->error_code = fetch_json(req->http_options,
-//                                 req->options, req->method, req->path, req->body,
-//                                 req->auth, &req->response, &status_code);
-//
-//    req->status_code = status_code;
-//
-//    if (!req->response) {
-//        req->bucket = NULL;
-//        return;
-//    }
-//
-//    struct json_object *name;
-//    struct json_object *created;
-//    struct json_object *id;
-//
-//    json_object_object_get_ex(req->response, "id", &id);
-//    json_object_object_get_ex(req->response, "name", &name);
-//    json_object_object_get_ex(req->response, "created", &created);
-//
-//    req->bucket = malloc(sizeof(storj_bucket_meta_t));
+static void get_bucket_request_worker(uv_work_t *work)
+{
+    get_bucket_request_t *req = work->data;
+
+    BucketInfo bucket_info = get_bucket_info(req->project_ref, req->bucket_name, STORJ_LAST_ERROR);
+    if (strcmp("", *STORJ_LAST_ERROR) != 0) {
+        req->error_code = 1;
+        req->status_code = 1;
+        return;
+    }
+
+    req->bucket = malloc(sizeof(storj_bucket_meta_t));
+    char created_str[32];
+    time_t created_time = (time_t)bucket_info.created;
+    strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
+    req->bucket->created = created_str;
+    req->bucket->decrypted = true;
+
+    char *bucket_name = malloc(strlen(bucket_info.name));
+    strcpy(bucket_name, bucket_info.name);
+    req->bucket->name = bucket_name;
+    // TODO: do we need this?
 //    req->bucket->id = json_object_get_string(id);
-//    req->bucket->decrypted = false;
-//    req->bucket->created = json_object_get_string(created);
-//    req->bucket->name = NULL;
-//
-//    // Attempt to decrypt the name, otherwise
-//    // we will default the name to the encrypted text.
-//    // The decrypted flag will be set to indicate the status
-//    // of decryption for alternative display.
-//    const char *encrypted_name = json_object_get_string(name);
-//    if (encrypted_name) {
-//        char *decrypted_name;
-//        int error_status = decrypt_bucket_name(req->encrypt_options->mnemonic,
-//                                               encrypted_name,
-//                                               &decrypted_name);
-//        if (!error_status) {
-//            req->bucket->decrypted = true;
-//            req->bucket->name = decrypted_name;
-//        } else if (error_status == STORJ_META_DECRYPTION_ERROR){
-//            req->bucket->decrypted = false;
-//            req->bucket->name = strdup(encrypted_name);
-//        } else {
-//            req->error_code = STORJ_MEMORY_ERROR;
-//        }
-//    }
-//}
-//
+
+}
+
 //static void get_bucket_id_request_worker(uv_work_t *work)
 //{
 //    get_bucket_id_request_t *req = work->data;
@@ -517,37 +491,27 @@ static get_buckets_request_t *get_buckets_request_new(
     return req;
 }
 
-//static get_bucket_request_t *get_bucket_request_new(
-//        storj_http_options_t *http_options,
-//        storj_bridge_options_t *options,
-//        storj_encrypt_options_t *encrypt_options,
-//        char *method,
-//        char *path,
-//        struct json_object *request_body,
-//        bool auth,
-//        void *handle)
-//{
-//    get_bucket_request_t *req = malloc(sizeof(get_bucket_request_t));
-//    if (!req) {
-//        return NULL;
-//    }
-//
-//    req->http_options = http_options;
-//    req->options = options;
-//    req->encrypt_options = encrypt_options;
-//    req->method = method;
-//    req->path = path;
-//    req->auth = auth;
-//    req->body = request_body;
-//    req->response = NULL;
-//    req->bucket = NULL;
-//    req->error_code = 0;
-//    req->status_code = 0;
-//    req->handle = handle;
-//
-//    return req;
-//}
-//
+static get_bucket_request_t *get_bucket_request_new(
+        ProjectRef project_ref,
+        char *bucket_name,
+        void *handle)
+{
+    get_bucket_request_t *req = malloc(sizeof(get_bucket_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->project_ref = project_ref;
+    req->bucket_name = bucket_name;
+    req->response = NULL;
+    req->bucket = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
 //static get_bucket_id_request_t *get_bucket_id_request_new(
 //        storj_http_options_t *http_options,
 //        storj_bridge_options_t *options,
@@ -814,47 +778,39 @@ STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
 //
 //    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
 //}
-//
-//STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
-//                                      const char *id,
-//                                      void *handle,
-//                                      uv_after_work_cb cb)
-//{
-//    uv_work_t *work = uv_work_new();
-//    if (!work) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    char *path = str_concat_many(2, "/buckets/", id);
-//    if (!path) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    work->data = get_bucket_request_new(env->http_options,
-//                                        env->bridge_options,
-//                                        env->encrypt_options,
-//                                        "GET", path,
-//                                        NULL, true, handle);
-//    if (!work->data) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    return uv_queue_work(env->loop, (uv_work_t*) work, get_bucket_request_worker, cb);
-//}
-//
-//STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req)
-//{
-//    if (req->response) {
-//        json_object_put(req->response);
-//    }
-//    free(req->path);
-//    if (req->bucket) {
-//        free((char *)req->bucket->name);
-//    }
-//    free(req->bucket);
-//    free(req);
-//}
-//
+
+STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
+                                      const char *name,
+                                      void *handle,
+                                      uv_after_work_cb cb)
+{
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    char *bucket_name = malloc(strlen(name));
+    strcpy(bucket_name, name);
+    work->data = get_bucket_request_new(env->project_ref, bucket_name, handle);
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    return uv_queue_work(env->loop, (uv_work_t*) work, get_bucket_request_worker, cb);
+}
+
+STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req)
+{
+    if (req->response) {
+        json_object_put(req->response);
+    }
+    if (req->bucket) {
+        free((char *)req->bucket->name);
+    }
+    free(req->bucket);
+    free(req);
+}
+
 //STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
 //                                         const char *name,
 //                                         void *handle,
