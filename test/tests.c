@@ -50,22 +50,6 @@ void pass(char *msg)
 }
 
 
-//void check_bridge_get_info(uv_work_t *work_req, int status)
-//{
-//    assert(status == 0);
-//    json_request_t *req = work_req->data;
-//    assert(req->handle == NULL);
-//
-//    struct json_object* value;
-//    int success = json_object_object_get_ex(req->response, "info", &value);
-//    assert(success == 1);
-//    pass("storj_bridge_get_info");
-//
-//    json_object_put(req->response);
-//    free(req);
-//    free(work_req);
-//}
-
 void check_get_buckets(uv_work_t *work_req, int status)
 {
     assert(status == 0);
