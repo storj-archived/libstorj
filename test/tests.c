@@ -52,10 +52,13 @@ void pass(char *msg)
 
 void check_get_buckets(uv_work_t *work_req, int status)
 {
+    // TODO: assert req->error_code & req->status_code
+    // (status_code is an http status)
+
     assert(status == 0);
     get_buckets_request_t *req = work_req->data;
 
-//     TODO: add assertions
+    // TODO: add assertions
     assert(req->total_buckets == 1);
     assert(req->buckets != NULL);
 
@@ -67,10 +70,12 @@ void check_get_buckets(uv_work_t *work_req, int status)
 
 void check_get_bucket(uv_work_t *work_req, int status)
 {
+    // TODO: assert req->error_code & req->status_code
+    // (status_code is an http status)
+
     assert(status == 0);
     get_bucket_request_t *req = work_req->data;
     assert(req->handle == NULL);
-    // TODO: better/more error handling assertions (i.e. status != req->status_code or req->error_code)
     assert(req->bucket != NULL);
     assert(strcmp(req->bucket->name, test_bucket_name) == 0);
     assert(req->bucket->decrypted);
@@ -111,6 +116,9 @@ void check_get_bucket(uv_work_t *work_req, int status)
 
 void check_create_bucket(uv_work_t *work_req, int status)
 {
+    // TODO: assert req->error_code & req->status_code
+    // (status_code is an http status)
+
     assert(status == 0);
     create_bucket_request_t *req = work_req->data;
 
