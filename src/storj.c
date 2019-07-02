@@ -7,33 +7,24 @@
 char *_storj_last_error = "";
 char **STORJ_LAST_ERROR = &_storj_last_error;
 
-//static void json_request_worker(uv_work_t *work)
-//{
-//    json_request_t *req = work->data;
-//    int status_code = 0;
-//
-//    req->error_code = fetch_json(req->http_options,
-//                                 req->options, req->method, req->path, req->body,
-//                                 req->auth, &req->response, &status_code);
-//
-//    req->status_code = status_code;
-//}
-
 static void create_bucket_request_worker(uv_work_t *work)
 {
+    printf("create_bucket_request_worker\n");
+
     create_bucket_request_t *req = work->data;
     int status_code = 0;
 
     char *bucket_name = malloc(strlen(req->bucket_name));
     strcpy(bucket_name, req->bucket_name);
 
-    BucketInfo *created_bucket;
+    BucketInfo *created_bucket = malloc(sizeof(BucketInfo));
     *created_bucket = create_bucket(req->project_ref, bucket_name, NULL, STORJ_LAST_ERROR);
     if (strcmp("", *STORJ_LAST_ERROR) != 0) {
         req->error_code = 1;
         req->status_code = 1;
         return;
     }
+
     char created_str[32];
     time_t created_time = (time_t)created_bucket->created;
     strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
@@ -49,6 +40,46 @@ static void create_bucket_request_worker(uv_work_t *work)
     req->bucket_name = created_bucket->name;
     req->bucket->created = created_str;
     req->bucket->decrypted = true;
+}
+
+static void get_buckets_request_worker(uv_work_t *work)
+{
+    printf("get_buckets_request_worker\n");
+
+    get_buckets_request_t *req = work->data;
+
+    BucketList *bucket_list = malloc(sizeof(bucket_list));
+    printf("bucket list length: %d\n", bucket_list->length);
+    *bucket_list = list_buckets(req->project_ref, NULL, STORJ_LAST_ERROR);
+    if (strcmp("", *STORJ_LAST_ERROR) != 0) {
+        req->error_code = 1;
+        req->status_code = 1;
+        return;
+    }
+
+    req->buckets = malloc(sizeof(storj_bucket_meta_t) * bucket_list->length);
+
+    BucketInfo bucket_item;
+    for (int i = 0; i < bucket_list->length; i++) {
+        bucket_item = bucket_list->items[i];
+
+        // TODO: do we need to malloc `req->buckets[i]`?
+        storj_bucket_meta_t *bucket = &req->buckets[i];
+
+        char created_str[32];
+        time_t created_time = (time_t)bucket_item.created;
+        strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
+        bucket->created = created_str;
+        bucket->decrypted = true;
+
+        char *bucket_name = malloc(strlen(bucket_item.name));
+        strcpy(bucket_name, bucket_item.name);
+        bucket->name = bucket_name;
+    }
+
+    req->total_buckets = bucket_list->length;
+
+    free_bucket_list(bucket_list);
 }
 
 //static void get_bucket_request_worker(uv_work_t *work)
@@ -459,6 +490,8 @@ static create_bucket_request_t *create_bucket_request_new(
     const char *bucket_name,
     void *handle)
 {
+    printf("create_bucket_request_new\n");
+
     create_bucket_request_t *req = malloc(sizeof(create_bucket_request_t));
     if (!req) {
         return NULL;
@@ -475,38 +508,28 @@ static create_bucket_request_t *create_bucket_request_new(
     return req;
 }
 
-//static get_buckets_request_t *get_buckets_request_new(
-//    storj_http_options_t *http_options,
-//    storj_bridge_options_t *options,
-//    storj_encrypt_options_t *encrypt_options,
-//    char *method,
-//    char *path,
-//    struct json_object *request_body,
-//    bool auth,
-//    void *handle)
-//{
-//    get_buckets_request_t *req = malloc(sizeof(get_buckets_request_t));
-//    if (!req) {
-//        return NULL;
-//    }
-//
-//    req->http_options = http_options;
-//    req->options = options;
-//    req->encrypt_options = encrypt_options;
-//    req->method = method;
-//    req->path = path;
-//    req->auth = auth;
-//    req->body = request_body;
-//    req->response = NULL;
-//    req->buckets = NULL;
-//    req->total_buckets = 0;
-//    req->error_code = 0;
-//    req->status_code = 0;
-//    req->handle = handle;
-//
-//    return req;
-//}
-//
+static get_buckets_request_t *get_buckets_request_new(
+    ProjectRef project_ref,
+    void *handle)
+{
+    printf("get_buckets_request_new\n");
+
+    get_buckets_request_t *req = malloc(sizeof(get_buckets_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->project_ref = project_ref;
+    req->response = NULL;
+    req->buckets = NULL;
+    req->total_buckets = 0;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
 //static get_bucket_request_t *get_bucket_request_new(
 //        storj_http_options_t *http_options,
 //        storj_bridge_options_t *options,
@@ -722,22 +745,6 @@ STORJ_API int storj_destroy_env(storj_env_t *env)
     return 0;
 }
 
-
-//STORJ_API uint64_t storj_util_timestamp()
-//{
-//    return get_time_milliseconds();
-//}
-//
-//STORJ_API int storj_mnemonic_generate(int strength, char **buffer)
-//{
-//    return mnemonic_generate(strength, buffer);
-//}
-//
-//STORJ_API bool storj_mnemonic_check(const char *mnemonic)
-//{
-//    return mnemonic_check(mnemonic);
-//}
-
 STORJ_API char *storj_strerror(int error_code)
 {
     switch(error_code) {
@@ -751,61 +758,22 @@ STORJ_API char *storj_strerror(int error_code)
     }
 }
 
-//STORJ_API int storj_bridge_get_info(storj_env_t *env, void *handle, uv_after_work_cb cb)
-//{
-//    uv_work_t *work = json_request_work_new(env,"GET", "/", NULL,
-//                                            false, handle);
-//    if (!work) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
-//}
-
 STORJ_API int storj_bridge_get_buckets(storj_env_t *env, void *handle, uv_after_work_cb cb)
 {
+    printf("storj_bridge_get_buckets\n");
+
     uv_work_t *work = uv_work_new();
     if (!work) {
         return STORJ_MEMORY_ERROR;
     }
 
-    BucketList *bucket_list = malloc(sizeof(bucket_list));
-    *bucket_list = list_buckets(env->project_ref, NULL, STORJ_LAST_ERROR);
-    STORJ_RETURN_IF_LAST_ERROR(1);
-
-    work->data = bucket_list;
+    work->data = get_buckets_request_new(env->project_ref, handle);
     if (!work->data) {
         return STORJ_MEMORY_ERROR;
     }
 
-    get_buckets_request_t *req = malloc(sizeof(get_buckets_request_t));
-    req->total_buckets = bucket_list->length;
-
-    BucketInfo bucket_item;
-    for (int i = 0; i < bucket_list->length; i++) {
-        bucket_item = bucket_list->items[i];
-
-        // TODO: json support?
-
-        // TODO: do we need to malloc `req->buckets[i]`?
-        storj_bucket_meta_t *bucket = &req->buckets[i];
-
-        char created_str[32];
-        time_t created_time = (time_t)bucket_item.created;
-        strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
-        bucket->created = created_str;
-        bucket->decrypted = true;
-
-        char *bucket_name = malloc(strlen(bucket_item.name));
-        strcpy(bucket_name, bucket_item.name);
-        bucket->name = bucket_name;
-    }
-
-    req->status_code = 0;
-    free_bucket_list(bucket_list);
-    cb(work, 0);
-
-    return 0;
+    return uv_queue_work(env->loop, (uv_work_t*) work,
+                         get_buckets_request_worker, cb);
 }
 
 STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req)
@@ -827,6 +795,8 @@ STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
                                void *handle,
                                uv_after_work_cb cb)
 {
+    printf("storj_bridge_create_bucket\n");
+
     uv_work_t *work = uv_work_new(); if (!work) {
         return STORJ_MEMORY_ERROR;
     }
@@ -839,9 +809,8 @@ STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
         return STORJ_MEMORY_ERROR;
     }
 
-    return 0;
-//    return uv_queue_work(env->loop, (uv_work_t*) work,
-//                         create_bucket_request_worker, cb);
+    return uv_queue_work(env->loop, (uv_work_t*) work,
+                         create_bucket_request_worker, cb);
 }
 
 //STORJ_API int storj_bridge_delete_bucket(storj_env_t *env,
