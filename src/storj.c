@@ -147,7 +147,28 @@ static void get_bucket_request_worker(uv_work_t *work)
 //    free(escaped_encrypted_bucket_name);
 //    free(path);
 //}
-//
+
+static void delete_bucket_request_worker(uv_work_t *work)
+{
+    delete_bucket_request_t *req = work->data;
+
+    // NB: delete_bucket takes `char *` but `req->bucket_name` is `const char *`.
+    char *bucket_name = malloc(strlen(req->bucket_name));
+    strcpy(bucket_name, req->bucket_name);
+
+    delete_bucket(req->project_ref, bucket_name, STORJ_LAST_ERROR);
+    free(bucket_name);
+
+    if (strcmp("", *STORJ_LAST_ERROR) != 0) {
+        req->error_code = 1;
+        req->status_code = 1;
+        return;
+    }
+
+    // NB: http "no content" success status code.
+    req->status_code = 204;
+}
+
 //static void list_files_request_worker(uv_work_t *work)
 //{
 //    list_files_request_t *req = work->data;
@@ -540,7 +561,27 @@ static get_bucket_request_t *get_bucket_request_new(
 //
 //    return req;
 //}
-//
+
+static delete_bucket_request_t *delete_bucket_request_new(
+        ProjectRef project_ref,
+        const char *bucket_name,
+        void *handle)
+{
+    delete_bucket_request_t *req = malloc(sizeof(delete_bucket_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->project_ref = project_ref;
+    req->bucket_name = bucket_name;
+    req->response = NULL;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
 //static get_file_id_request_t *get_file_id_request_new(
 //        storj_http_options_t *http_options,
 //        storj_bridge_options_t *options,
@@ -769,24 +810,22 @@ STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
                          create_bucket_request_worker, cb);
 }
 
-//STORJ_API int storj_bridge_delete_bucket(storj_env_t *env,
-//                               const char *id,
-//                               void *handle,
-//                               uv_after_work_cb cb)
-//{
-//    char *path = str_concat_many(2, "/buckets/", id);
-//    if (!path) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    uv_work_t *work = json_request_work_new(env, "DELETE", path,
-//                                            NULL, true, handle);
-//    if (!work) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    return uv_queue_work(env->loop, (uv_work_t*) work, json_request_worker, cb);
-//}
+STORJ_API int storj_bridge_delete_bucket(storj_env_t *env,
+                               const char *bucket_name,
+                               void *handle,
+                               uv_after_work_cb cb)
+{
+    uv_work_t *work = uv_work_new(); if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    work->data = delete_bucket_request_new(env->project_ref, bucket_name, handle);
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    return uv_queue_work(env->loop, (uv_work_t*) work, delete_bucket_request_worker, cb);
+}
 
 STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
                                       const char *name,

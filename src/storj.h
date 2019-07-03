@@ -234,6 +234,17 @@ typedef struct {
     void *handle;
 } get_bucket_id_request_t;
 
+/** @brief A structure for queueing delete bucket request work
+ */
+typedef struct {
+    ProjectRef project_ref;
+    const char *bucket_name;
+    struct json_object *response;
+    int error_code;
+    int status_code;
+    void *handle;
+} delete_bucket_request_t;
+
 /** @brief A structure for that describes a bucket entry/file
  */
 typedef struct {

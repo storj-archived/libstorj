@@ -135,22 +135,25 @@ void check_create_bucket(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-//void check_delete_bucket(uv_work_t *work_req, int status)
-//{
-//    assert(status == 0);
-//    json_request_t *req = work_req->data;
-//    assert(req->handle == NULL);
-//    assert(req->response == NULL);
-//    assert(req->status_code == 204);
-//
-//    pass("storj_bridge_delete_bucket");
-//
-//    json_object_put(req->response);
-//    free(req->path);
-//    free(req);
-//    free(work_req);
-//}
-//
+void check_delete_bucket(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    delete_bucket_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(req->response == NULL);
+    assert(req->status_code == 204);
+
+    // TODO: check that the bucket was actuallly deleted!
+
+    pass("storj_bridge_delete_bucket");
+
+    json_object_put(req->response);
+    // TODO: free this?
+//    free(req->bucket_name);
+    free(req);
+    free(work_req);
+}
+
 //void check_list_files(uv_work_t *work_req, int status)
 //{
 //    assert(status == 0);
@@ -821,13 +824,14 @@ int test_api()
 //    // get bucket id
 //    status = storj_bridge_get_bucket_id(env, "test", NULL, check_get_bucket_id);
 //    assert(status == 0);
-//
-//    // delete a bucket
-//    // TODO check for successful status code, response has object
-//    status = storj_bridge_delete_bucket(env, bucket_id, NULL,
-//                                        check_delete_bucket);
-//    assert(status == 0);
-//
+
+    // delete a bucket
+    // TODO check for successful status code, response has object
+    status = storj_bridge_delete_bucket(env, test_bucket_name,
+                                        NULL, check_delete_bucket);
+    assert(status == 0);
+    assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
+
 //    // list files in a bucket
 //    status = storj_bridge_list_files(env, bucket_id, NULL,
 //                                     check_list_files);
