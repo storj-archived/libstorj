@@ -130,7 +130,7 @@ void check_create_bucket(uv_work_t *work_req, int status)
     assert(req->bucket->created != NULL);
     pass("storj_bridge_create_bucket");
 
-    free_create_bucket_request(req);
+    storj_free_create_bucket_request(req);
     free(work_req);
 }
 
@@ -146,9 +146,8 @@ void check_delete_bucket(uv_work_t *work_req, int status)
 
     pass("storj_bridge_delete_bucket");
 
-    json_object_put(req->response);
-    // TODO: free this?
-//    free(req->bucket_name);
+    // TODO: figure out why this causes a segfault.
+//    free((char *)req->bucket_name);
     free(req);
     free(work_req);
 }

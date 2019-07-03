@@ -11,11 +11,10 @@ static void create_bucket_request_worker(uv_work_t *work)
 {
     create_bucket_request_t *req = work->data;
 
-    // NB: create_bucket takes `char *` but `req->bucket_name` is `const char *`.
-    char *bucket_name = strdup(req->bucket_name);
-
     BucketInfo *created_bucket = malloc(sizeof(BucketInfo));
-    *created_bucket = create_bucket(req->project_ref, bucket_name, NULL, STORJ_LAST_ERROR);
+    *created_bucket = create_bucket(req->project_ref,
+                                    strdup(req->bucket_name),
+                                    NULL, STORJ_LAST_ERROR);
     if (strcmp("", *STORJ_LAST_ERROR) != 0) {
         req->error_code = 1;
         req->status_code = 1;
@@ -26,17 +25,19 @@ static void create_bucket_request_worker(uv_work_t *work)
     time_t created_time = (time_t)created_bucket->created;
     strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
 
-    req->bucket_name = created_bucket->name;
+    req->bucket_name = strdup(created_bucket->name);
     req->bucket = malloc(sizeof(storj_bucket_meta_t));
-    req->bucket->name = created_bucket->name;
-    // TODO: is it okay that these are the same pointer?
-    req->bucket->id = created_bucket->name;
-    req->bucket->created = created_str;
+
+    req->bucket->name = strdup(created_bucket->name);
+    req->bucket->id = strdup(created_bucket->name);
+    req->bucket->created = strdup(created_str);
     req->bucket->decrypted = true;
     // NB: this field is unused; it only exists for backwards compatibility as it is
     //  passed to `json_object_put` by api consumers.
     //  (see: https://svn.filezilla-project.org/svn/FileZilla3/trunk/src/storj/fzstorj.cpp)
     req->response = json_object_new_object();
+
+    free_bucket_info((BucketInfo *)&created_bucket);
 }
 
 static void get_buckets_request_worker(uv_work_t *work)
@@ -55,32 +56,34 @@ static void get_buckets_request_worker(uv_work_t *work)
     BucketInfo bucket_item;
     for (int i = 0; i < bucket_list.length; i++) {
         bucket_item = bucket_list.items[i];
-        bucket_name = strdup(bucket_item.name);
-
         storj_bucket_meta_t *bucket = &req->buckets[i];
 
         char created_str[32];
         time_t created_time = (time_t)bucket_item.created;
         strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
-        bucket->created = created_str;
+
+        bucket->name = strdup(bucket_item.name);
+        bucket->id = strdup(bucket_item.name);
+        bucket->created = strdup(created_str);
         bucket->decrypted = true;
-        bucket->name = bucket_name;
-        bucket->id = bucket_name;
     }
 
     req->total_buckets = bucket_list.length;
+    // NB: this field is unused; it only exists for backwards compatibility as it is
+    //  passed to `json_object_put` by api consumers.
+    //  (see: https://svn.filezilla-project.org/svn/FileZilla3/trunk/src/storj/fzstorj.cpp)
+    req->response = json_object_new_object();
+
+    free_bucket_list(&bucket_list);
 }
 
 static void get_bucket_request_worker(uv_work_t *work)
 {
     get_bucket_request_t *req = work->data;
 
-    // NB: get_bucket_info takes `char *` but `req->bucket_name` is `const char *`.
-    char *bucket_name = strdup(req->bucket_name);
-
-    BucketInfo bucket_info = get_bucket_info(req->project_ref, bucket_name, STORJ_LAST_ERROR);
-    free(bucket_name);
-
+    BucketInfo bucket_info = get_bucket_info(req->project_ref,
+                                             strdup(req->bucket_name),
+                                             STORJ_LAST_ERROR);
     if (strcmp("", *STORJ_LAST_ERROR) != 0) {
         req->error_code = 1;
         req->status_code = 1;
@@ -88,16 +91,21 @@ static void get_bucket_request_worker(uv_work_t *work)
     }
 
     req->bucket = malloc(sizeof(storj_bucket_meta_t));
+
     char created_str[32];
     time_t created_time = (time_t)bucket_info.created;
     strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
-    req->bucket->created = created_str;
+
+    req->bucket->name = strdup(bucket_info.name);
+    req->bucket->id = strdup(bucket_info.name);
+    req->bucket->created = strdup(created_str);
     req->bucket->decrypted = true;
+    // NB: this field is unused; it only exists for backwards compatibility as it is
+    //  passed to `json_object_put` by api consumers.
+    //  (see: https://svn.filezilla-project.org/svn/FileZilla3/trunk/src/storj/fzstorj.cpp)
+    req->response = json_object_new_object();
 
-    bucket_name = strdup(bucket_info.name);
-    req->bucket->name = bucket_name;
-    req->bucket->id = bucket_name;
-
+    free_bucket_info((BucketInfo *)&bucket_info);
 }
 
 //static void get_bucket_id_request_worker(uv_work_t *work)
@@ -149,12 +157,7 @@ static void delete_bucket_request_worker(uv_work_t *work)
 {
     delete_bucket_request_t *req = work->data;
 
-    // NB: delete_bucket takes `char *` but `req->bucket_name` is `const char *`.
-    char *bucket_name = strdup(req->bucket_name);
-
-    delete_bucket(req->project_ref, bucket_name, STORJ_LAST_ERROR);
-    free(bucket_name);
-
+    delete_bucket(req->project_ref, strdup(req->bucket_name), STORJ_LAST_ERROR);
     if (strcmp("", *STORJ_LAST_ERROR) != 0) {
         req->error_code = 1;
         req->status_code = 1;
@@ -778,13 +781,13 @@ STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req)
     }
     if (req->buckets && req->total_buckets > 0) {
         for (int i = 0; i < req->total_buckets; i++) {
-            free((char *)req->buckets[i]->name);
-            free((char *)req->buckets[i]->id);
-            free((char *)req->buckets[i]->created);
+            free((char *)req->buckets[i].name);
+            free((char *)req->buckets[i].id);
+            free((char *)req->buckets[i].created);
         }
     }
+
     free(req->buckets);
-    free(req->handle);
     free(req);
 }
 
@@ -855,9 +858,9 @@ STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req)
         free((char *)req->bucket->id);
         free((char *)req->bucket->created);
     }
+
     free(req->bucket);
     free((char *)req->bucket_name);
-    free(req->handle);
     free(req);
 }
 
@@ -892,9 +895,9 @@ STORJ_API void storj_free_create_bucket_request(create_bucket_request_t *req)
         free((char *)req->bucket->id);
         free((char *)req->bucket->created);
     }
+
     free(req->bucket);
     free((char *)req->bucket_name);
-    free(req->handle);
     free(req);
 }
 
