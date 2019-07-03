@@ -12,8 +12,7 @@ static void create_bucket_request_worker(uv_work_t *work)
     create_bucket_request_t *req = work->data;
 
     // NB: create_bucket takes `char *` but `req->bucket_name` is `const char *`.
-    char *bucket_name = malloc(strlen(req->bucket_name));
-    strcpy(bucket_name, req->bucket_name);
+    char *bucket_name = strdup(req->bucket_name);
 
     BucketInfo *created_bucket = malloc(sizeof(BucketInfo));
     *created_bucket = create_bucket(req->project_ref, bucket_name, NULL, STORJ_LAST_ERROR);
@@ -62,10 +61,7 @@ static void get_buckets_request_worker(uv_work_t *work)
         strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
         bucket->created = created_str;
         bucket->decrypted = true;
-
-        char *bucket_name = malloc(strlen(bucket_item.name));
-        strcpy(bucket_name, bucket_item.name);
-        bucket->name = bucket_name;
+        bucket->name = strdup(bucket_item.name);
     }
 
     req->total_buckets = bucket_list.length;
@@ -76,8 +72,7 @@ static void get_bucket_request_worker(uv_work_t *work)
     get_bucket_request_t *req = work->data;
 
     // NB: get_bucket_info takes `char *` but `req->bucket_name` is `const char *`.
-    char *bucket_name = malloc(strlen(req->bucket_name));
-    strcpy(bucket_name, req->bucket_name);
+    char *bucket_name = strdup(req->bucket_name);
 
     BucketInfo bucket_info = get_bucket_info(req->project_ref, bucket_name, STORJ_LAST_ERROR);
     free(bucket_name);
@@ -95,8 +90,7 @@ static void get_bucket_request_worker(uv_work_t *work)
     req->bucket->created = created_str;
     req->bucket->decrypted = true;
 
-    bucket_name = malloc(strlen(bucket_info.name));
-    strcpy(bucket_name, bucket_info.name);
+    bucket_name = strdup(bucket_info.name);
     req->bucket->name = bucket_name;
     // TODO: do we need this?
 //    req->bucket->id = json_object_get_string(id);
@@ -153,8 +147,7 @@ static void delete_bucket_request_worker(uv_work_t *work)
     delete_bucket_request_t *req = work->data;
 
     // NB: delete_bucket takes `char *` but `req->bucket_name` is `const char *`.
-    char *bucket_name = malloc(strlen(req->bucket_name));
-    strcpy(bucket_name, req->bucket_name);
+    char *bucket_name = strdup(req->bucket_name);
 
     delete_bucket(req->project_ref, bucket_name, STORJ_LAST_ERROR);
     free(bucket_name);
@@ -837,8 +830,7 @@ STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
         return STORJ_MEMORY_ERROR;
     }
 
-    char *bucket_name = malloc(strlen(name));
-    strcpy(bucket_name, name);
+    char *bucket_name = strdup(name);
     work->data = get_bucket_request_new(env->project_ref, bucket_name, handle);
     if (!work->data) {
         return STORJ_MEMORY_ERROR;
