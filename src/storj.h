@@ -212,7 +212,7 @@ typedef struct {
  */
 typedef struct {
     ProjectRef project_ref;
-    char *bucket_name;
+    const char *bucket_name;
     storj_bucket_meta_t *bucket;
     struct json_object *response;
     int error_code;

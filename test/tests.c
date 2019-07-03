@@ -128,6 +128,8 @@ void check_create_bucket(uv_work_t *work_req, int status)
     assert(req->bucket->created != NULL);
     pass("storj_bridge_create_bucket");
 
+    // TODO: free this?
+//    free(req->bucket_name);
     free(req->bucket);
     free(req);
     free(work_req);

@@ -10,8 +10,8 @@ char **STORJ_LAST_ERROR = &_storj_last_error;
 static void create_bucket_request_worker(uv_work_t *work)
 {
     create_bucket_request_t *req = work->data;
-    int status_code = 0;
 
+    // NB: create_bucket takes `char *` but `req->bucket_name` is `const char *`.
     char *bucket_name = malloc(strlen(req->bucket_name));
     strcpy(bucket_name, req->bucket_name);
 
@@ -31,8 +31,6 @@ static void create_bucket_request_worker(uv_work_t *work)
     //  passed to `json_object_put` by api consumers.
     //  (see: https://svn.filezilla-project.org/svn/FileZilla3/trunk/src/storj/fzstorj.cpp)
     req->response = json_object_new_object();
-    req->status_code = status_code;
-
     req->bucket = malloc(sizeof(storj_bucket_meta_t));
     req->bucket->name = created_bucket->name;
     req->bucket_name = created_bucket->name;
@@ -77,7 +75,13 @@ static void get_bucket_request_worker(uv_work_t *work)
 {
     get_bucket_request_t *req = work->data;
 
-    BucketInfo bucket_info = get_bucket_info(req->project_ref, req->bucket_name, STORJ_LAST_ERROR);
+    // NB: get_bucket_info takes `char *` but `req->bucket_name` is `const char *`.
+    char *bucket_name = malloc(strlen(req->bucket_name));
+    strcpy(bucket_name, req->bucket_name);
+
+    BucketInfo bucket_info = get_bucket_info(req->project_ref, bucket_name, STORJ_LAST_ERROR);
+    free(bucket_name);
+
     if (strcmp("", *STORJ_LAST_ERROR) != 0) {
         req->error_code = 1;
         req->status_code = 1;
@@ -91,7 +95,7 @@ static void get_bucket_request_worker(uv_work_t *work)
     req->bucket->created = created_str;
     req->bucket->decrypted = true;
 
-    char *bucket_name = malloc(strlen(bucket_info.name));
+    bucket_name = malloc(strlen(bucket_info.name));
     strcpy(bucket_name, bucket_info.name);
     req->bucket->name = bucket_name;
     // TODO: do we need this?
@@ -649,6 +653,9 @@ static get_bucket_request_t *get_bucket_request_new(
 //    va_end(args);
 //}
 
+
+// TODO: use memlock for encryption and api keys
+// (see: https://github.com/storj/libstorj/blob/master/src/storj.c#L853)
 STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
                                  storj_encrypt_options_t *encrypt_options,
                                  storj_http_options_t *http_options,
@@ -685,6 +692,8 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
     return env;
 }
 
+// TODO: use memlock for encryption and api keys
+// (see: https://github.com/storj/libstorj/blob/master/src/storj.c#L999)
 STORJ_API int storj_destroy_env(storj_env_t *env)
 {
     close_project(env->project_ref, STORJ_LAST_ERROR);
