@@ -26,15 +26,17 @@ static void create_bucket_request_worker(uv_work_t *work)
     time_t created_time = (time_t)created_bucket->created;
     strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
 
+    req->bucket_name = created_bucket->name;
+    req->bucket = malloc(sizeof(storj_bucket_meta_t));
+    req->bucket->name = created_bucket->name;
+    // TODO: is it okay that these are the same pointer?
+    req->bucket->id = created_bucket->name;
+    req->bucket->created = created_str;
+    req->bucket->decrypted = true;
     // NB: this field is unused; it only exists for backwards compatibility as it is
     //  passed to `json_object_put` by api consumers.
     //  (see: https://svn.filezilla-project.org/svn/FileZilla3/trunk/src/storj/fzstorj.cpp)
     req->response = json_object_new_object();
-    req->bucket = malloc(sizeof(storj_bucket_meta_t));
-    req->bucket->name = created_bucket->name;
-    req->bucket_name = created_bucket->name;
-    req->bucket->created = created_str;
-    req->bucket->decrypted = true;
 }
 
 static void get_buckets_request_worker(uv_work_t *work)
@@ -53,6 +55,7 @@ static void get_buckets_request_worker(uv_work_t *work)
     BucketInfo bucket_item;
     for (int i = 0; i < bucket_list.length; i++) {
         bucket_item = bucket_list.items[i];
+        bucket_name = strdup(bucket_item.name);
 
         storj_bucket_meta_t *bucket = &req->buckets[i];
 
@@ -61,7 +64,8 @@ static void get_buckets_request_worker(uv_work_t *work)
         strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
         bucket->created = created_str;
         bucket->decrypted = true;
-        bucket->name = strdup(bucket_item.name);
+        bucket->name = bucket_name;
+        bucket->id = bucket_name;
     }
 
     req->total_buckets = bucket_list.length;
@@ -92,8 +96,7 @@ static void get_bucket_request_worker(uv_work_t *work)
 
     bucket_name = strdup(bucket_info.name);
     req->bucket->name = bucket_name;
-    // TODO: do we need this?
-//    req->bucket->id = json_object_get_string(id);
+    req->bucket->id = bucket_name;
 
 }
 
@@ -775,10 +778,13 @@ STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req)
     }
     if (req->buckets && req->total_buckets > 0) {
         for (int i = 0; i < req->total_buckets; i++) {
-            free((char *)req->buckets[i].name);
+            free((char *)req->buckets[i]->name);
+            free((char *)req->buckets[i]->id);
+            free((char *)req->buckets[i]->created);
         }
     }
     free(req->buckets);
+    free(req->handle);
     free(req);
 }
 
@@ -846,8 +852,12 @@ STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req)
     }
     if (req->bucket) {
         free((char *)req->bucket->name);
+        free((char *)req->bucket->id);
+        free((char *)req->bucket->created);
     }
     free(req->bucket);
+    free((char *)req->bucket_name);
+    free(req->handle);
     free(req);
 }
 
@@ -872,6 +882,22 @@ STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req)
 //    return uv_queue_work(env->loop, (uv_work_t*) work, get_bucket_id_request_worker, cb);
 //}
 //
+STORJ_API void storj_free_create_bucket_request(create_bucket_request_t *req)
+{
+    if (req->response) {
+        json_object_put(req->response);
+    }
+    if (req->bucket) {
+        free((char *)req->bucket->name);
+        free((char *)req->bucket->id);
+        free((char *)req->bucket->created);
+    }
+    free(req->bucket);
+    free((char *)req->bucket_name);
+    free(req->handle);
+    free(req);
+}
+
 //STORJ_API int storj_bridge_list_files(storj_env_t *env,
 //                            const char *id,
 //                            void *handle,

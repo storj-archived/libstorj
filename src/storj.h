@@ -771,6 +771,13 @@ STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
 STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req);
 
 /**
+ * @brief Will free all structs for create bucket request
+ *
+ * @param[in] req - The work request from storj_bridge_create_bucket callback
+ */
+STORJ_API void storj_free_create_bucket_request(create_bucket_request_t *req);
+
+/**
  * @brief Get the bucket id by name.
  *
  * @param[in] env The storj environment struct

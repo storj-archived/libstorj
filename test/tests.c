@@ -78,6 +78,7 @@ void check_get_bucket(uv_work_t *work_req, int status)
     assert(req->handle == NULL);
     assert(req->bucket != NULL);
     assert(strcmp(req->bucket->name, test_bucket_name) == 0);
+    assert(strcmp(req->bucket->id, test_bucket_name) == 0);
     assert(req->bucket->decrypted);
 
     pass("storj_bridge_get_bucket");
@@ -125,13 +126,11 @@ void check_create_bucket(uv_work_t *work_req, int status)
     assert(req->bucket != NULL);
     assert(strcmp(req->bucket_name, test_bucket_name) == 0);
     assert(strcmp(req->bucket->name, test_bucket_name) == 0);
+    assert(strcmp(req->bucket->id, test_bucket_name) == 0);
     assert(req->bucket->created != NULL);
     pass("storj_bridge_create_bucket");
 
-    // TODO: free this?
-//    free(req->bucket_name);
-    free(req->bucket);
-    free(req);
+    free_create_bucket_request(req);
     free(work_req);
 }
 
