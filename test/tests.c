@@ -97,6 +97,8 @@ void check_get_bucket_id(uv_work_t *work_req, int status)
     pass("storj_bridge_get_bucket_id");
 
     json_object_put(req->response);
+    free((char *)req->bucket_name);
+    free((char *)req->bucket_id);
     free(req);
     free(work_req);
 }

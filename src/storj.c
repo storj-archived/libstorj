@@ -108,51 +108,6 @@ static void get_bucket_request_worker(uv_work_t *work)
     free_bucket_info((BucketInfo *)&bucket_info);
 }
 
-//static void get_bucket_id_request_worker(uv_work_t *work)
-//{
-//    get_bucket_id_request_t *req = work->data;
-//    int status_code = 0;
-//
-//    // Encrypt the bucket name
-//    char *encrypted_bucket_name;
-//    if (encrypt_bucket_name(req->encrypt_options->mnemonic,
-//                            req->bucket_name,
-//                            &encrypted_bucket_name)) {
-//        req->error_code = STORJ_MEMORY_ERROR;
-//        goto cleanup;
-//    }
-//
-//    char *escaped_encrypted_bucket_name = str_replace("/", "%2F", encrypted_bucket_name);
-//    if (!escaped_encrypted_bucket_name) {
-//        req->error_code = STORJ_MEMORY_ERROR;
-//        goto cleanup;
-//    }
-//
-//    char *path = str_concat_many(2, "/bucket-ids/", escaped_encrypted_bucket_name);
-//    if (!path) {
-//        req->error_code = STORJ_MEMORY_ERROR;
-//        goto cleanup;
-//    }
-//
-//    req->error_code = fetch_json(req->http_options,
-//                                 req->options, "GET", path, NULL,
-//                                 true, &req->response, &status_code);
-//
-//    if (req->response != NULL) {
-//        struct json_object *id;
-//        json_object_object_get_ex(req->response, "id", &id);
-//        req->bucket_id = json_object_get_string(id);
-//    }
-//
-//    req->status_code = status_code;
-//
-//cleanup:
-//
-//    free(encrypted_bucket_name);
-//    free(escaped_encrypted_bucket_name);
-//    free(path);
-//}
-
 static void delete_bucket_request_worker(uv_work_t *work)
 {
     delete_bucket_request_t *req = work->data;
@@ -537,7 +492,6 @@ static get_bucket_request_t *get_bucket_request_new(
 }
 
 static get_bucket_id_request_t *get_bucket_id_request_new(
-        ProjectRef project_ref,
         const char *bucket_name,
         void *handle)
 {
@@ -546,10 +500,9 @@ static get_bucket_id_request_t *get_bucket_id_request_new(
         return NULL;
     }
 
-    req->project_ref = env->project_ref;
-    req->bucket_name = bucket_name;
+    req->bucket_name = strdup(bucket_name);
+    req->bucket_id = strdup(bucket_name);
     req->response = NULL;
-    req->bucket_id = NULL;
     req->error_code = 0;
     req->status_code = 0;
     req->handle = handle;
@@ -881,18 +834,20 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
                                          void *handle,
                                          uv_after_work_cb cb)
 {
+    int status_code = 0;
+
     uv_work_t *work = uv_work_new();
     if (!work) {
         return STORJ_MEMORY_ERROR;
     }
 
-    work->data = get_bucket_id_request_new(env->project_ref,
-                                           name, handle);
+    work->data = get_bucket_id_request_new(name, handle);
     if (!work->data) {
         return STORJ_MEMORY_ERROR;
     }
 
-    return uv_queue_work(env->loop, (uv_work_t*) work, get_bucket_id_request_worker, cb);
+    cb(work, status_code);
+    return status_code;
 }
 
 //STORJ_API int storj_bridge_list_files(storj_env_t *env,
