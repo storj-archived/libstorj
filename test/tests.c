@@ -1,6 +1,6 @@
 #include "storjtests.h"
 
-//char *folder;
+char *folder;
 int tests_ran = 0;
 int test_status = 0;
 const char *test_bucket_name = "test-bucket";
@@ -200,24 +200,24 @@ void check_delete_bucket(uv_work_t *work_req, int status)
 //        pass("storj_bridge_store_file (progress finished)");
 //    }
 //}
-//
-//void check_store_file(int error_code, storj_file_meta_t *file, void *handle)
-//{
-//    assert(handle == NULL);
-//    if (error_code == 0) {
-//        if (file && strcmp(file->id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
-//            pass("storj_bridge_store_file");
-//        } else {
-//            fail("storj_bridge_store_file(0)");
-//        }
-//    } else {
-//        fail("storj_bridge_store_file(1)");
-//        printf("\t\tERROR:   %s\n", storj_strerror(error_code));
-//    }
-//
-//    storj_free_uploaded_file_info(file);
-//}
-//
+
+void check_store_file(int error_code, storj_file_meta_t *file, void *handle)
+{
+    assert(handle == NULL);
+    if (error_code == 0) {
+        if (file && strcmp(file->id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
+            pass("storj_bridge_store_file");
+        } else {
+            fail("storj_bridge_store_file(0)");
+        }
+    } else {
+        fail("storj_bridge_store_file(1)");
+        printf("\t\tERROR:   %s\n", storj_strerror(error_code));
+    }
+
+    storj_free_uploaded_file_info(file);
+}
+
 //void check_store_file_cancel(int error_code, storj_file_meta_t *file, void *handle)
 //{
 //    assert(handle == NULL);
@@ -260,78 +260,76 @@ void check_delete_bucket(uv_work_t *work_req, int status)
 //    storj_free_get_file_info_request(req);
 //    free(work_req);
 //}
-//
-//int create_test_upload_file(char *filepath)
-//{
-//    FILE *fp;
-//    fp = fopen(filepath, "w+");
-//
-//    if (fp == NULL) {
-//        printf(KRED "Could not create upload file: %s\n" RESET, filepath);
-//        exit(0);
-//    }
-//
-//    int shard_size = 16777216;
-//    char *bytes = "abcdefghijklmn";
-//    for (int i = 0; i < strlen(bytes); i++) {
-//        char *page = calloc(shard_size + 1, sizeof(char));
-//        memset(page, bytes[i], shard_size);
-//        fputs(page, fp);
-//        free(page);
-//    }
-//
-//    fclose(fp);
-//    return 0;
-//}
-//
-//int test_upload()
-//{
-//
-//    // initialize event loop and environment
-//    storj_env_t *env = storj_init_env(&bridge_options,
-//                                      &encrypt_options,
-//                                      &http_options,
-//                                      &log_options);
-//    assert(env != NULL);
-//
-//    char *file_name = "storj-test-upload.data";
-//    int len = strlen(folder) + strlen(file_name);
-//    char *file = calloc(len + 1, sizeof(char));
-//    strcpy(file, folder);
-//    strcat(file, file_name);
-//    file[len] = '\0';
-//
-//    create_test_upload_file(file);
-//
-//    // upload file
-//    storj_upload_opts_t upload_opts = {
-//        .index = "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692",
-//        .bucket_id = "368be0816766b28fd5f43af5",
-//        .file_name = file_name,
-//        .fd = fopen(file, "r"),
-//        .rs = true
-//    };
-//
-//    storj_upload_state_t *state = storj_bridge_store_file(env,
-//                                                          &upload_opts,
-//                                                          NULL,
-//                                                          check_store_file_progress,
-//                                                          check_store_file);
-//    if (!state || state->error_status != 0) {
-//        return 1;
-//    }
-//
-//    // run all queued events
-//    if (uv_run(env->loop, UV_RUN_DEFAULT)) {
-//        return 1;
-//    }
-//
-//    free(file);
-//    storj_destroy_env(env);
-//
-//    return 0;
-//}
-//
+
+int create_test_upload_file(char *filepath)
+{
+    FILE *fp;
+    fp = fopen(filepath, "w+");
+
+    if (fp == NULL) {
+        printf(KRED "Could not create upload file: %s\n" RESET, filepath);
+        exit(0);
+    }
+
+    int shard_size = 16777216;
+    char *bytes = "abcdefghijklmn";
+    for (int i = 0; i < strlen(bytes); i++) {
+        char *page = calloc(shard_size + 1, sizeof(char));
+        memset(page, bytes[i], shard_size);
+        fputs(page, fp);
+        free(page);
+    }
+
+    fclose(fp);
+    return 0;
+}
+
+int test_upload()
+{
+
+    // initialize event loop and environment
+    storj_env_t *env = storj_init_env(&bridge_options,
+                                      &encrypt_options,
+                                      &http_options,
+                                      &log_options);
+    assert(env != NULL);
+
+    char *file_name = "storj-test-upload.data";
+    int len = strlen(folder) + strlen(file_name);
+    char *file = calloc(len + 1, sizeof(char));
+    strcpy(file, folder);
+    strcat(file, file_name);
+    file[len] = '\0';
+
+    create_test_upload_file(file);
+
+    // upload file
+    storj_upload_opts_t upload_opts = {
+        .bucket_id = test_bucket_name,
+        .file_name = file_name,
+        .file_path = file
+    };
+
+    storj_upload_state_t *state = storj_bridge_store_file(env,
+                                                          &upload_opts,
+                                                          NULL,
+                                                          check_store_file_progress,
+                                                          check_store_file);
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
+
+    // run all queued events
+    if (uv_run(env->loop, UV_RUN_DEFAULT)) {
+        return 1;
+    }
+
+    free(file);
+    storj_destroy_env(env);
+
+    return 0;
+}
+
 //int test_upload_cancel()
 //{
 //
@@ -581,12 +579,20 @@ int main(void)
     bridge_options.addr = getenv("SATELLITE_0_ADDR");
     bridge_options.apikey = getenv("GATEWAY_0_API_KEY");
 
+    // Make sure we have a tmp folder
+    folder = getenv("TMPDIR");
+
+    if (folder == 0) {
+        printf("You need to set $TMPDIR before running. (e.g. export TMPDIR=/tmp/)\n");
+        exit(1);
+    }
+
     printf("Test Suite: API\n");
     test_api();
     printf("\n");
 
-//    printf("Test Suite: Uploads\n");
-//    test_upload();
+    printf("Test Suite: Uploads\n");
+    test_upload();
 //    test_upload_cancel();
 //    printf("\n");
 //

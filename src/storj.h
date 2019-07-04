@@ -150,30 +150,21 @@ typedef struct storj_log_levels {
  * and the event loop for queuing work.
  */
 typedef struct storj_env {
-    storj_http_options_t *http_options;
     storj_bridge_options_t *bridge_options;
     storj_encrypt_options_t *encrypt_options;
     storj_log_options_t *log_options;
-    UplinkRef uplink_ref;
-    ProjectRef project_ref;
+
     uv_loop_t *loop;
     storj_log_levels_t *log;
-} storj_env_t;
 
-/** @brief A structure for queueing json request work
- */
-typedef struct {
+    /* New in V3 */
+    UplinkRef uplink_ref;
+    ProjectRef project_ref;
+
+    // TODO: delete?
+    /* unused in V3 */
     storj_http_options_t *http_options;
-    storj_bridge_options_t *options;
-    char *method;
-    char *path;
-    bool auth;
-    struct json_object *body;
-    struct json_object *response;
-    int error_code;
-    int status_code;
-    void *handle;
-} json_request_t;
+} storj_env_t;
 
 /** @brief A structure for that describes a bucket
  */
@@ -248,14 +239,10 @@ typedef struct {
 typedef struct {
     const char *created;
     const char *filename;
-    const char *mimetype;
-    const char *erasure;
     uint64_t size;
-    const char *hmac;
     const char *id;
     const char *bucket_id;
     bool decrypted;
-    const char *index;
 } storj_file_meta_t;
 
 /** @brief A structure for queueing list files request work
@@ -354,14 +341,21 @@ typedef void (*storj_finished_upload_cb)(int error_status, storj_file_meta_t *fi
 /** @brief A structure for file upload options
  */
 typedef struct {
+    const char *bucket_id;
+    const char *file_name;
+
+    /* New in V3 */
+   const char *encryption_ctx;
+   const char *file_name;
+
+    /* NB: unused in V3 */
+    FILE *fd;
+
+    const char *index;
     int prepare_frame_limit;
     int push_frame_limit;
     int push_shard_limit;
     bool rs;
-    const char *index;
-    const char *bucket_id;
-    const char *file_name;
-    FILE *fd;
 } storj_upload_opts_t;
 
 /** @brief A structure that keeps state between multiple worker threads,
@@ -413,14 +407,31 @@ typedef struct {
 
 typedef struct {
     storj_env_t *env;
-    uint32_t shard_concurrency;
-    const char *index;
     const char *file_name;
-    storj_file_meta_t *info;
     const char *encrypted_file_name;
+    storj_file_meta_t *info;
     FILE *original_file;
     uint64_t file_size;
     const char *bucket_id;
+
+    uint8_t *encryption_key;
+
+    bool completed_upload;
+    bool canceled;
+
+    bool progress_finished;
+
+    storj_finished_upload_cb finished_cb;
+    int error_status;
+    storj_log_levels_t *log;
+    void *handle;
+
+    // TODO: delete?
+    /* unused in V3 */
+    storj_progress_cb progress_cb;
+
+    uint32_t shard_concurrency;
+    const char *index;
     char *bucket_key;
     uint32_t completed_shards;
     uint32_t total_shards;
@@ -432,10 +443,8 @@ typedef struct {
     char *exclude;
     char *frame_id;
     char *hmac_id;
-    uint8_t *encryption_key;
     uint8_t *encryption_ctr;
 
-    // TODO: change this to opts or env
     bool rs;
     bool awaiting_parity_shards;
     char *parity_file_path;
@@ -445,15 +454,11 @@ typedef struct {
     bool creating_encrypted_file;
 
     bool requesting_frame;
-    bool completed_upload;
     bool creating_bucket_entry;
     bool received_all_pointers;
     bool final_callback_called;
-    bool canceled;
     bool bucket_verified;
     bool file_verified;
-
-    bool progress_finished;
 
     int push_shard_limit;
     int push_frame_limit;
@@ -465,11 +470,6 @@ typedef struct {
     int file_verify_count;
     int create_encrypted_file_count;
 
-    storj_progress_cb progress_cb;
-    storj_finished_upload_cb finished_cb;
-    int error_status;
-    storj_log_levels_t *log;
-    void *handle;
     int pending_work_count;
 } storj_upload_state_t;
 
