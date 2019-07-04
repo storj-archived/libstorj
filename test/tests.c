@@ -87,20 +87,20 @@ void check_get_bucket(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-//void check_get_bucket_id(uv_work_t *work_req, int status)
-//{
-//    assert(status == 0);
-//    get_bucket_id_request_t *req = work_req->data;
-//    assert(req->handle == NULL);
-//    assert(strcmp(req->bucket_id, "368be0816766b28fd5f43af5") == 0);
-//
-//    pass("storj_bridge_get_bucket_id");
-//
-//    json_object_put(req->response);
-//    free(req);
-//    free(work_req);
-//}
-//
+void check_get_bucket_id(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_bucket_id_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(strcmp(req->bucket_id, test_bucket_name) == 0);
+
+    pass("storj_bridge_get_bucket_id");
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
 //void check_get_buckets_badauth(uv_work_t *work_req, int status)
 //{
 //    assert(status == 0);
@@ -812,19 +812,18 @@ int test_api()
     assert(status == 0);
     assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
 
-//    char *bucket_id = "368be0816766b28fd5f43af5";
-
     // get bucket
     status = storj_bridge_get_bucket(env, test_bucket_name, NULL, check_get_bucket);
     assert(status == 0);
     assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
 
-//    // get bucket id
-//    status = storj_bridge_get_bucket_id(env, "test", NULL, check_get_bucket_id);
-//    assert(status == 0);
+    // get bucket id
+    // NB: bucket id isn't a thing anymore; replacing id with the name.
+    //      Additionally, buckets are always decrypted.
+    status = storj_bridge_get_bucket_id(env, test_bucket_name, NULL, check_get_bucket_id);
+    assert(status == 0);
 
     // delete a bucket
-    // TODO check for successful status code, response has object
     status = storj_bridge_delete_bucket(env, test_bucket_name,
                                         NULL, check_delete_bucket);
     assert(status == 0);

@@ -223,9 +223,7 @@ typedef struct {
 /** @brief A structure for queueing get bucket id request work
  */
 typedef struct {
-    storj_http_options_t *http_options;
-    storj_encrypt_options_t *encrypt_options;
-    storj_bridge_options_t *options;
+    ProjectRef project_ref;
     const char *bucket_name;
     struct json_object *response;
     const char *bucket_id;
