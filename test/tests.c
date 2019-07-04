@@ -790,7 +790,7 @@ int test_api()
     };
 
     storj_encrypt_options_t encrypt_options = {
-        .key = { 0x00 }
+        .key = { 0x31, 0x32, 0x33, 0x61, 0x33, 0x32, 0x31 }
     };
 
     // initialize environment
