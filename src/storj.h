@@ -351,33 +351,6 @@ typedef void (*storj_finished_download_cb)(int status, FILE *fd, void *handle);
  */
 typedef void (*storj_finished_upload_cb)(int error_status, storj_file_meta_t *file, void *handle);
 
-/** @brief A structure that represents a pointer to a shard
- *
- * A shard is an encrypted piece of a file, a pointer holds all necessary
- * information to retrieve a shard from a farmer, including the IP address
- * and port of the farmer, as well as a token indicating a transfer has been
- * authorized. Other necessary information such as the expected hash of the
- * data, and the index position in the file is also included.
- *
- * The data can be replaced with new farmer contact, in case of failure, and the
- * total number of replacements can be tracked.
- */
-typedef struct {
-    unsigned int replace_count;
-    char *token;
-    char *shard_hash;
-    uint32_t index;
-    int status;
-    uint64_t size;
-    bool parity;
-    uint64_t downloaded_size;
-    char *farmer_id;
-    char *farmer_address;
-    int farmer_port;
-    storj_exchange_report_t *report;
-    uv_work_t *work;
-} storj_pointer_t;
-
 /** @brief A structure for file upload options
  */
 typedef struct {
@@ -419,7 +392,6 @@ typedef struct {
     int download_max_concurrency;
     uint32_t completed_shards;
     uint32_t resolving_shards;
-    storj_pointer_t *pointers;
     char *excluded_farmer_ids;
     uint32_t total_pointers;
     uint32_t total_parity_pointers;
@@ -438,39 +410,6 @@ typedef struct {
     storj_log_levels_t *log;
     void *handle;
 } storj_download_state_t;
-
-
-typedef struct {
-    char *hash;
-    uint8_t *challenges[STORJ_SHARD_CHALLENGES][32];
-    char *challenges_as_str[STORJ_SHARD_CHALLENGES][64 + 1];
-    // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
-    char *tree[2 * STORJ_SHARD_CHALLENGES - 1][20 * 2 + 1];
-    int index;
-    bool is_parity;
-    uint64_t size;
-} shard_meta_t;
-
-typedef struct {
-    char *token;
-    char *farmer_user_agent;
-    char *farmer_protocol;
-    char *farmer_address;
-    char *farmer_port;
-    char *farmer_node_id;
-} farmer_pointer_t;
-
-typedef struct {
-    int progress;
-    int push_frame_request_count;
-    int push_shard_request_count;
-    int index;
-    farmer_pointer_t *pointer;
-    shard_meta_t *meta;
-    storj_exchange_report_t *report;
-    uint64_t uploaded_size;
-    uv_work_t *work;
-} shard_tracker_t;
 
 typedef struct {
     storj_env_t *env;
@@ -531,7 +470,6 @@ typedef struct {
     int error_status;
     storj_log_levels_t *log;
     void *handle;
-    shard_tracker_t *shard;
     int pending_work_count;
 } storj_upload_state_t;
 
@@ -567,111 +505,11 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
 STORJ_API int storj_destroy_env(storj_env_t *env);
 
 /**
- * @brief Will encrypt and write options to disk
- *
- * This will encrypt bridge and encryption options to disk using a key
- * derivation function on a passphrase.
- *
- * @param[in] filepath - The file path to save the options
- * @param[in] passphrase - Used to encrypt options to disk
- * @param[in] bridge_user - The bridge username
- * @param[in] bridge_pass - The bridge password
- * @param[in] mnemonic - The file encryption mnemonic
- * @return A non-zero value on error, zero on success.
- */
-STORJ_API int storj_encrypt_write_auth(const char *filepath,
-                                       const char *passhrase,
-                                       const char *bridge_user,
-                                       const char *bridge_pass,
-                                       const char *mnemonic);
-
-
-/**
- * @brief Will encrypt options to disk
- *
- * This will encrypt bridge and encryption using a key
- * derivation function on a passphrase.
- *
- * @param[in] passphrase - Used to encrypt options to disk
- * @param[in] bridge_user - The bridge username
- * @param[in] bridge_pass - The bridge password
- * @param[in] mnemonic - The file encryption mnemonic
- * @param[out] buffer - The destination buffer
- * @return A non-zero value on error, zero on success.
- */
-STORJ_API int storj_encrypt_auth(const char *passhrase,
-                                 const char *bridge_user,
-                                 const char *bridge_pass,
-                                 const char *mnemonic,
-                                 char **buffer);
-
-/**
- * @brief Will read and decrypt options from disk
- *
- * This will decrypt bridge and encryption options from disk from
- * the passphrase.
- *
- * @param[in] filepath - The file path to read the options
- * @param[in] passphrase - Used to encrypt options to disk
- * @param[out] bridge_user - The bridge username
- * @param[out] bridge_pass - The bridge password
- * @param[out] mnemonic - The file encryption mnemonic
- * @return A non-zero value on error, zero on success.
- */
- STORJ_API int storj_decrypt_read_auth(const char *filepath,
-                                       const char *passphrase,
-                                       char **bridge_user,
-                                       char **bridge_pass,
-                                       char **mnemonic);
-
-/**
- * @brief Will decrypt options
- *
- * This will decrypt bridge and encryption options using key derived
- * from a passphrase.
- *
- * @param[in] buffer - The encrypted buffer
- * @param[in] passphrase - Used to encrypt options to disk
- * @param[out] bridge_user - The bridge username
- * @param[out] bridge_pass - The bridge password
- * @param[out] mnemonic - The file encryption mnemonic
- * @return A non-zero value on error, zero on success.
- */
-STORJ_API int storj_decrypt_auth(const char *buffer,
-                                 const char *passphrase,
-                                 char **bridge_user,
-                                 char **bridge_pass,
-                                 char **mnemonic);
-
-/**
  * @brief Will get the current unix timestamp in milliseconds
  *
  * @return A unix timestamp
  */
 STORJ_API uint64_t storj_util_timestamp();
-
-/**
- * @brief Will generate a new random mnemonic
- *
- * This will generate a new random mnemonic with 128 to 256 bits
- * of entropy.
- *
- * @param[in] strength - The bits of entropy
- * @param[out] buffer - The destination of the mnemonic
- * @return A non-zero value on error, zero on success.
- */
-STORJ_API int storj_mnemonic_generate(int strength, char **buffer);
-
-/**
- * @brief Will check that a mnemonic is valid
- *
- * This will check that a mnemonic has been entered correctly by verifying
- * the checksum, and that words are a part of the list.
- *
- * @param[in] strength - The bits of entropy
- * @return Will return true on success and false failure
- */
-STORJ_API bool storj_mnemonic_check(const char *mnemonic);
 
 /**
  * @brief Get the error message for an error code
@@ -1025,31 +863,6 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
                                                             void *handle,
                                                             storj_progress_cb progress_cb,
                                                             storj_finished_download_cb finished_cb);
-
-/**
- * @brief Register a user
- *
- * @param[in] env The storj environment struct
- * @param[in] email the user's email
- * @param[in] password the user's password
- * @param[in] handle A pointer that will be available in the callback
- * @param[in] cb A function called with response when complete
- * @return A non-zero error value on failure and 0 on success.
- */
-STORJ_API int storj_bridge_register(storj_env_t *env,
-                                    const char *email,
-                                    const char *password,
-                                    void *handle,
-                                    uv_after_work_cb cb);
-
-static inline char separator()
-{
-#ifdef _WIN32
-    return '\\';
-#else
-    return '/';
-#endif
-}
 
 #ifdef __cplusplus
 }

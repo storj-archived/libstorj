@@ -5,36 +5,15 @@ int tests_ran = 0;
 int test_status = 0;
 const char *test_bucket_name = "test-bucket";
 
-// setup bridge options to point to mock server
-//storj_bridge_options_t bridge_options = {
-//    getenv("SATELLITE_0_ADDR"),
-//    getenv("GATEWAY_0_API_KEY")
-//};
+storj_bridge_options_t bridge_options;
 
-//// setup bridge options to point to mock server (with incorrect auth)
-//storj_bridge_options_t bridge_options_bad = {
-//    .addr  = getenv("SATELLITE_0_ADDR"),
-//    .apikey  = "bad apikey"
-//};
-//
-//storj_encrypt_options_t encrypt_options = {
-//    .key = {}
-//};
+storj_encrypt_options_t encrypt_options = {
+    .key = { 0x31, 0x32, 0x33, 0x61, 0x33, 0x32, 0x31 }
+};
 
-//storj_encrypt_options_t encrypt_options_null_mnemonic = {
-//    .key = {}
-//};
-//
-//storj_http_options_t http_options = {
-//    .user_agent = "storj-test",
-//    .low_speed_limit = 0,
-//    .low_speed_time = 0,
-//    .timeout = 0
-//};
-//
-//storj_log_options_t log_options = {
-//    .level = 0
-//};
+storj_log_options_t log_options = {
+    .level = 0
+};
 
 void fail(char *msg)
 {
@@ -528,15 +507,6 @@ void check_delete_bucket(uv_work_t *work_req, int status)
 
 int test_api()
 {
-    storj_bridge_options_t bridge_options = {
-        .addr = getenv("SATELLITE_0_ADDR"),
-        .apikey = getenv("GATEWAY_0_API_KEY")
-    };
-
-    storj_encrypt_options_t encrypt_options = {
-        .key = { 0x31, 0x32, 0x33, 0x61, 0x33, 0x32, 0x31 }
-    };
-
     // initialize environment
     storj_env_t *env = storj_init_env(&bridge_options,
                                       &encrypt_options,
@@ -607,6 +577,10 @@ int test_api()
 
 int main(void)
 {
+    // setup bridge options to point to testplanet
+    bridge_options.addr = getenv("SATELLITE_0_ADDR");
+    bridge_options.apikey = getenv("GATEWAY_0_API_KEY");
+
     printf("Test Suite: API\n");
     test_api();
     printf("\n");
