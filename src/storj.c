@@ -439,7 +439,7 @@ static create_bucket_request_t *create_bucket_request_new(
         return NULL;
     }
 
-    req->bucket_name = bucket_name;
+    req->bucket_name = strdup(bucket_name);
     req->project_ref = project_ref;
     req->response = NULL;
     req->bucket = NULL;
@@ -481,7 +481,7 @@ static get_bucket_request_t *get_bucket_request_new(
     }
 
     req->project_ref = project_ref;
-    req->bucket_name = bucket_name;
+    req->bucket_name = strdup(bucket_name);
     req->response = NULL;
     req->bucket = NULL;
     req->error_code = 0;
@@ -521,7 +521,7 @@ static delete_bucket_request_t *delete_bucket_request_new(
     }
 
     req->project_ref = project_ref;
-    req->bucket_name = bucket_name;
+    req->bucket_name = strdup(bucket_name);
     req->response = NULL;
     req->error_code = 0;
     req->status_code = 0;
