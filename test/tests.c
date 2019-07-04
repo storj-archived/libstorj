@@ -134,8 +134,7 @@ void check_delete_bucket(uv_work_t *work_req, int status)
 
     pass("storj_bridge_delete_bucket");
 
-    // TODO: figure out why this causes a segfault.
-//    free((char *)req->bucket_name);
+    free((char *)req->bucket_name);
     free(req);
     free(work_req);
 }
@@ -569,6 +568,7 @@ int test_api()
     //      Additionally, buckets are always decrypted.
     status = storj_bridge_get_bucket_id(env, test_bucket_name, NULL, check_get_bucket_id);
     assert(status == 0);
+    assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
 
     // delete a bucket
     status = storj_bridge_delete_bucket(env, test_bucket_name,
@@ -600,10 +600,8 @@ int test_api()
 //    status = storj_bridge_get_file_info(env, bucket_id,
 //                                        file_id, NULL, check_file_info);
 //    assert(status == 0);
-//
 
     storj_destroy_env(env);
-
     return 0;
 }
 
