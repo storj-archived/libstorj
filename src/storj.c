@@ -527,68 +527,68 @@ static delete_bucket_request_t *delete_bucket_request_new(
 //
 //    return req;
 //}
-//
-//static void default_logger(const char *message,
-//                           int level,
-//                           void *handle)
-//{
-//    puts(message);
-//}
-//
-//static void log_formatter(storj_log_options_t *options,
-//                          void *handle,
-//                          int level,
-//                          const char *format,
-//                          va_list args)
-//{
-//    va_list args_cpy;
-//    va_copy(args_cpy, args);
-//    int length = vsnprintf(0, 0, format, args_cpy);
-//    va_end(args_cpy);
-//
-//    if (length > 0) {
-//        char message[length + 1];
-//        if (vsnprintf(message, length + 1, format, args)) {
-//            options->logger(message, level, handle);
-//        }
-//    }
-//}
-//
-//static void log_formatter_debug(storj_log_options_t *options, void *handle,
-//                                const char *format, ...)
-//{
-//    va_list args;
-//    va_start(args, format);
-//    log_formatter(options, handle, 4, format, args);
-//    va_end(args);
-//}
-//
-//static void log_formatter_info(storj_log_options_t *options, void *handle,
-//                               const char *format, ...)
-//{
-//    va_list args;
-//    va_start(args, format);
-//    log_formatter(options, handle, 3, format, args);
-//    va_end(args);
-//}
-//
-//static void log_formatter_warn(storj_log_options_t *options, void *handle,
-//                               const char *format, ...)
-//{
-//    va_list args;
-//    va_start(args, format);
-//    log_formatter(options, handle, 2, format, args);
-//    va_end(args);
-//}
-//
-//static void log_formatter_error(storj_log_options_t *options, void *handle,
-//                                const char *format, ...)
-//{
-//    va_list args;
-//    va_start(args, format);
-//    log_formatter(options, handle, 1, format, args);
-//    va_end(args);
-//}
+
+static void default_logger(const char *message,
+                           int level,
+                           void *handle)
+{
+    puts(message);
+}
+
+static void log_formatter(storj_log_options_t *options,
+                          void *handle,
+                          int level,
+                          const char *format,
+                          va_list args)
+{
+    va_list args_cpy;
+    va_copy(args_cpy, args);
+    int length = vsnprintf(0, 0, format, args_cpy);
+    va_end(args_cpy);
+
+    if (length > 0) {
+        char message[length + 1];
+        if (vsnprintf(message, length + 1, format, args)) {
+            options->logger(message, level, handle);
+        }
+    }
+}
+
+static void log_formatter_debug(storj_log_options_t *options, void *handle,
+                                const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    log_formatter(options, handle, 4, format, args);
+    va_end(args);
+}
+
+static void log_formatter_info(storj_log_options_t *options, void *handle,
+                               const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    log_formatter(options, handle, 3, format, args);
+    va_end(args);
+}
+
+static void log_formatter_warn(storj_log_options_t *options, void *handle,
+                               const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    log_formatter(options, handle, 2, format, args);
+    va_end(args);
+}
+
+static void log_formatter_error(storj_log_options_t *options, void *handle,
+                                const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    log_formatter(options, handle, 1, format, args);
+    va_end(args);
+}
 
 
 // TODO: use memlock for encryption and api keys
