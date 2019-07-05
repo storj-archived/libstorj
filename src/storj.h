@@ -172,6 +172,7 @@ typedef struct storj_env {
     storj_log_options_t *log_options;
 
     uv_loop_t *loop;
+    uv_async_t async;
     storj_log_levels_t *log;
 
     /* New in V3 */

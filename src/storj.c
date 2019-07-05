@@ -1,6 +1,5 @@
 #include <time.h>
 #include "storj.h"
-#include "http.h"
 #include "utils.h"
 #include "crypto.h"
 
