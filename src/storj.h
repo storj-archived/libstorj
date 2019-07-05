@@ -267,14 +267,8 @@ typedef struct {
 /** @brief A structure for queueing list files request work
  */
 typedef struct {
-    storj_http_options_t *http_options;
-    storj_encrypt_options_t *encrypt_options;
-    storj_bridge_options_t *options;
+    ProjectRef project_ref;
     const char *bucket_id;
-    char *method;
-    char *path;
-    bool auth;
-    struct json_object *body;
     struct json_object *response;
     storj_file_meta_t *files;
     uint32_t total_files;

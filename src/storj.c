@@ -106,94 +106,36 @@ static void delete_bucket_request_worker(uv_work_t *work)
     req->status_code = 204;
 }
 
-//static void list_files_request_worker(uv_work_t *work)
-//{
-//    list_files_request_t *req = work->data;
-//    int status_code = 0;
-//
-//    req->error_code = fetch_json(req->http_options,
-//                                 req->options, req->method, req->path, req->body,
-//                                 req->auth, &req->response, &status_code);
-//
-//    req->status_code = status_code;
-//
-//    int num_files = 0;
-//    if (req->response != NULL &&
-//        json_object_is_type(req->response, json_type_array)) {
-//        num_files = json_object_array_length(req->response);
-//    }
-//
-//    if (num_files > 0) {
-//        req->files = malloc(sizeof(storj_file_meta_t) * num_files);
-//        req->total_files = num_files;
-//    }
-//
-//    struct json_object *file;
-//    struct json_object *filename;
-//    struct json_object *mimetype;
-//    struct json_object *size;
-//    struct json_object *id;
-//    struct json_object *bucket_id;
-//    struct json_object *created;
-//    struct json_object *hmac;
-//    struct json_object *hmac_value;
-//    struct json_object *erasure;
-//    struct json_object *erasure_type;
-//    struct json_object *index;
-//
-//    for (int i = 0; i < num_files; i++) {
-//        file = json_object_array_get_idx(req->response, i);
-//
-//        json_object_object_get_ex(file, "filename", &filename);
-//        json_object_object_get_ex(file, "mimetype", &mimetype);
-//        json_object_object_get_ex(file, "size", &size);
-//        json_object_object_get_ex(file, "id", &id);
-//        json_object_object_get_ex(file, "bucket", &bucket_id);
-//        json_object_object_get_ex(file, "created", &created);
-//        json_object_object_get_ex(file, "hmac", &hmac);
-//        json_object_object_get_ex(hmac, "value", &hmac_value);
-//        json_object_object_get_ex(file, "erasure", &erasure);
-//        json_object_object_get_ex(erasure, "type", &erasure_type);
-//        json_object_object_get_ex(file, "index", &index);
-//
-//        storj_file_meta_t *file = &req->files[i];
-//
-//        file->created = json_object_get_string(created);
-//        file->mimetype = json_object_get_string(mimetype);
-//        file->size = json_object_get_int64(size);
-//        file->erasure = json_object_get_string(erasure_type);
-//        file->index = json_object_get_string(index);
-//        file->hmac = json_object_get_string(hmac_value);
-//        file->id = json_object_get_string(id);
-//        file->bucket_id = json_object_get_string(bucket_id);
-//        file->decrypted = false;
-//        file->filename = NULL;
-//
-//        // Attempt to decrypt the filename, otherwise
-//        // we will default the filename to the encrypted text.
-//        // The decrypted flag will be set to indicate the status
-//        // of decryption for alternative display.
-//        const char *encrypted_file_name = json_object_get_string(filename);
-//        if (!encrypted_file_name) {
-//            continue;
-//        }
-//        char *decrypted_file_name;
-//        int error_status = decrypt_file_name(req->encrypt_options->mnemonic,
-//                                             req->bucket_id,
-//                                             encrypted_file_name,
-//                                             &decrypted_file_name);
-//        if (!error_status) {
-//            file->decrypted = true;
-//            file->filename = decrypted_file_name;
-//        } else if (error_status == STORJ_META_DECRYPTION_ERROR) {
-//            file->decrypted = false;
-//            file->filename = strdup(encrypted_file_name);
-//        } else {
-//            req->error_code = STORJ_MEMORY_ERROR;
-//        }
-//    }
-//}
-//
+static void list_files_request_worker(uv_work_t *work)
+{
+    list_files_request_t *req = work->data;
+
+    BucketRef bucket_ref = open_bucket(req->project_ref, STORJ_LAST_ERROR);
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
+
+    ObjectList object_list = list_objects(bucket_ref, STORJ_LAST_ERROR);
+
+    if (num_files > 0) {
+        req->files = malloc(sizeof(storj_file_meta_t) * num_files);
+        req->total_files = num_files;
+    }
+
+    for (int i = 0; i < num_files; i++) {
+        storj_file_meta_t *file = &req->files[i];
+
+        file->created = json_object_get_string(created);
+        file->mimetype = json_object_get_string(mimetype);
+        file->size = json_object_get_int64(size);
+        file->erasure = json_object_get_string(erasure_type);
+        file->index = json_object_get_string(index);
+        file->hmac = json_object_get_string(hmac_value);
+        file->id = json_object_get_string(id);
+        file->bucket_id = json_object_get_string(bucket_id);
+        file->decrypted = false;
+        file->filename = NULL;
+    }
+}
+
 //static void get_file_info_request_worker(uv_work_t *work)
 //{
 //    get_file_info_request_t *req = work->data;
@@ -316,40 +258,29 @@ static uv_work_t *uv_work_new()
     return work;
 }
 
-//static list_files_request_t *list_files_request_new(
-//    storj_http_options_t *http_options,
-//    storj_bridge_options_t *options,
-//    storj_encrypt_options_t *encrypt_options,
-//    const char *bucket_id,
-//    char *method,
-//    char *path,
-//    struct json_object *request_body,
-//    bool auth,
-//    void *handle)
-//{
-//    list_files_request_t *req = malloc(sizeof(list_files_request_t));
-//    if (!req) {
-//        return NULL;
-//    }
-//
-//    req->http_options = http_options;
-//    req->options = options;
-//    req->encrypt_options = encrypt_options;
-//    req->bucket_id = bucket_id;
-//    req->method = method;
-//    req->path = path;
-//    req->auth = auth;
-//    req->body = request_body;
-//    req->response = NULL;
-//    req->files = NULL;
-//    req->total_files = 0;
-//    req->error_code = 0;
-//    req->status_code = 0;
-//    req->handle = handle;
-//
-//    return req;
-//}
-//
+static list_files_request_t *list_files_request_new(
+    ProjectRef project_ref,
+    const char *bucket_id,
+    struct json_object *request_body,
+    void *handle)
+{
+    list_files_request_t *req = malloc(sizeof(list_files_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->project_ref = project_ref;
+    req->bucket_id = bucket_id;
+    req->response = NULL;
+    req->files = NULL;
+    req->total_files = 0;
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
+
 //static get_file_info_request_t *get_file_info_request_new(
 //    storj_http_options_t *http_options,
 //    storj_bridge_options_t *options,
@@ -781,49 +712,41 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
     return status_code;
 }
 
-//STORJ_API int storj_bridge_list_files(storj_env_t *env,
-//                            const char *id,
-//                            void *handle,
-//                            uv_after_work_cb cb)
-//{
-//    char *path = str_concat_many(3, "/buckets/", id, "/files");
-//    if (!path) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    uv_work_t *work = uv_work_new();
-//    if (!work) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//    work->data = list_files_request_new(env->http_options,
-//                                        env->bridge_options,
-//                                        env->encrypt_options,
-//                                        id, "GET", path,
-//                                        NULL, true, handle);
-//
-//    if (!work->data) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    return uv_queue_work(env->loop, (uv_work_t*) work,
-//                         list_files_request_worker, cb);
-//}
-//
-//STORJ_API void storj_free_list_files_request(list_files_request_t *req)
-//{
-//    if (req->response) {
-//        json_object_put(req->response);
-//    }
-//    free(req->path);
-//    if (req->files && req->total_files > 0) {
-//        for (int i = 0; i < req->total_files; i++) {
-//            free((char *)req->files[i].filename);
-//        }
-//    }
-//    free(req->files);
-//    free(req);
-//}
-//
+STORJ_API int storj_bridge_list_files(storj_env_t *env,
+                            const char *id,
+                            void *handle,
+                            uv_after_work_cb cb)
+{
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
+    work->data = list_files_request_new(env->project_ref,
+                                        id, NULL, true, handle);
+
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    return uv_queue_work(env->loop, (uv_work_t*) work,
+                         list_files_request_worker, cb);
+}
+
+STORJ_API void storj_free_list_files_request(list_files_request_t *req)
+{
+    if (req->response) {
+        json_object_put(req->response);
+    }
+    free(req->path);
+    if (req->files && req->total_files > 0) {
+        for (int i = 0; i < req->total_files; i++) {
+            free((char *)req->files[i].filename);
+        }
+    }
+    free(req->files);
+    free(req);
+}
+
 //STORJ_API int storj_bridge_delete_file(storj_env_t *env,
 //                             const char *bucket_id,
 //                             const char *file_id,
@@ -896,16 +819,16 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
 //
 //    return uv_queue_work(env->loop, (uv_work_t*) work, get_file_id_request_worker, cb);
 //}
-//
-//STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req)
-//{
-//    if (req->response) {
-//        json_object_put(req->response);
-//    }
-//    free(req->path);
-//    if (req->file) {
-//        free((char *)req->file->filename);
-//    }
-//    free(req->file);
-//    free(req);
-//}
+
+STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req)
+{
+    if (req->response) {
+        json_object_put(req->response);
+    }
+    free(req->path);
+    if (req->file) {
+        free((char *)req->file->filename);
+    }
+    free(req->file);
+    free(req);
+}

@@ -12,6 +12,7 @@ storj_encrypt_options_t encrypt_options = {
     .key = { 0x31, 0x32, 0x33, 0x61, 0x33, 0x32, 0x31 }
 };
 
+// TODO: repair logger
 storj_log_options_t log_options = {
     .level = 0
 };
@@ -196,6 +197,9 @@ void check_store_file_progress(double progress,
                                uint64_t total_bytes,
                                void *handle)
 {
+    /* TODO: probably fix this; should be called more than once
+       (assert that  subsequent calls only increase progress and
+       uploaded_bytes, and that total_bytes doesn't change) */
     assert(handle == NULL);
     if (progress == (double)1) {
         pass("storj_bridge_store_file (progress finished)");
@@ -246,21 +250,21 @@ void check_store_file(int error_code, storj_file_meta_t *file, void *handle)
 //    free(req);
 //    free(work_req);
 //}
-//
-//void check_file_info(uv_work_t *work_req, int status)
-//{
-//    assert(status == 0);
-//    get_file_info_request_t *req = work_req->data;
-//    assert(req->handle == NULL);
-//    assert(req->file);
-//    assert(strcmp(req->file->filename, "storj-test-download.data") == 0);
-//    assert(strcmp(req->file->mimetype, "video/ogg") == 0);
-//
-//    pass("storj_bridge_get_file_info");
-//
-//    storj_free_get_file_info_request(req);
-//    free(work_req);
-//}
+
+void check_file_info(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_file_info_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(req->file);
+    assert(strcmp(req->file->filename, "storj-test-download.data") == 0);
+    assert(strcmp(req->file->mimetype, "video/ogg") == 0);
+
+    pass("storj_bridge_get_file_info");
+
+    storj_free_get_file_info_request(req);
+    free(work_req);
+}
 
 int create_test_upload_file(char *filepath)
 {
@@ -309,6 +313,8 @@ int test_upload()
     storj_upload_opts_t upload_opts = {
         .bucket_id = test_bucket_name,
         .file_name = file_name,
+        .fd = fopen(file, "r"),
+        .encryption_access = encryption_access
     };
 
     storj_upload_state_t *state = storj_bridge_store_file(env,
@@ -545,11 +551,11 @@ int test_api()
     assert(status == 0);
     assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
 
-//    // list files in a bucket
-//    status = storj_bridge_list_files(env, bucket_id, NULL,
-//                                     check_list_files);
-//    assert(status == 0);
-//
+    // list files in a bucket
+    status = storj_bridge_list_files(env, test_bucket_name,
+                                     NULL, check_list_files);
+    assert(status == 0);
+
 //    // get file id
 //    status = storj_bridge_get_file_id(env, bucket_id, "storj-test-download.data",
 //                                      NULL, check_get_file_id);
@@ -590,10 +596,10 @@ int main(void)
 
     printf("Test Suite: API\n");
     test_api();
-    printf("\n");
+//    printf("\n");
 
-    printf("Test Suite: Uploads\n");
-    test_upload();
+//    printf("Test Suite: Uploads\n");
+//    test_upload();
 //    test_upload_cancel();
 //    printf("\n");
 //

@@ -1903,6 +1903,8 @@ static void queue_get_file_info(uv_work_t *work, int status)
     }
     // TODO: call get_file_info
     // TODO: set state->info fields
+
+//    get_file_info()
 }
 
 static void store_file(uv_work_t *work)
@@ -1956,8 +1958,9 @@ static void begin_work_queue(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
 
+    // TODO: fix segfault
     // Load progress bar
-    state->progress_cb(0, 0, 0, state->handle);
+//    state->progress_cb(0, 0, 0, state->handle);
 
     // TODO: do we care about status before this point?
     // TODO: will calling queue_get_file_info as an after_work_cb like this
@@ -2089,12 +2092,13 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     state->buffer_size = (opts->buffer_size == 0) ? default_size : opts->buffer_size;
 
     state->upload_opts = malloc(sizeof(UploadOptions));
-    state->upload_opts->content_type = strdup(opts->content_type);
+//    state->upload_opts->content_type = strdup(opts->content_type);
     state->upload_opts->expires = opts->expires;
 
     state->env = env;
     // TODO: strdup(opts->file_name)?
     state->file_name = opts->file_name;
+    state->encryption_access = strdup(opts->encryption_access);
     state->file_size = 0;
     state->bucket_id = opts->bucket_id;
     state->encrypted_file_name = strdup(opts->file_name);
