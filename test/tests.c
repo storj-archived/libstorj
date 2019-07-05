@@ -4,6 +4,7 @@ char *folder;
 int tests_ran = 0;
 int test_status = 0;
 const char *test_bucket_name = "test-bucket";
+const char *test_file_name = "test-file";
 
 storj_bridge_options_t bridge_options;
 
@@ -189,23 +190,23 @@ void check_delete_bucket(uv_work_t *work_req, int status)
 //        fail("storj_bridge_resolve_file_cancel");
 //    }
 //}
-//
-//void check_store_file_progress(double progress,
-//                               uint64_t uploaded_bytes,
-//                               uint64_t total_bytes,
-//                               void *handle)
-//{
-//    assert(handle == NULL);
-//    if (progress == (double)1) {
-//        pass("storj_bridge_store_file (progress finished)");
-//    }
-//}
+
+void check_store_file_progress(double progress,
+                               uint64_t uploaded_bytes,
+                               uint64_t total_bytes,
+                               void *handle)
+{
+    assert(handle == NULL);
+    if (progress == (double)1) {
+        pass("storj_bridge_store_file (progress finished)");
+    }
+}
 
 void check_store_file(int error_code, storj_file_meta_t *file, void *handle)
 {
     assert(handle == NULL);
     if (error_code == 0) {
-        if (file && strcmp(file->id, "85fb0ed00de1196dc22e0f6d") == 0 ) {
+        if (file && strcmp(file->id, test_file_name) == 0 ) {
             pass("storj_bridge_store_file");
         } else {
             fail("storj_bridge_store_file(0)");
@@ -290,7 +291,7 @@ int test_upload()
     // initialize event loop and environment
     storj_env_t *env = storj_init_env(&bridge_options,
                                       &encrypt_options,
-                                      &http_options,
+                                      NULL,
                                       &log_options);
     assert(env != NULL);
 
@@ -302,12 +303,12 @@ int test_upload()
     file[len] = '\0';
 
     create_test_upload_file(file);
+    char *encryption_access = new_encryption_access(STORJ_LAST_ERROR);
 
     // upload file
     storj_upload_opts_t upload_opts = {
         .bucket_id = test_bucket_name,
         .file_name = file_name,
-        .file_path = file
     };
 
     storj_upload_state_t *state = storj_bridge_store_file(env,
@@ -509,7 +510,7 @@ int test_api()
     storj_env_t *env = storj_init_env(&bridge_options,
                                       &encrypt_options,
                                       NULL,
-                                      NULL);
+                                      &log_options);
     assert(strcmp("", *STORJ_LAST_ERROR) == 0);
     assert(env != NULL);
 

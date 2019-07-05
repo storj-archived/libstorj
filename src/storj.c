@@ -15,11 +15,7 @@ static void create_bucket_request_worker(uv_work_t *work)
     *created_bucket = create_bucket(req->project_ref,
                                     strdup(req->bucket_name),
                                     NULL, STORJ_LAST_ERROR);
-    if (strcmp("", *STORJ_LAST_ERROR) != 0) {
-        req->error_code = 1;
-        req->status_code = 1;
-        return;
-    }
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
 
     char created_str[32];
     time_t created_time = (time_t)created_bucket->created;
@@ -45,11 +41,7 @@ static void get_buckets_request_worker(uv_work_t *work)
     get_buckets_request_t *req = work->data;
 
     BucketList bucket_list = list_buckets(req->project_ref, NULL, STORJ_LAST_ERROR);
-    if (strcmp("", *STORJ_LAST_ERROR) != 0) {
-        req->error_code = 1;
-        req->status_code = 1;
-        return;
-    }
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
 
     req->buckets = malloc(sizeof(storj_bucket_meta_t) * bucket_list.length);
 
@@ -84,11 +76,7 @@ static void get_bucket_request_worker(uv_work_t *work)
     BucketInfo bucket_info = get_bucket_info(req->project_ref,
                                              strdup(req->bucket_name),
                                              STORJ_LAST_ERROR);
-    if (strcmp("", *STORJ_LAST_ERROR) != 0) {
-        req->error_code = 1;
-        req->status_code = 1;
-        return;
-    }
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR
 
     req->bucket = malloc(sizeof(storj_bucket_meta_t));
 
@@ -113,11 +101,7 @@ static void delete_bucket_request_worker(uv_work_t *work)
     delete_bucket_request_t *req = work->data;
 
     delete_bucket(req->project_ref, strdup(req->bucket_name), STORJ_LAST_ERROR);
-    if (strcmp("", *STORJ_LAST_ERROR) != 0) {
-        req->error_code = 1;
-        req->status_code = 1;
-        return;
-    }
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR
 
     // NB: http "no content" success status code.
     req->status_code = 204;

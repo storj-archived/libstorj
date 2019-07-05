@@ -55,6 +55,12 @@ extern "C" {
 // Memory related errors
 #define STORJ_MEMORY_ERROR 2000
 
+// File related errors 3000 to 3999
+#define STORJ_FILE_INTEGRITY_ERROR 3000
+
+// Queue related errors
+#define STORJ_QUEUE_ERROR 4000
+
 #define STORJ_SHARD_CHALLENGES 4
 #define STORJ_LOW_SPEED_LIMIT 30720L
 #define STORJ_LOW_SPEED_TIME 20L
@@ -65,13 +71,24 @@ if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
     return value;\
 }\
 
-extern char **STORJ_LAST_ERROR;
+#define STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR \
+if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
+    state->error_status = STORJ_LIBUPLINK_ERROR; \
+    return;\
+}\
 
-typedef struct {
-  uint8_t *encryption_ctr;
-  uint8_t *encryption_key;
-  struct aes256_ctx *ctx;
-} storj_encryption_ctx_t ;
+// TODO: should req->status_code be an http error status code?
+// (look into how req->status_code is used)
+#define STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR \
+if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
+    req->error_code = STORJ_LIBUPLINK_ERROR; \
+    req->status_code = 1; \
+    return;\
+}\
+
+// TODO: do we need `extern`?
+extern char **STORJ_LAST_ERROR;
+//size_t STORJ_DEFAULT_UPLOAD_BUFFER_SIZE = 1024 * 1024 * 4 * sizeof(char);
 
 typedef enum {
     STORJ_REPORT_NOT_PREPARED = 0,
@@ -239,6 +256,7 @@ typedef struct {
 typedef struct {
     const char *created;
     const char *filename;
+    const char *mimetype;
     uint64_t size;
     const char *id;
     const char *bucket_id;
@@ -343,14 +361,15 @@ typedef void (*storj_finished_upload_cb)(int error_status, storj_file_meta_t *fi
 typedef struct {
     const char *bucket_id;
     const char *file_name;
-
-    /* New in V3 */
-   const char *encryption_ctx;
-   const char *file_name;
-
-    /* NB: unused in V3 */
     FILE *fd;
 
+    /* New in V3 */
+   const char *encryption_access;
+   const char *content_type;
+   int64_t expires;
+   size_t buffer_size;
+
+    /* NB: unused in V3 */
     const char *index;
     int prepare_frame_limit;
     int push_frame_limit;
@@ -413,22 +432,26 @@ typedef struct {
     FILE *original_file;
     uint64_t file_size;
     const char *bucket_id;
+    uint64_t uploaded_bytes;
 
-    uint8_t *encryption_key;
-
+    bool progress_finished;
     bool completed_upload;
     bool canceled;
 
-    bool progress_finished;
-
     storj_finished_upload_cb finished_cb;
+    storj_progress_cb progress_cb;
     int error_status;
     storj_log_levels_t *log;
     void *handle;
 
+    /* new in V3 */
+    size_t buffer_size;
+    const char *encryption_access;
+    UploadOptions *upload_opts;
+
     // TODO: delete?
     /* unused in V3 */
-    storj_progress_cb progress_cb;
+    uint8_t *encryption_key;
 
     uint32_t shard_concurrency;
     const char *index;
@@ -439,7 +462,6 @@ typedef struct {
     uint32_t total_parity_shards;
     uint64_t shard_size;
     uint64_t total_bytes;
-    uint64_t uploaded_bytes;
     char *exclude;
     char *frame_id;
     char *hmac_id;

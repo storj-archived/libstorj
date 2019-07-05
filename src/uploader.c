@@ -41,13 +41,13 @@
 //    return;
 //
 //}
-//
-//static uv_work_t *uv_work_new()
-//{
-//    uv_work_t *work = malloc(sizeof(uv_work_t));
-//    return work;
-//}
-//
+
+static uv_work_t *uv_work_new()
+{
+    uv_work_t *work = malloc(sizeof(uv_work_t));
+    return work;
+}
+
 //static uv_work_t *frame_work_new(int *index, storj_upload_state_t *state)
 //{
 //    uv_work_t *work = uv_work_new();
@@ -228,10 +228,8 @@
 //    free(farmer_pointer);
 //}
 
-static void cleanup_state(uv_work_t *work, int status)
+static void cleanup_state(storj_upload_state_t *state)
 {
-    storj_upload_state_t *state = work->data;
-
     if (state->original_file) {
         fclose(state->original_file);
     }
@@ -1898,36 +1896,81 @@ static void cleanup_state(uv_work_t *work, int status)
 //    req->status_code = status_code;
 //}
 
+static void queue_get_file_info(uv_work_t *work, int status)
+{
+    if (status) {
+        return;
+    }
+    // TODO: call get_file_info
+    // TODO: set state->info fields
+}
+
 static void store_file(uv_work_t *work)
 {
     storj_upload_state_t *state = work->data;
 
-    BucketRef bucket_ref open_bucket(req->project_ref, strdup(state->bucket_id), strdup(state->encryption_ctx), STORJ_LAST_ERROR);
-    if (strcmp("", *STORJ_LAST_ERROR) != 0) {
-        state->error_code = 1;
-        state->status_code = 1;
-        return;
-    }
+    BucketRef bucket_ref = open_bucket(state->env->project_ref,
+                                     strdup(state->bucket_id),
+                                     strdup(state->encryption_access),
+                                     STORJ_LAST_ERROR);
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
 
-    upload(bucket_ref, state->opts->file_path, upload_opts, STORJ_LAST_ERROR);
+    UploaderRef uploader_ref = upload(bucket_ref, strdup(state->file_name),
+                                      state->upload_opts, STORJ_LAST_ERROR);
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+
+    size_t buf_len;
+    uint8_t *buf;
+    while (state->uploaded_bytes < state->file_size) {
+        size_t remaining_size = state->file_size - state->uploaded_bytes;
+        if (remaining_size >= buf_len) {
+            buf_len = state->buffer_size;
+        } else {
+            buf_len = remaining_size;
+        }
+
+        buf = malloc(buf_len);
+        size_t read_size = fread(buf, sizeof(char), buf_len, state->original_file);
+        // TODO: what if read_size != buf_len!?
+
+        int written_size = upload_write(uploader_ref, buf, buf_len, STORJ_LAST_ERROR);
+        STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+
+        // TODO: use uv_async_init/uv_async_send instead of calling cb directly?
+        // TODO: what if written_byte != buf_len!?
+        state->uploaded_bytes += written_size;
+        double progress = state->uploaded_bytes / state->file_size;
+        state->progress_cb(progress, state->uploaded_bytes,
+                           state->file_size, state->handle);
+    }
+    free(buf);
+
+    state->progress_finished = true;
+    state->completed_upload = true;
+
+    upload_commit(uploader_ref, STORJ_LAST_ERROR);
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
 }
 
-static void queue_next_work(uv_work_t *work, int status)
+static void begin_work_queue(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
 
-    // report any errors
-    if (state->error_status != 0) {
-        return;
-    }
+    // Load progress bar
+    state->progress_cb(0, 0, 0, state->handle);
 
-    int status = uv_queue_work(state->env->loop, (uv_work_t*) work,
-                               store_file, cleanup_state);
+    // TODO: do we care about status before this point?
+    // TODO: will calling queue_get_file_info as an after_work_cb like this
+    // require calling uv_run again?
+    status = uv_queue_work(state->env->loop, (uv_work_t*) work,
+                               store_file, queue_get_file_info);
 
     if (status) {
         state->error_status = STORJ_QUEUE_ERROR;
         return;
     }
+
+    cleanup_state(state);
 
     free(work);
 }
@@ -1956,6 +1999,7 @@ static void prepare_upload_state(uv_work_t *work)
     state->info = malloc(sizeof(storj_file_meta_t));
     state->info->created = NULL;
     state->info->filename = state->file_name;
+    state->info->mimetype = NULL;
     state->info->size = state->file_size;
     state->info->id = NULL;
     state->info->bucket_id = state->bucket_id;
@@ -2040,12 +2084,21 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
         return NULL;
     }
 
+    int default_size = 1024 * 1024 * 4 * sizeof(char);
+//    state->buffer_size = (opts->buffer_size == 0) ? STORJ_DEFAULT_UPLOAD_BUFFER_SIZE : opts->buffer_size;
+    state->buffer_size = (opts->buffer_size == 0) ? default_size : opts->buffer_size;
+
+    state->upload_opts = malloc(sizeof(UploadOptions));
+    state->upload_opts->content_type = strdup(opts->content_type);
+    state->upload_opts->expires = opts->expires;
+
     state->env = env;
     // TODO: strdup(opts->file_name)?
     state->file_name = opts->file_name;
     state->file_size = 0;
     state->bucket_id = opts->bucket_id;
     state->encrypted_file_name = strdup(opts->file_name);
+    state->buffer_size = opts->buffer_size;
 
     state->original_file = opts->fd;
 
@@ -2060,21 +2113,19 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     work->data = state;
 
     int status = uv_queue_work(env->loop, (uv_work_t*) work,
-                               prepare_upload_state, queue_next_work);
+                               prepare_upload_state, begin_work_queue);
     if (status) {
         state->error_status = STORJ_QUEUE_ERROR;
     }
     return state;
 }
 
-//STORJ_API void storj_free_uploaded_file_info(storj_file_meta_t *file)
-//{
-//    if (file) {
-//        free((char *)file->id);
-//        free((char *)file->created);
-//        free((char *)file->mimetype);
-//        free((char *)file->hmac);
-//        free((char *)file->index);
-//    }
-//    free(file);
-//}
+STORJ_API void storj_free_uploaded_file_info(storj_file_meta_t *file)
+{
+    if (file) {
+        free((char *)file->id);
+        free((char *)file->created);
+        free((char *)file->mimetype);
+    }
+    free(file);
+}
