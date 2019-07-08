@@ -217,52 +217,6 @@ static void list_files_request_worker(uv_work_t *work)
 //        }
 //    }
 //}
-//
-//static void get_file_id_request_worker(uv_work_t *work)
-//{
-//    get_file_id_request_t *req = work->data;
-//    int status_code = 0;
-//
-//    char *encrypted_file_name;
-//    if (encrypt_file_name(req->encrypt_options->mnemonic,
-//                          req->bucket_id,
-//                          req->file_name,
-//                          &encrypted_file_name)) {
-//        req->error_code = STORJ_MEMORY_ERROR;
-//        goto cleanup;
-//    }
-//
-//    char *escaped_encrypted_file_name = str_replace("/", "%2F", encrypted_file_name);
-//    if (!escaped_encrypted_file_name) {
-//        req->error_code = STORJ_MEMORY_ERROR;
-//        goto cleanup;
-//    }
-//
-//    char *path = str_concat_many(4, "/buckets/", req->bucket_id,
-//                                    "/file-ids/", escaped_encrypted_file_name);
-//    if (!path) {
-//        req->error_code = STORJ_MEMORY_ERROR;
-//        goto cleanup;
-//    }
-//
-//    req->error_code = fetch_json(req->http_options,
-//                                 req->options, "GET", path, NULL,
-//                                 true, &req->response, &status_code);
-//
-//    if (req->response != NULL) {
-//        struct json_object *id;
-//        json_object_object_get_ex(req->response, "id", &id);
-//        req->file_id = json_object_get_string(id);
-//    }
-//
-//    req->status_code = status_code;
-//
-//cleanup:
-//
-//    free(encrypted_file_name);
-//    free(escaped_encrypted_file_name);
-//    free(path);
-//}
 
 static uv_work_t *uv_work_new()
 {
@@ -428,32 +382,26 @@ static delete_bucket_request_t *delete_bucket_request_new(
     return req;
 }
 
-//static get_file_id_request_t *get_file_id_request_new(
-//        storj_http_options_t *http_options,
-//        storj_bridge_options_t *options,
-//        storj_encrypt_options_t *encrypt_options,
-//        const char *bucket_id,
-//        const char *file_name,
-//        void *handle)
-//{
-//    get_file_id_request_t *req = malloc(sizeof(get_file_id_request_t));
-//    if (!req) {
-//        return NULL;
-//    }
-//
-//    req->http_options = http_options;
-//    req->options = options;
-//    req->encrypt_options = encrypt_options;
-//    req->bucket_id = bucket_id;
-//    req->file_name = file_name;
-//    req->response = NULL;
-//    req->file_id = NULL;
-//    req->error_code = 0;
-//    req->status_code = 0;
-//    req->handle = handle;
-//
-//    return req;
-//}
+static get_file_id_request_t *get_file_id_request_new(
+        const char *bucket_id,
+        const char *file_name,
+        void *handle)
+{
+    get_file_id_request_t *req = malloc(sizeof(get_file_id_request_t));
+    if (!req) {
+        return NULL;
+    }
+
+    req->bucket_id = strdup(bucket_id);
+    req->file_name = strdup(file_name);
+    req->response = NULL;
+    req->file_id = strdup(file_name);
+    req->error_code = 0;
+    req->status_code = 0;
+    req->handle = handle;
+
+    return req;
+}
 
 static void default_logger(const char *message,
                            int level,
@@ -709,8 +657,6 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
                                          void *handle,
                                          uv_after_work_cb cb)
 {
-    int status_code = 0;
-
     uv_work_t *work = uv_work_new();
     if (!work) {
         return STORJ_MEMORY_ERROR;
@@ -721,8 +667,8 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
         return STORJ_MEMORY_ERROR;
     }
 
-    cb(work, status_code);
-    return status_code;
+    cb(work, 0);
+    return 0;
 }
 
 STORJ_API int storj_bridge_list_files(storj_env_t *env,
@@ -824,28 +770,26 @@ STORJ_API void storj_free_file_meta(storj_file_meta_t *file_meta)
 //    return uv_queue_work(env->loop, (uv_work_t*) work,
 //                         get_file_info_request_worker, cb);
 //}
-//
-//STORJ_API int storj_bridge_get_file_id(storj_env_t *env,
-//                                       const char *bucket_id,
-//                                       const char *file_name,
-//                                       void *handle,
-//                                       uv_after_work_cb cb)
-//{
-//    uv_work_t *work = uv_work_new();
-//    if (!work) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    work->data = get_file_id_request_new(env->http_options,
-//                                         env->bridge_options,
-//                                         env->encrypt_options,
-//                                         bucket_id, file_name, handle);
-//    if (!work->data) {
-//        return STORJ_MEMORY_ERROR;
-//    }
-//
-//    return uv_queue_work(env->loop, (uv_work_t*) work, get_file_id_request_worker, cb);
-//}
+
+STORJ_API int storj_bridge_get_file_id(storj_env_t *env,
+                                       const char *bucket_id,
+                                       const char *file_name,
+                                       void *handle,
+                                       uv_after_work_cb cb)
+{
+    uv_work_t *work = uv_work_new();
+    if (!work) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    work->data = get_file_id_request_new(bucket_id, file_name, handle);
+    if (!work->data) {
+        return STORJ_MEMORY_ERROR;
+    }
+
+    cb(work, 0);
+    return 0;
+}
 
 STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req)
 {

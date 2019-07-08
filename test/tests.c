@@ -147,20 +147,20 @@ void check_list_files(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-//void check_get_file_id(uv_work_t *work_req, int status)
-//{
-//    assert(status == 0);
-//    get_file_id_request_t *req = work_req->data;
-//    assert(req->handle == NULL);
-//    assert(strcmp(req->file_id, "998960317b6725a3f8080c2b") == 0);
-//
-//    pass("storj_bridge_get_file_id");
-//
-//    json_object_put(req->response);
-//    free(req);
-//    free(work_req);
-//}
-//
+void check_get_file_id(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    get_file_id_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(strcmp(req->file_id, test_file_name) == 0);
+
+    pass("storj_bridge_get_file_id");
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
 //void check_resolve_file_progress(double progress,
 //                                 uint64_t downloaded_bytes,
 //                                 uint64_t total_bytes,
@@ -569,12 +569,10 @@ int test_api()
                                      NULL, check_list_files);
     assert(status == 0);
 
-//    // get file id
-//    status = storj_bridge_get_file_id(env, bucket_id, "storj-test-download.data",
-//                                      NULL, check_get_file_id);
-//    assert(status == 0);
-//
-//    char *file_id = "998960317b6725a3f8080c2b";
+    // get file id
+    status = storj_bridge_get_file_id(env, test_bucket_name, test_file_name,
+                                      NULL, check_get_file_id);
+    assert(status == 0);
 //
 //    // delete a file in a bucket
 //    status = storj_bridge_delete_file(env,
