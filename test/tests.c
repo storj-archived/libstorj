@@ -614,10 +614,10 @@ int main(void)
 
     printf("Test Suite: API\n");
     test_api();
-//    printf("\n");
+    printf("\n");
 
-//    printf("Test Suite: Uploads\n");
-//    test_upload();
+    printf("Test Suite: Uploads\n");
+    test_upload();
 //    test_upload_cancel();
 //    printf("\n");
 //

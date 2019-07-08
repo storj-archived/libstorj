@@ -6,6 +6,8 @@
 char *_storj_last_error = "";
 char **STORJ_LAST_ERROR = &_storj_last_error;
 
+static inline void noop() {};
+
 static void create_bucket_request_worker(uv_work_t *work)
 {
     create_bucket_request_t *req = work->data;
@@ -501,6 +503,37 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
 
     // setup the uv event loop
     env->loop = loop;
+
+    // setup the log options
+    env->log_options = log_options;
+    if (!env->log_options->logger) {
+        env->log_options->logger = default_logger;
+    }
+
+    storj_log_levels_t *log = malloc(sizeof(storj_log_levels_t));
+    if (!log) {
+        return NULL;
+    }
+
+    log->debug = (storj_logger_format_fn)noop;
+    log->info = (storj_logger_format_fn)noop;
+    log->warn = (storj_logger_format_fn)noop;
+    log->error = (storj_logger_format_fn)noop;
+
+    switch(log_options->level) {
+        case 4:
+            log->debug = log_formatter_debug;
+        case 3:
+            log->info = log_formatter_info;
+        case 2:
+            log->warn = log_formatter_warn;
+        case 1:
+            log->error = log_formatter_error;
+        case 0:
+            break;
+    }
+
+    env->log = log;
 
     return env;
 }
