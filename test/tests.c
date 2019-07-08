@@ -32,18 +32,10 @@ void pass(char *msg)
     tests_ran += 1;
 }
 
-const char *get_encryption_access(void)
-{
-    if (!test_encryption_access || strcmp("", test_encryption_access) == 0) {
-        test_encryption_access = getenv("ENC_ACCESS");
-    }
-    assert(test_encryption_access);
-    assert(strcmp("", test_encryption_access) != 0);
-    return strdup(test_encryption_access);
-}
-
 void check_get_buckets(uv_work_t *work_req, int status)
 {
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
+
     // TODO: assert req->error_code & req->status_code
     // (status_code is an http status)
 
@@ -62,6 +54,8 @@ void check_get_buckets(uv_work_t *work_req, int status)
 
 void check_get_bucket(uv_work_t *work_req, int status)
 {
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
+
     // TODO: assert req->error_code & req->status_code
     // (status_code is an http status)
 
@@ -81,6 +75,8 @@ void check_get_bucket(uv_work_t *work_req, int status)
 
 void check_get_bucket_id(uv_work_t *work_req, int status)
 {
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
+
     assert(status == 0);
     get_bucket_id_request_t *req = work_req->data;
     assert(req->handle == NULL);
@@ -97,6 +93,8 @@ void check_get_bucket_id(uv_work_t *work_req, int status)
 
 void check_create_bucket(uv_work_t *work_req, int status)
 {
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
+
     // TODO: assert req->error_code & req->status_code
     // (status_code is an http status)
 
@@ -114,8 +112,29 @@ void check_create_bucket(uv_work_t *work_req, int status)
     free(work_req);
 }
 
+void check_list_files(uv_work_t *work_req, int status)
+{
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
+
+    // TODO: maybe should be `assert(req->status_code == 0);`?
+    assert(status == 0);
+    list_files_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(req->response == NULL);
+    assert(strcmp(test_bucket_name, req->bucket_id) == 0);
+
+    // TODO: add assertions?
+
+    pass("storj_bridge_list_files");
+
+    storj_free_list_files_request(req);
+    free(work_req);
+}
+
 void check_delete_bucket(uv_work_t *work_req, int status)
 {
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
+
     assert(status == 0);
     delete_bucket_request_t *req = work_req->data;
     assert(req->handle == NULL);
@@ -131,24 +150,10 @@ void check_delete_bucket(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-void check_list_files(uv_work_t *work_req, int status)
-{
-    assert(status == 0);
-    list_files_request_t *req = work_req->data;
-    assert(req->handle == NULL);
-    assert(req->response != NULL);
-    assert(strcmp(test_file_name, req->bucket_id) == 0);
-
-    // TODO: add assertions?
-
-    pass("storj_bridge_list_files");
-
-    storj_free_list_files_request(req);
-    free(work_req);
-}
-
 void check_get_file_id(uv_work_t *work_req, int status)
 {
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
+
     assert(status == 0);
     get_file_id_request_t *req = work_req->data;
     assert(req->handle == NULL);
@@ -202,6 +207,8 @@ void check_store_file_progress(double progress,
                                uint64_t total_bytes,
                                void *handle)
 {
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
+
     /* TODO: probably fix this; should be called more than once
        (assert that  subsequent calls only increase progress and
        uploaded_bytes, and that total_bytes doesn't change) */
@@ -213,6 +220,8 @@ void check_store_file_progress(double progress,
 
 void check_store_file(int error_code, storj_file_meta_t *file, void *handle)
 {
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
+
     assert(handle == NULL);
     if (error_code == 0) {
         if (file && strcmp(file->id, test_file_name) == 0 ) {
@@ -258,6 +267,8 @@ void check_store_file(int error_code, storj_file_meta_t *file, void *handle)
 
 void check_file_info(uv_work_t *work_req, int status)
 {
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
+
     assert(status == 0);
     get_file_info_request_t *req = work_req->data;
     assert(req->handle == NULL);
@@ -302,6 +313,8 @@ int test_upload()
                                       &encrypt_options,
                                       NULL,
                                       &log_options);
+    printf("last error: %s", *STORJ_LAST_ERROR);
+    assert(strcmp("", *STORJ_LAST_ERROR) == 0);
     assert(env != NULL);
 
     char *file_name = "storj-test-upload.data";
@@ -311,15 +324,12 @@ int test_upload()
     strcat(file, file_name);
     file[len] = '\0';
 
-    create_test_upload_file(file);
-    const char *encryption_access = get_encryption_access();
-
     // upload file
     storj_upload_opts_t upload_opts = {
         .bucket_id = test_bucket_name,
         .file_name = file_name,
         .fd = fopen(file, "r"),
-        .encryption_access = encryption_access
+        .encryption_access = strdup(test_encryption_access)
     };
 
     storj_upload_state_t *state = storj_bridge_store_file(env,
@@ -525,13 +535,6 @@ int test_api()
     assert(strcmp("", *STORJ_LAST_ERROR) == 0);
     assert(env != NULL);
 
-    const char *encryption_access = get_encryption_access();
-    if (encryption_access) {
-        printf("test encryption access: %s\n", test_encryption_access);
-        printf("encryption access: %s\n", encryption_access);
-    } else {
-        printf("else test encryption access: %s\n", test_encryption_access);
-    }
     int status;
 
     // create a new bucket with a name
@@ -557,23 +560,25 @@ int test_api()
     assert(status == 0);
     assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
 
+    // list files in a bucket
+    status = storj_bridge_list_files(env, test_bucket_name,
+                                     test_encryption_access,
+                                     NULL, check_list_files);
+    assert(status == 0);
+    assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
+
+    // get file id
+    status = storj_bridge_get_file_id(env, test_bucket_name, test_file_name,
+                                      NULL, check_get_file_id);
+    assert(status == 0);
+    assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
+
     // delete a bucket
     status = storj_bridge_delete_bucket(env, test_bucket_name,
                                         NULL, check_delete_bucket);
     assert(status == 0);
     assert(uv_run(env->loop, UV_RUN_ONCE) == 0);
 
-    // list files in a bucket
-    status = storj_bridge_list_files(env, test_bucket_name,
-                                     encryption_access,
-                                     NULL, check_list_files);
-    assert(status == 0);
-
-    // get file id
-    status = storj_bridge_get_file_id(env, test_bucket_name, test_file_name,
-                                      NULL, check_get_file_id);
-    assert(status == 0);
-//
 //    // delete a file in a bucket
 //    status = storj_bridge_delete_file(env,
 //                                      bucket_id,
@@ -596,6 +601,8 @@ int main(void)
     // setup bridge options to point to testplanet
     bridge_options.addr = getenv("SATELLITE_0_ADDR");
     bridge_options.apikey = getenv("GATEWAY_0_API_KEY");
+    test_encryption_access = getenv("ENC_ACCESS");
+    assert(test_encryption_access && strcmp("", test_encryption_access) != 0);
 
     // Make sure we have a tmp folder
     folder = getenv("TMPDIR");

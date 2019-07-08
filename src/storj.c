@@ -119,6 +119,7 @@ static void list_files_request_worker(uv_work_t *work)
     STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
 
     ObjectList object_list = list_objects(bucket_ref, NULL, STORJ_LAST_ERROR);
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
 
     req->total_files = object_list.length;
 
@@ -226,8 +227,8 @@ static uv_work_t *uv_work_new()
 
 static list_files_request_t *list_files_request_new(
     ProjectRef project_ref,
-    const char *encryption_access,
     const char *bucket_id,
+    const char *encryption_access,
     void *handle)
 {
     list_files_request_t *req = malloc(sizeof(list_files_request_t));
@@ -473,7 +474,7 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
                                  storj_http_options_t *http_options,
                                  storj_log_options_t *log_options)
 {
-    APIKeyRef apikey_ref = parse_api_key(bridge_options->apikey, STORJ_LAST_ERROR);
+    APIKeyRef apikey_ref = parse_api_key(strdup(bridge_options->apikey), STORJ_LAST_ERROR);
     STORJ_RETURN_IF_LAST_ERROR(NULL);
 
     UplinkConfig uplink_cfg = {{0}};
@@ -482,7 +483,7 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
     UplinkRef uplink_ref = new_uplink(uplink_cfg, STORJ_LAST_ERROR);
     STORJ_RETURN_IF_LAST_ERROR(NULL);
 
-    ProjectRef project_ref = open_project(uplink_ref, bridge_options->addr, apikey_ref, STORJ_LAST_ERROR);
+    ProjectRef project_ref = open_project(uplink_ref, strdup(bridge_options->addr), apikey_ref, STORJ_LAST_ERROR);
     STORJ_RETURN_IF_LAST_ERROR(NULL);
 
     storj_env_t *env = malloc(sizeof(storj_env_t));
@@ -681,9 +682,8 @@ STORJ_API int storj_bridge_list_files(storj_env_t *env,
     if (!work) {
         return STORJ_MEMORY_ERROR;
     }
-    work->data = list_files_request_new(env->project_ref,
-                                        encryption_access,
-                                        id, handle);
+    work->data = list_files_request_new(env->project_ref, id,
+                                        encryption_access, handle);
 
     if (!work->data) {
         return STORJ_MEMORY_ERROR;
@@ -706,7 +706,6 @@ STORJ_API void storj_free_list_files_request(list_files_request_t *req)
             storj_free_file_meta(&req->files[i]);
         }
     }
-    free(req->files);
     free(req);
 }
 
