@@ -17,6 +17,8 @@ storj_log_options_t log_options = {
     .level = 0
 };
 
+char *test_encryption_access;
+
 void fail(char *msg)
 {
     printf("\t" KRED "FAIL" RESET " %s\n", msg);
@@ -30,6 +32,15 @@ void pass(char *msg)
     tests_ran += 1;
 }
 
+const char *get_encryption_access(void)
+{
+    if (!test_encryption_access || strcmp("", test_encryption_access) == 0) {
+        test_encryption_access = getenv("ENC_ACCESS");
+    }
+    assert(test_encryption_access);
+    assert(strcmp("", test_encryption_access) != 0);
+    return strdup(test_encryption_access);
+}
 
 void check_get_buckets(uv_work_t *work_req, int status)
 {
@@ -120,28 +131,22 @@ void check_delete_bucket(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-//void check_list_files(uv_work_t *work_req, int status)
-//{
-//    assert(status == 0);
-//    list_files_request_t *req = work_req->data;
-//    assert(req->handle == NULL);
-//    assert(req->response != NULL);
-//
-//    struct json_object *file = json_object_array_get_idx(req->response, 0);
-//    struct json_object *value;
-//    int success = json_object_object_get_ex(file, "id", &value);
-//    assert(success == 1);
-//    assert(json_object_is_type(value, json_type_string) == 1);
-//
-//    const char* id = json_object_get_string(value);
-//    assert(strcmp(id, "f18b5ca437b1ca3daa14969f") == 0);
-//
-//    pass("storj_bridge_list_files");
-//
-//    storj_free_list_files_request(req);
-//    free(work_req);
-//}
-//
+void check_list_files(uv_work_t *work_req, int status)
+{
+    assert(status == 0);
+    list_files_request_t *req = work_req->data;
+    assert(req->handle == NULL);
+    assert(req->response != NULL);
+    assert(strcmp(test_file_name, req->bucket_id) == 0);
+
+    // TODO: add assertions?
+
+    pass("storj_bridge_list_files");
+
+    storj_free_list_files_request(req);
+    free(work_req);
+}
+
 //void check_get_file_id(uv_work_t *work_req, int status)
 //{
 //    assert(status == 0);
@@ -307,7 +312,7 @@ int test_upload()
     file[len] = '\0';
 
     create_test_upload_file(file);
-    char *encryption_access = new_encryption_access(STORJ_LAST_ERROR);
+    const char *encryption_access = get_encryption_access();
 
     // upload file
     storj_upload_opts_t upload_opts = {
@@ -520,6 +525,13 @@ int test_api()
     assert(strcmp("", *STORJ_LAST_ERROR) == 0);
     assert(env != NULL);
 
+    const char *encryption_access = get_encryption_access();
+    if (encryption_access) {
+        printf("test encryption access: %s\n", test_encryption_access);
+        printf("encryption access: %s\n", encryption_access);
+    } else {
+        printf("else test encryption access: %s\n", test_encryption_access);
+    }
     int status;
 
     // create a new bucket with a name
@@ -553,6 +565,7 @@ int test_api()
 
     // list files in a bucket
     status = storj_bridge_list_files(env, test_bucket_name,
+                                     encryption_access,
                                      NULL, check_list_files);
     assert(status == 0);
 

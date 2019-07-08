@@ -42,24 +42,27 @@ static void get_buckets_request_worker(uv_work_t *work)
     BucketList bucket_list = list_buckets(req->project_ref, NULL, STORJ_LAST_ERROR);
     STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
 
-    req->buckets = malloc(sizeof(storj_bucket_meta_t) * bucket_list.length);
+    req->total_buckets = bucket_list.length;
 
-    BucketInfo bucket_item;
-    for (int i = 0; i < bucket_list.length; i++) {
-        bucket_item = bucket_list.items[i];
-        storj_bucket_meta_t *bucket = &req->buckets[i];
+    if (bucket_list.length > 0) {
+        req->buckets = malloc(sizeof(storj_bucket_meta_t) * bucket_list.length);
 
-        char created_str[32];
-        time_t created_time = (time_t)bucket_item.created;
-        strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
+        BucketInfo bucket_item;
+        for (int i = 0; i < bucket_list.length; i++) {
+            bucket_item = bucket_list.items[i];
+            storj_bucket_meta_t *bucket = &req->buckets[i];
 
-        bucket->name = strdup(bucket_item.name);
-        bucket->id = strdup(bucket_item.name);
-        bucket->created = strdup(created_str);
-        bucket->decrypted = true;
+            char created_str[32];
+            time_t created_time = (time_t)bucket_item.created;
+            strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
+
+            bucket->name = strdup(bucket_item.name);
+            bucket->id = strdup(bucket_item.name);
+            bucket->created = strdup(created_str);
+            bucket->decrypted = true;
+        }
     }
 
-    req->total_buckets = bucket_list.length;
     // NB: this field is unused; it only exists for backwards compatibility as it is
     //  passed to `json_object_put` by api consumers.
     //  (see: https://svn.filezilla-project.org/svn/FileZilla3/trunk/src/storj/fzstorj.cpp)
@@ -110,29 +113,38 @@ static void list_files_request_worker(uv_work_t *work)
 {
     list_files_request_t *req = work->data;
 
-    BucketRef bucket_ref = open_bucket(req->project_ref, STORJ_LAST_ERROR);
+    BucketRef bucket_ref = open_bucket(req->project_ref, strdup(req->bucket_id),
+                                       strdup(req->encryption_access),
+                                       STORJ_LAST_ERROR);
     STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
 
-    ObjectList object_list = list_objects(bucket_ref, STORJ_LAST_ERROR);
+    ObjectList object_list = list_objects(bucket_ref, NULL, STORJ_LAST_ERROR);
 
-    if (num_files > 0) {
-        req->files = malloc(sizeof(storj_file_meta_t) * num_files);
-        req->total_files = num_files;
-    }
+    req->total_files = object_list.length;
 
-    for (int i = 0; i < num_files; i++) {
-        storj_file_meta_t *file = &req->files[i];
+    if (object_list.length > 0) {
+        req->files = malloc(sizeof(storj_file_meta_t) * object_list.length);
 
-        file->created = json_object_get_string(created);
-        file->mimetype = json_object_get_string(mimetype);
-        file->size = json_object_get_int64(size);
-        file->erasure = json_object_get_string(erasure_type);
-        file->index = json_object_get_string(index);
-        file->hmac = json_object_get_string(hmac_value);
-        file->id = json_object_get_string(id);
-        file->bucket_id = json_object_get_string(bucket_id);
-        file->decrypted = false;
-        file->filename = NULL;
+        ObjectInfo object_item;
+        for (int i = 0; i < object_list.length; i++) {
+            object_item = object_list.items[i];
+            storj_file_meta_t *file = &req->files[i];
+
+            char created_str[32];
+            time_t created_time = (time_t)object_item.created;
+            strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
+
+            file->created = strdup(created_str);
+            file->mimetype = strdup(object_item.content_type);
+            file->id = strdup(object_item.path);
+            file->bucket_id = strdup(object_item.bucket.name);
+            file->filename = strdup(object_item.path);
+            file->decrypted = true;
+
+            // TODO: if we want to populate size we need to
+            //  get object meta for each file.
+//            file->size = ;
+        }
     }
 }
 
@@ -260,8 +272,8 @@ static uv_work_t *uv_work_new()
 
 static list_files_request_t *list_files_request_new(
     ProjectRef project_ref,
+    const char *encryption_access,
     const char *bucket_id,
-    struct json_object *request_body,
     void *handle)
 {
     list_files_request_t *req = malloc(sizeof(list_files_request_t));
@@ -270,7 +282,8 @@ static list_files_request_t *list_files_request_new(
     }
 
     req->project_ref = project_ref;
-    req->bucket_id = bucket_id;
+    req->bucket_id = strdup(bucket_id);
+    req->encryption_access = strdup(encryption_access);
     req->response = NULL;
     req->files = NULL;
     req->total_files = 0;
@@ -714,6 +727,7 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
 
 STORJ_API int storj_bridge_list_files(storj_env_t *env,
                             const char *id,
+                            const char *encryption_access,
                             void *handle,
                             uv_after_work_cb cb)
 {
@@ -722,7 +736,8 @@ STORJ_API int storj_bridge_list_files(storj_env_t *env,
         return STORJ_MEMORY_ERROR;
     }
     work->data = list_files_request_new(env->project_ref,
-                                        id, NULL, true, handle);
+                                        encryption_access,
+                                        id, handle);
 
     if (!work->data) {
         return STORJ_MEMORY_ERROR;
@@ -737,14 +752,26 @@ STORJ_API void storj_free_list_files_request(list_files_request_t *req)
     if (req->response) {
         json_object_put(req->response);
     }
-    free(req->path);
+    // TODO: either add locking or at lease zero memory out.
+    free((char *)req->encryption_access);
+    free((char *)req->bucket_id);
     if (req->files && req->total_files > 0) {
         for (int i = 0; i < req->total_files; i++) {
-            free((char *)req->files[i].filename);
+            storj_free_file_meta(&req->files[i]);
         }
     }
     free(req->files);
     free(req);
+}
+
+STORJ_API void storj_free_file_meta(storj_file_meta_t *file_meta)
+{
+    free((char *)file_meta->filename);
+    free((char *)file_meta->bucket_id);
+    free((char *)file_meta->mimetype);
+    free((char *)file_meta->created);
+    free((char *)file_meta->id);
+    free(file_meta);
 }
 
 //STORJ_API int storj_bridge_delete_file(storj_env_t *env,

@@ -268,6 +268,7 @@ typedef struct {
  */
 typedef struct {
     ProjectRef project_ref;
+    const char *encryption_access;
     const char *bucket_id;
     struct json_object *response;
     storj_file_meta_t *files;
@@ -655,8 +656,16 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
  */
 STORJ_API int storj_bridge_list_files(storj_env_t *env,
                                       const char *id,
+                                      const char *encryption_access,
                                       void *handle,
                                       uv_after_work_cb cb);
+
+/**
+ * @brief Will free all pointers for file_meta struct.
+ *
+ * @param[in] file_meta struct to free.
+ */
+STORJ_API void storj_free_file_meta(storj_file_meta_t *file_meta);
 
 /**
  * @brief Will free all structs for list files request
