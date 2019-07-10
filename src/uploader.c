@@ -1965,9 +1965,7 @@ static void begin_work_queue(uv_work_t *work, int status)
     // Load progress bar
 //    state->progress_cb(0, 0, 0, state->handle);
 
-//    // TODO: do we care about status before this point?
-//    // TODO: will calling queue_get_file_info as an after_work_cb like this
-//    // require calling uv_run again?
+    // TODO: do we care about status before this point?
     store_file(state);
     status = uv_queue_work(state->env->loop, (uv_work_t*) work,
                                queue_get_file_info, cleanup_work);
@@ -1976,8 +1974,6 @@ static void begin_work_queue(uv_work_t *work, int status)
         state->error_status = STORJ_QUEUE_ERROR;
         return;
     }
-
-
 }
 
 static void prepare_upload_state(uv_work_t *work)
@@ -2100,10 +2096,10 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
 
     state->env = env;
     // TODO: strdup(opts->file_name)?
-    state->file_name = opts->file_name;
+    state->file_name = strdup(opts->file_name);
     state->encryption_access = strdup(opts->encryption_access);
     state->file_size = 0;
-    state->bucket_id = opts->bucket_id;
+    state->bucket_id = strdup(opts->bucket_id);
     state->encrypted_file_name = strdup(opts->file_name);
     state->buffer_size = opts->buffer_size;
 

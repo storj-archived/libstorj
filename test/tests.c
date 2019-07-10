@@ -222,7 +222,6 @@ void check_store_file_progress(double progress,
 
 void check_store_file(int error_code, storj_file_meta_t *file, void *handle)
 {
-    printf("hello from check_store_file\n");
     require_no_last_error;
 
     require(handle == NULL);
@@ -342,12 +341,7 @@ int test_upload(storj_env_t *env)
     }
 
     // run all queued events
-    int status = -1;
-    while (status != 0) {
-        status = uv_run(env->loop, UV_RUN_ONCE);
-        printf("status: %d\n", status);
-    }
-//    require(uv_run(env->loop, UV_RUN_DEFAULT) == 0);
+    require(uv_run(env->loop, UV_RUN_DEFAULT) == 0);
 
     free(file);
 
