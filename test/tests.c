@@ -7,6 +7,10 @@ const char *test_bucket_name = "test-bucket";
 const char *test_file_name = "test-file";
 char *test_file_path;
 
+double test_upload_progress = 0;
+uint64_t test_uploaded_bytes = 0;
+uint64_t test_total_bytes = 0;
+
 storj_bridge_options_t bridge_options;
 
 storj_encrypt_options_t encrypt_options = {
@@ -214,6 +218,18 @@ void check_store_file_progress(double progress,
                                void *handle)
 {
     require_no_last_error;
+
+    require(progress >= test_upload_progress);
+    require(uploaded_bytes >= test_uploaded_bytes);
+
+    if (test_total_bytes == 0) {
+        test_total_bytes = total_bytes;
+    }
+
+    require(total_bytes == test_total_bytes);
+
+    test_upload_progress = progress;
+    test_uploaded_bytes = uploaded_bytes;
 
     /* TODO: probably fix this; should be called more than once
        (require that  subsequent calls only increase progress and

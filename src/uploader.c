@@ -1970,6 +1970,8 @@ static void store_file(storj_upload_state_t *state)
                            state->file_size, state->handle);
         free(buf);
     }
+    state->progress_cb(1, state->uploaded_bytes,
+                       state->file_size, state->handle);
 
     state->progress_finished = true;
     state->completed_upload = true;
@@ -1984,7 +1986,7 @@ static void begin_work_queue(uv_work_t *work, int status)
 
     // TODO: fix segfault
     // Load progress bar
-//    state->progress_cb(0, 0, 0, state->handle);
+    state->progress_cb(0, 0, 0, state->handle);
 
     // TODO: do we care about status before this point?
     store_file(state);
@@ -2126,6 +2128,7 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
 
     state->progress_finished = false;
 
+    state->progress_cb = progress_cb;
     state->finished_cb = finished_cb;
     state->error_status = 0;
     state->log = env->log;
