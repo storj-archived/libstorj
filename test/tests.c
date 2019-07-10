@@ -597,7 +597,10 @@ int main(void)
     // setup bridge options to point to testplanet
     bridge_options.addr = getenv("SATELLITE_0_ADDR");
     bridge_options.apikey = getenv("GATEWAY_0_API_KEY");
-    test_encryption_access = getenv("ENC_ACCESS");
+
+    EncryptionAccessRef encryption_access = new_encryption_access_with_default_key(bridge_options.apikey);
+    test_encryption_access = serialize_encryption_access(encryption_access, STORJ_LAST_ERROR);
+    require_no_last_error;
     require(test_encryption_access && strcmp("", test_encryption_access) != 0);
 
     // Make sure we have a tmp folder
