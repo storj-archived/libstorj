@@ -5,6 +5,7 @@ int tests_ran = 0;
 int test_status = 0;
 const char *test_bucket_name = "test-bucket";
 const char *test_file_name = "test-file";
+char *test_file_path;
 
 storj_bridge_options_t bridge_options;
 
@@ -275,8 +276,10 @@ void check_file_info(uv_work_t *work_req, int status)
     get_file_info_request_t *req = work_req->data;
     require(req->handle == NULL);
     require(req->file);
-    require(strcmp(req->file->filename, "storj-test-download.data") == 0);
-    require(strcmp(req->file->mimetype, "video/ogg") == 0);
+    require(strcmp(req->file->filename, test_file_name) == 0);
+//    require(strcmp(req->file->mimetype, "video/ogg") == 0);
+
+    // TODO: add assertions?
 
     pass("storj_bridge_get_file_info");
 
@@ -309,24 +312,13 @@ int create_test_upload_file(char *filepath)
 
 int test_upload(storj_env_t *env)
 {
-    char *file_name = "storj-test-upload.data";
-    int len = 1 + strlen(folder) + strlen(file_name);
-    char *file = calloc(len , sizeof(char));
-    strcpy(file, folder);
-    #ifdef _WIN32
-        strcat(file, "\\");
-    #else
-        strcat(file, "/");
-    #endif
-    strcat(file, file_name);
-
-    create_test_upload_file(file);
+    create_test_upload_file(strdup(test_file_name));
 
     // upload file
     storj_upload_opts_t upload_opts = {
-        .bucket_id = test_bucket_name,
-        .file_name = file_name,
-        .fd = fopen(file, "r"),
+        .bucket_id = strdup(test_bucket_name),
+        .file_name = strdup(test_file_name),
+        .fd = fopen(test_file_path, "r"),
         .encryption_access = strdup(test_encryption_access)
     };
 
@@ -335,14 +327,11 @@ int test_upload(storj_env_t *env)
                                                           NULL,
                                                           check_store_file_progress,
                                                           check_store_file);
-    if (!state || state->error_status != 0) {
-        return 1;
-    }
+    require(state != NULL);
+    require_no_last_error_if(state->error_status);
 
     // run all queued events
-    require(uv_run(env->loop, UV_RUN_DEFAULT) == 0);
-
-    free(file);
+    require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
 
     return 0;
 }
@@ -535,8 +524,8 @@ int test_api()
     // create a new bucket with a name
     status = storj_bridge_create_bucket(env, test_bucket_name, NULL,
                                         check_create_bucket);
-    require(status == 0);
-    require(uv_run(env->loop, UV_RUN_ONCE) == 0);
+    require_no_last_error_if(status);
+    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
     // get buckets
     status = storj_bridge_get_buckets(env, NULL, check_get_buckets);
@@ -558,6 +547,10 @@ int test_api()
     // upload a file
     test_upload(env);
 
+    // TODO: upload cancel
+    // TODO: download
+    // TODO: download cancel
+
     // list files in a bucket
     status = storj_bridge_list_files(env, test_bucket_name,
                                      test_encryption_access,
@@ -566,16 +559,19 @@ int test_api()
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
     // get file id
+    // NB: file id isn't a thing anymore; replacing id with the name.
     status = storj_bridge_get_file_id(env, test_bucket_name, test_file_name,
                                       NULL, check_get_file_id);
     require_no_last_error_if(status);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
-    // delete a bucket
-    status = storj_bridge_delete_bucket(env, test_bucket_name,
-                                        NULL, check_delete_bucket);
+    // get file info
+    status = storj_bridge_get_file_info(env, test_bucket_name,test_file_name,
+                                        test_encryption_access, NULL,
+                                        check_file_info);
     require_no_last_error_if(status);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
+
 
 //    // delete a file in a bucket
 //    status = storj_bridge_delete_file(env,
@@ -585,10 +581,12 @@ int test_api()
 //                                      check_delete_file);
 //    require(status == 0);
 //
-//    // get file information
-//    status = storj_bridge_get_file_info(env, bucket_id,
-//                                        file_id, NULL, check_file_info);
-//    require(status == 0);
+
+    // delete a bucket
+    status = storj_bridge_delete_bucket(env, test_bucket_name,
+                                        NULL, check_delete_bucket);
+    require_no_last_error_if(status);
+    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
     storj_destroy_env(env);
     return 0;
@@ -605,6 +603,17 @@ int main(void)
     // Make sure we have a tmp folder
     folder = getenv("TMPDIR");
 
+    // Set test file name
+    int len = 1 + strlen(folder) + strlen(test_file_name);
+    test_file_path = calloc(len , sizeof(char));
+    strcpy(test_file_path, folder);
+    #ifdef _WIN32
+        strcat(test_file_path, "\\");
+    #else
+        strcat(test_file_path, "/");
+    #endif
+    strcat(test_file_path, test_file_name);
+
     if (folder == 0) {
         printf("You need to set $TMPDIR before running. (e.g. export TMPDIR=/tmp/)\n");
         exit(1);
@@ -612,6 +621,8 @@ int main(void)
 
     printf("Test Suite: API\n");
     test_api();
+
+    free(test_file_path);
 
 //    test_upload_cancel();
 //    printf("\n");
