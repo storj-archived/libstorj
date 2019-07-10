@@ -228,6 +228,14 @@ static uv_work_t *uv_work_new()
 //    free(farmer_pointer);
 //}
 
+static void cleanup_work(uv_work_t *work, int status)
+{
+    storj_upload_state_t *state = work->data;
+
+    cleanup_state(state);
+    free(work);
+}
+
 static void cleanup_state(storj_upload_state_t *state)
 {
     if (state->original_file) {
@@ -1896,21 +1904,16 @@ static void cleanup_state(storj_upload_state_t *state)
 //    req->status_code = status_code;
 //}
 
-static void queue_get_file_info(uv_work_t *work, int status)
+static void queue_get_file_info(uv_work_t *work)
 {
-    if (status) {
-        return;
-    }
     // TODO: call get_file_info
     // TODO: set state->info fields
 
 //    get_file_info()
 }
 
-static void store_file(uv_work_t *work)
+static void store_file(storj_upload_state_t *state)
 {
-    storj_upload_state_t *state = work->data;
-
     BucketRef bucket_ref = open_bucket(state->env->project_ref,
                                      strdup(state->bucket_id),
                                      strdup(state->encryption_access),
@@ -1944,8 +1947,8 @@ static void store_file(uv_work_t *work)
         double progress = state->uploaded_bytes / state->file_size;
         state->progress_cb(progress, state->uploaded_bytes,
                            state->file_size, state->handle);
+        free(buf);
     }
-    free(buf);
 
     state->progress_finished = true;
     state->completed_upload = true;
@@ -1962,20 +1965,19 @@ static void begin_work_queue(uv_work_t *work, int status)
     // Load progress bar
 //    state->progress_cb(0, 0, 0, state->handle);
 
-    // TODO: do we care about status before this point?
-    // TODO: will calling queue_get_file_info as an after_work_cb like this
-    // require calling uv_run again?
+//    // TODO: do we care about status before this point?
+//    // TODO: will calling queue_get_file_info as an after_work_cb like this
+//    // require calling uv_run again?
+    store_file(state);
     status = uv_queue_work(state->env->loop, (uv_work_t*) work,
-                               store_file, queue_get_file_info);
+                               queue_get_file_info, cleanup_work);
 
     if (status) {
         state->error_status = STORJ_QUEUE_ERROR;
         return;
     }
 
-    cleanup_state(state);
 
-    free(work);
 }
 
 static void prepare_upload_state(uv_work_t *work)
@@ -2088,6 +2090,7 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     }
 
     int default_size = 1024 * 1024 * 4 * sizeof(char);
+    // TODO: fix this
 //    state->buffer_size = (opts->buffer_size == 0) ? STORJ_DEFAULT_UPLOAD_BUFFER_SIZE : opts->buffer_size;
     state->buffer_size = (opts->buffer_size == 0) ? default_size : opts->buffer_size;
 

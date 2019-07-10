@@ -3,12 +3,27 @@
 #include <stdlib.h>
 
 #include "../src/storj.h"
+#include "../../uplinkc/testdata/require.h"
 //#include "../src/bip39.h"
 //#include "../src/utils.h"
 //#include "../src/crypto.h"
 //
 //#include "mockbridge.json.h"
 //#include "mockbridgeinfo.json.h"
+
+#define require_no_last_error \
+if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
+    printf("STORJ_LAST_ERROR: %s\n", *STORJ_LAST_ERROR); \
+} \
+require(strcmp("", *STORJ_LAST_ERROR) == 0)\
+
+#define require_no_last_error_if(status) \
+if (strcmp("", *STORJ_LAST_ERROR) != 0 || status > 0) { \
+    printf("ERROR: %s\n", storj_strerror(status)); \
+} \
+require(strcmp("", *STORJ_LAST_ERROR) == 0 && status == 0)\
+
+
 
 #define KRED  "\x1B[31m"
 #define KGRN  "\x1B[32m"
