@@ -122,8 +122,7 @@ void check_list_files(uv_work_t *work_req, int status)
     require(req->handle == NULL);
     require(req->response == NULL);
     require(strcmp(test_bucket_name, req->bucket_id) == 0);
-    // TODO: fix this!
-//    require(req->total_files == 1);
+    require(req->total_files == 1);
 
     // TODO: add assertions?
 
