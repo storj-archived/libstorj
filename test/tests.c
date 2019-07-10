@@ -35,17 +35,16 @@ void pass(char *msg)
 
 void check_get_buckets(uv_work_t *work_req, int status)
 {
-    require_no_last_error;
+    require_no_last_error_if(status);
 
     // TODO: require req->error_code & req->status_code
     // (status_code is an http status)
 
-    require(status == 0);
     get_buckets_request_t *req = work_req->data;
 
     // TODO: add assertions
+    require(req->buckets);
     require(req->total_buckets == 1);
-    require(req->buckets != NULL);
 
     pass("storj_bridge_get_buckets");
 
@@ -55,18 +54,19 @@ void check_get_buckets(uv_work_t *work_req, int status)
 
 void check_get_bucket(uv_work_t *work_req, int status)
 {
-    require_no_last_error;
+    require_no_last_error_if(status);
 
     // TODO: require req->error_code & req->status_code
     // (status_code is an http status)
 
-    require(status == 0);
     get_bucket_request_t *req = work_req->data;
-    require(req->handle == NULL);
-    require(req->bucket != NULL);
-    require(strcmp(req->bucket->name, test_bucket_name) == 0);
-    require(strcmp(req->bucket->id, test_bucket_name) == 0);
+
+    require(!req->handle);
+    require(req->bucket);
     require(req->bucket->decrypted);
+
+    require_equal(test_bucket_name, req->bucket->name);
+    require_equal(test_bucket_name, req->bucket->id);
 
     pass("storj_bridge_get_bucket");
 
@@ -76,12 +76,13 @@ void check_get_bucket(uv_work_t *work_req, int status)
 
 void check_get_bucket_id(uv_work_t *work_req, int status)
 {
-    require_no_last_error;
+    require_no_last_error_if(status);
 
-    require(status == 0);
     get_bucket_id_request_t *req = work_req->data;
-    require(req->handle == NULL);
-    require(strcmp(req->bucket_id, test_bucket_name) == 0);
+
+    require(!req->handle);
+
+    require_equal(test_bucket_name, req->bucket_id);
 
     pass("storj_bridge_get_bucket_id");
 
@@ -102,11 +103,14 @@ void check_create_bucket(uv_work_t *work_req, int status)
     require(status == 0);
     create_bucket_request_t *req = work_req->data;
 
-    require(req->bucket != NULL);
-    require(strcmp(req->bucket_name, test_bucket_name) == 0);
-    require(strcmp(req->bucket->name, test_bucket_name) == 0);
-    require(strcmp(req->bucket->id, test_bucket_name) == 0);
-    require(req->bucket->created != NULL);
+    require(req->bucket);
+
+    require_not_empty(req->bucket->created);
+
+    require_equal(test_bucket_name, req->bucket_name);
+    require_equal(test_bucket_name, req->bucket->name);
+    require_equal(test_bucket_name, req->bucket->id);
+
     pass("storj_bridge_create_bucket");
 
     storj_free_create_bucket_request(req);
@@ -120,10 +124,11 @@ void check_list_files(uv_work_t *work_req, int status)
     // TODO: maybe should be `require(req->status_code == 0);`?
     require(status == 0);
     list_files_request_t *req = work_req->data;
-    require(req->handle == NULL);
-    require(req->response == NULL);
-    require(strcmp(test_bucket_name, req->bucket_id) == 0);
+    require(!req->handle);
+    require(!req->response);
     require(req->total_files == 1);
+
+    require_equal(test_bucket_name, req->bucket_id);
 
     // TODO: add assertions?
 
@@ -139,8 +144,8 @@ void check_delete_bucket(uv_work_t *work_req, int status)
 
     require(status == 0);
     delete_bucket_request_t *req = work_req->data;
-    require(req->handle == NULL);
-    require(req->response == NULL);
+    require(!req->handle);
+    require(!req->response);
     require(req->status_code == 204);
 
     // TODO: check that the bucket was actuallly deleted!
@@ -154,12 +159,11 @@ void check_delete_bucket(uv_work_t *work_req, int status)
 
 void check_get_file_id(uv_work_t *work_req, int status)
 {
-    require_no_last_error;
+    require_no_last_error_if(status);
 
-    require(status == 0);
     get_file_id_request_t *req = work_req->data;
-    require(req->handle == NULL);
-    require(strcmp(req->file_id, test_file_name) == 0);
+    require(!req->handle);
+    require_equal(test_file_name, req->file_id);
 
     pass("storj_bridge_get_file_id");
 
@@ -220,24 +224,26 @@ void check_store_file_progress(double progress,
     }
 }
 
-void check_store_file(int error_code, storj_file_meta_t *file, void *handle)
+void check_store_file(int error_code, storj_file_meta_t *info, void *handle)
 {
     require_no_last_error;
 
-    require(handle == NULL);
-    if (error_code == 0) {
-    // TODO: uncomment
-//        if (file && strcmp(file->id, test_file_name) == 0 ) {
-            pass("storj_bridge_store_file");
-//        } else {
-//            fail("storj_bridge_store_file(0)");
-//        }
-    } else {
-        fail("storj_bridge_store_file(1)");
-        printf("\t\tERROR:   %s\n", storj_strerror(error_code));
-    }
+    require(!handle);
+    require(info);
 
-    storj_free_uploaded_file_info(file);
+    require_not_empty(info->id);
+    require_not_empty(info->bucket_id);
+    require_not_empty(info->created);
+    require_not_empty(info->mimetype);
+
+    require_equal(test_file_name, info->id);
+    require_equal(test_bucket_name, info->bucket_id);
+
+    // TODO: more assertions?
+
+    pass("storj_bridge_store_file");
+
+    storj_free_uploaded_file_info(info);
 }
 
 //void check_store_file_cancel(int error_code, storj_file_meta_t *file, void *handle)
@@ -274,10 +280,17 @@ void check_file_info(uv_work_t *work_req, int status)
 
     require(status == 0);
     get_file_info_request_t *req = work_req->data;
-    require(req->handle == NULL);
+    require(!req->handle);
     require(req->file);
-    require(strcmp(req->file->filename, test_file_name) == 0);
-//    require(strcmp(req->file->mimetype, "video/ogg") == 0);
+    // TODO: more precise size assertion
+//    require(req->file->size > 0);
+
+    require_not_empty(req->file->created);
+    require_not_empty(req->file->mimetype);
+
+    require_equal(test_file_name, req->file->id);
+    require_equal(test_file_name, req->file->filename);
+    require_equal(test_bucket_name, req->file->bucket_id);
 
     // TODO: add assertions?
 
@@ -312,7 +325,7 @@ int create_test_upload_file(char *filepath)
 
 int test_upload(storj_env_t *env)
 {
-    create_test_upload_file(strdup(test_file_name));
+    create_test_upload_file(strdup(test_file_path));
 
     // upload file
     storj_upload_opts_t upload_opts = {
@@ -606,6 +619,11 @@ int main(void)
     // Make sure we have a tmp folder
     folder = getenv("TMPDIR");
 
+    if (folder == 0) {
+        printf("You need to set $TMPDIR before running. (e.g. export TMPDIR=/tmp/)\n");
+        exit(1);
+    }
+
     // Set test file name
     int len = 1 + strlen(folder) + strlen(test_file_name);
     test_file_path = calloc(len , sizeof(char));
@@ -616,11 +634,6 @@ int main(void)
         strcat(test_file_path, "/");
     #endif
     strcat(test_file_path, test_file_name);
-
-    if (folder == 0) {
-        printf("You need to set $TMPDIR before running. (e.g. export TMPDIR=/tmp/)\n");
-        exit(1);
-    }
 
     printf("Test Suite: API\n");
     test_api();

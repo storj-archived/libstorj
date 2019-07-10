@@ -23,6 +23,14 @@ if (strcmp("", *STORJ_LAST_ERROR) != 0 || status > 0) { \
 } \
 require(strcmp("", *STORJ_LAST_ERROR) == 0 && status == 0)\
 
+#define require_not_empty(str) \
+require(str != NULL); \
+require(strcmp("", str) != 0) \
+
+#define require_equal(str1, str2) \
+require(str1 != NULL); \
+require(str2 != NULL); \
+require(strcmp(str1, str2) == 0) \
 
 
 #define KRED  "\x1B[31m"

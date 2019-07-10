@@ -228,7 +228,7 @@ static uv_work_t *uv_work_new()
 //    free(farmer_pointer);
 //}
 
-static void cleanup_work(uv_work_t *work, int status)
+static void cleanup_work(uv_work_t *work)
 {
     storj_upload_state_t *state = work->data;
 
@@ -1904,12 +1904,33 @@ static void cleanup_state(storj_upload_state_t *state)
 //    req->status_code = status_code;
 //}
 
+static void after_get_file_info(uv_work_t *work, int status)
+{
+    get_file_info_request_t *req = work->data;
+    uv_work_t *upload_work = req->handle;
+    storj_upload_state_t *state = upload_work->data;
+    storj_file_meta_t *info = state->info;
+
+    info->filename = strdup(req->file->filename);
+
+    info->created = strdup(req->file->created);
+    info->mimetype = strdup(req->file->mimetype);
+    info->bucket_id = strdup(req->file->bucket_id);
+    info->id = strdup(req->file->id);
+    info->size = req->file->size;
+
+    cleanup_work(upload_work);
+    storj_free_get_file_info_request(req);
+    free(work);
+}
+
 static void queue_get_file_info(uv_work_t *work)
 {
-    // TODO: call get_file_info
-    // TODO: set state->info fields
+    storj_upload_state_t *state = work->data;
 
-//    get_file_info()
+    storj_bridge_get_file_info(state->env, state->bucket_id, state->file_name,
+                               strdup(state->encryption_access), work,
+                               after_get_file_info);
 }
 
 static void store_file(storj_upload_state_t *state)
@@ -1968,7 +1989,7 @@ static void begin_work_queue(uv_work_t *work, int status)
     // TODO: do we care about status before this point?
     store_file(state);
     status = uv_queue_work(state->env->loop, (uv_work_t*) work,
-                               queue_get_file_info, cleanup_work);
+                               queue_get_file_info, NULL);
 
     if (status) {
         state->error_status = STORJ_QUEUE_ERROR;

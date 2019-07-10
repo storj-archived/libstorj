@@ -163,9 +163,12 @@ static void get_file_info_request_worker(uv_work_t *work)
 
     req->file = malloc(sizeof(storj_file_meta_t));
 
-//    req->file->created = json_object_get_string(created);
+    char created_str[32];
+    time_t created_time = (time_t)object_meta.created;
+    strftime(created_str, 32, "%DT%T%Z", localtime(&created_time));
 
-//    req->file->mimetype = json_object_get_string(mimetype);
+    req->file->created = strdup(created_str);
+    req->file->mimetype = strdup(object_meta.content_type);
     req->file->size = (int64_t)object_meta.size;
     req->file->id = strdup(object_meta.path);
     req->file->bucket_id = strdup(object_meta.bucket);
@@ -767,8 +770,7 @@ STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req)
     }
     free(req->path);
     if (req->file) {
-        free((char *)req->file->filename);
+        storj_free_file_meta(req->file);
     }
-    free(req->file);
     free(req);
 }
