@@ -118,7 +118,6 @@ static void begin_work_queue(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
 
-    // TODO: fix segfault
     // Load progress bar
     state->progress_cb(0, 0, 0, state->handle);
 
@@ -165,6 +164,9 @@ static void prepare_upload_state(uv_work_t *work)
     state->info->id = NULL;
     state->info->bucket_id = state->bucket_id;
     state->info->decrypted = true;
+
+    // Load progress bar
+    state->progress_cb(0, 0, 0, state->handle);
 }
 
 //STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state)
@@ -236,11 +238,11 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     uv_work_t *work = uv_work_new();
     work->data = state;
 
-//    prepare_upload_state(work);
-//    int status = uv_queue_work(env->loop, work,
-//                               store_file, queue_get_file_info);
-    int status = uv_queue_work(env->loop, (uv_work_t*) work,
-                               prepare_upload_state, begin_work_queue);
+    prepare_upload_state(work);
+    int status = uv_queue_work(env->loop, work,
+                               store_file, queue_get_file_info);
+//    int status = uv_queue_work(env->loop, (uv_work_t*) work,
+//                               prepare_upload_state, begin_work_queue);
     if (status) {
         state->error_status = STORJ_QUEUE_ERROR;
     }
