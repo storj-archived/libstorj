@@ -4,8 +4,10 @@ char *folder;
 int tests_ran = 0;
 int test_status = 0;
 const char *test_bucket_name = "test-bucket";
-const char *test_file_name = "test-file";
-char *test_file_path;
+const char *test_upload_file_name = "test-upload-file";
+const char *test_download_file_name = "test-download-file";
+char *test_download_path;
+char *test_upload_path;
 
 double test_upload_progress = 0;
 uint64_t test_uploaded_bytes = 0;
@@ -167,7 +169,7 @@ void check_get_file_id(uv_work_t *work_req, int status)
 
     get_file_id_request_t *req = work_req->data;
     require(!req->handle);
-    require_equal(test_file_name, req->file_id);
+    require_equal(test_upload_file_name, req->file_id);
 
     pass("storj_bridge_get_file_id");
 
@@ -176,41 +178,41 @@ void check_get_file_id(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-//void check_resolve_file_progress(double progress,
-//                                 uint64_t downloaded_bytes,
-//                                 uint64_t total_bytes,
-//                                 void *handle)
-//{
-//    require(handle == NULL);
-//    if (progress == (double)1) {
-//        pass("storj_bridge_resolve_file (progress finished)");
-//    }
-//
-//    // TODO check error case
-//}
-//
-//void check_resolve_file(int status, FILE *fd, void *handle)
-//{
-//    fclose(fd);
-//    require(handle == NULL);
-//    if (status) {
-//        fail("storj_bridge_resolve_file");
-//        printf("Download failed: %s\n", storj_strerror(status));
-//    } else {
-//        pass("storj_bridge_resolve_file");
-//    }
-//}
-//
-//void check_resolve_file_cancel(int status, FILE *fd, void *handle)
-//{
-//    fclose(fd);
-//    require(handle == NULL);
-//    if (status == STORJ_TRANSFER_CANCELED) {
-//        pass("storj_bridge_resolve_file_cancel");
-//    } else {
-//        fail("storj_bridge_resolve_file_cancel");
-//    }
-//}
+void check_resolve_file_progress(double progress,
+                                 uint64_t downloaded_bytes,
+                                 uint64_t total_bytes,
+                                 void *handle)
+{
+    require(handle == NULL);
+    if (progress == (double)1) {
+        pass("storj_bridge_resolve_file (progress finished)");
+    }
+
+    // TODO check error case
+}
+
+void check_resolve_file(int status, FILE *fd, void *handle)
+{
+    fclose(fd);
+    require(handle == NULL);
+    if (status) {
+        fail("storj_bridge_resolve_file");
+        printf("Download failed: %s\n", storj_strerror(status));
+    } else {
+        pass("storj_bridge_resolve_file");
+    }
+}
+
+void check_resolve_file_cancel(int status, FILE *fd, void *handle)
+{
+    fclose(fd);
+    require(handle == NULL);
+    if (status == STORJ_TRANSFER_CANCELED) {
+        pass("storj_bridge_resolve_file_cancel");
+    } else {
+        fail("storj_bridge_resolve_file_cancel");
+    }
+}
 
 void check_store_file_progress(double progress,
                                uint64_t uploaded_bytes,
@@ -240,6 +242,28 @@ void check_store_file_progress(double progress,
     }
 }
 
+void check_store_file_progress_cancel(double progress,
+                               uint64_t uploaded_bytes,
+                               uint64_t total_bytes,
+                               void *handle)
+{
+    require_no_last_error;
+
+//    require(!(progress >= test_upload_progress));
+//    require(!(uploaded_bytes >= test_uploaded_bytes));
+
+    test_upload_progress = progress;
+    test_uploaded_bytes = uploaded_bytes;
+
+    /* TODO: probably fix this; should be called more than once
+       (require that  subsequent calls only increase progress and
+       uploaded_bytes, and that total_bytes doesn't change) */
+    require(handle == NULL);
+    if (progress == (double)1) {
+        pass("storj_bridge_store_file (progress finished)");
+    }
+}
+
 void check_store_file(int error_code, storj_file_meta_t *info, void *handle)
 {
     require_no_last_error;
@@ -252,7 +276,7 @@ void check_store_file(int error_code, storj_file_meta_t *info, void *handle)
     require_not_empty(info->created);
     require_not_empty(info->mimetype);
 
-    require_equal(test_file_name, info->id);
+    require_equal(test_upload_file_name, info->id);
     require_equal(test_bucket_name, info->bucket_id);
 
     // TODO: more assertions?
@@ -262,19 +286,19 @@ void check_store_file(int error_code, storj_file_meta_t *info, void *handle)
     storj_free_uploaded_file_info(info);
 }
 
-//void check_store_file_cancel(int error_code, storj_file_meta_t *file, void *handle)
-//{
-//    require(handle == NULL);
-//    if (error_code == STORJ_TRANSFER_CANCELED) {
-//        pass("storj_bridge_store_file_cancel");
-//    } else {
-//        fail("storj_bridge_store_file_cancel");
-//        printf("\t\tERROR:   %s\n", storj_strerror(error_code));
-//    }
-//
-//    storj_free_uploaded_file_info(file);
-//}
-//
+void check_store_file_cancel(int error_code, storj_file_meta_t *file, void *handle)
+{
+    require(handle == NULL);
+    if (error_code == STORJ_TRANSFER_CANCELED) {
+        pass("storj_bridge_store_file_cancel");
+    } else {
+        fail("storj_bridge_store_file_cancel");
+        printf("\t\tERROR:   %s\n", storj_strerror(error_code));
+    }
+
+    storj_free_uploaded_file_info(file);
+}
+
 //void check_delete_file(uv_work_t *work_req, int status)
 //{
 //    require(status == 0);
@@ -304,8 +328,8 @@ void check_file_info(uv_work_t *work_req, int status)
     require_not_empty(req->file->created);
     require_not_empty(req->file->mimetype);
 
-    require_equal(test_file_name, req->file->id);
-    require_equal(test_file_name, req->file->filename);
+    require_equal(test_upload_file_name, req->file->id);
+    require_equal(test_upload_file_name, req->file->filename);
     require_equal(test_bucket_name, req->file->bucket_id);
 
     // TODO: add assertions?
@@ -341,13 +365,13 @@ int create_test_upload_file(char *filepath)
 
 int test_upload(storj_env_t *env)
 {
-    create_test_upload_file(strdup(test_file_path));
+    create_test_upload_file(strdup(test_upload_path));
 
     // upload file
     storj_upload_opts_t upload_opts = {
         .bucket_id = strdup(test_bucket_name),
-        .file_name = strdup(test_file_name),
-        .fd = fopen(test_file_path, "r"),
+        .file_name = strdup(test_upload_file_name),
+        .fd = fopen(test_upload_path, "r"),
         .encryption_access = strdup(test_encryption_access)
     };
 
@@ -366,118 +390,61 @@ int test_upload(storj_env_t *env)
     return 0;
 }
 
-//int test_upload_cancel()
-//{
-//
-//    // initialize event loop and environment
-//    storj_env_t *env = storj_init_env(&bridge_options,
-//                                      &encrypt_options,
-//                                      &http_options,
-//                                      &log_options);
-//    require(env != NULL);
-//
-//    char *file_name = "storj-test-upload.data";
-//    int len = strlen(folder) + strlen(file_name);
-//    char *file = calloc(len + 1, sizeof(char));
-//    strcpy(file, folder);
-//    strcat(file, file_name);
-//    file[len] = '\0';
-//
-//    create_test_upload_file(file);
-//
-//    // upload file
-//    storj_upload_opts_t upload_opts = {
-//        .index = "d2891da46d9c3bf42ad619ceddc1b6621f83e6cb74e6b6b6bc96bdbfaefb8692",
-//        .bucket_id = "368be0816766b28fd5f43af5",
-//        .file_name = file_name,
-//        .fd = fopen(file, "r")
-//    };
-//
-//    storj_upload_state_t *state = storj_bridge_store_file(env,
-//                                                          &upload_opts,
-//                                                          NULL,
-//                                                          check_store_file_progress,
-//                                                          check_store_file_cancel);
-//    if (!state || state->error_status != 0) {
-//        return 1;
-//    }
-//
-//    // process the loop one at a time so that we can do other things while
-//    // the loop is processing, such as cancel the download
-//    int count = 0;
-//    bool more;
-//    int status = 0;
-//    do {
-//        more = uv_run(env->loop, UV_RUN_ONCE);
-//        if (more == false) {
-//            more = uv_loop_alive(env->loop);
-//            if (uv_run(env->loop, UV_RUN_NOWAIT) != 0) {
-//                more = true;
-//            }
-//        }
-//
-//        count++;
-//
-//        if (count == 100) {
-//            status = storj_bridge_store_file_cancel(state);
-//            require(status == 0);
-//        }
-//
-//    } while (more == true);
-//
-//    free(file);
-//    storj_destroy_env(env);
-//
-//    return 0;
-//}
-//
-//int _test_download(storj_encrypt_options_t *encrypt_options, void *cb_finished)
-//{
-//
-//    // initialize event loop and environment
-//    storj_env_t *env = storj_init_env(&bridge_options,
-//                                      encrypt_options,
-//                                      &http_options,
-//                                      &log_options);
-//    require(env != NULL);
-//
-//    // resolve file
-//    char *download_file = calloc(strlen(folder) + 24 + 1, sizeof(char));
-//    strcpy(download_file, folder);
-//    strcat(download_file, "storj-test-download.data");
-//    FILE *download_fp = fopen(download_file, "w+");
-//
-//    char *bucket_id = "368be0816766b28fd5f43af5";
-//    char *file_id = "998960317b6725a3f8080c2b";
-//
-//    storj_download_state_t *state = storj_bridge_resolve_file(env,
-//                                                              bucket_id,
-//                                                              file_id,
-//                                                              download_fp,
-//                                                              NULL,
-//                                                              check_resolve_file_progress,
-//                                                              cb_finished);
-//
-//    if (!state || state->error_status != 0) {
-//        return 1;
-//    }
-//
-//    free(download_file);
-//
-//    if (uv_run(env->loop, UV_RUN_DEFAULT)) {
-//        return 1;
-//    }
-//
-//    storj_destroy_env(env);
-//
-//    return 0;
-//}
-//
-//int test_download()
-//{
-//    return _test_download(&encrypt_options, check_resolve_file);
-//}
-//
+int test_upload_cancel(storj_env_t *env)
+{
+//    create_test_upload_file(strdup(test_file_path));
+
+    // upload file
+    storj_upload_opts_t upload_opts = {
+        .bucket_id = strdup(test_bucket_name),
+        .file_name = strdup(test_upload_file_name),
+        .fd = fopen(test_upload_path, "r"),
+        .encryption_access = strdup(test_encryption_access)
+    };
+
+    storj_upload_state_t *state = storj_bridge_store_file(env,
+                                                          &upload_opts,
+                                                          NULL,
+                                                          check_store_file_progress_cancel,
+                                                          check_store_file_cancel);
+    require(state != NULL);
+    require_no_last_error_if(state->error_status);
+
+    storj_bridge_store_file_cancel(state);
+
+    // run all queued events
+    require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
+
+    // TODO: needs to go before `uv_run`?
+
+    return 0;
+}
+
+int test_download(storj_env_t *env)
+{
+    // resolve file
+    FILE *file = fopen(test_download_path, "w+");
+
+    storj_download_state_t *state = storj_bridge_resolve_file(env,
+                                                              test_bucket_name,
+                                                              test_upload_file_name,
+                                                              file,
+                                                              test_encryption_access,
+                                                              NULL,
+                                                              check_resolve_file_progress,
+                                                              check_resolve_file);
+
+    if (!state || state->error_status != 0) {
+        return 1;
+    }
+
+    if (uv_run(env->loop, UV_RUN_DEFAULT)) {
+        return 1;
+    }
+
+    return 0;
+}
+
 //int test_download_cancel()
 //{
 //
@@ -539,6 +506,13 @@ int test_upload(storj_env_t *env)
 //    return 0;
 //}
 
+static void reset_test_upload()
+{
+    test_upload_progress = 0;
+    test_uploaded_bytes = 0;
+    test_total_bytes = 0;
+}
+
 int test_api()
 {
     // initialize environment
@@ -575,32 +549,35 @@ int test_api()
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
     // upload a file
+    reset_test_upload();
     test_upload(env);
+//    require_no_last_error;
+//    reset_test_upload();
+//    test_upload_cancel(env);
 
-    // TODO: upload cancel
-    // TODO: download
+//    test_download(env);
     // TODO: download cancel
 
     // list files in a bucket
-    status = storj_bridge_list_files(env, test_bucket_name,
-                                     test_encryption_access,
-                                     NULL, check_list_files);
-    require_no_last_error_if(status);
-    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
-
-    // get file id
-    // NB: file id isn't a thing anymore; replacing id with the name.
-    status = storj_bridge_get_file_id(env, test_bucket_name, test_file_name,
-                                      NULL, check_get_file_id);
-    require_no_last_error_if(status);
-    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
-
-    // get file info
-    status = storj_bridge_get_file_info(env, test_bucket_name,test_file_name,
-                                        test_encryption_access, NULL,
-                                        check_file_info);
-    require_no_last_error_if(status);
-    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
+//    status = storj_bridge_list_files(env, test_bucket_name,
+//                                     test_encryption_access,
+//                                     NULL, check_list_files);
+//    require_no_last_error_if(status);
+//    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
+//
+//    // get file id
+//    // NB: file id isn't a thing anymore; replacing id with the name.
+//    status = storj_bridge_get_file_id(env, test_bucket_name, test_upload_file_name,
+//                                      NULL, check_get_file_id);
+//    require_no_last_error_if(status);
+//    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
+//
+//    // get file info
+//    status = storj_bridge_get_file_info(env, test_bucket_name,test_upload_file_name,
+//                                        test_encryption_access, NULL,
+//                                        check_file_info);
+//    require_no_last_error_if(status);
+//    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
 
 //    // delete a file in a bucket
@@ -613,10 +590,10 @@ int test_api()
 //
 
     // delete a bucket
-    status = storj_bridge_delete_bucket(env, test_bucket_name,
-                                        NULL, check_delete_bucket);
-    require_no_last_error_if(status);
-    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
+//    status = storj_bridge_delete_bucket(env, test_bucket_name,
+//                                        NULL, check_delete_bucket);
+//    require_no_last_error_if(status);
+//    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
     storj_destroy_env(env);
     return 0;
@@ -642,20 +619,27 @@ int main(void)
     }
 
     // Set test file name
-    int len = 1 + strlen(folder) + strlen(test_file_name);
-    test_file_path = calloc(len , sizeof(char));
-    strcpy(test_file_path, folder);
+    int upload_name_len = 1 + strlen(folder) + strlen(test_upload_file_name);
+    int download_name_len = 1 + strlen(folder) + strlen(test_download_file_name);
+    test_upload_path = calloc(upload_name_len , sizeof(char));
+    test_download_path = calloc(download_name_len , sizeof(char));
+    strcpy(test_upload_path, folder);
+    strcpy(test_download_path, folder);
     #ifdef _WIN32
-        strcat(test_file_path, "\\");
+        strcat(test_upload_path, "\\");
+        strcat(test_download_path, "\\");
     #else
-        strcat(test_file_path, "/");
+        strcat(test_upload_path, "/");
+        strcat(test_download_path, "/");
     #endif
-    strcat(test_file_path, test_file_name);
+    strcat(test_upload_path, test_upload_file_name);
+    strcat(test_download_path, test_download_file_name);
 
     printf("Test Suite: API\n");
     test_api();
 
-    free(test_file_path);
+    free(test_upload_path);
+    free(test_download_path);
 
 //    test_upload_cancel();
 //    printf("\n");

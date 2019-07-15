@@ -380,18 +380,31 @@ typedef struct {
  * reference to it, so that once the work is complete the state can be updated.
  */
 typedef struct {
-    uint64_t total_bytes;
-    storj_file_meta_t *info;
-    bool requesting_info;
-    uint32_t info_fail_count;
     storj_env_t *env;
+    DownloaderRef downloader_ref;
     const char *file_id;
     const char *bucket_id;
+    storj_file_meta_t *info;
     FILE *destination;
+    int error_status;
+    storj_log_levels_t *log;
+    void *handle;
+    uint64_t total_bytes;
+
     storj_progress_cb progress_cb;
     storj_finished_download_cb finished_cb;
     bool finished;
     bool canceled;
+
+    /* new in V3 */
+    size_t downloaded_bytes;
+    size_t buffer_size;
+    const char *encryption_access;
+
+    // TODO: delete?
+    /* not used in V3 */
+    bool requesting_info;
+    uint32_t info_fail_count;
     uint64_t shard_size;
     uint32_t total_shards;
     int download_max_concurrency;
@@ -406,14 +419,11 @@ typedef struct {
     bool pointers_completed;
     uint32_t pointer_fail_count;
     bool requesting_pointers;
-    int error_status;
     bool writing;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
     const char *hmac;
     uint32_t pending_work_count;
-    storj_log_levels_t *log;
-    void *handle;
 } storj_download_state_t;
 
 typedef struct {
@@ -884,6 +894,7 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
                                                             FILE *destination,
+                                                            const char *encryption_access,
                                                             void *handle,
                                                             storj_progress_cb progress_cb,
                                                             storj_finished_download_cb finished_cb);

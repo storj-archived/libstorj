@@ -18,8 +18,9 @@ if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
 require(strcmp("", *STORJ_LAST_ERROR) == 0)\
 
 #define require_no_last_error_if(status) \
-if (strcmp("", *STORJ_LAST_ERROR) != 0 || status > 0) { \
+if ((STORJ_LAST_ERROR && strcmp("", *STORJ_LAST_ERROR) != 0)) { \
     printf("ERROR: %s\n", storj_strerror(status)); \
+    printf("STORJ_LAST_ERROR: %s\n", *STORJ_LAST_ERROR); \
 } \
 require(strcmp("", *STORJ_LAST_ERROR) == 0 && status == 0)\
 
