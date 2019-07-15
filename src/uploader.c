@@ -29,8 +29,14 @@ static void after_get_file_info(uv_work_t *work, int status)
 {
     get_file_info_request_t *req = work->data;
     uv_work_t *upload_work = req->handle;
+
+    if (req->error_code) {
+        goto cleanup;
+    }
+
     storj_upload_state_t *state = upload_work->data;
     storj_file_meta_t *info = state->info;
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
 
     info->filename = strdup(req->file->filename);
 
@@ -40,31 +46,25 @@ static void after_get_file_info(uv_work_t *work, int status)
     info->id = strdup(req->file->id);
     info->size = req->file->size;
 
+cleanup:
     cleanup_work(upload_work);
     storj_free_get_file_info_request(req);
     free(work);
 }
 
-static void queue_get_file_info(uv_work_t *work)
+static void queue_get_file_info(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
 
     storj_bridge_get_file_info(state->env, state->bucket_id, state->file_name,
                                strdup(state->encryption_access), work,
                                after_get_file_info);
 }
 
-static void store_file(storj_upload_state_t *state)
+static void store_file(uv_work_t *work)
 {
-    BucketRef bucket_ref = open_bucket(state->env->project_ref,
-                                     strdup(state->bucket_id),
-                                     strdup(state->encryption_access),
-                                     STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
-
-    UploaderRef uploader_ref = upload(bucket_ref, strdup(state->file_name),
-                                      state->upload_opts, STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    storj_upload_state_t *state = work->data;
 
     size_t buf_len;
     uint8_t *buf;
@@ -80,7 +80,7 @@ static void store_file(storj_upload_state_t *state)
         size_t read_size = fread(buf, sizeof(char), buf_len, state->original_file);
         // TODO: what if read_size != buf_len!?
 
-        int written_size = upload_write(uploader_ref, buf, buf_len, STORJ_LAST_ERROR);
+        int written_size = upload_write(state->uploader_ref, buf, buf_len, STORJ_LAST_ERROR);
         STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
 
         // TODO: use uv_async_init/uv_async_send instead of calling cb directly?
@@ -95,29 +95,11 @@ static void store_file(storj_upload_state_t *state)
                        state->file_size, state->handle);
 
     state->progress_finished = true;
-    state->completed_upload = true;
 
-    upload_commit(uploader_ref, STORJ_LAST_ERROR);
+    upload_commit(state->uploader_ref, STORJ_LAST_ERROR);
     STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
-}
 
-static void begin_work_queue(uv_work_t *work, int status)
-{
-    storj_upload_state_t *state = work->data;
-
-    // TODO: fix segfault
-    // Load progress bar
-    state->progress_cb(0, 0, 0, state->handle);
-
-    // TODO: do we care about status before this point?
-    store_file(state);
-    status = uv_queue_work(state->env->loop, (uv_work_t*) work,
-                               queue_get_file_info, NULL);
-
-    if (status) {
-        state->error_status = STORJ_QUEUE_ERROR;
-        return;
-    }
+    state->completed_upload = true;
 }
 
 static void prepare_upload_state(uv_work_t *work)
@@ -149,6 +131,18 @@ static void prepare_upload_state(uv_work_t *work)
     state->info->id = NULL;
     state->info->bucket_id = state->bucket_id;
     state->info->decrypted = true;
+
+    BucketRef bucket_ref = open_bucket(state->env->project_ref,
+                                     strdup(state->bucket_id),
+                                     strdup(state->encryption_access),
+                                     STORJ_LAST_ERROR);
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+
+    UploaderRef uploader_ref = upload(bucket_ref, strdup(state->file_name),
+                                      state->upload_opts, STORJ_LAST_ERROR);
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+
+    state->uploader_ref = uploader_ref;
 }
 
 //STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state)
@@ -202,6 +196,7 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     state->file_name = strdup(opts->file_name);
     state->encryption_access = strdup(opts->encryption_access);
     state->file_size = 0;
+    state->uploaded_bytes = 0;
     state->bucket_id = strdup(opts->bucket_id);
     state->encrypted_file_name = strdup(opts->file_name);
     state->buffer_size = opts->buffer_size;
@@ -216,11 +211,15 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     state->log = env->log;
     state->handle = handle;
 
+    // Load progress bar
+    state->progress_cb(0, 0, 0, state->handle);
+
     uv_work_t *work = uv_work_new();
     work->data = state;
 
-    int status = uv_queue_work(env->loop, (uv_work_t*) work,
-                               prepare_upload_state, begin_work_queue);
+    prepare_upload_state(work);
+    int status = uv_queue_work(env->loop, work,
+                               store_file, queue_get_file_info);
     if (status) {
         state->error_status = STORJ_QUEUE_ERROR;
     }
