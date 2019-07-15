@@ -503,6 +503,10 @@ STORJ_API char *storj_strerror(int error_code)
 {
     switch(error_code) {
 
+        case STORJ_TRANSFER_OK:
+            return "No errors";
+        case STORJ_TRANSFER_CANCELED:
+            return "File transfer canceled";
         case STORJ_LIBUPLINK_ERROR:
             return *STORJ_LAST_ERROR;
         case STORJ_MEMORY_ERROR:

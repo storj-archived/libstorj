@@ -362,6 +362,7 @@ int test_upload(storj_env_t *env)
     // run all queued events
     require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
 
+    require_no_last_error;
     return 0;
 }
 

@@ -418,6 +418,7 @@ typedef struct {
 
 typedef struct {
     storj_env_t *env;
+    UploaderRef uploader_ref;
     const char *file_name;
     const char *encrypted_file_name;
     storj_file_meta_t *info;
