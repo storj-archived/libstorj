@@ -361,6 +361,10 @@ int test_upload(storj_env_t *env)
 
     // run all queued events
     require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
+//    int status = uv_run(env->loop, UV_RUN_DEFAULT);
+//    printf("status: %d\n", status);
+//    printf("override STORJ_LAST_ERROR: %s\n", *STORJ_LAST_ERROR);
+//    *STORJ_LAST_ERROR = "";
 
     require_no_last_error;
     return 0;

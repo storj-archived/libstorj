@@ -52,6 +52,7 @@ cleanup:
     free(work);
 }
 
+//static void queue_get_file_info(uv_work_t *work)
 static void queue_get_file_info(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
@@ -62,9 +63,20 @@ static void queue_get_file_info(uv_work_t *work, int status)
                                after_get_file_info);
 }
 
+//static void store_file(storj_upload_state_t *state)
 static void store_file(uv_work_t *work)
 {
     storj_upload_state_t *state = work->data;
+    BucketRef bucket_ref = open_bucket(state->env->project_ref,
+                                     strdup(state->bucket_id),
+                                     strdup(state->encryption_access),
+                                     STORJ_LAST_ERROR);
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+
+    UploaderRef uploader_ref = upload(bucket_ref, strdup(state->file_name),
+                                      state->upload_opts, STORJ_LAST_ERROR);
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    state->uploader_ref = uploader_ref;
 
     size_t buf_len;
     uint8_t *buf;
@@ -102,6 +114,28 @@ static void store_file(uv_work_t *work)
     state->completed_upload = true;
 }
 
+static void begin_work_queue(uv_work_t *work, int status)
+{
+    storj_upload_state_t *state = work->data;
+
+    // TODO: fix segfault
+    // Load progress bar
+    state->progress_cb(0, 0, 0, state->handle);
+
+    // TODO: do we care about status before this point?
+//    store_file(state);
+//    store_file(work);
+//    status = uv_queue_work(state->env->loop, work,
+//                               queue_get_file_info, NULL);
+    status = uv_queue_work(state->env->loop, work,
+                               store_file, queue_get_file_info);
+
+    if (status) {
+        state->error_status = STORJ_QUEUE_ERROR;
+        return;
+    }
+}
+
 static void prepare_upload_state(uv_work_t *work)
 {
     storj_upload_state_t *state = work->data;
@@ -131,18 +165,6 @@ static void prepare_upload_state(uv_work_t *work)
     state->info->id = NULL;
     state->info->bucket_id = state->bucket_id;
     state->info->decrypted = true;
-
-    BucketRef bucket_ref = open_bucket(state->env->project_ref,
-                                     strdup(state->bucket_id),
-                                     strdup(state->encryption_access),
-                                     STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
-
-    UploaderRef uploader_ref = upload(bucket_ref, strdup(state->file_name),
-                                      state->upload_opts, STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
-
-    state->uploader_ref = uploader_ref;
 }
 
 //STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state)
@@ -196,7 +218,7 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     state->file_name = strdup(opts->file_name);
     state->encryption_access = strdup(opts->encryption_access);
     state->file_size = 0;
-    state->uploaded_bytes = 0;
+//    state->uploaded_bytes = 0;
     state->bucket_id = strdup(opts->bucket_id);
     state->encrypted_file_name = strdup(opts->file_name);
     state->buffer_size = opts->buffer_size;
@@ -211,15 +233,14 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     state->log = env->log;
     state->handle = handle;
 
-    // Load progress bar
-    state->progress_cb(0, 0, 0, state->handle);
-
     uv_work_t *work = uv_work_new();
     work->data = state;
 
-    prepare_upload_state(work);
-    int status = uv_queue_work(env->loop, work,
-                               store_file, queue_get_file_info);
+//    prepare_upload_state(work);
+//    int status = uv_queue_work(env->loop, work,
+//                               store_file, queue_get_file_info);
+    int status = uv_queue_work(env->loop, (uv_work_t*) work,
+                               prepare_upload_state, begin_work_queue);
     if (status) {
         state->error_status = STORJ_QUEUE_ERROR;
     }
