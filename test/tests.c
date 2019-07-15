@@ -319,14 +319,15 @@ void check_file_info(uv_work_t *work_req, int status)
 int create_test_upload_file(char *filepath)
 {
     FILE *fp;
-    fp = fopen(filepath, "w+");
+    fp = fopen(filepath, "w");
 
     if (fp == NULL) {
         printf(KRED "Could not create upload file: %s\n" RESET, filepath);
         exit(0);
     }
 
-    int shard_size = 16777216;
+    printf("temp file: %s\n", filepath);
+    int shard_size = 500;
     char *bytes = "abcdefghijklmn";
     for (int i = 0; i < strlen(bytes); i++) {
         char *page = calloc(shard_size + 1, sizeof(char));
