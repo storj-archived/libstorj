@@ -56,6 +56,9 @@ static void queue_get_file_info(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
     STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    if (state->error_status) {
+        return;
+    }
 
     storj_bridge_get_file_info(state->env, state->bucket_id, state->file_name,
                                strdup(state->encryption_access), work,
@@ -78,13 +81,16 @@ static void store_file(uv_work_t *work)
 
         buf = malloc(buf_len);
         size_t read_size = fread(buf, sizeof(char), buf_len, state->original_file);
-        // TODO: what if read_size != buf_len!?
+        // TODO: what if read_size != buf_len?
 
         int written_size = upload_write(state->uploader_ref, buf, buf_len, STORJ_LAST_ERROR);
         STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+        if (written_size != buf_len) {
+            free(buf);
+            return;
+        }
 
         // TODO: use uv_async_init/uv_async_send instead of calling cb directly?
-        // TODO: what if written_byte != buf_len!?
         state->uploaded_bytes += written_size;
         double progress = state->uploaded_bytes / state->file_size;
         state->progress_cb(progress, state->uploaded_bytes,
@@ -141,7 +147,10 @@ static void prepare_upload_state(uv_work_t *work)
     state->info->bucket_id = state->bucket_id;
     state->info->decrypted = true;
 
-    // Load progress bar
+    state->canceled = false;
+    state->completed_upload = false;
+    state->progress_finished = false;
+
     state->progress_cb(0, 0, 0, state->handle);
 }
 
@@ -159,10 +168,6 @@ STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state)
     STORJ_RETURN_IF_LAST_ERROR(state->error_status);
 
     return 0;
-}
-
-static void noop(uv_work_t *work){
-    printf("HELLO from noop");
 }
 
 STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,

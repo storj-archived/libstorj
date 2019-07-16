@@ -13,13 +13,30 @@ double test_upload_progress = 0;
 uint64_t test_uploaded_bytes = 0;
 uint64_t test_total_bytes = 0;
 
-storj_bridge_options_t bridge_options;
+BucketConfig test_bucket_cfg = {
+    .path_cipher = STORJ_ENC_AESGCM,
 
+    .encryption_parameters.cipher_suite = STORJ_ENC_AESGCM,
+    .encryption_parameters.block_size = 2048,
+
+    .redundancy_scheme.algorithm = STORJ_REED_SOLOMON,
+    .redundancy_scheme.share_size = 1024,
+    .redundancy_scheme.required_shares = 2,
+    .redundancy_scheme.repair_shares = 4,
+    .redundancy_scheme.optimal_shares = 5,
+    .redundancy_scheme.total_shares = 6
+};
+
+storj_bridge_options_t bridge_options;
 storj_encrypt_options_t encrypt_options = {
     .key = { 0x31, 0x32, 0x33, 0x61, 0x33, 0x32, 0x31 }
 };
 
-// TODO: repair logger
+storj_upload_opts_t upload_options = {
+    // NB: about +500 years from time of writing
+    .expires = 17329017831
+};
+
 storj_log_options_t log_options = {
     .level = 4
 };
@@ -249,15 +266,15 @@ void check_store_file_progress_cancel(double progress,
 {
     require_no_last_error;
 
-    require(!(progress >= test_upload_progress));
-    require(!(uploaded_bytes >= test_uploaded_bytes));
+    require(!(progress > test_upload_progress));
+    require(!(uploaded_bytes > test_uploaded_bytes));
 
     test_upload_progress = progress;
     test_uploaded_bytes = uploaded_bytes;
 
     require(handle == NULL);
-    if (progress == (double)1) {
-        pass("storj_bridge_store_file (progress finished)");
+    if (progress != (double)1) {
+        pass("storj_bridge_store_file (progress incomplete)");
     }
 }
 
@@ -347,7 +364,7 @@ int create_test_upload_file(char *filepath)
         exit(0);
     }
 
-    int shard_size = 1024;
+    int shard_size = 4096;
     char *bytes = "abcdefghijklmn";
     for (int i = 0; i < strlen(bytes); i++) {
         char *page = calloc(shard_size + 1, sizeof(char));
@@ -362,19 +379,9 @@ int create_test_upload_file(char *filepath)
 
 int test_upload(storj_env_t *env)
 {
-    create_test_upload_file(strdup(test_upload_path));
-
     // upload file
-    storj_upload_opts_t upload_opts = {
-        .bucket_id = strdup(test_bucket_name),
-        .file_name = strdup(test_upload_file_name),
-        .fd = fopen(test_upload_path, "r"),
-        .encryption_access = strdup(test_encryption_access),
-        .expires = (long)time(NULL) + 2592000
-    };
-
     storj_upload_state_t *state = storj_bridge_store_file(env,
-                                                          &upload_opts,
+                                                          &upload_options,
                                                           NULL,
                                                           check_store_file_progress,
                                                           check_store_file);
@@ -388,19 +395,11 @@ int test_upload(storj_env_t *env)
 
 int test_upload_cancel(storj_env_t *env)
 {
-//    create_test_upload_file(strdup(test_file_path));
+    create_test_upload_file(strdup(test_upload_path));
 
     // upload file
-    storj_upload_opts_t upload_opts = {
-        .bucket_id = strdup(test_bucket_name),
-        .file_name = strdup(test_upload_file_name),
-        .fd = fopen(test_upload_path, "r"),
-        .encryption_access = strdup(test_encryption_access),
-        .expires = (long)time(NULL) + 2592000
-    };
-
     storj_upload_state_t *state = storj_bridge_store_file(env,
-                                                          &upload_opts,
+                                                          &upload_options,
                                                           NULL,
                                                           check_store_file_progress_cancel,
                                                           check_store_file_cancel);
@@ -408,13 +407,14 @@ int test_upload_cancel(storj_env_t *env)
     require_no_last_error_if(state->error_status);
 
     // run all queued events
-    require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
-
-    sleep(5);
+//    require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
+//    uv_run(env->loop, UV_RUN_ONCE);
 
     storj_bridge_store_file_cancel(state);
+    require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
 
     // TODO: needs to go before `uv_run`?
+//    storj_bridge_store_file_cancel(state);
 
     return 0;
 }
@@ -510,6 +510,12 @@ static void reset_test_upload()
     test_upload_progress = 0;
     test_uploaded_bytes = 0;
     test_total_bytes = 0;
+
+    // init upload options
+    upload_options.bucket_id = strdup(test_bucket_name);
+    upload_options.file_name = strdup(test_upload_file_name);
+    upload_options.fd = fopen(test_upload_path, "r");
+    upload_options.encryption_access = strdup(test_encryption_access);
 }
 
 int test_api()
@@ -524,27 +530,13 @@ int test_api()
 
     int status;
 
-    BucketConfig bucket_cfg = {};
-
-    bucket_cfg.path_cipher = STORJ_ENC_AESGCM;
-
-    bucket_cfg.encryption_parameters.cipher_suite = STORJ_ENC_AESGCM;
-    bucket_cfg.encryption_parameters.block_size = 2048;
-
-    bucket_cfg.redundancy_scheme.algorithm = STORJ_REED_SOLOMON;
-    bucket_cfg.redundancy_scheme.share_size = 1024;
-    bucket_cfg.redundancy_scheme.required_shares = 2;
-    bucket_cfg.redundancy_scheme.repair_shares = 4;
-    bucket_cfg.redundancy_scheme.optimal_shares = 5;
-    bucket_cfg.redundancy_scheme.total_shares = 6;
-
-    // create a new bucket with a name
-    status = storj_bridge_create_bucket(env, test_bucket_name, &bucket_cfg,
+    // create bucket
+    status = storj_bridge_create_bucket(env, test_bucket_name, &test_bucket_cfg,
                                         NULL, check_create_bucket);
     require_no_last_error_if(status);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
-    // get buckets
+    // list buckets
     status = storj_bridge_get_buckets(env, NULL, check_get_buckets);
     require_no_last_error_if(status);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
@@ -561,17 +553,19 @@ int test_api()
     require_no_last_error_if(status);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
-    // upload a file
+    // upload file
     reset_test_upload();
     test_upload(env);
     require_no_last_error;
+
     reset_test_upload();
-//    test_upload_cancel(env);
+    test_upload_cancel(env);
+    require_no_last_error;
 
 //    test_download(env);
     // TODO: download cancel
 
-    // list files in a bucket
+    // list files
     status = storj_bridge_list_files(env, test_bucket_name,
                                      test_encryption_access,
                                      NULL, check_list_files);
@@ -602,7 +596,7 @@ int test_api()
 //    require(status == 0);
 //
 
-    // delete a bucket
+    // delete bucket
     status = storj_bridge_delete_bucket(env, test_bucket_name,
                                         NULL, check_delete_bucket);
     require_no_last_error_if(status);
@@ -648,19 +642,13 @@ int main(void)
     strcat(test_upload_path, test_upload_file_name);
     strcat(test_download_path, test_download_file_name);
 
+    create_test_upload_file(strdup(test_upload_path));
+
     printf("Test Suite: API\n");
     test_api();
 
     free(test_upload_path);
     free(test_download_path);
-
-//    test_upload_cancel();
-//    printf("\n");
-//
-//    printf("Test Suite: Downloads\n");
-//    test_download();
-//    test_download_null_mnemonic();
-//    test_download_cancel();
 
     int num_failed = tests_ran - test_status;
     printf(KGRN "\nPASSED: %i" RESET, test_status);
