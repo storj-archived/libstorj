@@ -580,25 +580,25 @@ int test_api()
     // TODO: download cancel
 
     // list files in a bucket
-//    status = storj_bridge_list_files(env, test_bucket_name,
-//                                     test_encryption_access,
-//                                     NULL, check_list_files);
-//    require_no_last_error_if(status);
-//    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
-//
-//    // get file id
-//    // NB: file id isn't a thing anymore; replacing id with the name.
-//    status = storj_bridge_get_file_id(env, test_bucket_name, test_upload_file_name,
-//                                      NULL, check_get_file_id);
-//    require_no_last_error_if(status);
-//    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
-//
-//    // get file info
-//    status = storj_bridge_get_file_info(env, test_bucket_name,test_upload_file_name,
-//                                        test_encryption_access, NULL,
-//                                        check_file_info);
-//    require_no_last_error_if(status);
-//    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
+    status = storj_bridge_list_files(env, test_bucket_name,
+                                     test_encryption_access,
+                                     NULL, check_list_files);
+    require_no_last_error_if(status);
+    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
+
+    // get file id
+    // NB: file id isn't a thing anymore; replacing id with the name.
+    status = storj_bridge_get_file_id(env, test_bucket_name, test_upload_file_name,
+                                      NULL, check_get_file_id);
+    require_no_last_error_if(status);
+    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
+
+    // get file info
+    status = storj_bridge_get_file_info(env, test_bucket_name,test_upload_file_name,
+                                        test_encryption_access, NULL,
+                                        check_file_info);
+    require_no_last_error_if(status);
+    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
 
 //    // delete a file in a bucket
@@ -611,10 +611,10 @@ int test_api()
 //
 
     // delete a bucket
-//    status = storj_bridge_delete_bucket(env, test_bucket_name,
-//                                        NULL, check_delete_bucket);
-//    require_no_last_error_if(status);
-//    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
+    status = storj_bridge_delete_bucket(env, test_bucket_name,
+                                        NULL, check_delete_bucket);
+    require_no_last_error_if(status);
+    require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
     storj_destroy_env(env);
     return 0;

@@ -212,9 +212,6 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     state->log = env->log;
     state->handle = handle;
 
-    // Load progress bar
-    state->progress_cb(0, 0, 0, state->handle);
-
     uv_work_t *work = uv_work_new();
     work->data = state;
 
