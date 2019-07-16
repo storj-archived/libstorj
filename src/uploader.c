@@ -66,11 +66,16 @@ static void store_file(uv_work_t *work)
 {
     storj_upload_state_t *state = work->data;
 
+    if (state->buffer_size <= 0) {
+        *STORJ_LAST_ERROR = "upload state buffer size must be greater than zero.";
+        STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    }
+
     size_t buf_len;
     uint8_t *buf;
     while (state->uploaded_bytes < state->file_size) {
         size_t remaining_size = state->file_size - state->uploaded_bytes;
-        if (remaining_size >= buf_len) {
+        if (remaining_size >= state->buffer_size) {
             buf_len = state->buffer_size;
         } else {
             buf_len = remaining_size;
@@ -91,8 +96,6 @@ static void store_file(uv_work_t *work)
                            state->file_size, state->handle);
         free(buf);
     }
-    state->progress_cb(1, state->uploaded_bytes,
-                       state->file_size, state->handle);
 
     state->progress_finished = true;
 
@@ -122,6 +125,17 @@ static void prepare_upload_state(uv_work_t *work)
     }
 #endif
 
+    BucketRef bucket_ref = open_bucket(state->env->project_ref,
+                                     strdup(state->bucket_id),
+                                     strdup(state->encryption_access),
+                                     STORJ_LAST_ERROR);
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+
+    UploaderRef uploader_ref = upload(bucket_ref, strdup(state->file_name),
+                                      state->upload_opts, STORJ_LAST_ERROR);
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    state->uploader_ref = uploader_ref;
+
     state->file_size = st.st_size;
     state->info = malloc(sizeof(storj_file_meta_t));
     state->info->created = NULL;
@@ -132,17 +146,8 @@ static void prepare_upload_state(uv_work_t *work)
     state->info->bucket_id = state->bucket_id;
     state->info->decrypted = true;
 
-    BucketRef bucket_ref = open_bucket(state->env->project_ref,
-                                     strdup(state->bucket_id),
-                                     strdup(state->encryption_access),
-                                     STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
-
-    UploaderRef uploader_ref = upload(bucket_ref, strdup(state->file_name),
-                                      state->upload_opts, STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
-
-    state->uploader_ref = uploader_ref;
+    // Load progress bar
+    state->progress_cb(0, 0, 0, state->handle);
 }
 
 STORJ_API int storj_bridge_store_file_cancel(storj_upload_state_t *state)
@@ -196,7 +201,6 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
     state->uploaded_bytes = 0;
     state->bucket_id = strdup(opts->bucket_id);
     state->encrypted_file_name = strdup(opts->file_name);
-    state->buffer_size = opts->buffer_size;
 
     state->original_file = opts->fd;
 

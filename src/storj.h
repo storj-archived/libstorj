@@ -199,6 +199,7 @@ typedef struct {
 typedef struct {
     ProjectRef project_ref;
     const char *bucket_name;
+    BucketConfig *bucket_cfg;
     struct json_object *response;
     storj_bucket_meta_t *bucket;
     int error_code;
@@ -593,6 +594,7 @@ STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req);
  */
 STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
                                          const char *name,
+                                         BucketConfig *cfg,
                                          void *handle,
                                          uv_after_work_cb cb);
 
