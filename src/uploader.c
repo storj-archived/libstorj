@@ -66,11 +66,6 @@ static void store_file(uv_work_t *work)
 {
     storj_upload_state_t *state = work->data;
 
-    if (state->buffer_size <= 0) {
-        *STORJ_LAST_ERROR = "upload state buffer size must be greater than zero.";
-        STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
-    }
-
     size_t buf_len;
     uint8_t *buf;
     while (state->uploaded_bytes < state->file_size) {
@@ -178,6 +173,12 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
 {
     if (!opts->fd) {
         env->log->error(env->log_options, handle, "Invalid File descriptor");
+        return NULL;
+    }
+
+    if (opts->expires <= 0) {
+        *STORJ_LAST_ERROR = "upload option \"expires\" must be greater than zero.";
+        env->log->error(env->log_options, handle, *STORJ_LAST_ERROR);
         return NULL;
     }
 

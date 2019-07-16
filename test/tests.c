@@ -21,7 +21,7 @@ storj_encrypt_options_t encrypt_options = {
 
 // TODO: repair logger
 storj_log_options_t log_options = {
-    .level = 0
+    .level = 4
 };
 
 char *test_encryption_access;
@@ -353,7 +353,7 @@ int create_test_upload_file(char *filepath)
         exit(0);
     }
 
-    int shard_size = 10;
+    int shard_size = 1024;
     char *bytes = "abcdefghijklmn";
     for (int i = 0; i < strlen(bytes); i++) {
         char *page = calloc(shard_size + 1, sizeof(char));
@@ -375,7 +375,8 @@ int test_upload(storj_env_t *env)
         .bucket_id = strdup(test_bucket_name),
         .file_name = strdup(test_upload_file_name),
         .fd = fopen(test_upload_path, "r"),
-        .encryption_access = strdup(test_encryption_access)
+        .encryption_access = strdup(test_encryption_access),
+        .expires = (long)time(NULL) + 2592000
     };
 
     storj_upload_state_t *state = storj_bridge_store_file(env,
