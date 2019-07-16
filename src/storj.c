@@ -1,7 +1,5 @@
 #include <time.h>
 #include "storj.h"
-#include "utils.h"
-#include "crypto.h"
 
 char *_storj_last_error = "";
 char **STORJ_LAST_ERROR = &_storj_last_error;
