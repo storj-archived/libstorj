@@ -233,9 +233,6 @@ void check_store_file_progress(double progress,
     test_upload_progress = progress;
     test_uploaded_bytes = uploaded_bytes;
 
-    /* TODO: probably fix this
-       (require that  subsequent calls only increase progress and
-       uploaded_bytes, and that total_bytes doesn't change) */
     require(handle == NULL);
     if (progress == (double)0) {
         pass("storj_bridge_store_file (progress started)");
@@ -252,15 +249,12 @@ void check_store_file_progress_cancel(double progress,
 {
     require_no_last_error;
 
-//    require(!(progress >= test_upload_progress));
-//    require(!(uploaded_bytes >= test_uploaded_bytes));
+    require(!(progress >= test_upload_progress));
+    require(!(uploaded_bytes >= test_uploaded_bytes));
 
     test_upload_progress = progress;
     test_uploaded_bytes = uploaded_bytes;
 
-    /* TODO: probably fix this; should be called more than once
-       (require that  subsequent calls only increase progress and
-       uploaded_bytes, and that total_bytes doesn't change) */
     require(handle == NULL);
     if (progress == (double)1) {
         pass("storj_bridge_store_file (progress finished)");
@@ -389,12 +383,6 @@ int test_upload(storj_env_t *env)
 
     // run all queued events
     require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
-//    int status = uv_run(env->loop, UV_RUN_DEFAULT);
-//    printf("status: %d\n", status);
-//    printf("override STORJ_LAST_ERROR: %s\n", *STORJ_LAST_ERROR);
-//    *STORJ_LAST_ERROR = "";
-
-    require_no_last_error;
     return 0;
 }
 
@@ -407,7 +395,8 @@ int test_upload_cancel(storj_env_t *env)
         .bucket_id = strdup(test_bucket_name),
         .file_name = strdup(test_upload_file_name),
         .fd = fopen(test_upload_path, "r"),
-        .encryption_access = strdup(test_encryption_access)
+        .encryption_access = strdup(test_encryption_access),
+        .expires = (long)time(NULL) + 2592000
     };
 
     storj_upload_state_t *state = storj_bridge_store_file(env,
@@ -418,10 +407,12 @@ int test_upload_cancel(storj_env_t *env)
     require(state != NULL);
     require_no_last_error_if(state->error_status);
 
-    storj_bridge_store_file_cancel(state);
-
     // run all queued events
     require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
+
+    sleep(5);
+
+    storj_bridge_store_file_cancel(state);
 
     // TODO: needs to go before `uv_run`?
 
@@ -573,8 +564,8 @@ int test_api()
     // upload a file
     reset_test_upload();
     test_upload(env);
-//    require_no_last_error;
-//    reset_test_upload();
+    require_no_last_error;
+    reset_test_upload();
 //    test_upload_cancel(env);
 
 //    test_download(env);
