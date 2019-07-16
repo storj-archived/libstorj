@@ -15,7 +15,7 @@ static void create_bucket_request_worker(uv_work_t *work)
     BucketInfo *created_bucket = malloc(sizeof(BucketInfo));
     *created_bucket = create_bucket(req->project_ref,
                                     strdup(req->bucket_name),
-                                    NULL, STORJ_LAST_ERROR);
+                                    req->bucket_cfg, STORJ_LAST_ERROR);
     STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
 
     char created_str[32];
@@ -235,6 +235,7 @@ static get_file_info_request_t *get_file_info_request_new(
 static create_bucket_request_t *create_bucket_request_new(
     ProjectRef project_ref,
     const char *bucket_name,
+    BucketConfig *cfg,
     void *handle)
 {
     create_bucket_request_t *req = malloc(sizeof(create_bucket_request_t));
@@ -242,6 +243,7 @@ static create_bucket_request_t *create_bucket_request_new(
         return NULL;
     }
 
+    req->bucket_cfg = cfg;
     req->bucket_name = strdup(bucket_name);
     req->project_ref = project_ref;
     req->response = NULL;
@@ -551,6 +553,7 @@ STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req)
 
 STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
                                const char *name,
+                               BucketConfig *cfg,
                                void *handle,
                                uv_after_work_cb cb)
 {
@@ -561,6 +564,7 @@ STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
 
     work->data = create_bucket_request_new(env->project_ref,
                                            name,
+                                           cfg,
                                            handle);
     if (!work->data) {
         return STORJ_MEMORY_ERROR;

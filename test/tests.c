@@ -231,10 +231,13 @@ void check_store_file_progress(double progress,
     test_upload_progress = progress;
     test_uploaded_bytes = uploaded_bytes;
 
-    /* TODO: probably fix this; should be called more than once
+    /* TODO: probably fix this
        (require that  subsequent calls only increase progress and
        uploaded_bytes, and that total_bytes doesn't change) */
     require(handle == NULL);
+    if (progress == (double)0) {
+        pass("storj_bridge_store_file (progress started)");
+    }
     if (progress == (double)1) {
         pass("storj_bridge_store_file (progress finished)");
     }
@@ -326,8 +329,7 @@ int create_test_upload_file(char *filepath)
         exit(0);
     }
 
-    printf("temp file: %s\n", filepath);
-    int shard_size = 500;
+    int shard_size = 10;
     char *bytes = "abcdefghijklmn";
     for (int i = 0; i < strlen(bytes); i++) {
         char *page = calloc(shard_size + 1, sizeof(char));
@@ -556,9 +558,23 @@ int test_api()
 
     int status;
 
+    BucketConfig bucket_cfg = {};
+
+    bucket_cfg.path_cipher = STORJ_ENC_AESGCM;
+
+    bucket_cfg.encryption_parameters.cipher_suite = STORJ_ENC_AESGCM;
+    bucket_cfg.encryption_parameters.block_size = 2048;
+
+    bucket_cfg.redundancy_scheme.algorithm = STORJ_REED_SOLOMON;
+    bucket_cfg.redundancy_scheme.share_size = 1024;
+    bucket_cfg.redundancy_scheme.required_shares = 2;
+    bucket_cfg.redundancy_scheme.repair_shares = 4;
+    bucket_cfg.redundancy_scheme.optimal_shares = 5;
+    bucket_cfg.redundancy_scheme.total_shares = 6;
+
     // create a new bucket with a name
-    status = storj_bridge_create_bucket(env, test_bucket_name, NULL,
-                                        check_create_bucket);
+    status = storj_bridge_create_bucket(env, test_bucket_name, &bucket_cfg,
+                                        NULL, check_create_bucket);
     require_no_last_error_if(status);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
