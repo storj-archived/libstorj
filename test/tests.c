@@ -32,6 +32,10 @@ BucketConfig test_bucket_cfg = {
     .redundancy_scheme.total_shares = 10
 };
 
+ListOptions list_options = {
+    .direction = STORJ_FORWARD
+};
+
 storj_bridge_options_t bridge_options;
 storj_encrypt_options_t encrypt_options = {
     .key = { 0x31, 0x32, 0x33, 0x61, 0x33, 0x32, 0x31 }
@@ -582,7 +586,8 @@ int test_api(storj_env_t *env)
     // list files
     status = storj_bridge_list_files(env, test_bucket_name,
                                      test_encryption_access,
-                                     NULL, check_list_files);
+                                     &list_options, NULL,
+                                     check_list_files);
     require_no_last_error_if(status);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 

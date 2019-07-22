@@ -118,7 +118,7 @@ static void list_files_request_worker(uv_work_t *work)
                                        STORJ_LAST_ERROR);
     STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
 
-    ObjectList object_list = list_objects(bucket_ref, NULL, STORJ_LAST_ERROR);
+    ObjectList object_list = list_objects(bucket_ref, req->list_opts, STORJ_LAST_ERROR);
     STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
 
     req->total_files = object_list.length;
@@ -200,12 +200,15 @@ static list_files_request_t *list_files_request_new(
     ProjectRef project_ref,
     const char *bucket_id,
     const char *encryption_access,
+    ListOptions *list_opts,
     void *handle)
 {
     list_files_request_t *req = malloc(sizeof(list_files_request_t));
     if (!req) {
         return NULL;
     }
+
+    req->list_opts = list_opts;
 
     req->project_ref = project_ref;
     req->bucket_id = strdup(bucket_id);
@@ -702,6 +705,7 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
 STORJ_API int storj_bridge_list_files(storj_env_t *env,
                             const char *id,
                             const char *encryption_access,
+                            ListOptions *list_opts,
                             void *handle,
                             uv_after_work_cb cb)
 {
@@ -709,8 +713,8 @@ STORJ_API int storj_bridge_list_files(storj_env_t *env,
     if (!work) {
         return STORJ_MEMORY_ERROR;
     }
-    work->data = list_files_request_new(env->project_ref, id,
-                                        encryption_access, handle);
+    work->data = list_files_request_new(env->project_ref, id, encryption_access,
+                                        list_opts, handle);
 
     if (!work->data) {
         return STORJ_MEMORY_ERROR;
