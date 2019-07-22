@@ -1,17 +1,9 @@
-#include "uploader.h"
+#include "storj.h"
 
 static uv_work_t *uv_work_new()
 {
     uv_work_t *work = malloc(sizeof(uv_work_t));
     return work;
-}
-
-static void cleanup_work(uv_work_t *work)
-{
-    storj_upload_state_t *state = work->data;
-
-    cleanup_state(state);
-    free(work);
 }
 
 static void cleanup_state(storj_upload_state_t *state)
@@ -25,16 +17,37 @@ static void cleanup_state(storj_upload_state_t *state)
     free(state);
 }
 
+static void cleanup_upload_work(uv_work_t *work)
+{
+    storj_upload_state_t *state = work->data;
+
+    cleanup_state(state);
+    free(work);
+}
+
 static void after_get_file_info(uv_work_t *work, int status)
 {
-    get_file_info_request_t *req = work->data;
-    uv_work_t *upload_work = req->handle;
+    get_file_info_request_t *req = NULL;
+    uv_work_t *upload_work;
+    storj_upload_state_t *state;
 
-    if (req->error_code) {
+    // NB: hack
+    if (status) {
+        upload_work = work;
+        work = NULL;
+        state = upload_work->data;
+    } else {
+        req = work->data;
+        upload_work = req->handle;
+        state = upload_work->data;
+    }
+
+    if (state->error_status) {
+        /* Currently, if status == 0 && state->error_status != 0,
+           finished_cb gets called; this is inconsistent. */
         goto cleanup;
     }
 
-    storj_upload_state_t *state = upload_work->data;
     storj_file_meta_t *info = state->info;
     STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
 
@@ -47,16 +60,20 @@ static void after_get_file_info(uv_work_t *work, int status)
     info->size = req->file->size;
 
 cleanup:
-    cleanup_work(upload_work);
-    storj_free_get_file_info_request(req);
-    free(work);
+    cleanup_upload_work(upload_work);
+    if (req) {
+        storj_free_get_file_info_request(req);
+    }
+    if (work) {
+        free(work);
+    }
 }
 
 static void queue_get_file_info(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
     if (state->error_status) {
+        after_get_file_info(work, state->error_status);
         return;
     }
 
@@ -83,7 +100,7 @@ static void store_file(uv_work_t *work)
         size_t read_size = fread(buf, sizeof(char), buf_len, state->original_file);
         // TODO: what if read_size != buf_len?
 
-        int written_size = upload_write(state->uploader_ref, buf, buf_len, STORJ_LAST_ERROR);
+        int written_size = upload_write(state->uploader_ref, buf, read_size, STORJ_LAST_ERROR);
         STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
         if (written_size != buf_len) {
             free(buf);
@@ -92,7 +109,7 @@ static void store_file(uv_work_t *work)
 
         // TODO: use uv_async_init/uv_async_send instead of calling cb directly?
         state->uploaded_bytes += written_size;
-        double progress = state->uploaded_bytes / state->file_size;
+        double progress = (double)state->uploaded_bytes / state->file_size;
         state->progress_cb(progress, state->uploaded_bytes,
                            state->file_size, state->handle);
         free(buf);
@@ -196,9 +213,9 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
         STORJ_DEFAULT_UPLOAD_BUFFER_SIZE : opts->buffer_size;
 
     state->upload_opts = malloc(sizeof(UploadOptions));
-    // TODO: content type / mimetype
-//    state->upload_opts->content_type = strdup(opts->content_type);
     state->upload_opts->expires = opts->expires;
+    state->upload_opts->content_type = (opts->content_type) ?
+        strdup(opts->content_type) : "";
 
     state->env = env;
     state->file_name = strdup(opts->file_name);

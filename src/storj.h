@@ -23,7 +23,6 @@ extern "C" {
   #define STORJ_API
 #endif
 
-#include <assert.h>
 #include <json-c/json.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -31,14 +30,11 @@ extern "C" {
 #include <stdarg.h>
 #include <string.h>
 #include <uv.h>
-#include <curl/curl.h>
 #include "uplink.h"
 
 #include <inttypes.h>
 
-#ifdef _WIN32
 #include <time.h>
-#endif
 
 #ifndef _WIN32
 #include <sys/mman.h>
@@ -66,7 +62,8 @@ extern "C" {
 #define STORJ_LOW_SPEED_TIME 20L
 #define STORJ_HTTP_TIMEOUT 60L
 
-#define STORJ_DEFAULT_UPLOAD_BUFFER_SIZE (size_t)(1024 * 1024 * 4 * sizeof(char))
+#define STORJ_DEFAULT_UPLOAD_BUFFER_SIZE (size_t)(32 * 1024 * sizeof(char))
+#define STORJ_DEFAULT_DOWNLOAD_BUFFER_SIZE (size_t)(32 * 1024 * sizeof(char))
 
 #define STORJ_RETURN_IF_LAST_ERROR(value) \
 if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
@@ -307,6 +304,19 @@ typedef struct {
     int status_code;
     void *handle;
 } get_file_id_request_t;
+
+/** @brief A structure for queueing delete file request work
+ */
+typedef struct {
+    ProjectRef project_ref;
+    const char *bucket_id;
+    const char *path;
+    const char *encryption_access;
+    struct json_object *response;
+    int error_code;
+    int status_code;
+    void *handle;
+} delete_file_request_t;
 
 typedef enum {
     BUCKET_PUSH,
@@ -728,6 +738,7 @@ STORJ_API int storj_bridge_get_file_pointers(storj_env_t *env,
 STORJ_API int storj_bridge_delete_file(storj_env_t *env,
                                        const char *bucket_id,
                                        const char *file_id,
+                                       const char *encryption_access,
                                        void *handle,
                                        uv_after_work_cb cb);
 
@@ -806,6 +817,13 @@ STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
  * @param[in] req - The work request from storj_bridge_get_file_info callback
  */
 STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req);
+
+/**
+ * @brief Will free all structs for delete file request
+ *
+ * @param[in] req - The work request from storj_bridge_delete_file callback
+ */
+STORJ_API void storj_free_delete_file_request(delete_file_request_t *req);
 
 /**
  * @brief Get the file id by name.
@@ -897,6 +915,7 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
                                                             const char *file_id,
                                                             FILE *destination,
                                                             const char *encryption_access,
+                                                            size_t buffer_size,
                                                             void *handle,
                                                             storj_progress_cb progress_cb,
                                                             storj_finished_download_cb finished_cb);
