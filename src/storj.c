@@ -6,6 +6,11 @@ char **STORJ_LAST_ERROR = &_storj_last_error;
 
 static inline void noop() {};
 
+STORJ_API uint64_t storj_util_timestamp()
+{
+    return get_time_milliseconds();
+}
+
 static void create_bucket_request_worker(uv_work_t *work)
 {
     create_bucket_request_t *req = work->data;
@@ -836,4 +841,168 @@ STORJ_API void storj_free_delete_file_request(delete_file_request_t *req)
     free((char *)req->bucket_id);
     free((char *)req->path);
     free(req);
+}
+
+STORJ_API int storj_encrypt_auth(const char *passphrase,
+                       const char *salt,
+                       const char *apikey,
+                       const char *enc_access_str,
+                       char **buffer)
+{
+    char *apikey_encrypted;
+    if (encrypt_data(apikey, salt, apikey,
+                     &apikey_encrypted)) {
+        return 1;
+    }
+
+    char *enc_access_encrypted;
+    if (encrypt_data(passphrase, salt, enc_access_str,
+                     &enc_access_encrypted)) {
+        return 1;
+    }
+
+    struct json_object *obj = json_object_new_object();
+    json_object *apikey_value = json_object_new_string(apikey_encrypted);
+    json_object *enc_access_value = json_object_new_string(enc_access_encrypted);
+    json_object *salt_value = json_object_new_string(salt);
+
+    json_object_object_add(obj, "api_key", apikey_value);
+    json_object_object_add(obj, "encryption_key", enc_access_value);
+    json_object_object_add(obj, "salt", salt_value);
+
+    const char *obj_str = json_object_to_json_string(obj);
+
+    *buffer = calloc(strlen(obj_str) + 1, sizeof(char));
+    memcpy(*buffer, obj_str, strlen(obj_str) + 1);
+
+    json_object_put(obj);
+    free(enc_access_encrypted);
+    free(apikey_encrypted);
+    free((char *)salt);
+
+    return 0;
+}
+
+STORJ_API int storj_encrypt_write_auth(const char *filepath,
+                             const char *passphrase,
+                             const char *apikey,
+                             const char *enc_access_str)
+{
+    FILE *fp;
+    fp = fopen(filepath, "w");
+    if (fp == NULL) {
+        return 1;
+    }
+
+    // NB: pseudo-random salt
+    int salt_len = 35;
+    char salt[salt_len];
+    for (int i = 0; i < salt_len; i++) {
+        salt[i] = (char)(rand() % sizeof(char));
+    }
+
+    char *buffer = NULL;
+    if (storj_encrypt_auth(passphrase, salt,
+                           apikey, enc_access_str, &buffer)) {
+        fclose(fp);
+        return 1;
+    }
+
+    fwrite(buffer, strlen(buffer), sizeof(char), fp);
+    fwrite("\n", 1, sizeof(char), fp);
+
+    free(buffer);
+    fclose(fp);
+
+    return 0;
+}
+
+STORJ_API int storj_decrypt_auth(const char *buffer,
+                                 const char *passphrase,
+                                 char **apikey,
+                                 char **enc_access_str)
+{
+    int status = 0;
+
+    json_object *obj = json_tokener_parse(buffer);
+
+    struct json_object *salt_value;
+    if (!json_object_object_get_ex(obj, "salt", &salt_value)) {
+        status = 1;
+        goto clean_up;
+    }
+    char *salt = (char *)json_object_get_string(salt_value);
+
+    struct json_object *apikey_value;
+    if (!json_object_object_get_ex(obj, "api_key", &apikey_value)) {
+        status = 1;
+        goto clean_up;
+    }
+    char *apikey_encrypted = (char *)json_object_get_string(apikey_value);
+
+    if (decrypt_data(passphrase, salt, apikey_encrypted, apikey)) {
+        status = 1;
+        goto clean_up;
+    }
+
+    struct json_object *enc_access_value;
+    if (!json_object_object_get_ex(obj, "encryption_key", &enc_access_value)) {
+        status = 1;
+        goto clean_up;
+    }
+    char *enc_access_encrypted = (char *)json_object_get_string(enc_access_value);
+
+    if (decrypt_data(passphrase, salt, enc_access_encrypted, enc_access_str)) {
+        status = 1;
+        goto clean_up;
+    }
+
+    clean_up:
+    json_object_put(obj);
+    free(salt);
+
+    return status;
+}
+
+STORJ_API int storj_decrypt_read_auth(const char *filepath,
+                                      const char *passphrase,
+                                      char **apikey,
+                                      char **enc_access_str)
+{
+    FILE *fp;
+    fp = fopen(filepath, "r");
+    if (fp == NULL) {
+        return 1;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    int fsize = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    char *buffer = calloc(fsize + 1, sizeof(char));
+    if (buffer == NULL) {
+        return 1;
+    }
+
+    int read_blocks = 0;
+    while ((!feof(fp)) && (!ferror(fp))) {
+        read_blocks = fread(buffer + read_blocks, 1, fsize, fp);
+        if (read_blocks <= 0) {
+            break;
+        }
+    }
+
+    int error = ferror(fp);
+    fclose(fp);
+
+    if (error) {
+        return error;
+    }
+
+    int status = storj_decrypt_auth(buffer, passphrase, apikey, enc_access_str);
+
+    free(buffer);
+
+    return status;
+
 }

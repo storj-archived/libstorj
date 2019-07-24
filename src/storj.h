@@ -30,6 +30,7 @@ extern "C" {
 #include <stdarg.h>
 #include <string.h>
 #include <uv.h>
+#include "crypto.h"
 #include "uplink.h"
 
 #include <inttypes.h>
@@ -113,7 +114,7 @@ typedef struct {
  * encryption and decryption.
  */
 typedef struct storj_encrypt_options {
-    uint8_t key[32];
+    char *encryption_key;
 } storj_encrypt_options_t;
 
 
@@ -324,8 +325,6 @@ typedef enum {
     BUCKET_PULL
 } storj_bucket_op_t;
 
-static const char *BUCKET_OP[] = { "PUSH", "PULL" };
-
 /** @brief A data structure that represents an exchange report
  *
  * These are sent at the end of an exchange with a farmer to report the
@@ -511,6 +510,13 @@ typedef struct {
 } storj_upload_state_t;
 
 /**
+ * @brief Will get the current unix timestamp in milliseconds
+ *
+ * @return A unix timestamp
+ */
+STORJ_API uint64_t storj_util_timestamp();
+
+/**
  * @brief Initialize a Storj environment
  *
  * This will setup an event loop for queueing further actions, as well
@@ -540,13 +546,6 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
  * @param [in] env
  */
 STORJ_API int storj_destroy_env(storj_env_t *env);
-
-/**
- * @brief Will get the current unix timestamp in milliseconds
- *
- * @return A unix timestamp
- */
-STORJ_API uint64_t storj_util_timestamp();
 
 /**
  * @brief Get the error message for an error code
