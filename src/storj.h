@@ -510,13 +510,6 @@ typedef struct {
 } storj_upload_state_t;
 
 /**
- * @brief Will get the current unix timestamp in milliseconds
- *
- * @return A unix timestamp
- */
-STORJ_API uint64_t storj_util_timestamp();
-
-/**
  * @brief Initialize a Storj environment
  *
  * This will setup an event loop for queueing further actions, as well
@@ -546,6 +539,83 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
  * @param [in] env
  */
 STORJ_API int storj_destroy_env(storj_env_t *env);
+
+/**
+ * @brief Will encrypt and write options to disk
+ *
+ * This will encrypt bridge and encryption options to disk using a key
+ * derivation function on a passphrase.
+ *
+ * @param[in] filepath - The file path to save the options
+ * @param[in] passphrase - Used to encrypt options to disk
+ * @param[in] apikey - The satellite API key
+ * @param[in] encryption_key - The file encryption key
+ * @return A non-zero value on error, zero on success.
+ */
+STORJ_API int storj_encrypt_write_auth(const char *filepath,
+                                       const char *passhrase,
+                                       const char *apikey,
+                                       const char *encryption_key);
+
+
+/**
+ * @brief Will encrypt options to disk
+ *
+ * This will encrypt bridge and encryption options using a key
+ * derivation function on a passphrase.
+ *
+ * @param[in] passphrase - Used to encrypt options to disk
+ * @param[in] apikey - The satellite API key
+ * @param[in] encryption_key - The file encryption key
+ * @param[out] buffer - The destination buffer
+ * @return A non-zero value on error, zero on success.
+ */
+STORJ_API int storj_encrypt_auth(const char *passhrase,
+                                 const char *salt,
+                                 const char *apikey,
+                                 const char *encryption_key,
+                                 char **buffer);
+
+/**
+ * @brief Will read and decrypt options from disk
+ *
+ * This will decrypt bridge and encryption options from disk from
+ * the passphrase.
+ *
+ * @param[in] filepath - The file path to read the options
+ * @param[in] passphrase - Used to encrypt options to disk
+ * @param[out] apikey - The satellite API key
+ * @param[out] encryption_key - The file encryption key
+ * @return A non-zero value on error, zero on success.
+ */
+ STORJ_API int storj_decrypt_read_auth(const char *filepath,
+                                       const char *passphrase,
+                                       char **apikey,
+                                       char **encryption_key);
+
+/**
+ * @brief Will decrypt options
+ *
+ * This will decrypt bridge and encryption options using key derived
+ * from a passphrase.
+ *
+ * @param[in] buffer - The encrypted buffer
+ * @param[in] passphrase - Used to encrypt options to disk
+ * @param[out] apikey - The satellite API key
+ * @param[out] encryption_key - The file encryption key
+ * @return A non-zero value on error, zero on success.
+ */
+STORJ_API int storj_decrypt_auth(const char *buffer,
+                                 const char *passphrase,
+                                 char **apikey,
+                                 char **encryption_key);
+
+/**
+ * @brief Will get the current unix timestamp in milliseconds
+ *
+ * @return A unix timestamp
+ */
+STORJ_API uint64_t storj_util_timestamp();
 
 /**
  * @brief Get the error message for an error code

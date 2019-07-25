@@ -76,6 +76,7 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
         return;
     }
 
+    int ret = chdir(dir);
     while ((entry = readdir(dp)) != NULL) {
         stat(entry->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
@@ -92,53 +93,6 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
     }
     ret = chdir("..");
     closedir(dp);
-}
-
-static int file_exists(void *handle)
-{
-    struct stat sb;
-    cli_api_t *cli_api = handle;
-
-    if (stat(cli_api->file_path, &sb) == -1) {
-        perror("stat");
-        return CLI_NO_SUCH_FILE_OR_DIR;
-    }
-
-    switch (sb.st_mode & S_IFMT) {
-        case S_IFBLK:
-            printf("block device\n");
-            break;
-        case S_IFCHR:
-            printf("character device\n");
-            break;
-        case S_IFDIR:
-            if ((src_fd = fopen(cli_api->src_list, "w")) == NULL) {
-                return CLI_UPLOAD_FILE_LOG_ERR;
-            }
-            printdir(cli_api->file_path, 0, src_fd, handle);
-            fclose(src_fd);
-            return CLI_VALID_DIR;
-            break;
-        case S_IFIFO:
-            printf("FIFO/pipe\n");
-            break;
-        case S_IFLNK:
-            printf("symlink\n");
-            break;
-        case S_IFREG:
-            return CLI_VALID_REGULAR_FILE;
-            break;
-#ifdef S_IFSOCK
-        case S_IFSOCK:
-            printf("socket\n");
-            break;
-#endif
-        default:
-            printf("unknown?\n");
-            break;
-    }
-
-    return CLI_UNKNOWN_FILE_ATTR;
 }
 
 static const char *get_filename_separator(const char *file_path)
@@ -590,7 +544,7 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
 
     queue_next_cmd_req(cli_api);
 cleanup:
-    free(req->bucket_name);
+    free((char *)req->bucket_name);
     free(req);
     free(work_req);
 }
@@ -918,8 +872,6 @@ int cli_get_bucket_id(cli_api_t *cli_api)
     cli_api->final_cmd_req = NULL;
     cli_api->excp_cmd_resp = "get-bucket-id-resp";
 
-    /* when callback returns, we store the bucket id of bucket name else null */
-    //return storj_bridge_get_buckets(cli_api->env, cli_api, get_bucket_id_callback);
     return storj_bridge_get_bucket_id(cli_api->env, cli_api->bucket_name, cli_api, get_bucket_id_callback);
 }
 

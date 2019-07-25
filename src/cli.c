@@ -276,7 +276,7 @@ static const char *enc_access_from_passphrase(ProjectRef project_ref,
 static ProjectRef *get_project_ref(const char *apikey)
 {
     storj_bridge_options_t bridge_opts = {
-            .apikey = apikey
+            .apikey = strdup(apikey)
     };
     // NB: kinda hacky
     storj_env_t *env = storj_init_env(&bridge_opts, NULL, NULL, NULL);
@@ -509,7 +509,7 @@ static int import_keys(user_options_t *options)
         goto clear_variables;
     }
 
-    if (storj_encrypt_write_auth(user_file, apikey, enc_access_str)) {
+    if (storj_encrypt_write_auth(user_file, user_passphrase, apikey, enc_access_str)) {
         status = 1;
         printf("Failed to write to disk\n");
         goto clear_variables;
@@ -568,10 +568,9 @@ static int export_keys(char *host)
     int status = 0;
     char *user_file = NULL;
     char *root_dir = NULL;
-    char *user = NULL;
-    char *pass = NULL;
-    char *mnemonic = NULL;
-    char *key = NULL;
+    char *apikey = NULL;
+    char *enc_access_str = NULL;
+    char *user_passphrase = NULL;
 
     if (get_user_auth_location(host, &root_dir, &user_file)) {
         printf("Unable to determine user auth filepath.\n");
@@ -580,30 +579,26 @@ static int export_keys(char *host)
     }
 
     if (access(user_file, F_OK) != -1) {
-        key = calloc(BUFSIZ, sizeof(char));
+        user_passphrase = calloc(BUFSIZ, sizeof(char));
         printf("Unlock passphrase: ");
-        get_password(key, '*');
+        get_password(user_passphrase, '*');
         printf("\n\n");
 
-        if (storj_decrypt_read_auth(user_file, key, &user, &pass, &mnemonic)) {
+        if (storj_decrypt_read_auth(user_file, user_passphrase, &apikey, &enc_access_str)) {
             printf("Unable to read user file.\n");
             status = 1;
             goto clear_variables;
         }
 
-        printf("Username:\t%s\nPassword:\t%s\nEncryption key:\t%s\n",
-               user, pass, mnemonic);
+        printf("Passphrase:\t%s\nEncryption key:\t%s\n", apikey, enc_access_str);
     }
 
 clear_variables:
-    if (user) {
-        free(user);
+    if (apikey) {
+        free(apikey);
     }
-    if (pass) {
-        free(pass);
-    }
-    if (mnemonic) {
-        free(mnemonic);
+    if (enc_access_str) {
+        free(enc_access_str);
     }
     if (root_dir) {
         free(root_dir);
@@ -611,8 +606,8 @@ clear_variables:
     if (user_file) {
         free(user_file);
     }
-    if (key) {
-        free(key);
+    if (user_passphrase) {
+        free(user_passphrase);
     }
     return status;
 }
@@ -719,7 +714,7 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "import-keys") == 0) {
-        user_options_t user_options = {NULL, NULL, host, NULL, NULL};
+        user_options_t user_options = {NULL, NULL, host, NULL};
         return import_keys(&user_options);
     }
 
