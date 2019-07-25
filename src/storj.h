@@ -66,13 +66,22 @@ extern "C" {
 #define STORJ_DEFAULT_UPLOAD_BUFFER_SIZE (size_t)(32 * 1024 * sizeof(char))
 #define STORJ_DEFAULT_DOWNLOAD_BUFFER_SIZE (size_t)(32 * 1024 * sizeof(char))
 
+#define STORJ_SOURCEMAP_LAST_ERROR \
+{ \
+    char line[128] = {0}; \
+    sprintf(line, "%s:%d: ", __FILE__, __LINE__); \
+    *STORJ_LAST_ERROR = str_concat_many(2, (char *)line, *STORJ_LAST_ERROR); \
+} \
+
 #define STORJ_RETURN_IF_LAST_ERROR(value) \
 if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
+    STORJ_SOURCEMAP_LAST_ERROR \
     return value;\
 }\
 
 #define STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR \
 if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
+    STORJ_SOURCEMAP_LAST_ERROR \
     state->error_status = STORJ_LIBUPLINK_ERROR; \
     return;\
 }\
@@ -81,6 +90,7 @@ if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
 // (look into how req->status_code is used)
 #define STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR \
 if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
+    STORJ_SOURCEMAP_LAST_ERROR \
     req->error_code = STORJ_LIBUPLINK_ERROR; \
     req->status_code = 1; \
     return;\
