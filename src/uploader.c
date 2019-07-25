@@ -49,7 +49,7 @@ static void after_get_file_info(uv_work_t *work, int status)
     }
 
     storj_file_meta_t *info = state->info;
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
 
     info->filename = strdup(req->file->filename);
 
@@ -101,7 +101,7 @@ static void store_file(uv_work_t *work)
         // TODO: what if read_size != buf_len?
 
         int written_size = upload_write(state->uploader_ref, buf, read_size, STORJ_LAST_ERROR);
-        STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+        STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
         if (written_size != buf_len) {
             free(buf);
             return;
@@ -118,7 +118,7 @@ static void store_file(uv_work_t *work)
     state->progress_finished = true;
 
     upload_commit(state->uploader_ref, STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
 
     state->completed_upload = true;
 }
@@ -147,11 +147,11 @@ static void prepare_upload_state(uv_work_t *work)
                                      strdup(state->bucket_id),
                                      strdup(state->encryption_access),
                                      STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
 
     UploaderRef uploader_ref = upload(bucket_ref, strdup(state->file_name),
                                       state->upload_opts, STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
     state->uploader_ref = uploader_ref;
 
     state->file_size = st.st_size;

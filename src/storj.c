@@ -19,7 +19,7 @@ static void create_bucket_request_worker(uv_work_t *work)
     *created_bucket = create_bucket(req->project_ref,
                                     strdup(req->bucket_name),
                                     req->bucket_cfg, STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR();
 
     char created_str[32];
     time_t created_time = (time_t)created_bucket->created;
@@ -45,7 +45,7 @@ static void get_buckets_request_worker(uv_work_t *work)
     get_buckets_request_t *req = work->data;
 
     BucketList bucket_list = list_buckets(req->project_ref, NULL, STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR();
 
     req->total_buckets = bucket_list.length;
 
@@ -83,7 +83,7 @@ static void get_bucket_request_worker(uv_work_t *work)
     BucketInfo bucket_info = get_bucket_info(req->project_ref,
                                              strdup(req->bucket_name),
                                              STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR()
 
     req->bucket = malloc(sizeof(storj_bucket_meta_t));
 
@@ -108,7 +108,7 @@ static void delete_bucket_request_worker(uv_work_t *work)
     delete_bucket_request_t *req = work->data;
 
     delete_bucket(req->project_ref, strdup(req->bucket_name), STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR()
 
     // NB: http "no content" success status code.
     req->status_code = 204;
@@ -121,10 +121,10 @@ static void list_files_request_worker(uv_work_t *work)
     BucketRef bucket_ref = open_bucket(req->project_ref, strdup(req->bucket_id),
                                        strdup(req->encryption_access),
                                        STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR();
 
     ObjectList object_list = list_objects(bucket_ref, req->list_opts, STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR();
 
     req->total_files = object_list.length;
 
@@ -159,10 +159,10 @@ static void get_file_info_request_worker(uv_work_t *work)
     get_file_info_request_t *req = work->data;
 
     ObjectRef object_ref = open_object(req->bucket_ref, strdup(req->path), STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR();
 
     ObjectMeta object_meta = get_object_meta(object_ref, STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR();
 
     req->file = malloc(sizeof(storj_file_meta_t));
 
@@ -186,10 +186,10 @@ static void delete_file_request_worker(uv_work_t *work)
     BucketRef bucket_ref = open_bucket(req->project_ref, strdup(req->bucket_id),
                                        strdup(req->encryption_access),
                                        STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR();
 
     delete_object(bucket_ref, strdup(req->path), STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR();
 
     // NB: http generic success status code.
     req->status_code = 200;

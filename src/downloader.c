@@ -41,11 +41,11 @@ static void resolve_file(uv_work_t *work)
                                      strdup(state->bucket_id),
                                      strdup(state->encryption_access),
                                      STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
 
     DownloaderRef downloader_ref = download(bucket_ref, strdup(state->file_id),
                                             STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
 
     state->downloader_ref = downloader_ref;
 
@@ -61,7 +61,7 @@ static void resolve_file(uv_work_t *work)
 
         buf = malloc(buf_len);
         size_t read_size = download_read(state->downloader_ref, buf, buf_len, STORJ_LAST_ERROR);
-        STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+        STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
         // TODO: what if read_size != buf_len!?
 
         if (read_size <= 0) {
@@ -82,7 +82,7 @@ static void resolve_file(uv_work_t *work)
     }
 
     download_close(downloader_ref, STORJ_LAST_ERROR);
-    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR;
+    STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
 
     state->finished = true;
 //    state->finished_cb(state->error_status, state->destination, state->handle);
