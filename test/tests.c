@@ -37,9 +37,7 @@ ListOptions list_options = {
 };
 
 storj_bridge_options_t bridge_options;
-storj_encrypt_options_t encrypt_options = {
-    .key = { 0x31, 0x32, 0x33, 0x61, 0x33, 0x32, 0x31 }
-};
+storj_encrypt_options_t encrypt_options = {0};
 
 storj_upload_opts_t upload_options = {
     // NB: about +500 years from time of writing
@@ -649,6 +647,10 @@ int main(void)
     test_encryption_access = serialize_encryption_access(encryption_access, STORJ_LAST_ERROR);
     require_no_last_error;
     require(test_encryption_access && strcmp("", test_encryption_access) != 0);
+
+    // TODO: refactor
+    // TODO: probably clean up misuse of `strdup` in combination with enc_access
+    encrypt_options.encryption_key = strdup(test_encryption_access);
 
     // Make sure we have a tmp folder
     folder = getenv("TMPDIR");
