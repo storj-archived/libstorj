@@ -475,7 +475,7 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
     APIKeyRef apikey_ref = parse_api_key(strdup(bridge_options->apikey), STORJ_LAST_ERROR);
     STORJ_RETURN_IF_LAST_ERROR(NULL);
 
-    UplinkConfig uplink_cfg = {{0}};
+    UplinkConfig uplink_cfg = {{{0}}};
     uplink_cfg.Volatile.tls.skip_peer_ca_whitelist = true;
 
     UplinkRef uplink_ref = new_uplink(uplink_cfg, STORJ_LAST_ERROR);
@@ -901,7 +901,7 @@ STORJ_API int storj_encrypt_write_auth(const char *filepath,
     }
 
     char *buffer = NULL;
-    if (storj_encrypt_auth(passphrase, (char *)salt,
+    if (storj_encrypt_auth(passphrase, (char *)&salt,
                            apikey, enc_access_str, &buffer)) {
         fclose(fp);
         return 1;
