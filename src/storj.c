@@ -901,7 +901,7 @@ STORJ_API int storj_encrypt_write_auth(const char *filepath,
     }
 
     char *buffer = NULL;
-    if (storj_encrypt_auth(passphrase, &salt,
+    if (storj_encrypt_auth(passphrase, (char *)salt,
                            apikey, enc_access_str, &buffer)) {
         fclose(fp);
         return 1;
