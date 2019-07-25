@@ -392,15 +392,20 @@ static int get_password_verify(char *prompt, char *password, int count)
 static int import_keys(user_options_t *options)
 {
     int status = 0;
-    char *host = options->host ? strdup(options->host) : NULL;
-    char *apikey = options->apikey ? strdup(options->apikey) : NULL;
-    char *enc_access_str = options->enc_access ? strdup(options->enc_access): NULL;
+    char *host = options->host ? strdup(options->host) : "";
+    char *apikey = options->apikey ?
+        strdup(options->apikey) : calloc(BUFSIZ, sizeof(char));
+    char *enc_access_str = options->enc_access ?
+        strdup(options->enc_access): NULL;
     char *user_passphrase = options->user_passphrase ?
             strdup(options->user_passphrase) : NULL;
-    char *new_enc_passphrase = NULL;
     char *user_file = NULL;
     char *root_dir = NULL;
+    char *new_enc_passphrase = calloc(BUFSIZ, sizeof(char));
+    char *user_input = calloc(BUFSIZ, sizeof(char));
     int num_chars;
+
+    printf("import_keys host: %s\n", host);
 
     if (!apikey) {
         apikey = calloc(BUFSIZ, sizeof(char));
@@ -411,13 +416,12 @@ static int import_keys(user_options_t *options)
 
         if (num_chars == 0) {
             // TODO: add link
-            printf("Project API key required. See <link here>");
+            printf("Project API key required. See <link here>\n");
             status = 1;
             goto clear_variables;
         }
     }
 
-    char *user_input = calloc(BUFSIZ, sizeof(char));
     if (user_input == NULL) {
         printf("Unable to allocate buffer\n");
         status = 1;
@@ -714,7 +718,7 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "import-keys") == 0) {
-        user_options_t user_options = {NULL, NULL, host, NULL};
+        user_options_t user_options = {host, NULL, NULL, NULL};
         return import_keys(&user_options);
     }
 
@@ -810,7 +814,7 @@ int main(int argc, char **argv)
 
         if (strlen(apikey) == 0) {
             // TODO: add link
-            printf("Project API key required. See <link here>");
+            printf("Project API key required. See <link here>\n");
             status = 1;
             goto end_program;
         }
