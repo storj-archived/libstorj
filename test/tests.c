@@ -413,7 +413,7 @@ void check_file_info(uv_work_t *work_req, int status)
 int create_test_upload_file(char *filepath)
 {
     // TODO: make `total` an argument;
-    int64_t total = 800 * 1024;
+    int64_t total = 5 * 1024 * 1024;
     int64_t subtotal = 0;
 
     FILE *fp;
