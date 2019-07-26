@@ -102,6 +102,7 @@ static void store_file(uv_work_t *work)
 
         int written_size = upload_write(state->uploader_ref, buf, read_size, STORJ_LAST_ERROR);
         STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
+        // TODO: buf isn't freed if STORJ_LAST_ERROR ^
         if (written_size != buf_len) {
             free(buf);
             return;
