@@ -113,7 +113,7 @@ static void queue_resolve_file(uv_work_t *work, int status)
 
 STORJ_API int storj_bridge_resolve_file_cancel(storj_download_state_t *state)
 {
-    if (state->canceled) {
+    if (state->canceled || state->finished) {
         return 0;
     }
 
@@ -144,6 +144,7 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
         return NULL;
     }
 
+    state->downloader_ref._handle = 0;
     state->buffer_size = (buffer_size == 0) ?
         STORJ_DEFAULT_DOWNLOAD_BUFFER_SIZE : buffer_size;
 

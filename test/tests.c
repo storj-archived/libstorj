@@ -270,8 +270,8 @@ void check_resolve_file_progress_cancel(double progress,
 {
     require_no_last_error;
 
-    require(!(progress > test_download_progress));
-    require(!(downloaded_bytes > test_downloaded_bytes));
+    require((progress <= test_download_progress));
+    require((downloaded_bytes <= test_downloaded_bytes));
 
     test_download_progress = progress;
     test_downloaded_bytes = downloaded_bytes;
@@ -410,10 +410,9 @@ void check_file_info(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-int create_test_upload_file(char *filepath)
+int create_test_upload_file(char *filepath, int total_KB)
 {
-    // TODO: make `total` an argument;
-    int64_t total = 5 * 1024 * 1024;
+    int64_t total = total_KB * 1024;
     int64_t subtotal = 0;
 
     FILE *fp;
@@ -453,8 +452,6 @@ int test_upload(storj_env_t *env)
 
 int test_upload_cancel(storj_env_t *env)
 {
-    create_test_upload_file(strdup(test_upload_path));
-
     // upload file
     storj_upload_state_t *state = storj_bridge_store_file(env,
                                                           &upload_options,
@@ -576,10 +573,14 @@ int test_api(storj_env_t *env)
     test_upload_cancel(env);
     require_no_last_error;
 
+    // download file
     reset_test_download();
     test_download(env);
+    require_no_last_error;
+
     reset_test_download();
     test_download_cancel(env);
+    require_no_last_error;
 
     // list files
     status = storj_bridge_list_files(env, test_bucket_name,
@@ -626,6 +627,18 @@ int test_api(storj_env_t *env)
 
 int main(void)
 {
+    // TODO: understand why?
+    /* NB: libuv raises abort signal on `exit` when `require` macros fail:
+     *
+     * #1  0x00007ffff6881851 in abort () from /usr/lib/libc.so.6
+     * #2  0x00007ffff6ba905f in ?? () from /usr/lib/libuv.so.1
+     * #3  0x00007ffff7fe2b2b in _dl_fini () from /lib64/ld-linux-x86-64.so.2
+     * #4  0x00007ffff6898e70 in __run_exit_handlers () from /usr/lib/libc.so.6
+     * #5  0x00007ffff6898fae in exit () from /usr/lib/libc.so.6
+     */
+    signal(SIGABRT, handle_abort);
+    // --------------
+
     // setup bridge options to point to testplanet
     bridge_options.addr = getenv("SATELLITE_0_ADDR");
     bridge_options.apikey = getenv("GATEWAY_0_API_KEY");
@@ -677,7 +690,8 @@ int main(void)
     strcat(test_upload_path, test_upload_file_name);
     strcat(test_download_path, test_download_file_name);
 
-    create_test_upload_file(strdup(test_upload_path));
+    // TODO: increase size
+    create_test_upload_file(strdup(test_upload_path), 1024);
 
     printf("Test Suite: API\n");
     test_api(env);
