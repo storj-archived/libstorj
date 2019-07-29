@@ -903,9 +903,13 @@ STORJ_API int storj_encrypt_write_auth(const char *filepath,
     // NB: pseudo-random salt
     int salt_len = 35;
     char salt[salt_len];
-    for (int i = 0; i < salt_len; i++) {
-        salt[i] = (char)(rand() % sizeof(char));
+    for (int i = 0; i < salt_len-1; i++) {
+        // NB: 94 printable ASCII chars starting from 32 (decimal).
+        int randASCII = (rand() % 94) + 32;
+
+        sprintf((char *)&salt[i], "%c", randASCII);
     }
+    salt[salt_len-1] = '\0';
 
     char *buffer = NULL;
     if (storj_encrypt_auth(passphrase, (char *)&salt,
@@ -937,7 +941,7 @@ STORJ_API int storj_decrypt_auth(const char *buffer,
         status = 1;
         goto clean_up;
     }
-    char *salt = (char *)json_object_get_string(salt_value);
+    const char *salt = (char *)json_object_get_string(salt_value);
 
     struct json_object *apikey_value;
     if (!json_object_object_get_ex(obj, "api_key", &apikey_value)) {
@@ -965,7 +969,6 @@ STORJ_API int storj_decrypt_auth(const char *buffer,
 
     clean_up:
     json_object_put(obj);
-    free(salt);
 
     return status;
 }
