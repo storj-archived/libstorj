@@ -472,6 +472,13 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
                                  storj_http_options_t *http_options,
                                  storj_log_options_t *log_options)
 {
+    if (!bridge_options->addr ||
+        !bridge_options->apikey ||
+        strcmp("", bridge_options->addr) == 0 ||
+        strcmp("", bridge_options->apikey) == 0) {
+        return NULL;
+    }
+
     APIKeyRef apikey_ref = parse_api_key(strdup(bridge_options->apikey), STORJ_LAST_ERROR);
     STORJ_RETURN_IF_LAST_ERROR(NULL);
 

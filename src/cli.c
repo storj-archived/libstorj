@@ -29,7 +29,7 @@ if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
 }\
 
 typedef struct {
-    char *host;
+    char *addr;
     char *apikey;
     char *enc_access;
     char *user_passphrase;
@@ -43,7 +43,6 @@ extern int errno;
 #define HELP_TEXT "usage: storj [<options>] <command> [<args>]\n\n"     \
     "These are common Storj commands for various situations:\n\n"       \
     "setting up user profiles:\n"                                       \
-    "  register                      setup a new storj bridge user\n"   \
     "  import-keys                   import existing user\n"            \
     "  export-keys                   export bridge user, password and " \
     "encryption keys\n\n"                                               \
@@ -57,36 +56,30 @@ extern int errno;
     "  mkbkt <bucket-name>           make a bucket\n"                   \
     "  rm <bucket-name> <file-name>  remove a file from a bucket\n"     \
     "  rm <bucket-name>              remove a bucket\n"                 \
-    "  lm <bucket-name> <file-name>  list mirrors\n\n"                  \
     "working with buckets and files:\n"                                 \
     "  list-buckets\n"                                                  \
     "  list-files <bucket-id>\n"                                        \
     "  remove-file <bucket-id> <file-id>\n"                             \
     "  remove-bucket <bucket-id>\n"                                     \
     "  add-bucket <name> \n"                                            \
-    "  list-mirrors <bucket-id> <file-id>\n"                            \
     "  get-bucket-id <bucket-name>\n\n"                                 \
     "uploading files:\n"                                                \
     "  upload-file <bucket-id> <path>\n\n"                              \
     "downloading files:\n"                                              \
     "  download-file <bucket-id> <file-id> <directory path/ new file name>\n\n"                  \
-    "bridge api information:\n"                                         \
-    "  get-info\n\n"                                                    \
     "options:\n"                                                        \
     "  -h, --help                    output usage information\n"        \
     "  -v, --version                 output the version number\n"       \
     "  -u, --url <url>               set the base url for the api\n"    \
-    "  -p, --proxy <url>             set the socks proxy "              \
     "(e.g. <[protocol://][user:password@]proxyhost[:port]>)\n"          \
     "  -l, --log <level>             set the log level (default 0)\n"   \
     "  -d, --debug                   set the debug log level\n\n"       \
     "environment variables:\n"                                          \
     "  STORJ_KEYPASS                 imported user settings passphrase\n" \
-    "  STORJ_BRIDGE                  the bridge host "                  \
+    "  STORJ_BRIDGE                  the satellite (bridge) host "      \
     "(e.g. https://api.storj.io)\n"                                     \
-    "  STORJ_BRIDGE_USER             bridge username\n"                 \
-    "  STORJ_BRIDGE_PASS             bridge password\n"                 \
-    "  STORJ_ENCRYPTION_KEY          file encryption key\n\n"
+    "  STORJ_API_KEY                 project API key\n"                 \
+    "  STORJ_ENCRYPTION_KEY          encryption key\n\n"
 
 
 #define CLI_VERSION "libstorj-2.0.0-beta2"
@@ -258,43 +251,34 @@ static int get_user_auth_location(char *host, char **root_dir, char **user_file)
     return 0;
 }
 
-static const char *enc_access_from_passphrase(ProjectRef project_ref,
+static int enc_access_from_passphrase(ProjectRef project_ref,
                                               const char *passphrase,
                                               char **enc_access_str)
 {
     uint8_t *salted_key = project_salted_key_from_passphrase(project_ref,
                                                              strdup(passphrase),
                                                              STORJ_LAST_ERROR);
-    STORJ_RETURN_IF_LAST_ERROR(NULL);
+    STORJ_RETURN_IF_LAST_ERROR(1);
 
     EncryptionAccessRef encryption_access = new_encryption_access_with_default_key(salted_key);
     *enc_access_str = serialize_encryption_access(encryption_access, STORJ_LAST_ERROR);
     free(salted_key);
-    STORJ_RETURN_IF_LAST_ERROR(NULL);
+    STORJ_RETURN_IF_LAST_ERROR(1);
 }
 
-static ProjectRef *get_project_ref(const char *apikey)
-{
-    storj_bridge_options_t bridge_opts = {
-            .apikey = strdup(apikey)
-    };
-    // NB: kinda hacky
-    storj_env_t *env = storj_init_env(&bridge_opts, NULL, NULL, NULL);
-    if (!env) {
-        return NULL;
-    }
-    return &env->project_ref;
-}
-
-static int generate_enc_access(const char *apikey, const char *passphrase,
+static int generate_enc_access(storj_bridge_options_t *bridge_opts, const char *passphrase,
                                char **enc_access_str)
 {
-    ProjectRef *project_ref = get_project_ref(apikey);
-    if (!project_ref) {
+    storj_log_options_t log_opts = {
+            .level = 2
+    };
+    storj_env_t *env = storj_init_env(bridge_opts, NULL, NULL, &log_opts);
+    STORJ_RETURN_IF_LAST_ERROR(1);
+    if (!env) {
         return 1;
     }
 
-    enc_access_from_passphrase(*project_ref, passphrase, enc_access_str);
+    return enc_access_from_passphrase(env->project_ref, passphrase, enc_access_str);
 }
 
 static int get_password(char *password, int mask)
@@ -391,10 +375,13 @@ static int get_password_verify(char *prompt, char *password, int count)
 
 static int import_keys(user_options_t *options)
 {
+    storj_bridge_options_t bridge_opts = {
+            .addr = strdup(options->addr),
+    };
+
     int status = 0;
-    char *host = options->host ? strdup(options->host) : "";
-    char *apikey = options->apikey ?
-        strdup(options->apikey) : calloc(BUFSIZ, sizeof(char));
+    bridge_opts.apikey = bridge_opts.apikey ?
+            strdup(bridge_opts.apikey) : calloc(BUFSIZ, sizeof(char));
     char *enc_access_str = options->enc_access ?
         strdup(options->enc_access): NULL;
     char *user_passphrase = options->user_passphrase ?
@@ -405,14 +392,12 @@ static int import_keys(user_options_t *options)
     char *user_input = calloc(BUFSIZ, sizeof(char));
     int num_chars;
 
-    printf("import_keys host: %s\n", host);
-
-    if (!apikey) {
-        apikey = calloc(BUFSIZ, sizeof(char));
+    // TODO: apikey validation?
+    if (!bridge_opts.apikey || strcmp("", bridge_opts.apikey) == 0) {
         printf("Project API key: ");
-        get_input(apikey);
+        get_input(bridge_opts.apikey);
         printf("\n");
-        num_chars = strlen(apikey);
+        num_chars = strlen(bridge_opts.apikey);
 
         if (num_chars == 0) {
             // TODO: add link
@@ -428,7 +413,7 @@ static int import_keys(user_options_t *options)
         goto clear_variables;
     }
 
-    if (get_user_auth_location(host, &root_dir, &user_file)) {
+    if (get_user_auth_location(bridge_opts.addr, &root_dir, &user_file)) {
         printf("Unable to determine user auth filepath.\n");
         status = 1;
         goto clear_variables;
@@ -460,21 +445,23 @@ static int import_keys(user_options_t *options)
         printf("\n");
 
         if (num_chars == 0) {
-            int last_result = -1;
-            for (int i = 0; i < 3; i++) {
-                last_result = get_password_verify("Enter a passphrase to generate "
-                                                  "a new root key for your "
-                                                  "encryption key: ", new_enc_passphrase, 0);
-                printf("\n");
-            }
-
-            if (last_result != 0) {
+            if (0 != get_password_verify("Enter a passphrase to generate "
+                                              "a new root key for your "
+                                              "encryption key: ",
+                                              new_enc_passphrase, 0)) {
                 printf("Giving up.\n");
                 status = 1;
                 goto clear_variables;
-            }
+            };
 
-            generate_enc_access(apikey, new_enc_passphrase, &enc_access_str);
+            if (0 != generate_enc_access(&bridge_opts, new_enc_passphrase,
+                                         &enc_access_str)) {
+                strcmp("", *STORJ_LAST_ERROR) != 0 ?
+                    printf("An error occurred while generating: %s\n", *STORJ_LAST_ERROR) :
+                    printf("Unable to generate new encryption key.");
+                status = 1;
+                goto clear_variables;
+            }
 
             printf("\n");
 
@@ -483,8 +470,6 @@ static int import_keys(user_options_t *options)
             printf("Please make sure to backup this key in a safe location. " \
                    "If the key is lost, the data uploaded will also be lost.\n\n");
 
-//        } else {
-//          TODO: need to mainpulate `enc_access_str`
         }
 
         // NB: check integrity of encryption access
@@ -513,7 +498,7 @@ static int import_keys(user_options_t *options)
         goto clear_variables;
     }
 
-    if (storj_encrypt_write_auth(user_file, user_passphrase, apikey, enc_access_str)) {
+    if (storj_encrypt_write_auth(user_file, user_passphrase, bridge_opts.apikey, enc_access_str)) {
         status = 1;
         printf("Failed to write to disk\n");
         goto clear_variables;
@@ -703,14 +688,8 @@ int main(int argc, char **argv)
     }
 
     if (!storj_bridge) {
-//        storj_bridge = "https://api.storj.io:443/";
         storj_bridge = "us-central-1.tardigrade.io:7777";
     }
-
-    // Parse the host, part and proto from the storj bridge url
-    char host[100];
-    int port = 0;
-    sscanf(storj_bridge, "%99[^:/]:%99d", host, &port);
 
     if (strcmp(command, "login") == 0) {
         printf("'login' is not a storj command. Did you mean 'import-keys'?\n\n");
@@ -718,12 +697,12 @@ int main(int argc, char **argv)
     }
 
     if (strcmp(command, "import-keys") == 0) {
-        user_options_t user_options = {host, NULL, NULL, NULL};
+        user_options_t user_options = {storj_bridge, NULL, NULL, NULL};
         return import_keys(&user_options);
     }
 
     if (strcmp(command, "export-keys") == 0) {
-        return export_keys(host);
+        return export_keys(storj_bridge);
     }
 
     // initialize event loop and environment
@@ -742,7 +721,7 @@ int main(int argc, char **argv)
 
     char *user_file = NULL;
     char *root_dir = NULL;
-    if (get_user_auth_location(host, &root_dir, &user_file)) {
+    if (get_user_auth_location(storj_bridge, &root_dir, &user_file)) {
         printf("Unable to determine user auth filepath.\n");
         return 1;
     }
@@ -838,7 +817,7 @@ int main(int argc, char **argv)
     }
 
     storj_bridge_options_t options = {
-        .addr  = host,
+        .addr  = storj_bridge,
         .apikey = apikey,
     };
 
