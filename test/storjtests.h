@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <signal.h>
 
-#include "../src/storj.h"
-#include "../../uplinkc/testdata/require.h"
+#include "storj.h"
+#include "../storj/lib/uplinkc/testdata/require.h"
 
 #define require_no_last_error \
 if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
