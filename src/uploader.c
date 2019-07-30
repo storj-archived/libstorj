@@ -78,8 +78,7 @@ static void queue_get_file_info(uv_work_t *work, int status)
     }
 
     storj_bridge_get_file_info(state->env, state->bucket_id, state->file_name,
-                               strdup(state->encryption_access), work,
-                               after_get_file_info);
+                                work, after_get_file_info);
 }
 
 static void store_file(uv_work_t *work)
@@ -208,6 +207,13 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
         return NULL;
     }
 
+    if (!env ||
+        !env->encrypt_options ||
+        !env->encrypt_options->encryption_key ||
+        strcmp("", env->encrypt_options->encryption_key) == 0) {
+        printf("error: no encryption key provided.\n");
+    }
+
     storj_upload_state_t *state = malloc(sizeof(storj_upload_state_t));
     if (!state) {
         return NULL;
@@ -223,7 +229,7 @@ STORJ_API storj_upload_state_t *storj_bridge_store_file(storj_env_t *env,
 
     state->env = env;
     state->file_name = strdup(opts->file_name);
-    state->encryption_access = strdup(opts->encryption_access);
+    state->encryption_access = strdup(env->encrypt_options->encryption_key);
     state->file_size = 0;
     state->uploaded_bytes = 0;
     state->bucket_id = strdup(opts->bucket_id);

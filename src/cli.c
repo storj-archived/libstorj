@@ -861,7 +861,10 @@ int main(int argc, char **argv)
         memcpy(cli_api->file_id, file_id, strlen(file_id));
         cli_api->dst_file = path;
 
-        if (download_file(env, bucket_id, file_id, path, enc_access_str, cli_api)) {
+        if (download_file(env, bucket_id, file_id, path, cli_api)) {
+            if (strcmp("", *STORJ_LAST_ERROR) != 0) {
+                printf("error: %s\n", *STORJ_LAST_ERROR);
+            }
             status = 1;
             goto end_program;
         }
@@ -879,6 +882,9 @@ int main(int argc, char **argv)
         cli_api->dst_file = path;
 
         if (upload_file(env, bucket_id, path, cli_api)) {
+            if (strcmp("", *STORJ_LAST_ERROR) != 0) {
+                printf("error: %s\n", *STORJ_LAST_ERROR);
+            }
             status = 1;
             goto end_program;
         }
@@ -892,7 +898,7 @@ int main(int argc, char **argv)
         }
 
         // TODO: expose list options to user?
-        storj_bridge_list_files(env, bucket_id, get_enc_access(cli_api), NULL,
+        storj_bridge_list_files(env, bucket_id, NULL,
                                 cli_api, list_files_callback);
     } else if ((strcmp(command, "add-bucket") == 0) || (strcmp(command, "mkbkt") == 0x00)) {
         char *bucket_name = argv[command_index + 1];
@@ -939,7 +945,7 @@ int main(int argc, char **argv)
             status = 1;
             goto end_program;
         }
-        storj_bridge_delete_file(env, bucket_id, file_id, get_enc_access(cli_api),
+        storj_bridge_delete_file(env, bucket_id, file_id,
                                  cli_api, delete_file_callback);
 
     } else if (strcmp(command, "list-buckets") == 0) {

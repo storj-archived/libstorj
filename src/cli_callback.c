@@ -7,12 +7,6 @@
 
 static inline void noop() {};
 
-static char *get_enc_access(cli_api_t *cli_api)
-{
-    // TODO: use `strdup`?
-    return cli_api->env->encrypt_options->encryption_key;
-}
-
 static void get_input(char *line)
 {
     if (fgets(line, BUFSIZ, stdin) == NULL) {
@@ -212,16 +206,10 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
     }
 
     // Upload opts env variables:
-    char *prepare_frame_limit = getenv("STORJ_PREPARE_FRAME_LIMIT");
-    char *push_frame_limit = getenv("STORJ_PUSH_FRAME_LIMIT");
-    char *push_shard_limit = getenv("STORJ_PUSH_SHARD_LIMIT");
-    char *rs = getenv("STORJ_REED_SOLOMON");
-
     storj_upload_opts_t upload_opts = {
-        .prepare_frame_limit = (prepare_frame_limit) ? atoi(prepare_frame_limit) : 1,
-        .push_frame_limit = (push_frame_limit) ? atoi(push_frame_limit) : 64,
-        .push_shard_limit = (push_shard_limit) ? atoi(push_shard_limit) : 64,
-        .rs = (!rs) ? true : (strcmp(rs, "false") == 0) ? false : true,
+        // NB: about +500 years from time of writing
+        .expires = 17329017831,
+        .content_type = "text/plain",
         .bucket_id = bucket_id,
         .file_name = file_name,
         .fd = fd
@@ -246,7 +234,7 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
                                                           handle,
                                                           progress_cb,
                                                           upload_file_complete);
-
+    STORJ_RETURN_IF_LAST_ERROR(1);
     if (!state) {
         return 1;
     }
@@ -439,7 +427,7 @@ static void download_signal_handler(uv_signal_t *req, int signum)
 }
 
 static int download_file(storj_env_t *env, char *bucket_id, char *file_id,
-                         char *path, char *enc_access_str, void *handle)
+                         char *path, void *handle)
 {
     FILE *fd = NULL;
 
@@ -489,7 +477,6 @@ static int download_file(storj_env_t *env, char *bucket_id, char *file_id,
     // TODO: expose buffer size as user option or something
     storj_download_state_t *state = storj_bridge_resolve_file(env, bucket_id,
                                                               file_id, fd,
-                                                              enc_access_str,
                                                               0,
                                                               handle,
                                                               progress_cb,
@@ -703,8 +690,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
 
                 // TODO: expose list options to user?
                 storj_bridge_list_files(cli_api->env, cli_api->bucket_id,
-                                        get_enc_access(cli_api), NULL,
-                                        cli_api, list_files_callback);
+                                        NULL, cli_api, list_files_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
                      (strcmp(cli_api->next_cmd_req, "remove-bucket-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
@@ -726,9 +712,8 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 cli_api->excp_cmd_resp = "remove-file-resp";
 
                 storj_bridge_delete_file(cli_api->env, cli_api->bucket_id,
-                                         cli_api->file_id,
-                                         get_enc_access(cli_api),
-                                         cli_api, delete_file_callback);
+                                         cli_api->file_id, cli_api,
+                                         delete_file_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
                      (strcmp(cli_api->next_cmd_req, "upload-file-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
@@ -791,7 +776,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 cli_api->excp_cmd_resp = "download-file-resp";
 
                 download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id,
-                                cli_api->dst_file, get_enc_access(cli_api), cli_api);
+                                cli_api->dst_file, cli_api);
             } else if ((cli_api->next_cmd_req != NULL) &&
                      (strcmp(cli_api->next_cmd_req, "download-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
@@ -822,7 +807,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
 
                     cli_api->xfer_count++;
                     download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id,
-                                  temp_path, get_enc_access(cli_api), cli_api);
+                                  temp_path, cli_api);
 
                     fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, temp_path);
                 } else {

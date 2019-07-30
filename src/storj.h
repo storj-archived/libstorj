@@ -385,7 +385,6 @@ typedef struct {
     FILE *fd;
 
     /* New in V3 */
-   const char *encryption_access;
    const char *content_type;
    int64_t expires;
    size_t buffer_size;
@@ -763,7 +762,6 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
  */
 STORJ_API int storj_bridge_list_files(storj_env_t *env,
                                       const char *id,
-                                      const char *encryption_access,
                                       ListOptions *list_opts,
                                       void *handle,
                                       uv_after_work_cb cb);
@@ -827,7 +825,6 @@ STORJ_API int storj_bridge_get_file_pointers(storj_env_t *env,
 STORJ_API int storj_bridge_delete_file(storj_env_t *env,
                                        const char *bucket_id,
                                        const char *file_id,
-                                       const char *encryption_access,
                                        void *handle,
                                        uv_after_work_cb cb);
 
@@ -896,7 +893,6 @@ STORJ_API int storj_bridge_delete_frame(storj_env_t *env,
 STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
                                          const char *bucket_id,
                                          const char *file_id,
-                                         const char *encryption_access,
                                          void *handle,
                                          uv_after_work_cb cb);
 
@@ -1003,7 +999,6 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
                                                             FILE *destination,
-                                                            const char *encryption_access,
                                                             size_t buffer_size,
                                                             void *handle,
                                                             storj_progress_cb progress_cb,

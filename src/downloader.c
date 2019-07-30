@@ -133,7 +133,6 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
                                                             FILE *destination,
-                                                            const char *encryption_access,
                                                             size_t buffer_size,
                                                             void *handle,
                                                             storj_progress_cb progress_cb,
@@ -141,7 +140,15 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
 {
     storj_download_state_t *state = malloc(sizeof(storj_download_state_t));
     if (!state) {
+        printf("%s\n", storj_strerror(STORJ_MEMORY_ERROR));
         return NULL;
+    }
+
+    if (!env ||
+        !env->encrypt_options ||
+        !env->encrypt_options->encryption_key ||
+        strcmp("", env->encrypt_options->encryption_key) == 0) {
+        printf("error: no encryption key provided.\n");
     }
 
     state->downloader_ref._handle = 0;
@@ -149,7 +156,7 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
         STORJ_DEFAULT_DOWNLOAD_BUFFER_SIZE : buffer_size;
 
     // setup download state
-    state->encryption_access = strdup(encryption_access);
+    state->encryption_access = strdup(env->encrypt_options->encryption_key);
     state->total_bytes = 0;
     state->downloaded_bytes = 0;
     state->env = env;
@@ -169,8 +176,8 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
     uv_work_t *work = uv_work_new();
     work->data = state;
 
-    int status = storj_bridge_get_file_info(state->env, state->bucket_id, state->file_id,
-                                            strdup(encryption_access), work,
+    int status = storj_bridge_get_file_info(state->env, state->bucket_id,
+                                            state->file_id, work,
                                             queue_resolve_file);
     if (status) {
         state->error_status = STORJ_QUEUE_ERROR;

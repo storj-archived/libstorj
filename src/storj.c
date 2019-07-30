@@ -716,7 +716,6 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
 
 STORJ_API int storj_bridge_list_files(storj_env_t *env,
                             const char *id,
-                            const char *encryption_access,
                             ListOptions *list_opts,
                             void *handle,
                             uv_after_work_cb cb)
@@ -725,7 +724,16 @@ STORJ_API int storj_bridge_list_files(storj_env_t *env,
     if (!work) {
         return STORJ_MEMORY_ERROR;
     }
-    work->data = list_files_request_new(env->project_ref, id, encryption_access,
+
+    if  (!env->encrypt_options ||
+         !env->encrypt_options->encryption_key ||
+         strcmp("", env->encrypt_options->encryption_key) == 0) {
+        printf("encryption key cannot be empty.");
+        return 1;
+    }
+
+    work->data = list_files_request_new(env->project_ref, id,
+                                        env->encrypt_options->encryption_key,
                                         list_opts, handle);
 
     if (!work->data) {
@@ -765,7 +773,6 @@ STORJ_API void storj_free_file_meta(storj_file_meta_t *file_meta)
 STORJ_API int storj_bridge_delete_file(storj_env_t *env,
                              const char *bucket_id,
                              const char *path,
-                             const char *encryption_access,
                              void *handle,
                              uv_after_work_cb cb)
 {
@@ -775,7 +782,8 @@ STORJ_API int storj_bridge_delete_file(storj_env_t *env,
     }
 
     work->data = delete_file_request_new(env->project_ref, bucket_id,
-                                         path, encryption_access, handle);
+                                         path, env->encrypt_options->encryption_key,
+                                         handle);
     if (!work->data) {
         return STORJ_MEMORY_ERROR;
     }
@@ -786,7 +794,6 @@ STORJ_API int storj_bridge_delete_file(storj_env_t *env,
 STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
                                          const char *bucket_id,
                                          const char *file_id,
-                                         const char *encryption_access,
                                          void *handle,
                                          uv_after_work_cb cb)
 {
@@ -795,8 +802,9 @@ STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
         return STORJ_MEMORY_ERROR;
     }
 
-    work->data = get_file_info_request_new(env->project_ref, bucket_id,
-                                           file_id, encryption_access, handle);
+    work->data = get_file_info_request_new(env->project_ref, bucket_id, file_id,
+                                           env->encrypt_options->encryption_key,
+                                           handle);
 
     if (!work->data) {
         return STORJ_MEMORY_ERROR;
