@@ -522,19 +522,11 @@ static void create_bucket_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     create_bucket_request_t *req = work_req->data;
 
-    if (req->status_code == 409) {
-        printf("Cannot create bucket [%s]. Name already exists.\n", req->bucket->name);
-        goto clean_variables;
-    } else if (req->status_code == 401) {
-        printf("Invalid user credentials.\n");
-        goto clean_variables;
-    } else if (req->status_code == 403) {
-        printf("Forbidden, user not active.\n");
-        goto clean_variables;
-    }
-
-    if (req->status_code != 201) {
-        printf("Request failed with status code: %i\n", req->status_code);
+    bool uplink_err = strcmp("", *STORJ_LAST_ERROR) != 0;
+    if (req->status_code != 0 || uplink_err) {
+        uplink_err ?
+            printf("libuplink error: %s\n", *STORJ_LAST_ERROR) :
+            printf("Unable to create bucket.");
         goto clean_variables;
     }
 
@@ -911,8 +903,19 @@ int main(int argc, char **argv)
             goto end_program;
         }
 
-        // TODO: expose bucket config to user?
-        storj_bridge_create_bucket(env, bucket_name, NULL,
+        // TODO: expose bucket config options to user?
+        // TODO: remove bucket config
+        RedundancyScheme redundancy_scheme = {
+                .share_size = 256,
+                .required_shares = 4,
+                .repair_shares = 6,
+                .optimal_shares = 8,
+                .total_shares = 10
+        };
+        BucketConfig bucket_cfg = {
+                .redundancy_scheme = redundancy_scheme
+        };
+        storj_bridge_create_bucket(env, bucket_name, &bucket_cfg,
                                    NULL, create_bucket_callback);
 
     } else if (strcmp(command, "remove-bucket") == 0) {
@@ -1248,7 +1251,18 @@ int main(int argc, char **argv)
         }
 
         // TODO: expose bucket config options to user?
-        storj_bridge_create_bucket(env, bucket_name, NULL,
+        // TODO: remove bucket config
+        RedundancyScheme redundancy_scheme = {
+                .share_size = 256,
+                .required_shares = 4,
+                .repair_shares = 6,
+                .optimal_shares = 8,
+                .total_shares = 10
+        };
+        BucketConfig bucket_cfg = {
+                .redundancy_scheme = redundancy_scheme
+        };
+        storj_bridge_create_bucket(env, bucket_name, &bucket_cfg,
                                    NULL, create_bucket_callback);
     } else if (strcmp(command, "rm") == 0) {
         cli_api->bucket_name = argv[command_index + 1];
