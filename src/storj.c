@@ -857,7 +857,7 @@ STORJ_API int storj_encrypt_auth(const char *passphrase,
                        char **buffer)
 {
     char *apikey_encrypted;
-    if (encrypt_data(apikey, salt, apikey,
+    if (encrypt_data(passphrase, salt, apikey,
                      &apikey_encrypted)) {
         return 1;
     }
@@ -941,7 +941,7 @@ STORJ_API int storj_decrypt_auth(const char *buffer,
         status = 1;
         goto clean_up;
     }
-    const char *salt = (char *)json_object_get_string(salt_value);
+    const char *salt = (const char *)json_object_get_string(salt_value);
 
     struct json_object *apikey_value;
     if (!json_object_object_get_ex(obj, "api_key", &apikey_value)) {
