@@ -197,12 +197,8 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
 
     const char *file_name = get_filename_separator(file_path);
 
-    if (cli_api->dst_file == NULL) {
-        if (!file_name) {
-            file_name = file_path;
-        }
-    } else {
-        file_name = cli_api->dst_file;
+    if (!file_name) {
+        file_name = file_path;
     }
 
     // Upload opts env variables:
