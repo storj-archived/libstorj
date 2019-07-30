@@ -23,6 +23,7 @@ extern "C" {
   #define STORJ_API
 #endif
 
+#include <assert.h>
 #include <json-c/json.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -30,12 +31,13 @@ extern "C" {
 #include <stdarg.h>
 #include <string.h>
 #include <uv.h>
-#include "crypto.h"
-#include "uplink.h"
+#include <curl/curl.h>
 
 #include <inttypes.h>
 
+#ifdef _WIN32
 #include <time.h>
+#endif
 
 #ifndef _WIN32
 #include <sys/mman.h>
@@ -46,66 +48,80 @@ extern "C" {
 #define STORJ_TRANSFER_OK 0
 #define STORJ_TRANSFER_CANCELED 1
 
-// Libuplink error (i.e. check STORJ_LAST_ERROR)
-#define STORJ_LIBUPLINK_ERROR 1000
+// Bridge related errors 1000 to 1999
+#define STORJ_BRIDGE_REQUEST_ERROR 1000
+#define STORJ_BRIDGE_AUTH_ERROR 1001
+#define STORJ_BRIDGE_TOKEN_ERROR 1002
+#define STORJ_BRIDGE_TIMEOUT_ERROR 1003
+#define STORJ_BRIDGE_INTERNAL_ERROR 1004
+#define STORJ_BRIDGE_RATE_ERROR 1005
+#define STORJ_BRIDGE_BUCKET_NOTFOUND_ERROR 1006
+#define STORJ_BRIDGE_FILE_NOTFOUND_ERROR 1007
+#define STORJ_BRIDGE_JSON_ERROR 1008
+#define STORJ_BRIDGE_FRAME_ERROR 1009
+#define STORJ_BRIDGE_POINTER_ERROR 1010
+#define STORJ_BRIDGE_REPOINTER_ERROR 1011
+#define STORJ_BRIDGE_FILEINFO_ERROR 1012
+#define STORJ_BRIDGE_BUCKET_FILE_EXISTS 1013
+#define STORJ_BRIDGE_OFFER_ERROR 1014
 
-// Memory related errors
-#define STORJ_MEMORY_ERROR 2000
+// Farmer related errors 2000 to 2999
+#define STORJ_FARMER_REQUEST_ERROR 2000
+#define STORJ_FARMER_TIMEOUT_ERROR 2001
+#define STORJ_FARMER_AUTH_ERROR 2002
+#define STORJ_FARMER_EXHAUSTED_ERROR 2003
+#define STORJ_FARMER_INTEGRITY_ERROR 2004
 
 // File related errors 3000 to 3999
 #define STORJ_FILE_INTEGRITY_ERROR 3000
+#define STORJ_FILE_WRITE_ERROR 3001
+#define STORJ_FILE_ENCRYPTION_ERROR 3002
+#define STORJ_FILE_SIZE_ERROR 3003
+#define STORJ_FILE_DECRYPTION_ERROR 3004
+#define STORJ_FILE_GENERATE_HMAC_ERROR 3005
+#define STORJ_FILE_READ_ERROR 3006
+#define STORJ_FILE_SHARD_MISSING_ERROR 3007
+#define STORJ_FILE_RECOVER_ERROR 3008
+#define STORJ_FILE_RESIZE_ERROR 3009
+#define STORJ_FILE_UNSUPPORTED_ERASURE 3010
+#define STORJ_FILE_PARITY_ERROR 3011
+
+// Memory related errors
+#define STORJ_MEMORY_ERROR 4000
+#define STORJ_MAPPING_ERROR 4001
+#define STORJ_UNMAPPING_ERROR 4002
 
 // Queue related errors
-#define STORJ_QUEUE_ERROR 4000
+#define STORJ_QUEUE_ERROR 5000
+
+// Meta related errors 6000 to 6999
+#define STORJ_META_ENCRYPTION_ERROR 6000
+#define STORJ_META_DECRYPTION_ERROR 6001
+
+// Miscellaneous errors
+#define STORJ_HEX_DECODE_ERROR 7000
+
+// Exchange report codes
+#define STORJ_REPORT_SUCCESS 1000
+#define STORJ_REPORT_FAILURE 1100
+
+// Exchange report messages
+#define STORJ_REPORT_FAILED_INTEGRITY "FAILED_INTEGRITY"
+#define STORJ_REPORT_SHARD_DOWNLOADED "SHARD_DOWNLOADED"
+#define STORJ_REPORT_SHARD_UPLOADED "SHARD_UPLOADED"
+#define STORJ_REPORT_DOWNLOAD_ERROR "DOWNLOAD_ERROR"
+#define STORJ_REPORT_UPLOAD_ERROR "TRANSFER_FAILED"
 
 #define STORJ_SHARD_CHALLENGES 4
 #define STORJ_LOW_SPEED_LIMIT 30720L
 #define STORJ_LOW_SPEED_TIME 20L
 #define STORJ_HTTP_TIMEOUT 60L
 
-#define STORJ_DEFAULT_UPLOAD_BUFFER_SIZE (size_t)(32 * 1024 * sizeof(char))
-#define STORJ_DEFAULT_DOWNLOAD_BUFFER_SIZE (size_t)(32 * 1024 * sizeof(char))
-
-/* --- Begin bad macros ---
-    "Macros should avoid using globals..."
-    "Macros that change named parameters (rather than the storage they point at)
-     or may be used as the left-hand side of an assignment should mention this
-     in their comments."
-      -- https://www.doc.ic.ac.uk/lab/cplus/cstyle.html#N10488
-*/
-#define STORJ_SOURCEMAP_LAST_ERROR() \
-{ \
-    char line[128] = {0}; \
-    sprintf(line, "%s:%d: ", __FILE__, __LINE__); \
-    *STORJ_LAST_ERROR = str_concat_many(2, (char *)line, *STORJ_LAST_ERROR); \
-} \
-
-#define STORJ_RETURN_IF_LAST_ERROR(value) \
-if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
-    STORJ_SOURCEMAP_LAST_ERROR() \
-    return value;\
-}\
-
-#define STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR() \
-if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
-    STORJ_SOURCEMAP_LAST_ERROR() \
-    state->error_status = STORJ_LIBUPLINK_ERROR; \
-    return;\
-}\
-
-// TODO: should req->status_code be an http error status code?
-// (look into how req->status_code is used)
-#define STORJ_RETURN_SET_REQ_ERROR_IF_LAST_ERROR() \
-if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
-    STORJ_SOURCEMAP_LAST_ERROR() \
-    req->error_code = STORJ_LIBUPLINK_ERROR; \
-    req->status_code = 1; \
-    return;\
-}\
-/* --- End bad macros --- */
-
-// TODO: do we need `extern`?
-extern char **STORJ_LAST_ERROR;
+typedef struct {
+  uint8_t *encryption_ctr;
+  uint8_t *encryption_key;
+  struct aes256_ctx *ctx;
+} storj_encryption_ctx_t ;
 
 typedef enum {
     STORJ_REPORT_NOT_PREPARED = 0,
@@ -120,10 +136,11 @@ typedef enum {
  * basic authentication to a Storj bridge.
  */
 typedef struct {
-    char *addr;
-    // NB: apikey is project-specific.
-    char *apikey;
-
+    const char *proto;
+    const char *host;
+    int port;
+    const char *user;
+    const char *pass;
 } storj_bridge_options_t;
 
 /** @brief File encryption options
@@ -132,7 +149,7 @@ typedef struct {
  * encryption and decryption.
  */
 typedef struct storj_encrypt_options {
-    char *encryption_key;
+    const char *mnemonic;
 } storj_encrypt_options_t;
 
 
@@ -186,20 +203,27 @@ typedef struct storj_log_levels {
 typedef struct storj_env {
     storj_bridge_options_t *bridge_options;
     storj_encrypt_options_t *encrypt_options;
-    storj_log_options_t *log_options;
-
-    uv_loop_t *loop;
-    uv_async_t async;
-    storj_log_levels_t *log;
-
-    /* New in V3 */
-    UplinkRef uplink_ref;
-    ProjectRef project_ref;
-
-    // TODO: delete?
-    /* unused in V3 */
     storj_http_options_t *http_options;
+    storj_log_options_t *log_options;
+    const char *tmp_path;
+    uv_loop_t *loop;
+    storj_log_levels_t *log;
 } storj_env_t;
+
+/** @brief A structure for queueing json request work
+ */
+typedef struct {
+    storj_http_options_t *http_options;
+    storj_bridge_options_t *options;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
+    struct json_object *response;
+    int error_code;
+    int status_code;
+    void *handle;
+} json_request_t;
 
 /** @brief A structure for that describes a bucket
  */
@@ -213,9 +237,11 @@ typedef struct {
 /** @brief A structure for queueing create bucket request work
  */
 typedef struct {
-    ProjectRef project_ref;
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *bridge_options;
     const char *bucket_name;
-    BucketConfig *bucket_cfg;
+    const char *encrypted_bucket_name;
     struct json_object *response;
     storj_bucket_meta_t *bucket;
     int error_code;
@@ -226,7 +252,13 @@ typedef struct {
 /** @brief A structure for queueing list buckets request work
  */
 typedef struct {
-    ProjectRef project_ref;
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
     struct json_object *response;
     storj_bucket_meta_t *buckets;
     uint32_t total_buckets;
@@ -238,10 +270,15 @@ typedef struct {
 /** @brief A structure for queueing get bucket request work
  */
 typedef struct {
-    ProjectRef project_ref;
-    const char *bucket_name;
-    storj_bucket_meta_t *bucket;
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
     struct json_object *response;
+    storj_bucket_meta_t *bucket;
     int error_code;
     int status_code;
     void *handle;
@@ -250,7 +287,9 @@ typedef struct {
 /** @brief A structure for queueing get bucket id request work
  */
 typedef struct {
-    ProjectRef project_ref;
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
     const char *bucket_name;
     struct json_object *response;
     const char *bucket_id;
@@ -259,36 +298,32 @@ typedef struct {
     void *handle;
 } get_bucket_id_request_t;
 
-/** @brief A structure for queueing delete bucket request work
- */
-typedef struct {
-    ProjectRef project_ref;
-    const char *bucket_name;
-    struct json_object *response;
-    int error_code;
-    int status_code;
-    void *handle;
-} delete_bucket_request_t;
-
 /** @brief A structure for that describes a bucket entry/file
  */
 typedef struct {
     const char *created;
     const char *filename;
     const char *mimetype;
+    const char *erasure;
     uint64_t size;
+    const char *hmac;
     const char *id;
     const char *bucket_id;
     bool decrypted;
+    const char *index;
 } storj_file_meta_t;
 
 /** @brief A structure for queueing list files request work
  */
 typedef struct {
-    ProjectRef project_ref;
-    const char *encryption_access;
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
     const char *bucket_id;
-    ListOptions *list_opts;
+    char *method;
+    char *path;
+    bool auth;
+    struct json_object *body;
     struct json_object *response;
     storj_file_meta_t *files;
     uint32_t total_files;
@@ -300,9 +335,14 @@ typedef struct {
 /** @brief A structure for queueing get file info request work
  */
 typedef struct {
-    BucketRef bucket_ref;
+    storj_http_options_t *http_options;
+    storj_encrypt_options_t *encrypt_options;
+    storj_bridge_options_t *options;
     const char *bucket_id;
+    char *method;
     char *path;
+    bool auth;
+    struct json_object *body;
     struct json_object *response;
     storj_file_meta_t *file;
     int error_code;
@@ -325,23 +365,12 @@ typedef struct {
     void *handle;
 } get_file_id_request_t;
 
-/** @brief A structure for queueing delete file request work
- */
-typedef struct {
-    ProjectRef project_ref;
-    const char *bucket_id;
-    const char *path;
-    const char *encryption_access;
-    struct json_object *response;
-    int error_code;
-    int status_code;
-    void *handle;
-} delete_file_request_t;
-
 typedef enum {
     BUCKET_PUSH,
     BUCKET_PULL
 } storj_bucket_op_t;
+
+static const char *BUCKET_OP[] = { "PUSH", "PULL" };
 
 /** @brief A data structure that represents an exchange report
  *
@@ -377,25 +406,44 @@ typedef void (*storj_finished_download_cb)(int status, FILE *fd, void *handle);
  */
 typedef void (*storj_finished_upload_cb)(int error_status, storj_file_meta_t *file, void *handle);
 
+/** @brief A structure that represents a pointer to a shard
+ *
+ * A shard is an encrypted piece of a file, a pointer holds all necessary
+ * information to retrieve a shard from a farmer, including the IP address
+ * and port of the farmer, as well as a token indicating a transfer has been
+ * authorized. Other necessary information such as the expected hash of the
+ * data, and the index position in the file is also included.
+ *
+ * The data can be replaced with new farmer contact, in case of failure, and the
+ * total number of replacements can be tracked.
+ */
+typedef struct {
+    unsigned int replace_count;
+    char *token;
+    char *shard_hash;
+    uint32_t index;
+    int status;
+    uint64_t size;
+    bool parity;
+    uint64_t downloaded_size;
+    char *farmer_id;
+    char *farmer_address;
+    int farmer_port;
+    storj_exchange_report_t *report;
+    uv_work_t *work;
+} storj_pointer_t;
+
 /** @brief A structure for file upload options
  */
 typedef struct {
-    const char *bucket_id;
-    const char *file_name;
-    FILE *fd;
-
-    /* New in V3 */
-   const char *encryption_access;
-   const char *content_type;
-   int64_t expires;
-   size_t buffer_size;
-
-    /* NB: unused in V3 */
-    const char *index;
     int prepare_frame_limit;
     int push_frame_limit;
     int push_shard_limit;
     bool rs;
+    const char *index;
+    const char *bucket_id;
+    const char *file_name;
+    FILE *fd;
 } storj_upload_opts_t;
 
 /** @brief A structure that keeps state between multiple worker threads,
@@ -409,36 +457,24 @@ typedef struct {
  * reference to it, so that once the work is complete the state can be updated.
  */
 typedef struct {
+    uint64_t total_bytes;
+    storj_file_meta_t *info;
+    bool requesting_info;
+    uint32_t info_fail_count;
     storj_env_t *env;
-    DownloaderRef downloader_ref;
     const char *file_id;
     const char *bucket_id;
-    storj_file_meta_t *info;
     FILE *destination;
-    int error_status;
-    storj_log_levels_t *log;
-    void *handle;
-    uint64_t total_bytes;
-
     storj_progress_cb progress_cb;
     storj_finished_download_cb finished_cb;
     bool finished;
     bool canceled;
-
-    /* new in V3 */
-    size_t downloaded_bytes;
-    size_t buffer_size;
-    const char *encryption_access;
-
-    // TODO: delete?
-    /* not used in V3 */
-    bool requesting_info;
-    uint32_t info_fail_count;
     uint64_t shard_size;
     uint32_t total_shards;
     int download_max_concurrency;
     uint32_t completed_shards;
     uint32_t resolving_shards;
+    storj_pointer_t *pointers;
     char *excluded_farmer_ids;
     uint32_t total_pointers;
     uint32_t total_parity_pointers;
@@ -448,45 +484,59 @@ typedef struct {
     bool pointers_completed;
     uint32_t pointer_fail_count;
     bool requesting_pointers;
+    int error_status;
     bool writing;
     uint8_t *decrypt_key;
     uint8_t *decrypt_ctr;
     const char *hmac;
     uint32_t pending_work_count;
+    storj_log_levels_t *log;
+    void *handle;
 } storj_download_state_t;
+
+
+typedef struct {
+    char *hash;
+    uint8_t *challenges[STORJ_SHARD_CHALLENGES][32];
+    char *challenges_as_str[STORJ_SHARD_CHALLENGES][64 + 1];
+    // Merkle Tree leaves. Each leaf is size of RIPEMD160 hash
+    char *tree[2 * STORJ_SHARD_CHALLENGES - 1][20 * 2 + 1];
+    int index;
+    bool is_parity;
+    uint64_t size;
+} shard_meta_t;
+
+typedef struct {
+    char *token;
+    char *farmer_user_agent;
+    char *farmer_protocol;
+    char *farmer_address;
+    char *farmer_port;
+    char *farmer_node_id;
+} farmer_pointer_t;
+
+typedef struct {
+    int progress;
+    int push_frame_request_count;
+    int push_shard_request_count;
+    int index;
+    farmer_pointer_t *pointer;
+    shard_meta_t *meta;
+    storj_exchange_report_t *report;
+    uint64_t uploaded_size;
+    uv_work_t *work;
+} shard_tracker_t;
 
 typedef struct {
     storj_env_t *env;
-    UploaderRef uploader_ref;
+    uint32_t shard_concurrency;
+    const char *index;
     const char *file_name;
-    const char *encrypted_file_name;
     storj_file_meta_t *info;
+    const char *encrypted_file_name;
     FILE *original_file;
     uint64_t file_size;
     const char *bucket_id;
-    uint64_t uploaded_bytes;
-
-    bool progress_finished;
-    bool completed_upload;
-    bool canceled;
-
-    storj_finished_upload_cb finished_cb;
-    storj_progress_cb progress_cb;
-    int error_status;
-    storj_log_levels_t *log;
-    void *handle;
-
-    /* new in V3 */
-    size_t buffer_size;
-    const char *encryption_access;
-    UploadOptions *upload_opts;
-
-    // TODO: delete?
-    /* unused in V3 */
-    uint8_t *encryption_key;
-
-    uint32_t shard_concurrency;
-    const char *index;
     char *bucket_key;
     uint32_t completed_shards;
     uint32_t total_shards;
@@ -494,11 +544,14 @@ typedef struct {
     uint32_t total_parity_shards;
     uint64_t shard_size;
     uint64_t total_bytes;
+    uint64_t uploaded_bytes;
     char *exclude;
     char *frame_id;
     char *hmac_id;
+    uint8_t *encryption_key;
     uint8_t *encryption_ctr;
 
+    // TODO: change this to opts or env
     bool rs;
     bool awaiting_parity_shards;
     char *parity_file_path;
@@ -508,11 +561,15 @@ typedef struct {
     bool creating_encrypted_file;
 
     bool requesting_frame;
+    bool completed_upload;
     bool creating_bucket_entry;
     bool received_all_pointers;
     bool final_callback_called;
+    bool canceled;
     bool bucket_verified;
     bool file_verified;
+
+    bool progress_finished;
 
     int push_shard_limit;
     int push_frame_limit;
@@ -524,6 +581,12 @@ typedef struct {
     int file_verify_count;
     int create_encrypted_file_count;
 
+    storj_progress_cb progress_cb;
+    storj_finished_upload_cb finished_cb;
+    int error_status;
+    storj_log_levels_t *log;
+    void *handle;
+    shard_tracker_t *shard;
     int pending_work_count;
 } storj_upload_state_t;
 
@@ -540,7 +603,7 @@ typedef struct {
  * @param[in] log_options - Logging settings
  * @return A null value on error, otherwise a storj_env pointer.
  */
-STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
+STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *options,
                                       storj_encrypt_options_t *encrypt_options,
                                       storj_http_options_t *http_options,
                                       storj_log_options_t *log_options);
@@ -566,32 +629,35 @@ STORJ_API int storj_destroy_env(storj_env_t *env);
  *
  * @param[in] filepath - The file path to save the options
  * @param[in] passphrase - Used to encrypt options to disk
- * @param[in] apikey - The satellite API key
- * @param[in] encryption_key - The file encryption key
+ * @param[in] bridge_user - The bridge username
+ * @param[in] bridge_pass - The bridge password
+ * @param[in] mnemonic - The file encryption mnemonic
  * @return A non-zero value on error, zero on success.
  */
 STORJ_API int storj_encrypt_write_auth(const char *filepath,
                                        const char *passhrase,
-                                       const char *apikey,
-                                       const char *encryption_key);
+                                       const char *bridge_user,
+                                       const char *bridge_pass,
+                                       const char *mnemonic);
 
 
 /**
  * @brief Will encrypt options to disk
  *
- * This will encrypt bridge and encryption options using a key
+ * This will encrypt bridge and encryption using a key
  * derivation function on a passphrase.
  *
  * @param[in] passphrase - Used to encrypt options to disk
- * @param[in] apikey - The satellite API key
- * @param[in] encryption_key - The file encryption key
+ * @param[in] bridge_user - The bridge username
+ * @param[in] bridge_pass - The bridge password
+ * @param[in] mnemonic - The file encryption mnemonic
  * @param[out] buffer - The destination buffer
  * @return A non-zero value on error, zero on success.
  */
 STORJ_API int storj_encrypt_auth(const char *passhrase,
-                                 const char *salt,
-                                 const char *apikey,
-                                 const char *encryption_key,
+                                 const char *bridge_user,
+                                 const char *bridge_pass,
+                                 const char *mnemonic,
                                  char **buffer);
 
 /**
@@ -602,14 +668,16 @@ STORJ_API int storj_encrypt_auth(const char *passhrase,
  *
  * @param[in] filepath - The file path to read the options
  * @param[in] passphrase - Used to encrypt options to disk
- * @param[out] apikey - The satellite API key
- * @param[out] encryption_key - The file encryption key
+ * @param[out] bridge_user - The bridge username
+ * @param[out] bridge_pass - The bridge password
+ * @param[out] mnemonic - The file encryption mnemonic
  * @return A non-zero value on error, zero on success.
  */
  STORJ_API int storj_decrypt_read_auth(const char *filepath,
                                        const char *passphrase,
-                                       char **apikey,
-                                       char **encryption_key);
+                                       char **bridge_user,
+                                       char **bridge_pass,
+                                       char **mnemonic);
 
 /**
  * @brief Will decrypt options
@@ -619,14 +687,16 @@ STORJ_API int storj_encrypt_auth(const char *passhrase,
  *
  * @param[in] buffer - The encrypted buffer
  * @param[in] passphrase - Used to encrypt options to disk
- * @param[out] apikey - The satellite API key
- * @param[out] encryption_key - The file encryption key
+ * @param[out] bridge_user - The bridge username
+ * @param[out] bridge_pass - The bridge password
+ * @param[out] mnemonic - The file encryption mnemonic
  * @return A non-zero value on error, zero on success.
  */
 STORJ_API int storj_decrypt_auth(const char *buffer,
                                  const char *passphrase,
-                                 char **apikey,
-                                 char **encryption_key);
+                                 char **bridge_user,
+                                 char **bridge_pass,
+                                 char **mnemonic);
 
 /**
  * @brief Will get the current unix timestamp in milliseconds
@@ -634,6 +704,29 @@ STORJ_API int storj_decrypt_auth(const char *buffer,
  * @return A unix timestamp
  */
 STORJ_API uint64_t storj_util_timestamp();
+
+/**
+ * @brief Will generate a new random mnemonic
+ *
+ * This will generate a new random mnemonic with 128 to 256 bits
+ * of entropy.
+ *
+ * @param[in] strength - The bits of entropy
+ * @param[out] buffer - The destination of the mnemonic
+ * @return A non-zero value on error, zero on success.
+ */
+STORJ_API int storj_mnemonic_generate(int strength, char **buffer);
+
+/**
+ * @brief Will check that a mnemonic is valid
+ *
+ * This will check that a mnemonic has been entered correctly by verifying
+ * the checksum, and that words are a part of the list.
+ *
+ * @param[in] strength - The bits of entropy
+ * @return Will return true on success and false failure
+ */
+STORJ_API bool storj_mnemonic_check(const char *mnemonic);
 
 /**
  * @brief Get the error message for an error code
@@ -692,7 +785,6 @@ STORJ_API void storj_free_get_buckets_request(get_buckets_request_t *req);
  */
 STORJ_API int storj_bridge_create_bucket(storj_env_t *env,
                                          const char *name,
-                                         BucketConfig *cfg,
                                          void *handle,
                                          uv_after_work_cb cb);
 
@@ -732,13 +824,6 @@ STORJ_API int storj_bridge_get_bucket(storj_env_t *env,
 STORJ_API void storj_free_get_bucket_request(get_bucket_request_t *req);
 
 /**
- * @brief Will free all structs for create bucket request
- *
- * @param[in] req - The work request from storj_bridge_create_bucket callback
- */
-STORJ_API void storj_free_create_bucket_request(create_bucket_request_t *req);
-
-/**
  * @brief Get the bucket id by name.
  *
  * @param[in] env The storj environment struct
@@ -763,17 +848,8 @@ STORJ_API int storj_bridge_get_bucket_id(storj_env_t *env,
  */
 STORJ_API int storj_bridge_list_files(storj_env_t *env,
                                       const char *id,
-                                      const char *encryption_access,
-                                      ListOptions *list_opts,
                                       void *handle,
                                       uv_after_work_cb cb);
-
-/**
- * @brief Will free all pointers for file_meta struct.
- *
- * @param[in] file_meta struct to free.
- */
-STORJ_API void storj_free_file_meta(storj_file_meta_t *file_meta);
 
 /**
  * @brief Will free all structs for list files request
@@ -827,7 +903,6 @@ STORJ_API int storj_bridge_get_file_pointers(storj_env_t *env,
 STORJ_API int storj_bridge_delete_file(storj_env_t *env,
                                        const char *bucket_id,
                                        const char *file_id,
-                                       const char *encryption_access,
                                        void *handle,
                                        uv_after_work_cb cb);
 
@@ -896,7 +971,6 @@ STORJ_API int storj_bridge_delete_frame(storj_env_t *env,
 STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
                                          const char *bucket_id,
                                          const char *file_id,
-                                         const char *encryption_access,
                                          void *handle,
                                          uv_after_work_cb cb);
 
@@ -906,13 +980,6 @@ STORJ_API int storj_bridge_get_file_info(storj_env_t *env,
  * @param[in] req - The work request from storj_bridge_get_file_info callback
  */
 STORJ_API void storj_free_get_file_info_request(get_file_info_request_t *req);
-
-/**
- * @brief Will free all structs for delete file request
- *
- * @param[in] req - The work request from storj_bridge_delete_file callback
- */
-STORJ_API void storj_free_delete_file_request(delete_file_request_t *req);
 
 /**
  * @brief Get the file id by name.
@@ -1003,11 +1070,34 @@ STORJ_API storj_download_state_t *storj_bridge_resolve_file(storj_env_t *env,
                                                             const char *bucket_id,
                                                             const char *file_id,
                                                             FILE *destination,
-                                                            const char *encryption_access,
-                                                            size_t buffer_size,
                                                             void *handle,
                                                             storj_progress_cb progress_cb,
                                                             storj_finished_download_cb finished_cb);
+
+/**
+ * @brief Register a user
+ *
+ * @param[in] env The storj environment struct
+ * @param[in] email the user's email
+ * @param[in] password the user's password
+ * @param[in] handle A pointer that will be available in the callback
+ * @param[in] cb A function called with response when complete
+ * @return A non-zero error value on failure and 0 on success.
+ */
+STORJ_API int storj_bridge_register(storj_env_t *env,
+                                    const char *email,
+                                    const char *password,
+                                    void *handle,
+                                    uv_after_work_cb cb);
+
+static inline char separator()
+{
+#ifdef _WIN32
+    return '\\';
+#else
+    return '/';
+#endif
+}
 
 #ifdef __cplusplus
 }

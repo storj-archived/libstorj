@@ -8,6 +8,10 @@
 #define STORJ_DOWNLOADER_H
 
 #include "storj.h"
+#include "http.h"
+#include "utils.h"
+#include "crypto.h"
+#include "rs.h"
 
 #define STORJ_DOWNLOAD_CONCURRENCY 24
 #define STORJ_DOWNLOAD_WRITESYNC_CONCURRENCY 4

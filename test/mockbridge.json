@@ -1,0 +1,690 @@
+{
+  "getbuckets": [
+    {
+      "user": "user@sample.com",
+      "created": "2016-10-12T14:40:21.259Z",
+      "name": "test",
+      "id": "e3eca45f4d294132c07b49f4"
+    }, {
+      "user": "user@sample.com",
+      "created": "2016-10-12T15:36:40.012Z",
+      "name": "test2",
+      "id": "ef466257f5e10aa4755d411a"
+    }, {
+      "user": "user@sample.com",
+      "created": "2016-11-08T02:14:18.628Z",
+      "name": "Bucket-5919ed",
+      "id": "eaf27b3a4daec36fb45f8b57"
+    }
+  ],
+  "getbucket": {
+    "user": "user@sample.com",
+    "created": "2016-10-12T14:40:21.259Z",
+    "name": "g9qacwq2AE1+5nzL/HYyYdY9WoIr+1ueOuVEx6/IzzZKK9sULoKDDdYvhOpavHH2P3xQNw==",
+    "id": "368be0816766b28fd5f43af5"
+  },
+  "getbucketid": {
+    "id": "368be0816766b28fd5f43af5"
+  },
+  "putbuckets": {
+    "user": "user@sample.com",
+    "encryptionKey": "",
+    "publicPermissions": [ ],
+    "created": "2016-11-16T19:39:11.605Z",
+    "name": "backups",
+    "pubkeys": [ ],
+    "status": "Active",
+    "transfer": 0,
+    "storage": 0,
+    "id": "0f1810b4bb5b6472352ec486"
+  },
+  "deletebucket": null,
+  "listfiles": [
+    {
+      "bucket": "0cf572e48da78e9af943a771",
+      "mimetype": "video/mp4",
+      "filename": "TheMeaningOfLifeAndEverything.mp4",
+      "frame": "d4af71ab00e15b0c1a7b6ab2",
+      "size": 3193765382,
+      "id": "f18b5ca437b1ca3daa14969f"
+    },
+    {
+      "bucket": "ceafaedb399610639bdfc2d7",
+      "mimetype": "video/ogg",
+      "filename": "TheMeaningOfLifeAndEverything.ogv",
+      "frame": "563026f766ec4aaaa372366f",
+      "size": 442719839,
+      "id": "85fb0ed00de1196dc22e0f6d"
+    }
+  ],
+  "createfile": {
+    "id": "85fb0ed00de1196dc22e0f6d"
+  },
+  "createbuckettoken": {
+    "bucket": "845f106ddfc234054eee274a",
+    "operation": "PULL",
+    "expires": "2016-11-17T17:10:53.528Z",
+    "token": "a264e12611ad93b1777e82065f86cfcf088967dba2f15559cea5e140d5339a0e",
+    "id": "c89535457d462136215f7f75b3408d9d5d2f38031c1366781990681fd238bfe3",
+    "encryptionKey": ""
+  },
+  "deletefile": null,
+  "createframe": {
+    "user": "user@sample.com",
+    "shards": [],
+    "size": 0,
+    "locked": false,
+    "created": "2016-11-19T00:12:51.009Z",
+    "id": "d6367831f7f1b117ffdd0015"
+  },
+  "getframes": [
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "8dfcb59090a55a8b1c5f5fc2",
+        "4343dfc37e3bcb93435fd696",
+        "7e72c40a22f0e41afc474dd1"
+      ],
+      "size": 3193765382,
+      "locked": true,
+      "created": "2016-10-12T14:43:24.303Z",
+      "id": "52b8cc8dfd47bb057d8c8a17"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "6af4213990fb563d190ffa87",
+        "884e2f3f7f84a0db5ded21a0",
+        "b024c25ab483335a6ac08d9c"
+      ],
+      "size": 2919235584,
+      "locked": false,
+      "created": "2016-10-12T15:16:44.908Z",
+      "id": "6e7039165071cbba36c9a607"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "41705e9bef3090fcab3eb67a",
+        "beb028dd7e2ec91b3785d9db",
+        "5f2b47f5baa028102fa8d4e5"
+      ],
+      "size": 3193765382,
+      "locked": false,
+      "created": "2016-10-12T15:26:59.353Z",
+      "id": "57fe564313aa0801ebf0e52e"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "a7445e1c62edb9c0da7c2019",
+        "991d6b8e81c14f1757c59c37",
+        "5839eab4ad22548a19953b95"
+      ],
+      "size": 3327983110,
+      "locked": true,
+      "created": "2016-10-12T15:36:59.923Z",
+      "id": "45369a5132dc69a3a1e625ca"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "99e4c92f0e392755ce82ed4c",
+        "79bb3eb93ca6a79c21068c92",
+        "ff96e85dc8c115191259f3a5"
+      ],
+      "size": 3327983110,
+      "locked": true,
+      "created": "2016-10-12T20:34:06.699Z",
+      "id": "85161efd8b7b631dab7844e4"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "d21534cf0dc5488f6a00b7a0",
+        "28be6ce035527799e446ec38",
+        "d221f90bf445bfa4a813cdeb"
+      ],
+      "size": 83886080,
+      "locked": false,
+      "created": "2016-10-26T18:22:31.033Z",
+      "id": "f28ca760e1a2d5a5d4dbaecf"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "cbea29ab2618cb036f3b4d63"
+      ],
+      "size": 442719839,
+      "locked": true,
+      "created": "2016-10-26T18:56:26.566Z",
+      "id": "b719da4f46dd29fa51b428f5"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "2aad5e61eea4ba6d8ab4b5f7"
+      ],
+      "size": 3193765382,
+      "locked": true,
+      "created": "2016-11-08T02:15:15.356Z",
+      "id": "9089eba7e52a0c44480773af"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [
+        "f850c72c904073bf934a83fe"
+      ],
+      "size": 134235,
+      "locked": true,
+      "created": "2016-11-17T17:59:58.684Z",
+      "id": "80aa76ef9222cac3b5ee1fdf"
+    },
+    {
+      "user": "user@sample.com",
+      "shards": [],
+      "size": 0,
+      "locked": false,
+      "created": "2016-11-19T00:12:51.009Z",
+      "id": "70bd54bddb2f98f2445be75f"
+    }
+  ],
+  "getframe": {
+    "user": "user@sample.com",
+    "shards": [
+      "b3c7cf3d61ec90e0e588253b",
+      "bf56de167e9503c275db06b2",
+      "d3e9d2c8f1809a8f70d6c288",
+      "4a321d3a013c8ed0a8d5ece1",
+      "5e20d3b6105d43590ccdd0c7",
+      "6b891bdbbe3643074e66333e",
+      "0d047a4a003b05f16f97ef48",
+      "40eb217b5a0a3a47990854e5",
+      "f0c466b0116d9ceb349e29e1",
+      "d62dbbdbe33885e5f45b81c1",
+      "ddde362481b8629a90e9ac53",
+      "c90ccb6af4510060dfb7bcb4",
+      "634312e65d1cb0a58779a486",
+      "6c066b7737c0871dc2b597f4",
+      "587adbd61a4788997781aedc",
+      "7bc73bfd4763ad24d7c52713",
+      "7ba26ef19918d2494671bcf4",
+      "0bcc3a2410cdb3fe85176a88",
+      "d496d13eccc99a06546af4d3",
+      "828a9eb075248ffc21c481b0",
+      "8f73805462697f132a740cf4",
+      "ecb971ec1926df2e668b36fb",
+      "cf814028c3fefe3268707d29",
+      "14c7c12622f963fb47b9a82d",
+      "b9897acc54699d42500741ac"
+    ],
+    "size": 3193765382,
+    "locked": true,
+    "created": "2016-10-12T14:43:24.303Z",
+    "id": "192f90792f42875a7533340b"
+  },
+  "deleteframe": null,
+  "putframe": {
+    "hash": "b3b31e2232cf17ccf2cdc3ae5dc291f67a8d0b7e",
+    "token": "1aa226cb1d35eb87e3f28920e1eab43e91e1435a",
+    "operation": "PUSH",
+    "farmer": {
+      "userAgent": "6.0.15",
+      "protocol": "1.1.0",
+      "address": "localhost",
+      "port": 8092,
+      "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+      "lastSeen": 1485378872153
+    }
+  },
+  "getfileinfo": {
+    "bucket": "368be0816766b28fd5f43af5",
+    "mimetype": "video/ogg",
+    "filename": "storj-test-download.data",
+    "frame": "2f2133b1d23e0bc4123f96de",
+    "size": 3193765382,
+    "id": "998960317b6725a3f8080c2b",
+    "hmac": {
+      "value": "78462f9056d9e997e3a74b778014b9e20b6404e19dbea3516991c3a6dc105384463df4123246634de5aaa2304da54f03c09d92d73c3febe1da56ca0478d85cc4",
+      "type": "sha512"
+    },
+    "erasure": {
+      "type": "reedsolomon"
+    }
+  },
+  "getfileid": {
+    "id": "998960317b6725a3f8080c2b"
+  },
+  "getfilepointers-0": [
+    {
+      "token": "de8e83dcf41789d66f2855259f35b729c9834eeb",
+      "hash": "269e72f24703be80bbb10499c91dc9b2022c4dc3",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976750
+      },
+      "operation": "PULL",
+      "index": 0,
+      "size": 16777216
+    },
+    {
+      "hash": "17416a592487d7b1b74c100448c8296122d8aff8",
+      "index": 1,
+      "size": 16777216
+    },
+    {
+      "token": "f63d4f4d7ca0c3e4bca5c9dcd4a1c3be212f137e",
+      "hash": "83cf5eaf2311a1ae9699772d9bafbb3e369a41cc",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "fe1d29e063197502b070c70782242485b276cd5c",
+        "lastSeen": 1480963976882
+      },
+      "operation": "PULL",
+      "index": 2,
+      "size": 16777216
+    }
+  ],
+  "getfilepointers-1": [
+    {
+      "token": "cc02fb5c9687c397fd1ead5a2e71239dcffb0f4c",
+      "hash": "214ed86cb1287fe0fd18c174eecbf84341bf2655",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "2f3b918a3bbe74608806c215ec341449ab9998ec",
+        "lastSeen": 1480963976950
+      },
+      "operation": "PULL",
+      "index": 3,
+      "size": 16777216
+    },
+    {
+      "token": "2d9ae13d317209c1523b80716f186f887a4c7d3a",
+      "hash": "1ea408fad0213a16f53421e9b72aeb0e12b93a4a",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "15a02aed7a92e593d03d6cd1f43c0ab504131296",
+        "lastSeen": 1480963977022
+      },
+      "operation": "PULL",
+      "index": 4,
+      "size": 16777216
+    },
+    {
+      "token": "382827e71429823a4aafedbe839b4efee9d5f68b",
+      "hash": "0219bb523832c09c77069c74804e5b0476cea7cf",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "15a02aed7a92e593d03d6cd1f43c0ab504131296",
+        "lastSeen": 1480963977087
+      },
+      "operation": "PULL",
+      "index": 5,
+      "size": 16777216
+    }
+  ],
+  "getfilepointers-2": [
+    {
+      "token": "de8e83dcf41789d66f2855259f35b729c9834eeb",
+      "hash": "ebcbe78dd209a03d3ce29f2e5460304de2060031",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976750
+      },
+      "operation": "PULL",
+      "index": 6,
+      "size": 16777216
+    },
+    {
+      "token": "bc1b9cc047fc805fe756b08789f5db4ec37dc11e",
+      "hash": "5ecd6cc2964a344b42406d3688e13927a51937aa",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 7,
+      "size": 16777216
+    },
+    {
+      "hash": "88c5e8885160c449b1dbb00ccf317067200b39a0",
+      "index": 8,
+      "size": 16777216
+    }
+  ],
+  "getfilepointers-3": [
+    {
+      "token": "cc02fb5c9687c397fd1ead5a2e71239dcffb0f4c",
+      "hash": "76b1a97498e026c47c924374b5b1148543d5c0ab",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "2f3b918a3bbe74608806c215ec341449ab9998ec",
+        "lastSeen": 1480963976950
+      },
+      "operation": "PULL",
+      "index": 9,
+      "size": 16777216
+    },
+    {
+      "token": "2d9ae13d317209c1523b80716f186f887a4c7d3a",
+      "hash": "48e02627e37433c89fa034d3ee2df644ac7ac7a0",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "15a02aed7a92e593d03d6cd1f43c0ab504131296",
+        "lastSeen": 1480963977022
+      },
+      "operation": "PULL",
+      "index": 10,
+      "size": 16777216
+    },
+    {
+      "token": "382827e71429823a4aafedbe839b4efee9d5f68b",
+      "hash": "e4617532be728d48a8155ecfb200d50f00a01a23",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "15a02aed7a92e593d03d6cd1f43c0ab504131296",
+        "lastSeen": 1480963977087
+      },
+      "operation": "PULL",
+      "index": 11,
+      "size": 16777216
+    }
+  ],
+  "getfilepointers-4": [
+    {
+      "token": "de8e83dcf41789d66f2855259f35b729c9834eeb",
+      "hash": "973701b43290e3bef7007db0cb75744f9556ae3b",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976750
+      },
+      "operation": "PULL",
+      "index": 12,
+      "size": 16777216
+    },
+    {
+      "token": "bc1b9cc047fc805fe756b08789f5db4ec37dc11e",
+      "hash": "a0ec63ad4069fa51a53871c7a282e184371b842b",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 13,
+      "size": 16777216
+    },
+    {
+      "token": "4a207fadceca4a9622f0ef25b1220ef9b8cf4831",
+      "hash": "5b388088b0ef4b44594311794cc1390b85c2f6d3",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 14,
+      "parity": true,
+      "size": 16777216
+    }
+  ],
+  "getfilepointers-5": [
+    {
+      "token": "3b3f8ccb23ec47cec1ad57f7f68cab285dde54d6",
+      "hash": "424cdf090604317570da38ef7d5b41abea0952df",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 15,
+      "parity": true,
+      "size": 16777216
+    },
+    {
+      "token": "44e1db2c17af152618dbe319f8f2bf1a6ef21b94",
+      "hash": "a292c0de26b2a9086473905abb938c7a1c45a9e9",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 16,
+      "parity": true,
+      "size": 16777216
+    },
+    {
+      "token": "9424f843e3a10a7f96dc79a301c6700385d1a74b",
+      "hash": "aca155b4deeac64f2be748e3c434e1f5e9719ef3",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "4bb49fb779e9233f9ed14f6ef34e29048911f018",
+        "lastSeen": 1480963976831
+      },
+      "operation": "PULL",
+      "index": 17,
+      "parity": true,
+      "size": 16777216
+    }
+  ],
+  "getfilepointers-r": [
+    {
+      "token": "2d9ae13d317209c1523b80716f186f887a4c7d3a",
+      "hash": "1ea408fad0213a16f53421e9b72aeb0e12b93a4a",
+      "farmer": {
+        "userAgent": "6.0.1",
+        "protocol": "1.0.0",
+        "address": "localhost",
+        "port": 8092,
+        "nodeID": "15a02aed7a92e593d03d6cd1f43c0ab504131296",
+        "lastSeen": 1480963977022
+      },
+      "operation": "PULL",
+      "index": 4,
+      "size": 16777216
+    }
+  ],
+  "getfilepointers-missing": [
+    {
+      "hash": "1ea408fad0213a16f53421e9b72aeb0e12b93a4a",
+      "parity": true,
+      "index": 14,
+      "size": 16777216
+    }
+  ],
+  "createuser": {
+    "isFreeTier": true,
+    "activated": false,
+    "created": "2017-01-26T19:06:51.045Z",
+    "defaultPaymentProcessor": null,
+    "email": "test@test.com",
+    "id": "test@test.com"
+  },
+  "listmirrors": [
+    {
+      "established": [
+        {
+          "shardHash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+          "contact": {
+            "protocol": "1.0.0",
+            "address": "storj04.prybil.com",
+            "port": 4040,
+            "lastSeen": "2017-01-24T11:43:39.540Z",
+            "userAgent": "6.0.11",
+            "lastTimeout": "2017-01-23T17:20:51.739Z",
+            "responseTime": 8845.665080981631,
+            "timeoutRate": 0.24837207175925927,
+            "nodeID": "3b5e44403ef9d53c9336a6f82adf3a51f57a2c90"
+          },
+          "contract": {
+            "audit_count": 3,
+            "data_hash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+            "data_size": 12,
+            "farmer_id": "3b5e44403ef9d53c9336a6f82adf3a51f57a2c90",
+            "farmer_signature": "H3h8d0CFeZ3s+l+Fzu4VztEqeIGCol6OaoB0CMMc08FzTwmLXFlL1+ozj+gZnn2XPR591ONBheCXTeEb4R21INg=",
+            "payment_destination": "1DAFL2mDpCLceAQ72Rq3dQzfKmBa2FNc6J",
+            "payment_download_price": 0,
+            "payment_storage_price": 0,
+            "renter_hd_index": 4792918,
+            "renter_hd_key": "xpub6AHweYHAxk1EhJSBctQD1nLWPog6Sy2eTpKQLExR1hfzTyyZQWvU4EYNXv1NJN7GpLYXnDLt4PzN874g6zSjAQdFCHZN7U7nbYKYVDUzD42",
+            "renter_id": "363703b24803489b156d5e78ef2951dd40440c8c",
+            "renter_signature": "IBW+KgE9EdllgwQTOrKviMXeQPN0ydVh8RszXp8rDGu5DH4MDxg9XKlFdohp5rRWK7f\/4l\/PxwFSUvUV9bD0vys=",
+            "store_begin": 1482778989402,
+            "store_end": 1490554989402,
+            "version": 0
+          },
+          "isEstablished": true,
+          "id": "5861696e6e527d78e232d3f4"
+        },
+        {
+          "shardHash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+          "contact": {
+            "protocol": "1.1.0",
+            "address": "011s.storjlt.xyz",
+            "port": 3801,
+            "lastSeen": "2017-01-24T20:17:49.152Z",
+            "userAgent": "6.0.15",
+            "lastTimeout": "2017-01-18T01:42:32.385Z",
+            "nodeID": "392ea1b3909a80d784a4ca3232b9f099b1d40312"
+          },
+          "contract": {
+            "audit_count": 3,
+            "data_hash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+            "data_size": 12,
+            "farmer_id": "392ea1b3909a80d784a4ca3232b9f099b1d40312",
+            "farmer_signature": "H5LMAJWkhvZVU0Yr8ZEVi1pzCmyPFTZ899SbCVPT8IN6O\/DGj5QdPbHpZO\/gVQZ7WWkXV1bWsKUDAAdCE\/gaxbg=",
+            "payment_destination": "1J14szQGQoKcCf14ALSZBPL8dy1zgEW2C8",
+            "payment_download_price": 0,
+            "payment_storage_price": 0,
+            "renter_hd_index": 4792918,
+            "renter_hd_key": "xpub6AHweYHAxk1EhJSBctQD1nLWPog6Sy2eTpKQLExR1hfzTyyZQWvU4EYNXv1NJN7GpLYXnDLt4PzN874g6zSjAQdFCHZN7U7nbYKYVDUzD42",
+            "renter_id": "363703b24803489b156d5e78ef2951dd40440c8c",
+            "renter_signature": "H+\/zEohkeih\/S9zYcLFipGohsrXDIJKFFNdH6umJW1fqTJgfMYJBdrfRVH0hwKxiYGKJ5euFMljuYOFhDF0iSDY=",
+            "store_begin": 1482778989402,
+            "store_end": 1490554989402,
+            "version": 0
+          },
+          "isEstablished": true,
+          "id": "5861696e6e527d78e232d3f5"
+        }
+      ],
+      "available": [
+        {
+          "shardHash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+          "contact": {
+            "lastSeen": "2017-01-01T09:15:59.903Z",
+            "port": 15049,
+            "address": "client018.storj.dk",
+            "userAgent": "6.0.11",
+            "protocol": "1.0.0",
+            "nodeID": "39614d0ea75b956797e5ed903f4ed684d5ca8aa6"
+          },
+          "contract": {
+            "audit_count": 3,
+            "data_hash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+            "data_size": 12,
+            "farmer_id": "39614d0ea75b956797e5ed903f4ed684d5ca8aa6",
+            "farmer_signature": "H+VUeZcZ80+NeXJRhhDnk5yKZkhSj\/eZWOJjbv9QFrE8Fz3Fc0yxBUtJaoHgnwEhNtCgT8M5Lop+ZVsC2TEEjq4=",
+            "payment_destination": "13A9pNsK1SWPkzzHZTgoQZjVyZdxKB1KGB",
+            "payment_download_price": 0,
+            "payment_storage_price": 0,
+            "renter_hd_index": 4792918,
+            "renter_hd_key": "xpub6AHweYHAxk1EhJSBctQD1nLWPog6Sy2eTpKQLExR1hfzTyyZQWvU4EYNXv1NJN7GpLYXnDLt4PzN874g6zSjAQdFCHZN7U7nbYKYVDUzD42",
+            "renter_id": "363703b24803489b156d5e78ef2951dd40440c8c",
+            "renter_signature": "IKeZWCSosRhUb4iJNm9ojiLorlCIxqu5SlDVPbe9xXfXPd+yBUjU5+4u2KA8OWCv29p2DB5kQDKWm\/9k7fQoISE=",
+            "store_begin": 1482778989402,
+            "store_end": 1490554989402,
+            "version": 0
+          },
+          "isEstablished": false,
+          "id": "5861696e6e527d78e232d3f9"
+        },
+        {
+          "shardHash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+          "contact": {
+            "lastSeen": "2017-01-22T00:49:14.331Z",
+            "port": 15024,
+            "address": "client013.storj.dk",
+            "userAgent": "6.0.11",
+            "protocol": "1.0.0",
+            "lastTimeout": "2016-12-28T18:13:13.729Z",
+            "nodeID": "3b7c33c6648b094e7950cb4b25fe777d49fd3bb6"
+          },
+          "contract": {
+            "audit_count": 3,
+            "data_hash": "399d6b739ef5a17cb6d332c9b36517411b273048",
+            "data_size": 12,
+            "farmer_id": "3b7c33c6648b094e7950cb4b25fe777d49fd3bb6",
+            "farmer_signature": "H88eeX3oe16BlJ8ffUKM21THgiPfVT\/06330losJi9wFBGW+H\/TgCloVsbwFCch0nB0GMsmohJ2HNn+cnx5OdCk=",
+            "payment_destination": "13DYoH5MBm2LWVb1UziCy6L1ex6PPypyvu",
+            "payment_download_price": 0,
+            "payment_storage_price": 0,
+            "renter_hd_index": 4792918,
+            "renter_hd_key": "xpub6AHweYHAxk1EhJSBctQD1nLWPog6Sy2eTpKQLExR1hfzTyyZQWvU4EYNXv1NJN7GpLYXnDLt4PzN874g6zSjAQdFCHZN7U7nbYKYVDUzD42",
+            "renter_id": "363703b24803489b156d5e78ef2951dd40440c8c",
+            "renter_signature": "H2fCafYjCVrWsyloWif38tcPbTUpcq8Sq6K7taIKa4Q1MhtsTgLTchXRWOaOgjYn7oJOYT0MfaMHFrkVDH6gCXI=",
+            "store_begin": 1482778989402,
+            "store_end": 1490554989402,
+            "version": 0
+          },
+          "isEstablished": false,
+          "id": "5861696e6e527d78e232d3fa"
+        }
+      ]
+    }
+  ]
+}
