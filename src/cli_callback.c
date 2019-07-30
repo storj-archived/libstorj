@@ -7,6 +7,12 @@
 
 static inline void noop() {};
 
+static char *get_enc_access(cli_api_t *cli_api)
+{
+    // TODO: use `strdup`?
+    return cli_api->env->encrypt_options->encryption_key;
+}
+
 static void get_input(char *line)
 {
     if (fgets(line, BUFSIZ, stdin) == NULL) {
@@ -27,7 +33,7 @@ static void get_input(char *line)
 }
 
 /* inserts into subject[] at position pos */
-void append(char subject[], const char insert[], int pos)
+static void append(char subject[], const char insert[], int pos)
 {
     char buf[256] = { };
 
@@ -87,55 +93,6 @@ static void printdir(char *dir, int depth, FILE *src_fd, void *handle)
     }
     ret = chdir("..");
     closedir(dp);
-}
-
-static int file_exists(void *handle)
-{
-    struct stat sb;
-    cli_api_t *cli_api = handle;
-
-    FILE *src_fd, *dst_fd;
-
-    if (stat(cli_api->file_path, &sb) == -1) {
-        perror("stat");
-        return CLI_NO_SUCH_FILE_OR_DIR;
-    }
-
-    switch (sb.st_mode & S_IFMT) {
-        case S_IFBLK:
-            printf("block device\n");
-            break;
-        case S_IFCHR:
-            printf("character device\n");
-            break;
-        case S_IFDIR:
-            if ((src_fd = fopen(cli_api->src_list, "w")) == NULL) {
-                return CLI_UPLOAD_FILE_LOG_ERR;
-            }
-            printdir(cli_api->file_path, 0, src_fd, handle);
-            fclose(src_fd);
-            return CLI_VALID_DIR;
-            break;
-        case S_IFIFO:
-            printf("FIFO/pipe\n");
-            break;
-        case S_IFLNK:
-            printf("symlink\n");
-            break;
-        case S_IFREG:
-            return CLI_VALID_REGULAR_FILE;
-            break;
-#ifdef S_IFSOCK
-        case S_IFSOCK:
-            printf("socket\n");
-            break;
-#endif
-        default:
-            printf("unknown?\n");
-            break;
-    }
-
-    return CLI_UNKNOWN_FILE_ATTR;
 }
 
 static const char *get_filename_separator(const char *file_path)
@@ -394,8 +351,6 @@ static void verify_upload_files(void *handle)
 {
     cli_api_t *cli_api = handle;
     int total_src_files = 0x00;
-    int total_dst_files = 0x00;
-    int ret = 0x00;
 
     /* upload list file previously not created? */
     if (cli_api->dst_file == NULL)
@@ -417,9 +372,6 @@ static void verify_upload_files(void *handle)
             memcpy(cli_api->src_list, upload_list_file, sizeof(pwd_path));
             cli_api->dst_file = cli_api->src_list;
         }
-
-        /* create a upload list file src_list.txt */
-        int file_attr = file_exists(handle);
    }
 
     /* create a upload list file src_list.txt */
@@ -432,7 +384,6 @@ static void verify_upload_files(void *handle)
     } else {
         /* count total src_list files */
         char line[MAX_UPLOAD_FILES][256];
-        char *temp;
         int i = 0x00;
 
         memset(line, 0x00, sizeof(line));
@@ -468,16 +419,8 @@ static void download_file_complete(int status, FILE *fd, void *handle)
     fclose(fd);
     if (status) {
         // TODO send to stderr
-        switch(status) {
-            case STORJ_FILE_DECRYPTION_ERROR:
-                printf("Unable to properly decrypt file, please check " \
-                       "that the correct encryption key was " \
-                       "imported correctly.\n\n");
-                break;
-            default:
-                printf("[%s][%d]Download failure: %s\n",
-                       __FUNCTION__, __LINE__, storj_strerror(status));
-        }
+        printf("[%s][%d]Download failure: %s\n",
+               __FUNCTION__, __LINE__, storj_strerror(status));
     } else {
         printf("Download Success!\n");
     }
@@ -495,8 +438,8 @@ static void download_signal_handler(uv_signal_t *req, int signum)
     uv_close((uv_handle_t *)req, close_signal);
 }
 
-static int download_file(storj_env_t *env, char *bucket_id,
-                         char *file_id, char *path, void *handle)
+static int download_file(storj_env_t *env, char *bucket_id, char *file_id,
+                         char *path, char *enc_access_str, void *handle)
 {
     FILE *fd = NULL;
 
@@ -543,8 +486,12 @@ static int download_file(storj_env_t *env, char *bucket_id,
         progress_cb = file_progress;
     }
 
+    // TODO: expose buffer size as user option or something
     storj_download_state_t *state = storj_bridge_resolve_file(env, bucket_id,
-                                                              file_id, fd, handle,
+                                                              file_id, fd,
+                                                              enc_access_str,
+                                                              0,
+                                                              handle,
                                                               progress_cb,
                                                               download_file_complete);
     if (!state) {
@@ -555,90 +502,18 @@ static int download_file(storj_env_t *env, char *bucket_id,
     return state->error_status;
 }
 
-static void list_mirrors_callback(uv_work_t *work_req, int status)
-{
-    assert(status == 0);
-    json_request_t *req = work_req->data;
-
-    cli_api_t *cli_api = req->handle;
-    cli_api->last_cmd_req = cli_api->curr_cmd_req;
-    cli_api->rcvd_cmd_resp = "list-mirrors-resp";
-
-    if (req->status_code != 200) {
-        printf("Request failed with status code: %i\n",
-               req->status_code);
-        goto cleanup;
-    }
-
-    if (req->response == NULL) {
-        free(req);
-        free(work_req);
-        printf("Failed to list mirrors.\n");
-        goto cleanup;
-    }
-
-    int num_mirrors = json_object_array_length(req->response);
-
-    struct json_object *shard;
-    struct json_object *established;
-    struct json_object *available;
-    struct json_object *item;
-    struct json_object *hash;
-    struct json_object *contract;
-    struct json_object *address;
-    struct json_object *port;
-    struct json_object *node_id;
-
-    for (int i = 0; i < num_mirrors; i++) {
-        shard = json_object_array_get_idx(req->response, i);
-        json_object_object_get_ex(shard, "established",
-                                 &established);
-        int num_established =
-            json_object_array_length(established);
-        for (int j = 0; j < num_established; j++) {
-            item = json_object_array_get_idx(established, j);
-            if (j == 0) {
-                json_object_object_get_ex(item, "shardHash",
-                                          &hash);
-                printf("Shard %i: %s\n", i, json_object_get_string(hash));
-            }
-            json_object_object_get_ex(item, "contract", &contract);
-            json_object_object_get_ex(contract, "farmer_id", &node_id);
-
-            const char *node_id_str = json_object_get_string(node_id);
-            printf("\tnodeID: %s\n", node_id_str);
-        }
-        printf("\n\n");
-    }
-
-    json_object_put(req->response);
-
-    queue_next_cmd_req(cli_api);
-cleanup:
-    free(req->path);
-    free(req);
-    free(work_req);
-}
-
 static void delete_file_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    delete_file_request_t *req = work_req->data;
 
     cli_api_t *cli_api = req->handle;
     cli_api->last_cmd_req = cli_api->curr_cmd_req;
     cli_api->rcvd_cmd_resp = "remove-file-resp";
 
-    if (req->status_code == 200 || req->status_code == 204) {
-        printf("File was successfully removed from bucket.\n");
-    } else if (req->status_code == 401) {
-        printf("Invalid user credentials.\n");
-        goto cleanup;
-    } else if (req->status_code == 403) {
-        printf("Forbidden, user not active.\n");
-        goto cleanup;
-    } else {
-        printf("Failed to remove file from bucket. (%i)\n", req->status_code);
+    if (req->error_code) {
+        printf("Failed to remove file from bucket: (%s)\n",
+               storj_strerror(req->error_code));
         goto cleanup;
     }
 
@@ -646,30 +521,22 @@ static void delete_file_callback(uv_work_t *work_req, int status)
 
     queue_next_cmd_req(cli_api);
 cleanup:
-    free(req->path);
-    free(req);
+    storj_free_delete_file_request(req);
     free(work_req);
 }
 
 static void delete_bucket_callback(uv_work_t *work_req, int status)
 {
     assert(status == 0);
-    json_request_t *req = work_req->data;
+    delete_bucket_request_t *req = work_req->data;
 
     cli_api_t *cli_api = req->handle;
     cli_api->last_cmd_req = cli_api->curr_cmd_req;
     cli_api->rcvd_cmd_resp = "remove-bucket-resp";
 
-    if (req->status_code == 200 || req->status_code == 204) {
-        printf("Bucket was successfully removed.\n");
-    } else if (req->status_code == 401) {
-        printf("Invalid user credentials.\n");
-        goto cleanup;
-    } else if (req->status_code == 403) {
-        printf("Forbidden, user not active.\n");
-        goto cleanup;
-    } else {
-        printf("Failed to destroy bucket. (%i)\n", req->status_code);
+    if (req->error_code) {
+        printf("Failed to destroy bucket: (%s)\n",
+               storj_strerror(req->error_code));
         goto cleanup;
     }
 
@@ -677,7 +544,7 @@ static void delete_bucket_callback(uv_work_t *work_req, int status)
 
     queue_next_cmd_req(cli_api);
 cleanup:
-    free(req->path);
+    free((char *)req->bucket_name);
     free(req);
     free(work_req);
 }
@@ -687,14 +554,10 @@ void get_buckets_callback(uv_work_t *work_req, int status)
     assert(status == 0);
     get_buckets_request_t *req = work_req->data;
 
-    if (req->status_code == 401) {
-       printf("Invalid user credentials.\n");
-    } else if (req->status_code == 403) {
-       printf("Forbidden, user not active.\n");
-    } else if (req->status_code != 200 && req->status_code != 304) {
-        printf("Request failed with status code: %i\n", req->status_code);
-    } else if (req->total_buckets == 0) {
-        printf("No buckets.\n");
+    if (req->error_code) {
+        printf("Unable to get buckets: (%s)\n",
+               storj_strerror(req->error_code));
+        goto cleanup;
     }
 
     for (int i = 0; i < req->total_buckets; i++) {
@@ -704,6 +567,7 @@ void get_buckets_callback(uv_work_t *work_req, int status)
                bucket->created, bucket->name);
     }
 
+cleanup:
     storj_free_get_buckets_request(req);
     free(work_req);
 }
@@ -717,17 +581,6 @@ void get_bucket_id_callback(uv_work_t *work_req, int status)
 
     cli_api->last_cmd_req = cli_api->curr_cmd_req;
     cli_api->rcvd_cmd_resp = "get-bucket-id-resp";
-
-    if (req->status_code == 401) {
-        printf("Invalid user credentials.\n");
-        goto cleanup;
-    } else if (req->status_code == 403) {
-        printf("Forbidden, user not active.\n");
-        goto cleanup;
-    } else if (req->status_code != 200 && req->status_code != 304) {
-        printf("Request failed with status code: %i\n", req->status_code);
-        goto cleanup;
-    }
 
     /* store the bucket id */
     memset(cli_api->bucket_id, 0x00, sizeof(cli_api->bucket_id));
@@ -751,17 +604,6 @@ void get_file_id_callback(uv_work_t *work_req, int status)
     cli_api->last_cmd_req = cli_api->curr_cmd_req;
     cli_api->rcvd_cmd_resp = "get-file-id-resp";
 
-    if (req->status_code == 401) {
-        printf("Invalid user credentials.\n");
-        goto cleanup;
-    } else if (req->status_code == 403) {
-        printf("Forbidden, user not active.\n");
-        goto cleanup;
-    } else if (req->status_code != 200 && req->status_code != 304) {
-        printf("Request failed with status code: %i\n", req->status_code);
-        goto cleanup;
-    }
-
     /* store the bucket id */
     memset(cli_api->file_id, 0x00, sizeof(cli_api->file_id));
     strcpy(cli_api->file_id, (char *)req->file_id);
@@ -784,20 +626,10 @@ void list_files_callback(uv_work_t *work_req, int status)
     cli_api->last_cmd_req = cli_api->curr_cmd_req;
     cli_api->rcvd_cmd_resp = "list-files-resp";
 
-    if (req->status_code == 404) {
-        printf("Bucket id [%s] does not exist\n", req->bucket_id);
+    if (req->error_code) {
+        printf("Unable to list files: (%s)\n",
+               storj_strerror(req->error_code));
         goto cleanup;
-    } else if (req->status_code == 400) {
-        printf("Bucket id [%s] is invalid\n", req->bucket_id);
-        goto cleanup;
-    } else if (req->status_code == 401) {
-        printf("Invalid user credentials.\n");
-        goto cleanup;
-    } else if (req->status_code == 403) {
-        printf("Forbidden, user not active.\n");
-        goto cleanup;
-    } else if (req->status_code != 200) {
-        printf("Request failed with status code: %i\n", req->status_code);
     }
 
     if (req->total_files == 0) {
@@ -869,7 +701,9 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 cli_api->final_cmd_req = NULL;
                 cli_api->excp_cmd_resp = "list-files-resp";
 
+                // TODO: expose list options to user?
                 storj_bridge_list_files(cli_api->env, cli_api->bucket_id,
+                                        get_enc_access(cli_api), NULL,
                                         cli_api, list_files_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
                      (strcmp(cli_api->next_cmd_req, "remove-bucket-req") == 0x00)) {
@@ -891,21 +725,10 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 cli_api->final_cmd_req = NULL;
                 cli_api->excp_cmd_resp = "remove-file-resp";
 
-                storj_bridge_delete_file(cli_api->env, cli_api->bucket_id, cli_api->file_id,
-                                            cli_api, delete_file_callback);
-            } else if ((cli_api->next_cmd_req != NULL) &&
-                     (strcmp(cli_api->next_cmd_req, "list-mirrors-req") == 0x00)) {
-                printf("[%s][%d]file-name = %s; file-id = %s; bucket-name = %s \n",
-                        __FUNCTION__, __LINE__, cli_api->file_name, cli_api->file_id,
-                        cli_api->bucket_name);
-
-                cli_api->curr_cmd_req  = cli_api->next_cmd_req;
-                cli_api->next_cmd_req  = cli_api->final_cmd_req;
-                cli_api->final_cmd_req = NULL;
-                cli_api->excp_cmd_resp = "list-mirrors-resp";
-
-                storj_bridge_list_mirrors(cli_api->env, cli_api->bucket_id, cli_api->file_id,
-                                            cli_api, list_mirrors_callback);
+                storj_bridge_delete_file(cli_api->env, cli_api->bucket_id,
+                                         cli_api->file_id,
+                                         get_enc_access(cli_api),
+                                         cli_api, delete_file_callback);
             } else if ((cli_api->next_cmd_req != NULL) &&
                      (strcmp(cli_api->next_cmd_req, "upload-file-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
@@ -968,7 +791,7 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                 cli_api->excp_cmd_resp = "download-file-resp";
 
                 download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id,
-                                cli_api->dst_file, cli_api);
+                                cli_api->dst_file, get_enc_access(cli_api), cli_api);
             } else if ((cli_api->next_cmd_req != NULL) &&
                      (strcmp(cli_api->next_cmd_req, "download-files-req") == 0x00)) {
                 cli_api->curr_cmd_req  = cli_api->next_cmd_req;
@@ -998,7 +821,8 @@ void queue_next_cmd_req(cli_api_t *cli_api)
                     strcat(temp_path, file->filename);
 
                     cli_api->xfer_count++;
-                    download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id, temp_path, cli_api);
+                    download_file(cli_api->env, cli_api->bucket_id, cli_api->file_id,
+                                  temp_path, get_enc_access(cli_api), cli_api);
 
                     fprintf(stdout,"*****[%d:%d] downloading file to: %s *****\n", cli_api->xfer_count, cli_api->total_files, temp_path);
                 } else {
@@ -1048,8 +872,6 @@ int cli_get_bucket_id(cli_api_t *cli_api)
     cli_api->final_cmd_req = NULL;
     cli_api->excp_cmd_resp = "get-bucket-id-resp";
 
-    /* when callback returns, we store the bucket id of bucket name else null */
-    //return storj_bridge_get_buckets(cli_api->env, cli_api, get_bucket_id_callback);
     return storj_bridge_get_bucket_id(cli_api->env, cli_api->bucket_name, cli_api, get_bucket_id_callback);
 }
 
@@ -1088,15 +910,6 @@ int cli_remove_file(cli_api_t *cli_api)
     int ret = 0x00;
     ret = cli_get_file_id(cli_api);
     cli_api->final_cmd_req  = "remove-file-req";
-
-    return ret;
-}
-
-int cli_list_mirrors(cli_api_t *cli_api)
-{
-    int ret = 0x00;
-    ret = cli_get_file_id(cli_api);
-    cli_api->final_cmd_req  = "list-mirrors-req";
 
     return ret;
 }

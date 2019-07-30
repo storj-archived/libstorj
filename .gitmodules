@@ -1,0 +1,3 @@
+[submodule "storj"]
+	path = storj
+	url = https://github.com/storj/storj.git
