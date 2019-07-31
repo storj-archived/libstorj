@@ -15,7 +15,6 @@ TEST_DEPS=src/storjtests.h $(COMMON_DEPS)
 TEST_SRC=test/tests.c $(COMMON_SRC)
 tests: libuplink $(TEST_SRC)
 	$(CC) -o $@ $(TEST_SRC) $(CFLAGS)
-	./$@ && rm ./$@
 
 .PHONY: libuplink
 libuplink:
