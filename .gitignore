@@ -46,3 +46,6 @@ test/tests_rs.dSYM/
 test/tests_rs.exe
 testingdb/
 !depends/Makefile
+
+cli
+tests

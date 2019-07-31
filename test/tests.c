@@ -478,7 +478,6 @@ int test_download(storj_env_t *env)
                                                               test_bucket_name,
                                                               test_upload_file_name,
                                                               file,
-                                                              test_encryption_access,
                                                               0,
                                                               NULL,
                                                               check_resolve_file_progress,
@@ -500,7 +499,6 @@ int test_download_cancel(storj_env_t *env)
                                                               test_bucket_name,
                                                               test_upload_file_name,
                                                               file,
-                                                              test_encryption_access,
                                                               0,
                                                               NULL,
                                                               check_resolve_file_progress_cancel,
@@ -527,7 +525,6 @@ static void reset_test_upload()
     upload_options.bucket_id = strdup(test_bucket_name);
     upload_options.file_name = strdup(test_upload_file_name);
     upload_options.fd = fopen(test_upload_path, "r");
-    upload_options.encryption_access = strdup(test_encryption_access);
 }
 
 static void reset_test_download()
@@ -584,7 +581,6 @@ int test_api(storj_env_t *env)
 
     // list files
     status = storj_bridge_list_files(env, test_bucket_name,
-                                     test_encryption_access,
                                      &list_options, NULL,
                                      check_list_files);
     require_no_last_error_if(status);
@@ -599,8 +595,7 @@ int test_api(storj_env_t *env)
 
     // get file info
     status = storj_bridge_get_file_info(env, test_bucket_name,test_upload_file_name,
-                                        test_encryption_access, NULL,
-                                        check_file_info);
+                                        NULL, check_file_info);
     require_no_last_error_if(status);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
@@ -609,7 +604,6 @@ int test_api(storj_env_t *env)
     status = storj_bridge_delete_file(env,
                                       test_bucket_name,
                                       test_upload_file_name,
-                                      test_encryption_access,
                                       NULL,
                                       check_delete_file);
     require_no_last_error_if(status);

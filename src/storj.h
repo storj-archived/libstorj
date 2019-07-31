@@ -31,7 +31,8 @@ extern "C" {
 #include <string.h>
 #include <uv.h>
 #include "crypto.h"
-#include "uplink.h"
+
+#include "../storj/uplink.h"
 
 #include <inttypes.h>
 
