@@ -68,14 +68,19 @@ void check_get_buckets(uv_work_t *work_req, int status)
 {
     require_no_last_error_if(status);
 
-    // TODO: require req->error_code & req->status_code
-    // (status_code is an http status)
-
     get_buckets_request_t *req = work_req->data;
 
-    // TODO: add assertions
-    require(req->buckets);
+    require(!req->error_code);
     require(req->total_buckets == 1);
+    require(req->buckets);
+
+    storj_bucket_meta_t bucket = req->buckets[0];
+    require(bucket.decrypted);
+
+    require_not_empty(bucket.created);
+
+    require_equal(test_bucket_name, bucket.name);
+    require_equal(test_bucket_name, bucket.id);
 
     pass("storj_bridge_get_buckets");
 
@@ -87,11 +92,9 @@ void check_get_bucket(uv_work_t *work_req, int status)
 {
     require_no_last_error_if(status);
 
-    // TODO: require req->error_code & req->status_code
-    // (status_code is an http status)
-
     get_bucket_request_t *req = work_req->data;
 
+    require(!req->error_code);
     require(!req->handle);
     require(req->bucket);
     require(req->bucket->decrypted);
@@ -128,12 +131,9 @@ void check_create_bucket(uv_work_t *work_req, int status)
 {
     require_no_last_error;
 
-    // TODO: require req->error_code & req->status_code
-    // (status_code is an http status)
-
-    require(status == 0);
     create_bucket_request_t *req = work_req->data;
 
+    require(!req->error_code);
     require(req->bucket);
 
     require_not_empty(req->bucket->created);
@@ -152,16 +152,25 @@ void check_list_files(uv_work_t *work_req, int status)
 {
     require_no_last_error;
 
-    // TODO: maybe should be `require(req->status_code == 0);`?
-    require(status == 0);
     list_files_request_t *req = work_req->data;
+
+    require(!req->error_code);
     require(!req->handle);
     require(!req->response);
     require(req->total_files == 1);
 
     require_equal(test_bucket_name, req->bucket_id);
 
-    // TODO: add assertions?
+    storj_file_meta_t file = req->files[0];
+    require(file.decrypted);
+
+    require_not_empty(file.created);
+    require(file.size > 0);
+
+    require_equal(test_upload_file_name, file.filename);
+    require_equal(test_upload_file_name, file.id);
+    require_equal(test_bucket_name, file.bucket_id);
+    require_equal(upload_options.content_type, file.mimetype);
 
     pass("storj_bridge_list_files");
 
