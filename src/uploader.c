@@ -121,7 +121,7 @@ static void store_file(uv_work_t *work)
     STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
 
     //TODO: if STORJ_LAST_ERROR uploader_ref won't be freed
-    free_uploader_ref(state->uploader_ref);
+    free_uploader(state->uploader_ref);
 
     state->completed_upload = true;
 }

@@ -85,7 +85,7 @@ static void resolve_file(uv_work_t *work)
     STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
 
     //TODO: if STORJ_LAST_ERROR downloader_ref won't be freed
-    free_downloader_ref(state->downloader_ref);
+    free_downloader(state->downloader_ref);
 
     state->finished = true;
 //    state->finished_cb(state->error_status, state->destination, state->handle);
