@@ -472,10 +472,15 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
                                  storj_http_options_t *http_options,
                                  storj_log_options_t *log_options)
 {
-    if (!bridge_options->addr ||
-        !bridge_options->apikey ||
-        strcmp("", bridge_options->addr) == 0 ||
+    if (!bridge_options->apikey ||
         strcmp("", bridge_options->apikey) == 0) {
+        printf("error: apikey cannot be empty\n");
+        return NULL;
+    }
+
+    if (!bridge_options->addr ||
+        strcmp("", bridge_options->addr) == 0) {
+        printf("error: satellite address cannot be empty\n");
         return NULL;
     }
 
@@ -501,6 +506,7 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
 
     uv_loop_t *loop = uv_default_loop();
     if (!loop) {
+        printf("%s\n", storj_strerror(STORJ_MEMORY_ERROR));
         return NULL;
     }
 
@@ -515,6 +521,7 @@ STORJ_API storj_env_t *storj_init_env(storj_bridge_options_t *bridge_options,
 
     storj_log_levels_t *log = malloc(sizeof(storj_log_levels_t));
     if (!log) {
+        printf("%s\n", storj_strerror(STORJ_MEMORY_ERROR));
         return NULL;
     }
 
