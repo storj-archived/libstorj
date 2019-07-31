@@ -82,7 +82,7 @@ extern int errno;
     "  STORJ_ENCRYPTION_KEY          encryption key\n\n"
 
 
-#define CLI_VERSION "libstorj-2.0.0-beta2"
+#define CLI_VERSION "libstorj-3.0.0-V3"
 
 static int check_file_path(char *file_path)
 {
@@ -445,7 +445,7 @@ static int import_keys(user_options_t *options)
 
         if (num_chars == 0) {
             if (0 != get_password_verify("Enter a passphrase to generate "
-                                              "a new root key for your "
+                                              "a new serialized "
                                               "encryption key: ",
                                               new_enc_passphrase, 0)) {
                 printf("Giving up.\n");
@@ -464,7 +464,7 @@ static int import_keys(user_options_t *options)
 
             printf("\n");
 
-            printf("Serialized encryption access key: %s\n", enc_access_str);
+            printf("Serialized encryption key: %s\n", enc_access_str);
             printf("\n");
             printf("Please make sure to backup this key in a safe location. " \
                    "If the key is lost, the data uploaded will also be lost.\n\n");
@@ -570,7 +570,7 @@ static int export_keys(char *host)
             goto clear_variables;
         }
 
-        printf("Passphrase:\t%s\nEncryption key:\t%s\n", apikey, enc_access_str);
+        printf("API Key:\t%s\nSerialized encryption key:\t%s\n", apikey, enc_access_str);
     }
 
 clear_variables:

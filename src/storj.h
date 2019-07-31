@@ -48,16 +48,16 @@ extern "C" {
 #define STORJ_TRANSFER_CANCELED 1
 
 // Libuplink error (i.e. check STORJ_LAST_ERROR)
-#define STORJ_LIBUPLINK_ERROR 1000
+#define STORJ_LIBUPLINK_ERROR 1100
 
 // Memory related errors
-#define STORJ_MEMORY_ERROR 2000
+#define STORJ_MEMORY_ERROR 4000
 
 // File related errors 3000 to 3999
 #define STORJ_FILE_INTEGRITY_ERROR 3000
 
 // Queue related errors
-#define STORJ_QUEUE_ERROR 4000
+#define STORJ_QUEUE_ERROR 5000
 
 #define STORJ_SHARD_CHALLENGES 4
 #define STORJ_LOW_SPEED_LIMIT 30720L
