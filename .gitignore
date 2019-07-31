@@ -8,7 +8,6 @@
 .deps/
 .idea/*
 .libs/
-Makefile
 Makefile.in
 TAGS
 aclocal.m4
