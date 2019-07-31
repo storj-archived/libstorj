@@ -392,7 +392,6 @@ static int import_keys(user_options_t *options)
     char *user_input = calloc(BUFSIZ, sizeof(char));
     int num_chars;
 
-    // TODO: apikey validation?
     if (!bridge_opts.apikey || strcmp("", bridge_opts.apikey) == 0) {
         printf("Project API key: ");
         get_input(bridge_opts.apikey);

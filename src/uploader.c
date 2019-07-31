@@ -72,6 +72,9 @@ cleanup:
 static void queue_get_file_info(uv_work_t *work, int status)
 {
     storj_upload_state_t *state = work->data;
+
+    free_uploader(state->uploader_ref);
+
     if (state->error_status) {
         after_get_file_info(work, state->error_status);
         return;
@@ -99,29 +102,24 @@ static void store_file(uv_work_t *work)
         size_t read_size = fread(buf, sizeof(char), buf_len, state->original_file);
         // TODO: what if read_size != buf_len?
 
+        free(buf);
+
         int written_size = upload_write(state->uploader_ref, buf, read_size, STORJ_LAST_ERROR);
         STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
-        // TODO: buf isn't freed if STORJ_LAST_ERROR ^
         if (written_size != buf_len) {
-            free(buf);
             return;
         }
 
-        // TODO: use uv_async_init/uv_async_send instead of calling cb directly?
         state->uploaded_bytes += written_size;
         double progress = (double)state->uploaded_bytes / state->file_size;
         state->progress_cb(progress, state->uploaded_bytes,
                            state->file_size, state->handle);
-        free(buf);
     }
 
     state->progress_finished = true;
 
     upload_commit(state->uploader_ref, STORJ_LAST_ERROR);
     STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
-
-    //TODO: if STORJ_LAST_ERROR uploader_ref won't be freed
-    free_uploader(state->uploader_ref);
 
     state->completed_upload = true;
 }

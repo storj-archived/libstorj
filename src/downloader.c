@@ -14,6 +14,7 @@ static uv_work_t *uv_work_new()
 
 static void cleanup_state(storj_download_state_t *state)
 {
+    free_downloader(state->downloader_ref);
     state->finished_cb(state->error_status, state->destination, state->handle);
 
     free_download_state(state);
@@ -66,14 +67,12 @@ static void resolve_file(uv_work_t *work)
 
         if (read_size <= 0) {
             free(buf);
-            // TODO: call finished_cb?
             break;
         }
 
         size_t written_size = fwrite(buf, sizeof(char), read_size, state->destination);
         // TODO: what if written_size != buf_len!?
 
-        // TODO: use uv_async_init/uv_async_send instead of calling cb directly?
         state->downloaded_bytes += read_size;
         double progress = (double)state->downloaded_bytes / state->total_bytes;
         state->progress_cb(progress, state->downloaded_bytes,
@@ -84,13 +83,7 @@ static void resolve_file(uv_work_t *work)
     download_close(downloader_ref, STORJ_LAST_ERROR);
     STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
 
-    //TODO: if STORJ_LAST_ERROR downloader_ref won't be freed
-    free_downloader(state->downloader_ref);
-
     state->finished = true;
-//    state->finished_cb(state->error_status, state->destination, state->handle);
-
-//    free_download_state(state);
 }
 
 static void queue_resolve_file(uv_work_t *work, int status)

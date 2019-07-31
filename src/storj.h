@@ -197,7 +197,6 @@ typedef struct storj_env {
     UplinkRef uplink_ref;
     ProjectRef project_ref;
 
-    // TODO: delete?
     /* unused in V3 */
     storj_http_options_t *http_options;
 } storj_env_t;
@@ -430,7 +429,6 @@ typedef struct {
     size_t buffer_size;
     const char *encryption_access;
 
-    // TODO: delete?
     /* not used in V3 */
     bool requesting_info;
     uint32_t info_fail_count;
@@ -481,7 +479,6 @@ typedef struct {
     const char *encryption_access;
     UploadOptions *upload_opts;
 
-    // TODO: delete?
     /* unused in V3 */
     uint8_t *encryption_key;
 
