@@ -29,24 +29,30 @@ Asynchronous multi-platform C library and CLI for encrypted file transfer on the
 This version of libstorj depends on the libuplink api from [storj/storj](https://github.com/storj/storj).
 To build this dependency, make sure you have at least the version of golang that's listed in the [storj/storj readme](https://github.com/storj/storj#install-required-packages) installed.
 
+First, update the storj git submodule:
+```bash
+git submodule update --init storj
+```
+
+Build the cli:
 ```bash
 make storj-cli
 ```
 
 To run tests:
 ```bash
-./tests.sh
+(cd storj && go install ./cmd/...)
+storj-sim setup
+# ...
+storj-sim run &
+./tests.sh <serialized API key> # generate one from 127.0.0.1:10002
 ```
 
 To run command line utility:
 ```bash
-./src/storj --help
+./storj-cli --help
 ```
 
-And to install locally:
-```
-sudo make install
-```
 
 ### Debian / Ubuntu (16.04) Dependencies:
 
