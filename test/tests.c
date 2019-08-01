@@ -184,11 +184,16 @@ void check_delete_bucket(uv_work_t *work_req, int status)
 
     require(status == 0);
     delete_bucket_request_t *req = work_req->data;
-    require(!req->handle);
     require(!req->response);
+    require(req->handle);
     require(req->status_code == 204);
 
-    // TODO: check that the bucket was actuallly deleted!
+    storj_env_t *env = req->handle;
+    require(env);
+
+    BucketList bucket_list = list_buckets(env->project_ref, NULL, STORJ_LAST_ERROR);
+    require_no_last_error();
+    require(bucket_list.length == 0);
 
     pass("storj_bridge_delete_bucket");
 
@@ -242,14 +247,13 @@ void check_resolve_file_progress(double progress,
 
 void check_resolve_file(int status, FILE *fd, void *handle)
 {
-    require(ftell(fd) != 0);
     require_no_last_error();
+    require(ftell(fd) == test_download_total_bytes);
 
     fclose(fd);
 
     require(!handle);
 
-    // TODO: more assertions?
     // TODO: verify upload/download file contents match
 
     if (status) {
@@ -619,7 +623,7 @@ int test_api(storj_env_t *env)
 
     // delete bucket
     status = storj_bridge_delete_bucket(env, test_bucket_name,
-                                        NULL, check_delete_bucket);
+                                        env, check_delete_bucket);
     require_no_last_error_if(status);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
