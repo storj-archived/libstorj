@@ -522,8 +522,6 @@ int test_download_cancel(storj_env_t *env)
     storj_bridge_resolve_file_cancel(state);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
 
-    // TODO: test a longer-running download and cancel after calling `uv_run`?
-
     return 0;
 }
 
@@ -696,8 +694,7 @@ int main(void)
     strcat(test_upload_path, test_upload_file_name);
     strcat(test_download_path, test_download_file_name);
 
-    // TODO: increase size
-    create_test_upload_file(strdup(test_upload_path), 1024);
+    create_test_upload_file(strdup(test_upload_path), 5 * 1024);
 
     printf("Test Suite: API\n");
     test_api(env);
