@@ -146,10 +146,6 @@ static void list_files_request_worker(uv_work_t *work)
             file->bucket_id = strdup(object_item.bucket.name);
             file->filename = strdup(object_item.path);
             file->decrypted = true;
-
-            // TODO: if we want to populate size we need to
-            //  get object meta for each file.
-//            file->size = ;
         }
     }
 }
