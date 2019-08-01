@@ -12,6 +12,8 @@ Asynchronous multi-platform C library and CLI for encrypted file transfer on the
 
 ## Feature Highlights
 
+_Note: this branch is for compatibility with the V3 storj network (see: [storj/storj](https://github.com/storj/storj))._
+
 - Asynchronous I/O with concurrent peer-to-peer network requests for shards
 - Erasure encoding with reed solomon for data durability
 - Robust handling of shard transfers by selecting alternative sources
@@ -51,6 +53,21 @@ storj-sim run &
 To run command line utility:
 ```bash
 ./storj-cli --help
+
+# You need to set STORJ_BRIDGE to the satellite address you want to talk
+#   to (e.g.: storj-sim satellite, below)
+# export STORJ_BRIDGE=127.0.0.1:10000
+#
+# For convenience, ./sim-cli.sh will call the cli binary with all arguments and
+# the STORJ_BRIDGE env var set to work with storj-sim. If the cli binary doesn't
+# exists, it is built.
+#
+# ./sim-cli.sh --help
+
+# You can set STORJ_KEYPASS to your cli settings file passphrase to avoid
+#   having to type it in every time.
+# export STORJ_KEYPASS=
+
 ```
 
 
