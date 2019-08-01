@@ -401,8 +401,7 @@ void check_file_info(uv_work_t *work_req, int status)
     get_file_info_request_t *req = work_req->data;
     require(!req->handle);
     require(req->file);
-    // TODO: more precise size assertion
-//    require(req->file->size > 0);
+    require(req->file->size > 0);
 
     require_not_empty(req->file->created);
     require_not_empty(req->file->mimetype);
