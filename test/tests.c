@@ -129,7 +129,7 @@ void check_get_bucket_id(uv_work_t *work_req, int status)
 
 void check_create_bucket(uv_work_t *work_req, int status)
 {
-    require_no_last_error;
+    require_no_last_error();
 
     create_bucket_request_t *req = work_req->data;
 
@@ -150,7 +150,7 @@ void check_create_bucket(uv_work_t *work_req, int status)
 
 void check_list_files(uv_work_t *work_req, int status)
 {
-    require_no_last_error;
+    require_no_last_error();
 
     list_files_request_t *req = work_req->data;
 
@@ -180,7 +180,7 @@ void check_list_files(uv_work_t *work_req, int status)
 
 void check_delete_bucket(uv_work_t *work_req, int status)
 {
-    require_no_last_error;
+    require_no_last_error();
 
     require(status == 0);
     delete_bucket_request_t *req = work_req->data;
@@ -217,7 +217,7 @@ void check_resolve_file_progress(double progress,
                                  uint64_t total_bytes,
                                  void *handle)
 {
-    require_no_last_error;
+    require_no_last_error();
 
     require(progress >= test_download_progress);
     require(downloaded_bytes >= test_downloaded_bytes);
@@ -242,8 +242,8 @@ void check_resolve_file_progress(double progress,
 
 void check_resolve_file(int status, FILE *fd, void *handle)
 {
-    require_no_last_error;
     require(ftell(fd) != 0);
+    require_no_last_error();
 
     fclose(fd);
 
@@ -277,7 +277,7 @@ void check_resolve_file_progress_cancel(double progress,
                                uint64_t total_bytes,
                                void *handle)
 {
-    require_no_last_error;
+    require_no_last_error();
 
     require((progress <= test_download_progress));
     require((downloaded_bytes <= test_downloaded_bytes));
@@ -296,7 +296,7 @@ void check_store_file_progress(double progress,
                                uint64_t total_bytes,
                                void *handle)
 {
-    require_no_last_error;
+    require_no_last_error();
 
     require(progress >= test_upload_progress);
     require(uploaded_bytes >= test_uploaded_bytes);
@@ -324,7 +324,7 @@ void check_store_file_progress_cancel(double progress,
                                uint64_t total_bytes,
                                void *handle)
 {
-    require_no_last_error;
+    require_no_last_error();
 
     require(!(progress > test_upload_progress));
     require(!(uploaded_bytes > test_uploaded_bytes));
@@ -340,7 +340,7 @@ void check_store_file_progress_cancel(double progress,
 
 void check_store_file(int error_code, storj_file_meta_t *info, void *handle)
 {
-    require_no_last_error;
+    require_no_last_error();
 
     require(!handle);
     require(info);
@@ -376,7 +376,7 @@ void check_store_file_cancel(int error_code, storj_file_meta_t *file, void *hand
 
 void check_delete_file(uv_work_t *work, int status)
 {
-    require_no_last_error;
+    require_no_last_error();
 
     require(status == 0);
     delete_file_request_t *req = work->data;
@@ -395,7 +395,7 @@ void check_delete_file(uv_work_t *work, int status)
 
 void check_file_info(uv_work_t *work_req, int status)
 {
-    require_no_last_error;
+    require_no_last_error();
 
     require(status == 0);
     get_file_info_request_t *req = work_req->data;
@@ -572,20 +572,20 @@ int test_api(storj_env_t *env)
     // upload file
     reset_test_upload();
     test_upload(env);
-    require_no_last_error;
+    require_no_last_error();
 
     reset_test_upload();
     test_upload_cancel(env);
-    require_no_last_error;
+    require_no_last_error();
 
     // download file
     reset_test_download();
     test_download(env);
-    require_no_last_error;
+    require_no_last_error();
 
     reset_test_download();
     test_download_cancel(env);
-    require_no_last_error;
+    require_no_last_error();
 
     // list files
     status = storj_bridge_list_files(env, test_bucket_name,
@@ -650,17 +650,17 @@ int main(void)
                                       &encrypt_options,
                                       NULL,
                                       &log_options);
-    require_no_last_error;
+    require_no_last_error();
     require(env != NULL);
 
     uint8_t *salted_key = project_salted_key_from_passphrase(env->project_ref,
                                                              strdup(test_key_passphrase),
                                                              STORJ_LAST_ERROR);
-    require_no_last_error;
+    require_no_last_error();
 
     EncryptionAccessRef encryption_access = new_encryption_access_with_default_key(salted_key);
     test_encryption_access = serialize_encryption_access(encryption_access, STORJ_LAST_ERROR);
-    require_no_last_error;
+    require_no_last_error();
     require(test_encryption_access && strcmp("", test_encryption_access) != 0);
 
     // TODO: refactor
