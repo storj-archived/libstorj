@@ -32,7 +32,9 @@ To run tests:
 (cd storj && go install ./cmd/...)
 storj-sim setup
 # ...
-storj-sim run &
+storj-sim run
+
+# new terminal session
 ./tests.sh <serialized API key> # generate one from 127.0.0.1:10002
 ```
 
