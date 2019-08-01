@@ -67,6 +67,8 @@ extern "C" {
 #define STORJ_DEFAULT_UPLOAD_BUFFER_SIZE (size_t)(32 * 1024 * sizeof(char))
 #define STORJ_DEFAULT_DOWNLOAD_BUFFER_SIZE (size_t)(32 * 1024 * sizeof(char))
 
+#define STORJ_DEFAULT_EXPIRES() (int64_t)time(NULL) + (5 * 365 * 24 * 60 * 60)
+
 /* --- Begin bad macros ---
     "Macros should avoid using globals..."
     "Macros that change named parameters (rather than the storage they point at)

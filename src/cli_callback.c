@@ -203,8 +203,8 @@ static int upload_file(storj_env_t *env, char *bucket_id, const char *file_path,
 
     // Upload opts env variables:
     storj_upload_opts_t upload_opts = {
-        // NB: about +500 years from time of writing
-        .expires = 17329017831,
+        // NB: +5 years in the future
+        .expires = STORJ_DEFAULT_EXPIRES(),
         .content_type = "text/plain",
         .bucket_id = bucket_id,
         .file_name = file_name,

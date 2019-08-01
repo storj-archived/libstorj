@@ -29,6 +29,7 @@ make storj-cli
 
 To run tests:
 ```bash
+# Note: storj-sim needs to be empty (i.e. no buckets, no objects)
 (cd storj && go install ./cmd/...)
 storj-sim setup
 # ...
