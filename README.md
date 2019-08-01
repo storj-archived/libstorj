@@ -10,21 +10,7 @@ libstorj
 
 Asynchronous multi-platform C library and CLI for encrypted file transfer on the Storj network.
 
-## Feature Highlights
-
 _Note: this branch is for compatibility with the V3 storj network (see: [storj/storj](https://github.com/storj/storj))._
-
-- Asynchronous I/O with concurrent peer-to-peer network requests for shards
-- Erasure encoding with reed solomon for data durability
-- Robust handling of shard transfers by selecting alternative sources
-- File integrity and authenticity verified with HMAC-SHA512
-- File encryption with AES-256-CTR
-- File name and bucket name encryption with AES-256-GCM
-- Proxy support with SOCKS5, SOCKS4, SOCKS4a
-- Asynchronous progress updates in bytes per file
-- Transfers can be cleanly canceled per file
-- Seed based file encryption key for portability between devices
-- Reference implementation for [SIP5](https://github.com/Storj/sips/blob/master/sip-0005.md) file standard
 
 ## Build
 
