@@ -145,6 +145,7 @@ static void list_files_request_worker(uv_work_t *work)
             file->id = strdup(object_item.path);
             file->bucket_id = strdup(object_item.bucket.name);
             file->filename = strdup(object_item.path);
+            file->size = object_item.size;
             file->decrypted = true;
         }
     }
