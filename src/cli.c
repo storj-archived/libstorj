@@ -727,6 +727,22 @@ int main(int argc, char **argv)
     enc_access_str = getenv("STORJ_ENCRYPTION_KEY") ?
         strdup(getenv("STORJ_ENCRYPTION_KEY")) : NULL;
 
+    char *defaults_arg = getenv("STORJ_DEFAULTS") ?
+                     strdup(getenv("STORJ_DEFAULTS")) : "";
+
+    BucketConfig *default_bucket_cfg = NULL;
+    if (strcmp("dev", defaults_arg) == 0) {
+        RedundancyScheme dev_redundancy_scheme = {
+                .share_size = 256,
+                .required_shares = 4,
+                .repair_shares = 6,
+                .optimal_shares = 8,
+                .total_shares = 10
+        };
+        default_bucket_cfg = malloc(sizeof(BucketConfig));
+        default_bucket_cfg->redundancy_scheme = dev_redundancy_scheme;
+    }
+
     char *user_passphrase_env = getenv("STORJ_KEYPASS");
 
     // Second, try to get from encrypted user file
@@ -908,19 +924,7 @@ int main(int argc, char **argv)
             goto end_program;
         }
 
-        // TODO: expose bucket config options to user?
-        // TODO: remove bucket config
-        RedundancyScheme redundancy_scheme = {
-                .share_size = 256,
-                .required_shares = 4,
-                .repair_shares = 6,
-                .optimal_shares = 8,
-                .total_shares = 10
-        };
-        BucketConfig bucket_cfg = {
-                .redundancy_scheme = redundancy_scheme
-        };
-        storj_bridge_create_bucket(env, bucket_name, &bucket_cfg,
+        storj_bridge_create_bucket(env, bucket_name, default_bucket_cfg,
                                    NULL, create_bucket_callback);
 
     } else if (strcmp(command, "remove-bucket") == 0) {
@@ -1255,19 +1259,7 @@ int main(int argc, char **argv)
             goto end_program;
         }
 
-        // TODO: expose bucket config options to user?
-        // TODO: remove bucket config
-        RedundancyScheme redundancy_scheme = {
-                .share_size = 256,
-                .required_shares = 4,
-                .repair_shares = 6,
-                .optimal_shares = 8,
-                .total_shares = 10
-        };
-        BucketConfig bucket_cfg = {
-                .redundancy_scheme = redundancy_scheme
-        };
-        storj_bridge_create_bucket(env, bucket_name, &bucket_cfg,
+        storj_bridge_create_bucket(env, bucket_name, default_bucket_cfg,
                                    NULL, create_bucket_callback);
     } else if (strcmp(command, "rm") == 0) {
         cli_api->bucket_name = argv[command_index + 1];
@@ -1325,6 +1317,9 @@ end_program:
     }
     if (enc_access_str) {
         free(enc_access_str);
+    }
+    if (default_bucket_cfg) {
+        free(default_bucket_cfg);
     }
     if (cli_api){
         free(cli_api);
