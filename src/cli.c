@@ -75,6 +75,7 @@ extern int errno;
     "  -l, --log <level>             set the log level (default 0)\n"   \
     "  -d, --debug                   set the debug log level\n\n"       \
     "environment variables:\n"                                          \
+    "  STORJ_DEFAULTS                set defaults; use development defaults if \"dev\", otherwise use production defaults\n" \
     "  STORJ_KEYPASS                 imported user settings passphrase\n" \
     "  STORJ_BRIDGE                  the satellite (bridge) host "      \
     "(e.g. https://api.storj.io)\n"                                     \
