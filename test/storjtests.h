@@ -13,13 +13,11 @@ if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
 require_noerror(*STORJ_LAST_ERROR);\
 
 #define require_no_last_error_if(status) \
-if (strcmp("", *STORJ_LAST_ERROR) != 0) { \
-    printf("STORJ_LAST_ERROR: %s\n", *STORJ_LAST_ERROR); \
-} else if (status > 0) { \
+if (status > 0) { \
     printf("ERROR: %s\n", storj_strerror(status)); \
+    require_no_last_error(); \
+    require(status == 0);\
 } \
-require_no_last_error() \
-require(status == 0)\
 
 #define require_not_empty(str) \
 require(str != NULL); \
