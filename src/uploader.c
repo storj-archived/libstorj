@@ -17,7 +17,7 @@ static void cleanup_state(storj_upload_state_t *state)
     free(state);
 }
 
-static void cleanup_upload_work(uv_work_t *work)
+static void cleanup_work(uv_work_t *work)
 {
     storj_upload_state_t *state = work->data;
 
@@ -60,7 +60,7 @@ static void after_get_file_info(uv_work_t *work, int status)
     info->size = req->file->size;
 
 cleanup:
-    cleanup_upload_work(upload_work);
+    cleanup_work(upload_work);
     if (req) {
         storj_free_get_file_info_request(req);
     }
