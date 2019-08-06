@@ -283,8 +283,8 @@ void check_resolve_file_progress_cancel(double progress,
 {
     require_no_last_error();
 
-    require((progress <= test_download_progress));
-    require((downloaded_bytes <= test_downloaded_bytes));
+    require(!(progress > test_download_progress));
+    require(!(downloaded_bytes > test_downloaded_bytes));
 
     test_download_progress = progress;
     test_downloaded_bytes = downloaded_bytes;
