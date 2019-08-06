@@ -1,19 +1,5 @@
 #include "crypto.h"
 
-void pbkdf2_hmac_sha512 (
-    unsigned key_length,
-    const uint8_t *key,
-    unsigned iterations,
-    unsigned salt_length, const uint8_t *salt,
-    unsigned length, uint8_t *dst)
-{
-    struct hmac_sha512_ctx sha512ctx;
-
-    hmac_sha512_set_key (&sha512ctx, key_length, key);
-    PBKDF2 (&sha512ctx, hmac_sha512_update, hmac_sha512_digest,
-    SHA512_DIGEST_SIZE, iterations, salt_length, salt, length, dst);
-}
-
 uint8_t *key_from_passphrase(const char *passphrase, const char *salt)
 {
     uint8_t passphrase_len = strlen(passphrase);
