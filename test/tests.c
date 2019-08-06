@@ -384,12 +384,17 @@ void check_delete_file(uv_work_t *work, int status)
 
     require(status == 0);
     delete_file_request_t *req = work->data;
-    require(!req->handle);
+    require(req->handle);
     require(!req->response);
     // NB: 200 for backwards compatibility
     require(req->status_code == 200);
 
-    // TODO: check that the file was actuallly deleted!
+    BucketRef *bucket_ref = req->handle;
+    require(bucket_ref);
+
+    ObjectList object_list = list_objects(*bucket_ref, NULL, STORJ_LAST_ERROR);
+    require_no_last_error();
+    require(object_list.length == 0);
 
     pass("storj_bridge_delete_file");
 
@@ -610,11 +615,16 @@ int test_api(storj_env_t *env)
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
 
 
+    BucketRef *bucket_ref = malloc(sizeof(BucketRef));
+    *bucket_ref = open_bucket(env->project_ref, strdup(test_bucket_name), env->encrypt_options->encryption_key, STORJ_LAST_ERROR);
+    require_no_last_error();
+
+
     // delete a file in a bucket
     status = storj_bridge_delete_file(env,
                                       test_bucket_name,
                                       test_upload_file_name,
-                                      NULL,
+                                      bucket_ref,
                                       check_delete_file);
     require_no_last_error_if(status);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_ONCE));
