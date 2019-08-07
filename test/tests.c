@@ -254,17 +254,19 @@ void check_store_file(int error_code, storj_file_meta_t *info, void *handle)
 
     require(!handle);
     require(info);
+    require(info->decrypted);
+    require(info->size == test_upload_total_bytes);
 
+    require_not_empty(info->filename);
     require_not_empty(info->id);
     require_not_empty(info->bucket_id);
     require_not_empty(info->created);
+    require_not_empty(info->mimetype);
 
     require_equal(upload_options.content_type, info->mimetype);
-
-    require_equal(test_upload_file_name, info->id);
     require_equal(test_bucket_name, info->bucket_id);
-
-    // TODO: more assertions?
+    require_equal(test_upload_file_name, info->filename);
+    require_equal(test_upload_file_name, info->id);
 
     pass("storj_bridge_store_file");
 
@@ -372,7 +374,9 @@ void check_resolve_file_progress_cancel(double progress,
 
 void check_resolve_file_cancel(int status, FILE *fd, void *handle)
 {
-    // TODO: assertions about `fd`?
+    int64_t pos = ftell(fd);
+    require(pos == test_downloaded_bytes);
+
     fclose(fd);
     require(handle == NULL);
     if (status == STORJ_TRANSFER_CANCELED) {
@@ -437,17 +441,16 @@ void check_file_info(uv_work_t *work_req, int status)
     require(status == 0);
     get_file_info_request_t *req = work_req->data;
     require(!req->handle);
+    require(req->file->decrypted);
     require(req->file);
-    require(req->file->size > 0);
+    require(req->file->size > test_upload_total_bytes);
 
     require_not_empty(req->file->created);
     require_not_empty(req->file->mimetype);
 
+    require_equal(test_bucket_name, req->file->bucket_id);
     require_equal(test_upload_file_name, req->file->id);
     require_equal(test_upload_file_name, req->file->filename);
-    require_equal(test_bucket_name, req->file->bucket_id);
-
-    // TODO: add assertions?
 
     pass("storj_bridge_get_file_info");
 
@@ -511,7 +514,13 @@ int test_upload_cancel(storj_env_t *env)
     storj_bridge_store_file_cancel(state);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
 
-    // TODO: test a longer-running upload and cancel after calling `uv_run`?
+    // TODO: test cancellation after calling `uv_run`?
+    // if (fork() == 0) {
+    //     require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
+    // } else {
+    //     sleep(2);
+    //     storj_bridge_store_file_cancel(state);
+    // }
 
     return 0;
 }
@@ -556,6 +565,14 @@ int test_download_cancel(storj_env_t *env)
 
     storj_bridge_resolve_file_cancel(state);
     require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
+
+    // TODO: test cancellation after calling `uv_run`?
+    // if (fork() == 0) {
+    //     require_no_last_error_if(uv_run(env->loop, UV_RUN_DEFAULT));
+    // } else {
+    //     sleep(2);
+    //     storj_bridge_resolve_file_cancel(state);
+    // }
 
     return 0;
 }
