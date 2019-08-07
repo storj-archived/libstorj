@@ -51,6 +51,9 @@ storj_log_options_t log_options = {
 
 char *test_encryption_access;
 
+
+
+/* Helpers ------------------------------------------------------ */
 void fail(char *msg)
 {
     printf("\t" KRED "FAIL" RESET " %s\n", msg);
@@ -62,6 +65,89 @@ void pass(char *msg)
     printf("\t" KGRN "PASS" RESET " %s\n", msg);
     test_status += 1;
     tests_ran += 1;
+}
+
+int create_test_upload_file(char *filepath, int total_KB)
+{
+    int64_t total = total_KB * 1024;
+    int64_t subtotal = 0;
+
+    FILE *fp;
+    fp = fopen(filepath, "w");
+
+    if (fp == NULL) {
+        printf(KRED "Could not create upload file: %s\n" RESET, filepath);
+        exit(0);
+    }
+
+    char *symbols = "abcdefghij";
+    for (int i = 0; subtotal < total; i++) {
+        fputc(symbols[i%10], fp);
+        subtotal ++;
+    }
+    fclose(fp);
+    return 0;
+}
+
+static void reset_test_upload()
+{
+    test_upload_progress = 0;
+    test_uploaded_bytes = 0;
+    test_upload_total_bytes = 0;
+
+    // init upload options
+    upload_options.bucket_id = strdup(test_bucket_name);
+    upload_options.file_name = strdup(test_upload_file_name);
+    upload_options.fd = fopen(test_upload_path, "r");
+}
+
+static void reset_test_download()
+{
+    test_download_progress = 0;
+    test_downloaded_bytes = 0;
+    test_download_total_bytes = 0;
+}
+
+
+/* Bucket callbacks ------------------------------------ */
+void check_create_bucket(uv_work_t *work_req, int status)
+{
+    require_no_last_error();
+
+    create_bucket_request_t *req = work_req->data;
+
+    require(!req->error_code);
+    require(req->bucket);
+
+    require_not_empty(req->bucket->created);
+
+    require_equal(test_bucket_name, req->bucket_name);
+    require_equal(test_bucket_name, req->bucket->name);
+    require_equal(test_bucket_name, req->bucket->id);
+
+    pass("storj_bridge_create_bucket");
+
+    storj_free_create_bucket_request(req);
+    free(work_req);
+}
+
+void check_get_bucket_id(uv_work_t *work_req, int status)
+{
+    require_no_last_error_if(status);
+
+    get_bucket_id_request_t *req = work_req->data;
+
+    require(!req->handle);
+
+    require_equal(test_bucket_name, req->bucket_id);
+
+    pass("storj_bridge_get_bucket_id");
+
+    json_object_put(req->response);
+    free((char *)req->bucket_name);
+    free((char *)req->bucket_id);
+    free(req);
+    free(work_req);
 }
 
 void check_get_buckets(uv_work_t *work_req, int status)
@@ -108,76 +194,6 @@ void check_get_bucket(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-void check_get_bucket_id(uv_work_t *work_req, int status)
-{
-    require_no_last_error_if(status);
-
-    get_bucket_id_request_t *req = work_req->data;
-
-    require(!req->handle);
-
-    require_equal(test_bucket_name, req->bucket_id);
-
-    pass("storj_bridge_get_bucket_id");
-
-    json_object_put(req->response);
-    free((char *)req->bucket_name);
-    free((char *)req->bucket_id);
-    free(req);
-    free(work_req);
-}
-
-void check_create_bucket(uv_work_t *work_req, int status)
-{
-    require_no_last_error();
-
-    create_bucket_request_t *req = work_req->data;
-
-    require(!req->error_code);
-    require(req->bucket);
-
-    require_not_empty(req->bucket->created);
-
-    require_equal(test_bucket_name, req->bucket_name);
-    require_equal(test_bucket_name, req->bucket->name);
-    require_equal(test_bucket_name, req->bucket->id);
-
-    pass("storj_bridge_create_bucket");
-
-    storj_free_create_bucket_request(req);
-    free(work_req);
-}
-
-void check_list_files(uv_work_t *work_req, int status)
-{
-    require_no_last_error();
-
-    list_files_request_t *req = work_req->data;
-
-    require(!req->error_code);
-    require(!req->handle);
-    require(!req->response);
-    require(req->total_files == 1);
-
-    require_equal(test_bucket_name, req->bucket_id);
-
-    storj_file_meta_t file = req->files[0];
-    require(file.decrypted);
-
-    require_not_empty(file.created);
-    require(file.size > 0);
-
-    require_equal(test_upload_file_name, file.filename);
-    require_equal(test_upload_file_name, file.id);
-    require_equal(test_bucket_name, file.bucket_id);
-    require_equal(upload_options.content_type, file.mimetype);
-
-    pass("storj_bridge_list_files");
-
-    storj_free_list_files_request(req);
-    free(work_req);
-}
-
 void check_delete_bucket(uv_work_t *work_req, int status)
 {
     require_no_last_error();
@@ -202,19 +218,57 @@ void check_delete_bucket(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-void check_get_file_id(uv_work_t *work_req, int status)
+
+/* Upload/download callbacks ------------------------------------ */
+void check_store_file_progress(double progress,
+                               uint64_t uploaded_bytes,
+                               uint64_t total_bytes,
+                               void *handle)
 {
-    require_no_last_error_if(status);
+    require_no_last_error();
 
-    get_file_id_request_t *req = work_req->data;
-    require(!req->handle);
-    require_equal(test_upload_file_name, req->file_id);
+    require(progress >= test_upload_progress);
+    require(uploaded_bytes >= test_uploaded_bytes);
 
-    pass("storj_bridge_get_file_id");
+    if (test_upload_total_bytes == 0) {
+        test_upload_total_bytes = total_bytes;
+    }
 
-    json_object_put(req->response);
-    free(req);
-    free(work_req);
+    require(total_bytes == test_upload_total_bytes);
+
+    test_upload_progress = progress;
+    test_uploaded_bytes = uploaded_bytes;
+
+    require(handle == NULL);
+    if (progress == (double)0) {
+        pass("storj_bridge_store_file (progress started)");
+    }
+    if (progress == (double)1) {
+        pass("storj_bridge_store_file (progress finished)");
+    }
+}
+
+void check_store_file(int error_code, storj_file_meta_t *info, void *handle)
+{
+    require_no_last_error();
+
+    require(!handle);
+    require(info);
+
+    require_not_empty(info->id);
+    require_not_empty(info->bucket_id);
+    require_not_empty(info->created);
+
+    require_equal(upload_options.content_type, info->mimetype);
+
+    require_equal(test_upload_file_name, info->id);
+    require_equal(test_bucket_name, info->bucket_id);
+
+    // TODO: more assertions?
+
+    pass("storj_bridge_store_file");
+
+    storj_free_uploaded_file_info(info);
 }
 
 void check_resolve_file_progress(double progress,
@@ -264,69 +318,11 @@ void check_resolve_file(int status, FILE *fd, void *handle)
     }
 }
 
-void check_resolve_file_cancel(int status, FILE *fd, void *handle)
-{
-    // TODO: assertions about `fd`?
-    fclose(fd);
-    require(handle == NULL);
-    if (status == STORJ_TRANSFER_CANCELED) {
-        pass("storj_bridge_resolve_file_cancel");
-    } else {
-        fail("storj_bridge_resolve_file_cancel");
-    }
-}
-
-void check_resolve_file_progress_cancel(double progress,
-                               uint64_t downloaded_bytes,
-                               uint64_t total_bytes,
-                               void *handle)
-{
-    require_no_last_error();
-
-    require(!(progress > test_download_progress));
-    require(!(downloaded_bytes > test_downloaded_bytes));
-
-    test_download_progress = progress;
-    test_downloaded_bytes = downloaded_bytes;
-
-    require(handle == NULL);
-    if (progress != (double)1) {
-        pass("storj_bridge_resolve_file_cancel (progress incomplete)");
-    }
-}
-
-void check_store_file_progress(double progress,
-                               uint64_t uploaded_bytes,
-                               uint64_t total_bytes,
-                               void *handle)
-{
-    require_no_last_error();
-
-    require(progress >= test_upload_progress);
-    require(uploaded_bytes >= test_uploaded_bytes);
-
-    if (test_upload_total_bytes == 0) {
-        test_upload_total_bytes = total_bytes;
-    }
-
-    require(total_bytes == test_upload_total_bytes);
-
-    test_upload_progress = progress;
-    test_uploaded_bytes = uploaded_bytes;
-
-    require(handle == NULL);
-    if (progress == (double)0) {
-        pass("storj_bridge_store_file (progress started)");
-    }
-    if (progress == (double)1) {
-        pass("storj_bridge_store_file (progress finished)");
-    }
-}
-
+/* Upload/download cancellation callbacks ---------------------- */
 void check_store_file_progress_cancel(double progress,
-                               uint64_t uploaded_bytes,
-                               uint64_t total_bytes,
-                               void *handle)
+                                      uint64_t uploaded_bytes,
+                                      uint64_t total_bytes,
+                                      void *handle)
 {
     require_no_last_error();
 
@@ -342,29 +338,6 @@ void check_store_file_progress_cancel(double progress,
     }
 }
 
-void check_store_file(int error_code, storj_file_meta_t *info, void *handle)
-{
-    require_no_last_error();
-
-    require(!handle);
-    require(info);
-
-    require_not_empty(info->id);
-    require_not_empty(info->bucket_id);
-    require_not_empty(info->created);
-
-    require_equal(upload_options.content_type, info->mimetype);
-
-    require_equal(test_upload_file_name, info->id);
-    require_equal(test_bucket_name, info->bucket_id);
-
-    // TODO: more assertions?
-
-    pass("storj_bridge_store_file");
-
-    storj_free_uploaded_file_info(info);
-}
-
 void check_store_file_cancel(int error_code, storj_file_meta_t *file, void *handle)
 {
     require(handle == NULL);
@@ -378,29 +351,84 @@ void check_store_file_cancel(int error_code, storj_file_meta_t *file, void *hand
     storj_free_uploaded_file_info(file);
 }
 
-void check_delete_file(uv_work_t *work, int status)
+void check_resolve_file_progress_cancel(double progress,
+                                        uint64_t downloaded_bytes,
+                                        uint64_t total_bytes,
+                                        void *handle)
 {
     require_no_last_error();
 
-    require(status == 0);
-    delete_file_request_t *req = work->data;
-    require(req->handle);
-    require(!req->response);
-    // NB: 200 for backwards compatibility
-    require(req->status_code == 200);
+    require(!(progress > test_download_progress));
+    require(!(downloaded_bytes > test_downloaded_bytes));
 
-    BucketRef *bucket_ref = req->handle;
-    require(bucket_ref);
+    test_download_progress = progress;
+    test_downloaded_bytes = downloaded_bytes;
 
-    ObjectList object_list = list_objects(*bucket_ref, NULL, STORJ_LAST_ERROR);
-    require_no_last_error();
-    require(object_list.length == 0);
-
-    pass("storj_bridge_delete_file");
-
-    storj_free_delete_file_request(req);
-    free(work);
+    require(handle == NULL);
+    if (progress != (double)1) {
+        pass("storj_bridge_resolve_file_cancel (progress incomplete)");
+    }
 }
+
+void check_resolve_file_cancel(int status, FILE *fd, void *handle)
+{
+    // TODO: assertions about `fd`?
+    fclose(fd);
+    require(handle == NULL);
+    if (status == STORJ_TRANSFER_CANCELED) {
+        pass("storj_bridge_resolve_file_cancel");
+    } else {
+        fail("storj_bridge_resolve_file_cancel");
+    }
+}
+
+
+/* File callbacks ------------------------------------ */
+void check_get_file_id(uv_work_t *work_req, int status)
+{
+    require_no_last_error_if(status);
+
+    get_file_id_request_t *req = work_req->data;
+    require(!req->handle);
+    require_equal(test_upload_file_name, req->file_id);
+
+    pass("storj_bridge_get_file_id");
+
+    json_object_put(req->response);
+    free(req);
+    free(work_req);
+}
+
+void check_list_files(uv_work_t *work_req, int status)
+{
+    require_no_last_error();
+
+    list_files_request_t *req = work_req->data;
+
+    require(!req->error_code);
+    require(!req->handle);
+    require(!req->response);
+    require(req->total_files == 1);
+
+    require_equal(test_bucket_name, req->bucket_id);
+
+    storj_file_meta_t file = req->files[0];
+    require(file.decrypted);
+
+    require_not_empty(file.created);
+    require(file.size > 0);
+
+    require_equal(test_upload_file_name, file.filename);
+    require_equal(test_upload_file_name, file.id);
+    require_equal(test_bucket_name, file.bucket_id);
+    require_equal(upload_options.content_type, file.mimetype);
+
+    pass("storj_bridge_list_files");
+
+    storj_free_list_files_request(req);
+    free(work_req);
+}
+
 
 void check_file_info(uv_work_t *work_req, int status)
 {
@@ -427,30 +455,32 @@ void check_file_info(uv_work_t *work_req, int status)
     free(work_req);
 }
 
-int create_test_upload_file(char *filepath, int total_KB)
+void check_delete_file(uv_work_t *work, int status)
 {
-    int64_t total = total_KB * 1024;
-    int64_t subtotal = 0;
+    require_no_last_error();
 
-    FILE *fp;
-    fp = fopen(filepath, "w");
+    require(status == 0);
+    delete_file_request_t *req = work->data;
+    require(req->handle);
+    require(!req->response);
+    // NB: 200 for backwards compatibility
+    require(req->status_code == 200);
 
-    if (fp == NULL) {
-        printf(KRED "Could not create upload file: %s\n" RESET, filepath);
-        exit(0);
-    }
+    BucketRef *bucket_ref = req->handle;
+    require(bucket_ref);
 
-    char *symbols = "abcdefghij";
-    for (int i = 0; subtotal < total; i++) {
-        fputc(symbols[i%10], fp);
-        subtotal ++;
-    }
-//    fputs("\n", fp);
+    ObjectList object_list = list_objects(*bucket_ref, NULL, STORJ_LAST_ERROR);
+    require_no_last_error();
+    require(object_list.length == 0);
 
-    fclose(fp);
-    return 0;
+    pass("storj_bridge_delete_file");
+
+    storj_free_delete_file_request(req);
+    free(work);
 }
 
+
+/* Upload/download helpers -------------------------------------- */
 int test_upload(storj_env_t *env)
 {
     // upload file
@@ -530,24 +560,6 @@ int test_download_cancel(storj_env_t *env)
     return 0;
 }
 
-static void reset_test_upload()
-{
-    test_upload_progress = 0;
-    test_uploaded_bytes = 0;
-    test_upload_total_bytes = 0;
-
-    // init upload options
-    upload_options.bucket_id = strdup(test_bucket_name);
-    upload_options.file_name = strdup(test_upload_file_name);
-    upload_options.fd = fopen(test_upload_path, "r");
-}
-
-static void reset_test_download()
-{
-    test_download_progress = 0;
-    test_downloaded_bytes = 0;
-    test_download_total_bytes = 0;
-}
 
 int test_api(storj_env_t *env)
 {
