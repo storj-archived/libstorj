@@ -712,7 +712,7 @@ int main(void)
     folder = getenv("TMPDIR");
 
     if (folder == 0) {
-        printf("You need to set $TMPDIR before running. (e.g. export TMPDIR=/tmp/)\n");
+        printf("You need to set $TMPDIR before running. (e.g. export TMPDIR=/tmp)\n");
         exit(1);
     }
 

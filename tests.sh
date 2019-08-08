@@ -19,7 +19,7 @@ if [[ $# -ne 1 ]]; then
     exit 1
 fi
 
-export TMPDIR=/tmp/
+export TMPDIR=/tmp
 export SATELLITE_0_ADDR=127.0.0.1:10000
 export GATEWAY_0_API_KEY=$1
 
