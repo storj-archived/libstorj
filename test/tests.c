@@ -1,15 +1,18 @@
 #include "storjtests.h"
 
-char *folder;
-int tests_ran = 0;
-int test_status = 0;
+const int test_upload_kb = 5 * 1024;
+const int test_upload_size = test_upload_kb * 1024;
 const char *test_bucket_name = "test-bucket";
 const char *test_upload_file_name = "test-upload-file";
 const char *test_download_file_name = "test-download-file";
 const char *test_key_passphrase = "It's dangerous to go alone, take this!";
+
+int tests_ran = 0;
+int test_status = 0;
+char *folder;
 char *test_download_path;
 char *test_upload_path;
-int test_upload_kb = 5 * 1024;
+size_t default_buf_size = 32 * 1024 * sizeof(uint8_t);
 
 double test_upload_progress = 0;
 uint64_t test_uploaded_bytes = 0;
@@ -306,9 +309,11 @@ void check_resolve_file(int status, FILE *fd, void *handle)
 {
     require_no_last_error();
 
+    require(test_upload_size == test_download_total_bytes);
+
     fseek(fd, 0, SEEK_END);
     int64_t fd_size = ftell(fd);
-    require(fd_size == test_download_total_bytes);
+    require(fd_size == test_upload_size);
     fseek(fd, 0, SEEK_SET);
 
     require(!handle);
@@ -316,16 +321,16 @@ void check_resolve_file(int status, FILE *fd, void *handle)
     FILE *expected_fd = fopen(test_download_path, "r");
     fseek(expected_fd, 0, SEEK_END);
     int64_t expected_fd_size = ftell(expected_fd);
-    require(expected_fd_size == test_download_total_bytes);
+    require(expected_fd_size == test_upload_size);
     fseek(expected_fd, 0, SEEK_SET);
 
     int64_t compared_bytes = 0;
-    size_t buf_size = 30 * 1024 * sizeof(uint8_t);
+    size_t buf_size = default_buf_size;
     uint8_t *fd_data = malloc(buf_size);
     uint8_t *expected_fd_data = malloc(buf_size);
-    while (compared_bytes < fd_size) { //- ((int64_t)buf_size * 10)) {
+    while (compared_bytes < fd_size) {
         if ((fd_size - compared_bytes) > (int64_t)buf_size) {
-            buf_size = 30 * 1024 * sizeof(uint8_t);
+            buf_size = default_buf_size;
         } else {
             buf_size = (size_t)(fd_size - compared_bytes);
         }
@@ -333,11 +338,11 @@ void check_resolve_file(int status, FILE *fd, void *handle)
         int64_t fd_read_size = (int64_t)fread(fd_data, sizeof(uint8_t), buf_size, fd);
         int64_t expected_fd_read_size = (int64_t)fread(expected_fd_data, sizeof(uint8_t), buf_size, expected_fd);
 
+        require(expected_fd_read_size == fd_read_size);
         if (expected_fd_read_size == 0 || fd_read_size == 0) {
             break;
         }
 
-        require(expected_fd_read_size == fd_read_size);
         require(memcmp(expected_fd_data, fd_data, fd_read_size) == 0);
 
         compared_bytes += fd_read_size;
@@ -476,7 +481,7 @@ void check_file_info(uv_work_t *work_req, int status)
     require(!req->handle);
     require(req->file->decrypted);
     require(req->file);
-    require(req->file->size == test_upload_kb * 1024);
+    require(req->file->size == test_upload_size);
 
     require_not_empty(req->file->created);
     require_not_empty(req->file->mimetype);
