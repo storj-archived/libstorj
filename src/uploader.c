@@ -88,6 +88,8 @@ static void store_file(uv_work_t *work)
 {
     storj_upload_state_t *state = work->data;
 
+    fseek(state->original_file, 0, SEEK_SET);
+
     size_t buf_len;
     uint8_t *buf;
     while (state->uploaded_bytes < state->file_size) {
