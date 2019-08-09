@@ -1,4 +1,5 @@
 #include "storjtests.h"
+#include "cli_callback.c"
 
 const int test_upload_kb = 5 * 1024;
 const int test_upload_size = test_upload_kb * 1024;
@@ -248,8 +249,11 @@ void check_store_file_progress(double progress,
         pass("storj_bridge_store_file (progress started)");
     }
     if (progress == (double)1) {
+        printf("\n");
         pass("storj_bridge_store_file (progress finished)");
     }
+
+    file_progress(progress, uploaded_bytes, total_bytes, NULL);
 }
 
 void check_store_file(int error_code, storj_file_meta_t *info, void *handle)
@@ -272,6 +276,7 @@ void check_store_file(int error_code, storj_file_meta_t *info, void *handle)
     require_equal(test_upload_file_name, info->filename);
     require_equal(test_upload_file_name, info->id);
 
+    printf("\n");
     pass("storj_bridge_store_file");
 
     storj_free_uploaded_file_info(info);
@@ -301,8 +306,11 @@ void check_resolve_file_progress(double progress,
         pass("storj_bridge_resolve_file (progress started)");
     }
     if (progress == (double)1) {
+        printf("\n");
         pass("storj_bridge_resolve_file (progress finished)");
     }
+
+    file_progress(progress, downloaded_bytes, total_bytes, NULL);
 }
 
 void check_resolve_file(int status, FILE *fd, void *handle)
@@ -318,7 +326,7 @@ void check_resolve_file(int status, FILE *fd, void *handle)
 
     require(!handle);
 
-    FILE *expected_fd = fopen(test_download_path, "r");
+    FILE *expected_fd = fopen(test_upload_path, "r");
     fseek(expected_fd, 0, SEEK_END);
     int64_t expected_fd_size = ftell(expected_fd);
     require(expected_fd_size == test_upload_size);
@@ -350,6 +358,7 @@ void check_resolve_file(int status, FILE *fd, void *handle)
     fclose(fd);
     fclose(expected_fd);
 
+    printf("\n");
     if (status) {
         fail("storj_bridge_resolve_file");
         printf("Download failed: %s\n", storj_strerror(status));

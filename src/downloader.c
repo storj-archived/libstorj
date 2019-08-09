@@ -53,6 +53,10 @@ static void resolve_file(uv_work_t *work)
     size_t buf_len;
     uint8_t *buf;
     while (state->downloaded_bytes < state->total_bytes) {
+        if (state->canceled) {
+            break;
+        }
+
         size_t remaining_size = state->total_bytes - state->downloaded_bytes;
         if (remaining_size >= state->buffer_size) {
             buf_len = state->buffer_size;
@@ -64,11 +68,6 @@ static void resolve_file(uv_work_t *work)
         size_t read_size = download_read(state->downloader_ref, buf, buf_len, STORJ_LAST_ERROR);
         STORJ_RETURN_SET_STATE_ERROR_IF_LAST_ERROR();
         // TODO: what if read_size != buf_len!?
-
-        if (read_size <= 0) {
-            free(buf);
-            break;
-        }
 
         size_t written_size = fwrite(buf, sizeof(char), read_size, state->destination);
         // TODO: what if written_size != buf_len!?
