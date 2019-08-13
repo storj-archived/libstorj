@@ -8,7 +8,6 @@
 .deps/
 .idea/*
 .libs/
-Makefile
 Makefile.in
 TAGS
 aclocal.m4
@@ -46,3 +45,6 @@ test/tests_rs.dSYM/
 test/tests_rs.exe
 testingdb/
 !depends/Makefile
+
+cli
+tests
