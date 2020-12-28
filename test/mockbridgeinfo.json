@@ -26,13 +26,13 @@
       },
       "ecdsa public key": {
         "type": "apiKey",
-        "description": "See: https://github.com/Storj/bridge/blob/master/doc/auth.md",
+        "description": "See: https://github.com/Storj/bridge/blob/main/doc/auth.md",
         "name": "x-pubkey",
         "in": "header"
       },
       "ecdsa signature": {
         "type": "apiKey",
-        "description": "See: https://github.com/Storj/bridge/blob/master/doc/auth.md",
+        "description": "See: https://github.com/Storj/bridge/blob/main/doc/auth.md",
         "name": "x-signature",
         "in": "header"
       }

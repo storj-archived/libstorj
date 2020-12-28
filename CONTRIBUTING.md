@@ -1,7 +1,7 @@
 # Contributing
 
 ## Required Skill-set
-   - An understanding of the Storj network and [SIP5](https://github.com/Storj/sips/blob/master/sip-0005.md)
+   - An understanding of the Storj network and [SIP5](https://github.com/Storj/sips/blob/main/sip-0005.md)
    - Practical understanding of cryptographic concepts
    - Experience with some C-like language
    - Understanding of asynchronous programming and event loops
@@ -16,7 +16,7 @@
 It's highly recommended to announce your plans before you start work. Once started, commit your changes in small, clear and atomic commits (see commit messages below). This has several benefits:
    - Avoids duplicate work
    - Get feedback and help to achieve your goals
-   - Requires less rebasing or merging from master
+   - Requires less rebasing or merging from main
    - Improves ability to rebase changes
 
 ## Compiling, Debugging and Testing
